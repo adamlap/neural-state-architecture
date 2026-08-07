@@ -265,6 +265,7 @@ neural-state-architecture/
     ├── prompt_injection_bench.py   # Pillar 4: Empirical red-teaming & prompt injection firewall benchmark
     ├── open_llm_retrofit.py         # Phase 3: Scale open LLM retrofitting simulation benchmark
     ├── llama_security_showcase.py  # Interactive side-by-side Llama security retrofit showcase
+    ├── ablation_study.py          # Systematic ablation study (Vanilla vs Security vs Product Algebra)
     ├── state_transformer.py         # Minimal working prototype block
     └── requirements.txt
 ```
@@ -289,14 +290,16 @@ make help
 
 ### Makefile Target Reference
 
-| Target | Command | Description |
+| Target | Command | Description & Purpose |
 | :--- | :--- | :--- |
 | **`make help`** | — | Displays active engine status and formatted list of all available commands |
 | **`make install-uv`** | `curl \| sh` | Installs `uv` locally to `~/.local/bin/uv` |
 | **`make venv`** | `uv venv` | Creates isolated `.venv` virtual environment |
 | **`make install`** | `uv pip install` | Installs runtime requirements from `prototype/requirements.txt` |
 | **`make install-dev`**| `uv pip install` | Installs runtime and dev tools (`pytest`, `ruff`, `black`, `mypy`) |
-| **`make test`** | `uv run pytest` | Executes unit test suite across `tests/` |
+| **`make test`** | `uv run pytest` | Executes 16 unit tests covering algebra, attention hooks, and state flow |
+| **`make showcase`** | `uv run python` | Runs **Live Security Showcase**: downloads a HuggingFace model (`Qwen2.5-0.5B-Instruct`), retrofits with NSA-LoRA, and compares baseline vs CUDA-fused NSA |
+| **`make ablation`** | `uv run python` | Runs **Systematic Ablation Study**: measures Latency, Throughput, Perplexity, and Calibration Error (ECE) across 4 configurations (Vanilla vs Security-Only vs Security+Confidence vs Full Product Algebra) |
 | **`make experiment`** | `uv run python` | Runs synthetic baseline vs NSA privacy experiment (`prototype/toy_experiment.py`) |
 | **`make leakage-experiment`** | `uv run python` | Runs adversarial data leakage extraction attack benchmark (`prototype/leakage_attack.py`) |
 | **`make multi-tier`** | `uv run python` | Runs 4-tier security lattice governance benchmark (`prototype/multi_tier_experiment.py`) |
@@ -309,8 +312,7 @@ make help
 | **`make prompt-injection`**| `uv run python` | Runs Pillar 4 Empirical Red-Teaming Prompt Injection Firewall benchmark (`prototype/prompt_injection_bench.py`) |
 | **`make pillar-4`** | — | Validates Pillar 4 indirect prompt injection firewall requirements |
 | **`make open-llm-retrofit`**| `uv run python` | Runs Phase 3 open LLM scale retrofitting simulation benchmark (`prototype/open_llm_retrofit.py`) |
-| **`make llama-showcase`**| `uv run python` | Runs interactive side-by-side Llama security retrofit showcase (`prototype/llama_security_showcase.py`) |
-| **`make showcase`** | — | Alias for `make llama-showcase` |
+| **`make llama-showcase`**| `uv run python` | Alias for `make showcase` |
 | **`make benchmarks`** | — | Runs complete suite of NSA experiments sequentially |
 | **`make prototype`** | `uv run python` | Runs minimal working NSA transformer block demo (`prototype/state_transformer.py`) |
 | **`make summary`** | `uv run python` | Prints default state lattice transition table and model info |
