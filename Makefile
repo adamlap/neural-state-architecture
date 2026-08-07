@@ -2,7 +2,7 @@
 # Makefile for Neural State Architecture (NSA) - Powered by uv
 # ==============================================================================
 
-.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier pretrain-lm pillar-1 benchmark-gpu pillar-2 retrofit-lora pillar-3 benchmarks prototype lint format clean summary
+.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier pretrain-lm pillar-1 benchmark-gpu pillar-2 retrofit-lora pillar-3 prompt-injection pillar-4 benchmarks prototype lint format clean summary
 
 # Locate uv executable (PATH, ~/.local/bin/uv, or ~/.cargo/bin/uv)
 UV := $(shell command -v uv 2>/dev/null || (test -f ~/.local/bin/uv && echo ~/.local/bin/uv) || (test -f ~/.cargo/bin/uv && echo ~/.cargo/bin/uv) || echo "uv")
@@ -110,7 +110,16 @@ retrofit-lora: ## Run Pillar 3 NSA-LoRA post-hoc retrofitting benchmark
 
 pillar-3: retrofit-lora ## Run Pillar 3 validation suite
 
-benchmarks: experiment leakage-experiment multi-tier pretrain-lm benchmark-gpu retrofit-lora ## Run full NSA benchmark suite
+prompt-injection: ## Run Pillar 4 Empirical Red-Teaming Prompt Injection Firewall benchmark
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/prompt_injection_bench.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/prompt_injection_bench.py; \
+	fi
+
+pillar-4: prompt-injection ## Run Pillar 4 validation suite
+
+benchmarks: experiment leakage-experiment multi-tier pretrain-lm benchmark-gpu retrofit-lora prompt-injection ## Run full NSA benchmark suite
 
 prototype: ## Run prototype demonstration script
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \

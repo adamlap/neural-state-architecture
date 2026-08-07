@@ -151,6 +151,7 @@ neural-state-architecture/
     ├── pretrain_lm.py               # Pillar 1: Causal LLM zero quality degradation benchmark
     ├── benchmark_gpu.py             # Pillar 2: Fused GPU attention throughput benchmark
     ├── retrofit_lora.py             # Pillar 3: NSA-LoRA post-hoc retrofitting benchmark
+    ├── prompt_injection_bench.py   # Pillar 4: Empirical red-teaming & prompt injection firewall benchmark
     ├── state_transformer.py         # Minimal working prototype block
     └── requirements.txt
 ```
@@ -192,6 +193,8 @@ make help
 | **`make pillar-2`** | — | Validates Pillar 2 fused GPU throughput and latency overhead requirements |
 | **`make retrofit-lora`**| `uv run python` | Runs Pillar 3 NSA-LoRA post-hoc retrofitting benchmark (`prototype/retrofit_lora.py`) |
 | **`make pillar-3`** | — | Validates Pillar 3 post-hoc low-rank retrofitting requirements |
+| **`make prompt-injection`**| `uv run python` | Runs Pillar 4 Empirical Red-Teaming Prompt Injection Firewall benchmark (`prototype/prompt_injection_bench.py`) |
+| **`make pillar-4`** | — | Validates Pillar 4 indirect prompt injection firewall requirements |
 | **`make benchmarks`** | — | Runs complete suite of NSA experiments sequentially |
 | **`make prototype`** | `uv run python` | Runs minimal working NSA transformer block demo (`prototype/state_transformer.py`) |
 | **`make summary`** | `uv run python` | Prints default state lattice transition table and model info |
