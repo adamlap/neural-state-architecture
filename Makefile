@@ -2,7 +2,7 @@
 # Makefile for Neural State Architecture (NSA) - Powered by uv
 # ==============================================================================
 
-.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier pretrain-lm pillar-1 benchmark-gpu pillar-2 retrofit-lora pillar-3 prompt-injection pillar-4 open-llm-retrofit llama-showcase showcase benchmarks prototype lint format clean summary
+.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier pretrain-lm pillar-1 benchmark-gpu pillar-2 retrofit-lora pillar-3 prompt-injection pillar-4 open-llm-retrofit llama-showcase showcase ablation benchmarks prototype lint format clean summary
 
 # Locate uv executable (PATH, ~/.local/bin/uv, or ~/.cargo/bin/uv)
 UV := $(shell command -v uv 2>/dev/null || (test -f ~/.local/bin/uv && echo ~/.local/bin/uv) || (test -f ~/.cargo/bin/uv && echo ~/.cargo/bin/uv) || echo "uv")
@@ -135,7 +135,14 @@ llama-showcase: ## Run interactive Llama retrofitting security showcase
 
 showcase: llama-showcase ## Alias for llama-showcase
 
-benchmarks: experiment leakage-experiment multi-tier pretrain-lm benchmark-gpu retrofit-lora prompt-injection open-llm-retrofit llama-showcase ## Run full NSA benchmark suite
+ablation: ## Run systematic ablation study (Vanilla vs Security vs Product Algebra)
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/ablation_study.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/ablation_study.py; \
+	fi
+
+benchmarks: experiment leakage-experiment multi-tier pretrain-lm benchmark-gpu retrofit-lora prompt-injection open-llm-retrofit llama-showcase ablation ## Run full NSA benchmark suite
 
 prototype: ## Run prototype demonstration script
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
