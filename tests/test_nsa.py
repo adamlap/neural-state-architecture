@@ -60,15 +60,16 @@ class TestStateAlgebra(unittest.TestCase):
         self.assertTrue(law.is_violated(StateLabel.PRIVATE, StateLabel.PUBLIC))
         self.assertFalse(law.is_violated(StateLabel.PUBLIC, StateLabel.PRIVATE))
 
-    def test_multi_state_vector(self):
-        """Verify Neural Metadata Propagation (NMP) multi-state vector operations."""
-        from nsa.algebra import MultiStateVector
-        sv1 = MultiStateVector(security=StateLabel.PUBLIC, confidence=0.9, license_tier=1)
-        sv2 = MultiStateVector(security=StateLabel.PRIVATE, confidence=0.7, license_tier=2)
+    def test_product_state_vector(self):
+        """Verify Product State Vector component-wise algebra."""
+        from nsa.algebra import ProductStateVector
+        sv1 = ProductStateVector(security=StateLabel.PUBLIC, confidence=0.9, provenance=1, license_tier=1)
+        sv2 = ProductStateVector(security=StateLabel.PRIVATE, confidence=0.7, provenance=2, license_tier=2)
 
-        joined = sv1.join(sv2)
+        joined = sv1.join_product(sv2)
         self.assertEqual(joined.security, StateLabel.PRIVATE)
         self.assertAlmostEqual(joined.confidence, 0.7)
+        self.assertEqual(joined.provenance, 3)  # bitwise OR: 1 | 2 = 3
         self.assertEqual(joined.license_tier, 2)
 
         # Query with license_tier 2 can attend to key with license_tier 1
@@ -76,12 +77,12 @@ class TestStateAlgebra(unittest.TestCase):
         # Query with license_tier 1 cannot attend to key with license_tier 2
         self.assertFalse(sv2.allows_attention_from(sv1))
 
-    def test_multi_dimensional_lattice(self):
-        """Verify multi-dimensional lattice compatibility mask generation."""
-        from nsa.algebra import MultiStateVector, MultiDimensionalLattice
-        lattice = MultiDimensionalLattice()
-        q1 = MultiStateVector(security=StateLabel.SYSTEM, license_tier=3)
-        k1 = MultiStateVector(security=StateLabel.UNTRUSTED, license_tier=0)
+    def test_product_lattice(self):
+        """Verify Product Lattice compatibility mask generation."""
+        from nsa.algebra import ProductStateVector, ProductLattice
+        lattice = ProductLattice()
+        q1 = ProductStateVector(security=StateLabel.SYSTEM, license_tier=3)
+        k1 = ProductStateVector(security=StateLabel.UNTRUSTED, license_tier=0)
         mask = lattice.compute_mask([q1], [k1])
         self.assertEqual(mask[0][0], 0.0)  # SYSTEM query can attend to UNTRUSTED key
 

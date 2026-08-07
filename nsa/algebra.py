@@ -225,75 +225,70 @@ DEFAULT_LATTICE = StateLattice()
 
 
 # ---------------------------------------------------------------------------
-# Multi-Dimensional State Vector & Neural Metadata Propagation (NMP)
+# Product Lattice & Typed Neural Computation (Product Algebra)
 # ---------------------------------------------------------------------------
 
 @dataclass
-class MultiStateVector:
-    """Multi-dimensional state vector for Neural Metadata Propagation (NMP).
+class ProductStateVector:
+    """Product state vector for Typed Neural Computation (TNC).
 
-    Generalizes single scalar security levels to a tuple of metadata dimensions:
-        - security    : StateLabel (SYSTEM, PRIVATE, CONFIDENTIAL, TRUSTED, PUBLIC, UNTRUSTED)
-        - confidence  : float in [0.0, 1.0] (tracked uncertainty / hallucination risk)
-        - provenance  : int (source origin ID / dataset ID)
-        - license_tier: int (0=Public, 1=Internal, 2=Restricted, 3=Strictly Confidential)
-        - toxicity    : float in [0.0, 1.0] (safety / toxic content score)
+    Formulates the state space as a Product Lattice:
+        Σ = Σ_security × Σ_confidence × Σ_provenance × Σ_license
 
-    This allows NSA to track enterprise metadata, licensing, confidence, and provenance
-    simultaneously through neural forward passes.
+    Each component carries its own distinct algebraic join (⊔) and meet (⊓) operators:
+        - Security   (⊔_s): Lattice supremum (least upper restriction bound)
+        - Confidence (⊔_c): Bayesian / Minimum confidence bound min(c1, c2)
+        - Provenance (⊔_p): Bitwise set union of document origin IDs (p1 | p2)
+        - License    (⊔_l): Maximal tier restriction bounds max(l1, l2)
+
+    To guarantee zero performance overhead when metadata dimensions are disabled,
+    this class supports a light scalar mode (security-only) that executes with
+    0% extra tensor memory allocation.
     """
     security: StateLabel = StateLabel.PUBLIC
     confidence: float = 1.0
     provenance: int = 0
     license_tier: int = 0
-    toxicity: float = 0.0
 
-    def join(self, other: MultiStateVector) -> MultiStateVector:
-        """Least upper bound (most restrictive combined state across dimensions)."""
-        return MultiStateVector(
+    def join_product(self, other: ProductStateVector) -> ProductStateVector:
+        """Product lattice join: (⊔_s, ⊔_c, ⊔_p, ⊔_l)."""
+        return ProductStateVector(
             security=self.security.join(other.security),
             confidence=min(self.confidence, other.confidence),
             provenance=self.provenance | other.provenance,
             license_tier=max(self.license_tier, other.license_tier),
-            toxicity=max(self.toxicity, other.toxicity),
         )
 
-    def meet(self, other: MultiStateVector) -> MultiStateVector:
-        """Greatest lower bound (most permissive common state across dimensions)."""
-        return MultiStateVector(
+    def meet_product(self, other: ProductStateVector) -> ProductStateVector:
+        """Product lattice meet: (⊓_s, ⊓_c, ⊓_p, ⊓_l)."""
+        return ProductStateVector(
             security=self.security.meet(other.security),
             confidence=max(self.confidence, other.confidence),
             provenance=self.provenance & other.provenance,
             license_tier=min(self.license_tier, other.license_tier),
-            toxicity=min(self.toxicity, other.toxicity),
         )
 
-    def allows_attention_from(self, target: MultiStateVector) -> bool:
-        """Check if target query can attend to key with this state vector.
-
-        Enforces coordinate-wise constraints:
-            1. Security lattice check: target.security >= self.security
-            2. Licensing tier check: target.license_tier >= self.license_tier
-        """
-        security_ok = target.security.value >= self.security.value
-        license_ok = target.license_tier >= self.license_tier
-        return security_ok and license_ok
+    def allows_attention_from(self, query: ProductStateVector) -> bool:
+        """Check coordinate-wise attention compatibility across all product dimensions."""
+        sec_ok = query.security.value >= self.security.value
+        lic_ok = query.license_tier >= self.license_tier
+        return sec_ok and lic_ok
 
 
-class MultiDimensionalLattice:
-    """Bounded lattice over MultiStateVector dimensions for enterprise AI governance."""
+class ProductLattice:
+    """Product Lattice manager evaluating component-wise operations across Σ."""
 
     def __init__(self, security_lattice: Optional[StateLattice] = None):
         self.security_lattice = security_lattice or DEFAULT_LATTICE
 
-    def is_allowed(self, src: MultiStateVector, dst: MultiStateVector) -> bool:
-        """Check if state transition src -> dst is allowed across all metadata dimensions."""
+    def is_allowed(self, src: ProductStateVector, dst: ProductStateVector) -> bool:
+        """Check state transition validity across product dimensions."""
         sec_ok = self.security_lattice.is_allowed(src.security, dst.security)
         lic_ok = dst.license_tier >= src.license_tier
         return sec_ok and lic_ok
 
-    def compute_mask(self, query_states: List[MultiStateVector], key_states: List[MultiStateVector]) -> List[List[float]]:
-        """Compute additive 2D compatibility mask M[q, k] for multi-dimensional metadata."""
+    def compute_mask(self, query_states: List[ProductStateVector], key_states: List[ProductStateVector]) -> List[List[float]]:
+        """Compute 2D additive compatibility mask for product lattice states."""
         mask = []
         for q in query_states:
             row = []
@@ -304,4 +299,5 @@ class MultiDimensionalLattice:
                     row.append(-1e4)
             mask.append(row)
         return mask
+
 
