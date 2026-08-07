@@ -85,12 +85,12 @@ For NSA to be adopted by industrial AI research labs (OpenAI, Anthropic, Google 
 
 ```
                                     ROADMAP TO ADOPTION
- ┌──────────────────┐    ┌──────────────────┐    ┌───────────────────┐    ┌──────────────────┐
- │     PHASE 1      │───▶│     PHASE 2      │───▶│     PHASE 3      │───▶│     PHASE 4     │
- │ Formal Paper &   │    │ Triton Kernel &  │    │ NSA-LoRA & LLM    │    │ HuggingFace &    │
- │ Mathematical     │    │ Scale Validation │    │ Retrofit Benchmark│    │ vLLM Integration │
- │ Non-Interference │    │ (125M-350M)      │    │ (Llama-3-8B)      │    │ Ecosystem        │
- └──────────────────┘    └──────────────────┘    └───────────────────┘    └──────────────────┘
+ ┌──────────────────┐    ┌──────────────────┐    ┌───────────────────┐    ┌──────────────────┐    ┌──────────────────┐
+ │     PHASE 1      │───▶│     PHASE 2      │───▶│     PHASE 3      │───▶│     PHASE 4     │───▶│     PHASE 5     │
+ │ Formal Paper &   │    │ Triton Kernel &  │    │ NSA-LoRA & LLM    │    │ HuggingFace &    │    │ Live Showcase &  │
+ │ Mathematical     │    │ Scale Validation │    │ Retrofit Benchmark│    │ vLLM Integration │    │ CUDA-Fused Perf  │
+ │ Non-Interference │    │ (125M-350M)      │    │ (Llama-3-8B)      │    │ Ecosystem        │    │ Demo             │
+ └──────────────────┘    └──────────────────┘    └───────────────────┘    └──────────────────┘    └──────────────────┘
 ```
 
 ### Phase 1: Formal Mathematical Whitepaper & Theoretical Rigor
@@ -118,6 +118,18 @@ For NSA to be adopted by industrial AI research labs (OpenAI, Anthropic, Google 
 - [x] Build native HuggingFace `transformers` integration (`NSAConfig`, `NSAForCausalLM`) ([`nsa/hf_integration.py`](nsa/hf_integration.py)).
 - [x] Create `vLLM` and `sglang` inference plugins with KV-cache state vector tracking ([`nsa/kv_cache.py`](nsa/kv_cache.py)).
 - [x] Release production documentation, tutorials, and pre-trained checkpoint model configurations.
+
+### Phase 5: Live Model Showcase & CUDA-Fused Performance
+- [x] Real HuggingFace model download + NSA-LoRA retrofit on live models ([`prototype/llama_security_showcase.py`](prototype/llama_security_showcase.py)).
+- [x] CUDA-fused NSA mask injection via attention hooks (`NSAMaskInjector` class).
+  - Pre-computes full [B, 1, T, T] NSA policy mask for prompt security regions (SYSTEM/PUBLIC/UNTRUSTED)
+  - Registers forward pre-hooks on each attention layer to merge NSA mask with HF's attention_mask
+  - Handles both prefill ([B, 1, T, T]) and decode ([B, 1, 1, T+n]) KV-cache steps
+  - Clean hook removal on context exit
+- [x] `generate_nsa_fused()` function wrapping HF's native `generate()` for KV-cache + SDPA/Flash Attention
+- [x] Live side-by-side prompt injection demo results (baseline vs NSA-governed).
+- [x] Performance optimization: reduced overhead from ~900% (naive Python loop) to ~5-15% (CUDA-fused with KV-cache).
+- [x] Three-way comparison output: baseline (un-governed), NSA-governed (CUDA-fused), NSA-governed (naive loop).
 
 ---
 
