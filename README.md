@@ -195,9 +195,12 @@ Product State Vector (σ):
 * **Data Provenance Set Union (`provenance`)**: Bitwise OR set union of document origin IDs ($p_1 \mid p_2$).
 * **Enterprise License Restriction Tier (`license_tier`)**: Division restriction bounds (HR, Finance, Legal, PII).
 
-### ⚡ Zero-Overhead Modular Architecture Guarantee
+### 📐 TNC Compositionality Theorem
+> **Theorem 1 (Typed Neural Computation Compositionality)**: Any metadata domain forming a bounded join-semilattice $(\mathcal{D}, \le, \sqcup)$ satisfying closure, associativity, monotonicity, and identity can be incorporated into the state space $\Sigma \times \mathcal{D}$ without altering the underlying semantic update equations $m' = f(m, \sigma)$.
+
+### ⚡ Zero-Cost Abstraction Guarantee
 To guarantee that expanding metadata representations **never slows down training/inference or degrades language model accuracy**:
-1. **Pay-Only-For-What-You-Use Modular Design**: When metadata tracking is unneeded, NSA collapses to a scalar level vector ($\sigma \in \mathbb{R}^1$), executing at 100% Triton CUDA kernel speed with zero memory or latency overhead ($< 3\%$ pre-training latency delta, sub-15% fused decode latency).
+1. **Zero-Cost Abstraction**: When metadata tracking is unneeded, NSA collapses to a scalar level vector ($\sigma \in \mathbb{R}^1$), executing with a **negligible incremental memory footprint** and full Triton CUDA kernel speed ($< 3\%$ pre-training latency delta, sub-15% fused decode latency).
 2. **Opt-In Bitpacked Tensors**: When enterprise multi-tenant or provenance tracking is enabled, state metadata is bitpacked into lightweight integer/float16 tensors, preserving GPU memory bandwidth.
 
 ```python

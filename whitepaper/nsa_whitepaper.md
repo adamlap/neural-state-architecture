@@ -108,14 +108,14 @@ where $\mathbf{v}$ projects the state vector to its lattice restriction scalar a
 
 ---
 
-## 5. Architecture Agnosticism
+## 5. Architecture Agnosticism & Multimodal Tokens
 
-NSA is not specific to LLMs or Transformers. The decoupling of semantics ($m$) and state ($\sigma$) via paired operators $(w, V)$ generalizes to all major neural network topologies:
+NSA is not specific to LLMs or Transformers. The decoupling of semantics ($m$) and state ($\sigma$) via paired operators $(w, V)$ generalizes to all major neural network topologies and modalities:
 
+* **Multimodal Transformers (Vision-Language & Robotics)**: Every image patch, audio frame, or physical sensor reading carries typed state vectors $\boldsymbol{\sigma}$ (e.g. sensor calibration quality, camera privacy bounds, actuation safety envelopes).
 * **Convolutional Neural Networks (CNNs)**: Feature maps carry spatial state grids $\sigma(x, y)$; convolution kernels become spatial tensor products of semantic weights and $V$ matrices.
 * **Graph Neural Networks (GNNs)**: Edge features encode explicit relational state transitions between nodes.
 * **Diffusion Models**: State vectors track noisy signal provenance and confidence through backward sampling steps.
-* **Reinforcement Learning / Robotics**: State vectors encode execution safety envelopes and physical joint boundary permissions.
 
 ---
 
@@ -132,7 +132,10 @@ Each component lattice dimension has its own mathematically distinct algebraic j
 3. **Data Provenance Set Union ($\Sigma_{\text{provenance}}, \sqcup_p$)**: Bitwise set union ($p_1 \mid p_2$) tracking document origin lineage.
 4. **License Restriction Tier ($\Sigma_{\text{license}}, \sqcup_l$)**: Maximal restriction bound $\max(l_1, l_2)$ for enterprise multi-tenant boundary isolation.
 
-### 6.2 Coupled Dynamical System $(m_{t+1}, \sigma_{t+1})$
+### 6.2 TNC Compositionality Theorem
+> **Theorem 1 (Typed Neural Computation Compositionality)**: Let $\mathcal{D}$ be any metadata domain forming a bounded join-semilattice $(\mathcal{D}, \le_{\mathcal{D}}, \sqcup_{\mathcal{D}})$ satisfying algebraic closure, associativity, monotonicity, and identity. Then $\mathcal{D}$ can be composed into the product state space $\Sigma \times \mathcal{D}$ via product tensor operations without altering the underlying semantic update equations $m' = f(m, \sigma)$.
+
+### 6.3 Coupled Dynamical System $(m_{t+1}, \sigma_{t+1})$
 NSA formulates forward propagation as a bidirectional coupled dynamical system:
 
 $$\begin{aligned}
@@ -140,11 +143,11 @@ m_{t+1} &= f(m_t, \sigma_t) \quad \text{(State-Gated Semantic Update)} \\
 \sigma_{t+1} &= g(m_t, \sigma_t) \quad \text{(Semantically-Modulated State Update)}
 \end{aligned}$$
 
-where semantic representations modulate state transition rates (e.g., high-entropy semantic updates lower state confidence), and state gating modulate semantic activation flow ($\Gamma(\sigma) \odot \text{FFN}(m)$).
+where semantic representations modulate state transition rates (e.g., high-entropy semantic updates lower state confidence), and state gating modulates semantic activation flow ($\Gamma(\sigma) \odot \text{FFN}(m)$).
 
-### 6.3 Zero-Overhead Modular Architecture Guarantee
+### 6.4 Zero-Cost Abstraction Guarantee
 To ensure that expanding the state representation **never degrades computational or language modeling performance**:
-* **Pay-Only-For-What-You-Use Modular Design**: When metadata tracking is unneeded, NSA collapses to a scalar level vector ($\sigma \in \mathbb{R}^1$), executing at 100% Triton CUDA kernel speed with zero memory or latency penalty ($< 3\%$ pre-training overhead, sub-15% fused decode latency).
+* **Zero-Cost Abstraction**: When metadata tracking is unneeded, NSA collapses to a scalar level vector ($\sigma \in \mathbb{R}^1$), executing with a **negligible incremental memory footprint** and full Triton CUDA kernel speed ($< 3\%$ pre-training overhead, sub-15% fused decode latency).
 * **Opt-In Bitpacked Vectors**: When multi-tenant licensing or provenance tracking is enabled, state metadata is bitpacked into low-overhead integer/float16 representations, preserving GPU throughput.
 
 ---

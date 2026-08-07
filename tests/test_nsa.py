@@ -124,6 +124,14 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(counts["total"], 110)
         self.assertEqual(counts["trainable"], 110)
 
+    def test_format_layer_state_flow(self):
+        """Test layer state flow inspection formatting."""
+        from nsa.utils import format_layer_state_flow
+        levels = torch.tensor([5.0, 1.0, 0.0])
+        summary = format_layer_state_flow(0, ["SYSTEM", "PUBLIC", "UNTRUSTED"], levels)
+        self.assertIn("Layer 0", summary)
+        self.assertIn("SYSTEM", summary)
+
 
 @unittest.skipUnless(HAS_TORCH, "PyTorch required for causal LM tests")
 class TestNSACausalLM(unittest.TestCase):

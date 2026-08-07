@@ -91,6 +91,33 @@ def print_lattice(lattice: StateLattice = DEFAULT_LATTICE) -> None:
     print(lattice.summary())
 
 
+def format_layer_state_flow(
+    layer_idx: int,
+    prompt_tokens: List[str],
+    state_levels: torch.Tensor,
+    gated_attn_weights: Optional[torch.Tensor] = None
+) -> str:
+    """Format an inspection summary of state levels and gating at a given layer depth.
+
+    Returns a human-readable text block illustrating how permissions, confidence,
+    and attention gating evolve through model depth.
+    """
+    lines = [f"=== Layer {layer_idx} State Flow Inspection ==="]
+    levels = state_levels.squeeze().tolist() if state_levels.dim() > 1 else state_levels.tolist()
+    if not isinstance(levels, list):
+        levels = [levels]
+
+    for idx, (tok, lvl) in enumerate(zip(prompt_tokens, levels)):
+        label_name = StateLabel(min(5, max(0, int(round(lvl))))).name
+        lines.append(f"  Token {idx:>2d} [{tok:<12s}]: State Level = {lvl:.2f} ({label_name})")
+
+    if gated_attn_weights is not None:
+        masked_pct = (gated_attn_weights < -1e3).float().mean().item() * 100
+        lines.append(f"  Attention Masked Entries: {masked_pct:.1f}% blocked by policy")
+
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Generating synthetic data (for toy experiments)
 # ---------------------------------------------------------------------------
