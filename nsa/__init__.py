@@ -16,15 +16,21 @@ from nsa.algebra import (
     ConservationLaw,
     DEFAULT_LATTICE,
 )
-from nsa.state import (
-    StateVector,
-    StateTransitionOperator,
-    WeightedStateEdge,
-)
-from nsa.attention import StateAwareAttention
-from nsa.layers import NSATransformerBlock
-from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
-from nsa.utils import count_parameters, print_model_summary, print_lattice
+from nsa.utils import print_lattice
+
+try:
+    from nsa.state import (
+        StateVector,
+        StateTransitionOperator,
+        WeightedStateEdge,
+    )
+    from nsa.attention import StateAwareAttention
+    from nsa.layers import NSATransformerBlock
+    from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
+    from nsa.utils import count_parameters, print_model_summary
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
 
 __version__ = "0.1.0"
 __all__ = [

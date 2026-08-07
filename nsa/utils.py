@@ -8,8 +8,14 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    HAS_TORCH = True
+except ImportError:
+    torch = None
+    nn = None
+    HAS_TORCH = False
 
 from nsa.algebra import StateLabel, StateLattice, DEFAULT_LATTICE
 
