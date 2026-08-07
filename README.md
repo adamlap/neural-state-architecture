@@ -146,6 +146,7 @@ neural-state-architecture/
     ├── toy_experiment.py            # End-to-end synthetic experiment (baseline vs NSA)
     ├── leakage_attack.py            # Adversarial information leakage extraction benchmark
     ├── multi_tier_experiment.py     # 4-tier security lattice governance benchmark
+    ├── pretrain_lm.py               # Pillar 1: Causal LLM zero quality degradation benchmark
     ├── state_transformer.py         # Minimal working prototype block
     └── requirements.txt
 ```
@@ -181,6 +182,8 @@ make help
 | **`make experiment`** | `uv run python` | Runs synthetic baseline vs NSA privacy experiment (`prototype/toy_experiment.py`) |
 | **`make leakage-experiment`** | `uv run python` | Runs adversarial data leakage extraction attack benchmark (`prototype/leakage_attack.py`) |
 | **`make multi-tier`** | `uv run python` | Runs 4-tier security lattice governance benchmark (`prototype/multi_tier_experiment.py`) |
+| **`make pretrain-lm`** | `uv run python` | Runs Pillar 1 Causal LLM zero-degradation benchmark (`prototype/pretrain_lm.py`) |
+| **`make pillar-1`** | — | Validates Pillar 1 language modeling zero-degradation requirements |
 | **`make benchmarks`** | — | Runs complete suite of NSA experiments sequentially |
 | **`make prototype`** | `uv run python` | Runs minimal working NSA transformer block demo (`prototype/state_transformer.py`) |
 | **`make summary`** | `uv run python` | Prints default state lattice transition table and model info |

@@ -25,7 +25,7 @@ try:
         WeightedStateEdge,
     )
     from nsa.attention import StateAwareAttention
-    from nsa.layers import NSATransformerBlock
+    from nsa.layers import NSATransformerBlock, NSATransformer, NSACausalLM
     from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
     from nsa.utils import count_parameters, print_model_summary
     HAS_TORCH = True
@@ -47,6 +47,8 @@ __all__ = [
     "StateAwareAttention",
     # Layers
     "NSATransformerBlock",
+    "NSATransformer",
+    "NSACausalLM",
     # Objectives
     "SemanticLoss",
     "StateConstraintLoss",

@@ -312,3 +312,73 @@ class NSATransformer(nn.Module):
 
         x = self.ln_f(x)
         return x, state
+
+
+# ---------------------------------------------------------------------------
+# NSACausalLM
+# ---------------------------------------------------------------------------
+
+class NSACausalLM(nn.Module):
+    """Autoregressive Causal Language Model with Dual-Stream State Governance.
+
+    Integrates causal lower-triangular attention masking with state-aware attention.
+    Used for language modeling pre-training, evaluation, and generation.
+    """
+
+    def __init__(
+        self,
+        vocab_size:  int   = 5000,
+        d_model:     int   = 128,
+        state_dim:   int   = 8,
+        num_layers:  int   = 4,
+        num_heads:   int   = 8,
+        max_seq_len: int   = 512,
+        compat_mode: str   = "dot",
+        gate_mode:   str   = "soft",
+        dropout:     float = 0.1,
+        lattice:     StateLattice = DEFAULT_LATTICE,
+        tie_weights: bool  = True,
+    ) -> None:
+        super().__init__()
+        self.vocab_size = vocab_size
+        self.d_model = d_model
+        self.state_dim = state_dim
+
+        self.nsa = NSATransformer(
+            vocab_size=vocab_size,
+            d_model=d_model,
+            state_dim=state_dim,
+            num_layers=num_layers,
+            num_heads=num_heads,
+            max_seq_len=max_seq_len,
+            compat_mode=compat_mode,
+            gate_mode=gate_mode,
+            dropout=dropout,
+            lattice=lattice,
+        )
+        self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
+        if tie_weights:
+            self.lm_head.weight = self.nsa.tok_emb.weight
+
+    def forward(
+        self,
+        tokens:     torch.Tensor,                  # [B, T]
+        state_init: Optional[torch.Tensor] = None, # [B, T, state_dim]
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Returns
+        -------
+        logits     : [B, T, vocab_size] — next-token probability logits
+        x          : [B, T, d_model] — semantic hidden state
+        final_state: [B, T, state_dim] — state stream after final layer
+        """
+        B, T = tokens.shape
+        device = tokens.device
+
+        # Causal mask: [1, 1, T, T] (1 = allowed, 0 = masked)
+        causal_mask = torch.tril(torch.ones(T, T, device=device)).unsqueeze(0).unsqueeze(0)
+
+        x, final_state = self.nsa(tokens, state_init=state_init, mask=causal_mask)
+        logits = self.lm_head(x)
+        return logits, x, final_state
+

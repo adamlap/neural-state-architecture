@@ -99,5 +99,22 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(counts["trainable"], 110)
 
 
+@unittest.skipUnless(HAS_TORCH, "PyTorch required for causal LM tests")
+class TestNSACausalLM(unittest.TestCase):
+    """Test suite for NSACausalLM forward pass and logits shape."""
+
+    def test_causal_lm_forward(self):
+        """Verify NSACausalLM forward output tensor shapes."""
+        from nsa.layers import NSACausalLM
+        model = NSACausalLM(vocab_size=100, d_model=32, state_dim=4, num_layers=2, num_heads=4)
+        tokens = torch.randint(0, 100, (2, 16))
+        states = torch.randn(2, 16, 4)
+
+        logits, x_out, state_out = model(tokens, state_init=states)
+        self.assertEqual(logits.shape, (2, 16, 100))
+        self.assertEqual(x_out.shape, (2, 16, 32))
+        self.assertEqual(state_out.shape, (2, 16, 4))
+
+
 if __name__ == "__main__":
     unittest.main()
