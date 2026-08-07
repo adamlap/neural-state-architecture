@@ -75,30 +75,24 @@ class MLPCompatibility(nn.Module):
 class LevelCompatibility(nn.Module):
     """g(σ_i, σ_j) based on soft expected level difference.
 
-    Uses the expected StateLabel level from a discrete state distribution.
-    g = 1 if level_i ≤ level_j (information flows from lower to higher privilege)
-        decays if level_i > level_j (downward information flow is penalised)
-
-    This directly encodes the lattice monotone rule in attention.
+    Target (i) is query, Source (j) is key.
+    Information flows from Key (j) -> Query (i).
+    Monotone rule: level_target >= level_source.
+    If level_target < level_source (downward information flow),
+    compatibility decays to ~0, masking forbidden information flow.
     """
-    def __init__(self, n_labels: int = 6, temperature: float = 1.0) -> None:
+    def __init__(self, state_dim: int = 8, temperature: float = 1.0) -> None:
         super().__init__()
-        self.n_labels = n_labels
+        self.level_proj = nn.Linear(state_dim, 1, bias=False)
+        nn.init.ones_(self.level_proj.weight)
         self.temperature = temperature
 
     def forward(self, si: torch.Tensor, sj: torch.Tensor) -> torch.Tensor:
-        """
-        si, sj: soft state distributions [..., n_labels] (after softmax).
-        Returns scalar compatibility [..., 1].
-        """
-        levels = torch.arange(
-            self.n_labels, dtype=si.dtype, device=si.device
-        )  # [n_labels]
-        level_i = (si * levels).sum(-1, keepdim=True)   # [..., 1]
-        level_j = (sj * levels).sum(-1, keepdim=True)   # [..., 1]
-        # Compatibility = 1 when j is at least as restricted as i.
-        # Soft version: sigmoid of (level_j - level_i) / temperature
-        return torch.sigmoid((level_j - level_i) / self.temperature)
+        # si: query/target state [..., state_dim]
+        # sj: key/source state   [..., state_dim]
+        level_target = self.level_proj(si)  # [..., 1]
+        level_source = self.level_proj(sj)  # [..., 1]
+        return torch.sigmoid((level_target - level_source) / self.temperature)
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +157,7 @@ class StateAwareAttention(nn.Module):
         elif compat_mode == "mlp":
             self.compat = MLPCompatibility(state_dim)
         elif compat_mode == "level":
-            self.compat = LevelCompatibility()
+            self.compat = LevelCompatibility(state_dim)
         else:
             raise ValueError(f"compat_mode must be one of {self.COMPAT_MODES}")
 
@@ -199,17 +193,20 @@ class StateAwareAttention(nn.Module):
         # ----------------------------------------------------------------
         # State compatibility gating
         # ----------------------------------------------------------------
-        # state: [B, T, state_dim] → project to [B, T, H] (per-head scalar)
-        state_proj = self.state_proj(state)  # [B, T, H]
-
-        # Compute pairwise compatibility: g(σ_i, σ_j) for all (i,j)
-        # Expand: [B, T_i, H] and [B, T_j, H] → pairwise [B, T_i, T_j, H]
-        si = state_proj.unsqueeze(2).expand(B, T, T, H)   # [B, T, T, H]
-        sj = state_proj.unsqueeze(1).expand(B, T, T, H)   # [B, T, T, H]
+        if isinstance(self.compat, LevelCompatibility):
+            si = state.unsqueeze(2).expand(B, T, T, -1)   # [B, T, T, state_dim]
+            sj = state.unsqueeze(1).expand(B, T, T, -1)   # [B, T, T, state_dim]
+        else:
+            state_proj = self.state_proj(state)  # [B, T, H]
+            si = state_proj.unsqueeze(2).expand(B, T, T, H)   # [B, T, T, H]
+            sj = state_proj.unsqueeze(1).expand(B, T, T, H)   # [B, T, T, H]
 
         # g ∈ (0, 1): compatibility score per pair per head
-        g = self.compat(si, sj)   # [B, T, T, H] or [B, T, T, 1]
-        g = g.permute(0, 3, 1, 2) if g.dim() == 4 else g.unsqueeze(1)  # [B, H, T, T]
+        g = self.compat(si, sj)   # [B, T, T, 1] or [B, T, T, H]
+        if g.shape[-1] == 1:
+            g = g.permute(0, 3, 1, 2)  # [B, 1, T, T]
+        else:
+            g = g.permute(0, 3, 1, 2)  # [B, H, T, T]
 
         if self.gate_mode == "soft":
             # Add log-compatibility to scores (log-space gating)

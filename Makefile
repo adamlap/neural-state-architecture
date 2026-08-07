@@ -2,7 +2,7 @@
 # Makefile for Neural State Architecture (NSA) - Powered by uv
 # ==============================================================================
 
-.PHONY: help install install-dev install-uv venv test experiment prototype lint format clean summary
+.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier benchmarks prototype lint format clean summary
 
 # Locate uv executable (PATH, ~/.local/bin/uv, or ~/.cargo/bin/uv)
 UV := $(shell command -v uv 2>/dev/null || (test -f ~/.local/bin/uv && echo ~/.local/bin/uv) || (test -f ~/.cargo/bin/uv && echo ~/.cargo/bin/uv) || echo "uv")
@@ -68,6 +68,22 @@ experiment: ## Run toy experiment (Baseline vs NSA)
 	else \
 		PYTHONPATH=. $(PYTHON) prototype/toy_experiment.py; \
 	fi
+
+leakage-experiment: ## Run adversarial data leakage extraction benchmark
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/leakage_attack.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/leakage_attack.py; \
+	fi
+
+multi-tier: ## Run multi-tier security lattice benchmark
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/multi_tier_experiment.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/multi_tier_experiment.py; \
+	fi
+
+benchmarks: experiment leakage-experiment multi-tier ## Run full NSA benchmark suite
 
 prototype: ## Run prototype demonstration script
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
