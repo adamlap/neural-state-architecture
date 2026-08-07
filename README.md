@@ -157,6 +157,7 @@ neural-state-architecture/
     ├── retrofit_lora.py             # Pillar 3: NSA-LoRA post-hoc retrofitting benchmark
     ├── prompt_injection_bench.py   # Pillar 4: Empirical red-teaming & prompt injection firewall benchmark
     ├── open_llm_retrofit.py         # Phase 3: Scale open LLM retrofitting simulation benchmark
+    ├── llama_security_showcase.py  # Interactive side-by-side Llama security retrofit showcase
     ├── state_transformer.py         # Minimal working prototype block
     └── requirements.txt
 ```
@@ -201,6 +202,8 @@ make help
 | **`make prompt-injection`**| `uv run python` | Runs Pillar 4 Empirical Red-Teaming Prompt Injection Firewall benchmark (`prototype/prompt_injection_bench.py`) |
 | **`make pillar-4`** | — | Validates Pillar 4 indirect prompt injection firewall requirements |
 | **`make open-llm-retrofit`**| `uv run python` | Runs Phase 3 open LLM scale retrofitting simulation benchmark (`prototype/open_llm_retrofit.py`) |
+| **`make llama-showcase`**| `uv run python` | Runs interactive side-by-side Llama security retrofit showcase (`prototype/llama_security_showcase.py`) |
+| **`make showcase`** | — | Alias for `make llama-showcase` |
 | **`make benchmarks`** | — | Runs complete suite of NSA experiments sequentially |
 | **`make prototype`** | `uv run python` | Runs minimal working NSA transformer block demo (`prototype/state_transformer.py`) |
 | **`make summary`** | `uv run python` | Prints default state lattice transition table and model info |
