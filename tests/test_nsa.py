@@ -116,5 +116,22 @@ class TestNSACausalLM(unittest.TestCase):
         self.assertEqual(state_out.shape, (2, 16, 4))
 
 
+@unittest.skipUnless(HAS_TORCH, "PyTorch required for fused attention tests")
+class TestFusedStateAwareAttention(unittest.TestCase):
+    """Test suite for FusedStateAwareAttention forward pass and shapes."""
+
+    def test_fused_attention_forward(self):
+        """Verify FusedStateAwareAttention output shape and state preservation."""
+        from nsa.fused_attention import FusedStateAwareAttention
+        attn = FusedStateAwareAttention(d_model=32, state_dim=4, num_heads=4, gate_mode="soft")
+        x = torch.randn(2, 16, 32)
+        state = torch.randn(2, 16, 4)
+        mask = torch.tril(torch.ones(16, 16)).unsqueeze(0).unsqueeze(0)
+
+        out, state_out = attn(x, state, mask=mask)
+        self.assertEqual(out.shape, (2, 16, 32))
+        self.assertEqual(state_out.shape, (2, 16, 4))
+
+
 if __name__ == "__main__":
     unittest.main()

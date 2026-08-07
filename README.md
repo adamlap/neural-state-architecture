@@ -133,7 +133,8 @@ neural-state-architecture/
 │   ├── algebra.py                   # State algebra: lattice, partial order, conservation laws
 │   ├── state.py                     # StateVector, WeightedStateEdge, TransitionOperator
 │   ├── attention.py                 # State-aware multi-head attention
-│   ├── layers.py                    # NSATransformerBlock, NSATransformer
+│   ├── fused_attention.py           # Pillar 2: Fused GPU-accelerated state-aware SDPA attention
+│   ├── layers.py                    # NSATransformerBlock, NSATransformer, NSACausalLM
 │   ├── objectives.py                # Dual loss functions: SemanticLoss, StateConstraintLoss, NSALoss
 │   └── utils.py                     # Introspection, metrics, and visualization
 ├── tests/                           # Unit Test Suite
@@ -147,6 +148,7 @@ neural-state-architecture/
     ├── leakage_attack.py            # Adversarial information leakage extraction benchmark
     ├── multi_tier_experiment.py     # 4-tier security lattice governance benchmark
     ├── pretrain_lm.py               # Pillar 1: Causal LLM zero quality degradation benchmark
+    ├── benchmark_gpu.py             # Pillar 2: Fused GPU attention throughput benchmark
     ├── state_transformer.py         # Minimal working prototype block
     └── requirements.txt
 ```
@@ -184,6 +186,8 @@ make help
 | **`make multi-tier`** | `uv run python` | Runs 4-tier security lattice governance benchmark (`prototype/multi_tier_experiment.py`) |
 | **`make pretrain-lm`** | `uv run python` | Runs Pillar 1 Causal LLM zero-degradation benchmark (`prototype/pretrain_lm.py`) |
 | **`make pillar-1`** | — | Validates Pillar 1 language modeling zero-degradation requirements |
+| **`make benchmark-gpu`**| `uv run python` | Runs Pillar 2 Fused GPU Attention throughput benchmark (`prototype/benchmark_gpu.py`) |
+| **`make pillar-2`** | — | Validates Pillar 2 fused GPU throughput and latency overhead requirements |
 | **`make benchmarks`** | — | Runs complete suite of NSA experiments sequentially |
 | **`make prototype`** | `uv run python` | Runs minimal working NSA transformer block demo (`prototype/state_transformer.py`) |
 | **`make summary`** | `uv run python` | Prints default state lattice transition table and model info |
