@@ -134,6 +134,7 @@ neural-state-architecture/
 │   ├── state.py                     # StateVector, WeightedStateEdge, TransitionOperator
 │   ├── attention.py                 # State-aware multi-head attention
 │   ├── fused_attention.py           # Pillar 2: Fused GPU-accelerated state-aware SDPA attention
+│   ├── lora.py                      # Pillar 3: NSA-LoRA post-hoc retrofitting adapters
 │   ├── layers.py                    # NSATransformerBlock, NSATransformer, NSACausalLM
 │   ├── objectives.py                # Dual loss functions: SemanticLoss, StateConstraintLoss, NSALoss
 │   └── utils.py                     # Introspection, metrics, and visualization
@@ -149,6 +150,7 @@ neural-state-architecture/
     ├── multi_tier_experiment.py     # 4-tier security lattice governance benchmark
     ├── pretrain_lm.py               # Pillar 1: Causal LLM zero quality degradation benchmark
     ├── benchmark_gpu.py             # Pillar 2: Fused GPU attention throughput benchmark
+    ├── retrofit_lora.py             # Pillar 3: NSA-LoRA post-hoc retrofitting benchmark
     ├── state_transformer.py         # Minimal working prototype block
     └── requirements.txt
 ```
@@ -188,6 +190,8 @@ make help
 | **`make pillar-1`** | — | Validates Pillar 1 language modeling zero-degradation requirements |
 | **`make benchmark-gpu`**| `uv run python` | Runs Pillar 2 Fused GPU Attention throughput benchmark (`prototype/benchmark_gpu.py`) |
 | **`make pillar-2`** | — | Validates Pillar 2 fused GPU throughput and latency overhead requirements |
+| **`make retrofit-lora`**| `uv run python` | Runs Pillar 3 NSA-LoRA post-hoc retrofitting benchmark (`prototype/retrofit_lora.py`) |
+| **`make pillar-3`** | — | Validates Pillar 3 post-hoc low-rank retrofitting requirements |
 | **`make benchmarks`** | — | Runs complete suite of NSA experiments sequentially |
 | **`make prototype`** | `uv run python` | Runs minimal working NSA transformer block demo (`prototype/state_transformer.py`) |
 | **`make summary`** | `uv run python` | Prints default state lattice transition table and model info |

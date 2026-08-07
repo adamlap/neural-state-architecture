@@ -133,5 +133,28 @@ class TestFusedStateAwareAttention(unittest.TestCase):
         self.assertEqual(state_out.shape, (2, 16, 4))
 
 
+@unittest.skipUnless(HAS_TORCH, "PyTorch required for LoRA tests")
+class TestNSALoRA(unittest.TestCase):
+    """Test suite for NSA-LoRA linear adapters and retrofitting."""
+
+    def test_lora_linear_forward(self):
+        """Verify NSALoRALinear output shape and parameter freezing."""
+        from nsa.lora import NSALoRALinear
+        base_layer = nn.Linear(32, 64)
+        adapter = NSALoRALinear(base_layer, r=4)
+
+        # Base layer parameters must be frozen
+        for p in adapter.base_layer.parameters():
+            self.assertFalse(p.requires_grad)
+
+        # Adapter parameters must be trainable
+        self.assertTrue(adapter.lora_A.requires_grad)
+        self.assertTrue(adapter.lora_B.requires_grad)
+
+        x = torch.randn(2, 16, 32)
+        out = adapter(x)
+        self.assertEqual(out.shape, (2, 16, 64))
+
+
 if __name__ == "__main__":
     unittest.main()
