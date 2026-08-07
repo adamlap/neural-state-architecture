@@ -262,10 +262,10 @@ neural-state-architecture/
     ├── pretrain_lm.py               # Pillar 1: Causal LLM zero quality degradation benchmark
     ├── benchmark_gpu.py             # Pillar 2: Fused GPU attention throughput benchmark
     ├── retrofit_lora.py             # Pillar 3: NSA-LoRA post-hoc retrofitting benchmark
-    ├── prompt_injection_bench.py   # Pillar 4: Empirical red-teaming & prompt injection firewall benchmark
+    ├── prompt_injection_bench.py    # Pillar 4: Empirical red-teaming & prompt injection firewall benchmark
     ├── open_llm_retrofit.py         # Phase 3: Scale open LLM retrofitting simulation benchmark
-    ├── llama_security_showcase.py  # Interactive side-by-side Llama security retrofit showcase
-    ├── ablation_study.py          # Systematic ablation study (Vanilla vs Security vs Product Algebra)
+    ├── llama_security_showcase.py   # Interactive side-by-side Llama security retrofit showcase
+    ├── ablation_study.py            # Systematic ablation study (Vanilla vs Security vs Product Algebra)
     ├── state_transformer.py         # Minimal working prototype block
     └── requirements.txt
 ```
