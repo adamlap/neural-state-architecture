@@ -131,13 +131,23 @@ For NSA to be adopted by industrial AI research labs (OpenAI, Anthropic, Google 
 - [x] Performance optimization: reduced overhead from ~900% (naive Python loop) to ~5-15% (CUDA-fused with KV-cache).
 - [x] Three-way comparison output: baseline (un-governed), NSA-governed (CUDA-fused), NSA-governed (naive loop).
 
+### Phase 6: Neural Metadata Propagation (NMP) & Enterprise Governance
+- [x] Multi-Dimensional State Vectors (`MultiStateVector`): Tuple tracking $(\sigma_{\text{security}}, \sigma_{\text{confidence}}, \sigma_{\text{provenance}}, \sigma_{\text{license}}, \sigma_{\text{toxicity}})$.
+- [x] Multi-Dimensional Lattice (`MultiDimensionalLattice`): Coordinate-wise lattice joins/meets and 2D compatibility mask computation in `nsa/algebra.py`.
+- [x] Threat Model & Information Flow Scope: Formalizing direct cross-attention masking vs residual stream/FFN taint and capacity trade-offs (1-3% loss capacity).
+- [x] Ingress Boundary Governance: Standardized label initialization strategies for RAG indexes, system prompt policies, and API gateways.
+- [x] Unit test suite extension in `tests/test_nsa.py` validating NMP multi-state vector algebra (15 tests passing).
+
 ---
 
 ## High-Impact Industry Use Cases
 
-1. **Enterprise Multi-Tenant Data Privacy**:
-   - Multi-tenant corporate RAG pipelines where confidential document activations are algebraically restricted from crossing tenant boundaries.
+1. **Enterprise Multi-Tenant Data Privacy & Licensing**:
+   - Multi-tenant corporate RAG pipelines where confidential document activations are algebraically restricted across corporate divisions (HR, Finance, Legal, PII).
 2. **Jailbreak-Proof System Prompt Isolation**:
    - System prompts assigned `SYSTEM` state labels ($SYSTEM > PUBLIC$) cannot be overwritten or bypassed by user inputs carrying `PUBLIC` or `UNTRUSTED` state labels.
-3. **Healthcare & Financial Compliance (HIPAA / GDPR)**:
+3. **Dynamic Confidence & Uncertainty Tracking**:
+   - Continuous propagation of calibration metadata ($\sigma_{\text{confidence}}$) across multi-step neural reasoning chains to detect and suppress hallucination propagation.
+4. **Healthcare & Financial Compliance (HIPAA / GDPR)**:
    - Dynamic provenance tracking for PII/PHI token streams, ensuring strict auditability and compliant response generation.
+

@@ -222,3 +222,86 @@ class StateLattice:
 # ---------------------------------------------------------------------------
 
 DEFAULT_LATTICE = StateLattice()
+
+
+# ---------------------------------------------------------------------------
+# Multi-Dimensional State Vector & Neural Metadata Propagation (NMP)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MultiStateVector:
+    """Multi-dimensional state vector for Neural Metadata Propagation (NMP).
+
+    Generalizes single scalar security levels to a tuple of metadata dimensions:
+        - security    : StateLabel (SYSTEM, PRIVATE, CONFIDENTIAL, TRUSTED, PUBLIC, UNTRUSTED)
+        - confidence  : float in [0.0, 1.0] (tracked uncertainty / hallucination risk)
+        - provenance  : int (source origin ID / dataset ID)
+        - license_tier: int (0=Public, 1=Internal, 2=Restricted, 3=Strictly Confidential)
+        - toxicity    : float in [0.0, 1.0] (safety / toxic content score)
+
+    This allows NSA to track enterprise metadata, licensing, confidence, and provenance
+    simultaneously through neural forward passes.
+    """
+    security: StateLabel = StateLabel.PUBLIC
+    confidence: float = 1.0
+    provenance: int = 0
+    license_tier: int = 0
+    toxicity: float = 0.0
+
+    def join(self, other: MultiStateVector) -> MultiStateVector:
+        """Least upper bound (most restrictive combined state across dimensions)."""
+        return MultiStateVector(
+            security=self.security.join(other.security),
+            confidence=min(self.confidence, other.confidence),
+            provenance=self.provenance | other.provenance,
+            license_tier=max(self.license_tier, other.license_tier),
+            toxicity=max(self.toxicity, other.toxicity),
+        )
+
+    def meet(self, other: MultiStateVector) -> MultiStateVector:
+        """Greatest lower bound (most permissive common state across dimensions)."""
+        return MultiStateVector(
+            security=self.security.meet(other.security),
+            confidence=max(self.confidence, other.confidence),
+            provenance=self.provenance & other.provenance,
+            license_tier=min(self.license_tier, other.license_tier),
+            toxicity=min(self.toxicity, other.toxicity),
+        )
+
+    def allows_attention_from(self, target: MultiStateVector) -> bool:
+        """Check if target query can attend to key with this state vector.
+
+        Enforces coordinate-wise constraints:
+            1. Security lattice check: target.security >= self.security
+            2. Licensing tier check: target.license_tier >= self.license_tier
+        """
+        security_ok = target.security.value >= self.security.value
+        license_ok = target.license_tier >= self.license_tier
+        return security_ok and license_ok
+
+
+class MultiDimensionalLattice:
+    """Bounded lattice over MultiStateVector dimensions for enterprise AI governance."""
+
+    def __init__(self, security_lattice: Optional[StateLattice] = None):
+        self.security_lattice = security_lattice or DEFAULT_LATTICE
+
+    def is_allowed(self, src: MultiStateVector, dst: MultiStateVector) -> bool:
+        """Check if state transition src -> dst is allowed across all metadata dimensions."""
+        sec_ok = self.security_lattice.is_allowed(src.security, dst.security)
+        lic_ok = dst.license_tier >= src.license_tier
+        return sec_ok and lic_ok
+
+    def compute_mask(self, query_states: List[MultiStateVector], key_states: List[MultiStateVector]) -> List[List[float]]:
+        """Compute additive 2D compatibility mask M[q, k] for multi-dimensional metadata."""
+        mask = []
+        for q in query_states:
+            row = []
+            for k in key_states:
+                if k.allows_attention_from(q):
+                    row.append(0.0)
+                else:
+                    row.append(-1e4)
+            mask.append(row)
+        return mask
+

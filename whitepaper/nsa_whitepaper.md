@@ -119,15 +119,52 @@ NSA is not specific to LLMs or Transformers. The decoupling of semantics ($m$) a
 
 ---
 
-## 6. Applications
+## 6. Neural Metadata Propagation (NMP) & Enterprise RAG
 
-* **Intrinsic Security & Privacy**: Mathematically guarantees that sensitive inputs cannot propagate to public output channels.
-* **Data Provenance & Lineage Tracking**: Tracks source origin continuously across multi-hop reasoning steps.
-* **Dynamic Confidence & Uncertainty**: Propagates calibration metadata alongside representations.
-* **Auditability & Compliance**: Enables real-time, non-invasive algebraic verification of neural internal states.
+Beyond scalar security lattices, NSA generalizes to **Multi-Dimensional Neural Metadata Propagation (NMP)**. Rather than tracking a single security scalar, activations carry a multi-dimensional metadata state vector $\boldsymbol{\sigma} \in \mathbb{R}^{d_{meta}}$:
+
+$$\boldsymbol{\sigma} = \big( \sigma_{\text{security}}, \, \sigma_{\text{confidence}}, \, \sigma_{\text{provenance}}, \, \sigma_{\text{license}}, \, \sigma_{\text{toxicity}} \big)$$
+
+### 6.1 Multi-Dimensional State Dimensions
+1. **Security Classification ($\sigma_{\text{security}}$)**: Formally ordered lattice bounds ($\text{UNTRUSTED} < \text{PUBLIC} < \text{TRUSTED} < \text{CONFIDENTIAL} < \text{PRIVATE} < \text{SYSTEM}$).
+2. **Confidence & Hallucination Risk ($\sigma_{\text{confidence}}$)**: Continuous scalar in $[0, 1]$ tracking representation uncertainty. Information fusion via join ($\sqcup$) inherits the minimum confidence bound $\min(\sigma_{c,1}, \sigma_{c,2})$.
+3. **Data Licensing & Tenant Rights ($\sigma_{\text{license}}$)**: Bitmask or discrete tier representing tenant domain ownership (e.g. HR vs Finance vs Engineering vs Customer PII).
+4. **Data Provenance ($\sigma_{\text{provenance}}$)**: Tracking origin index or document hash through multi-hop RAG chains.
+5. **Content Toxicity ($\sigma_{\text{toxicity}}$)**: Safety level tracking potential harmful content propagation.
+
+### 6.2 Ingress Governance & State Labeling
+A common question in typed state architectures is: *Who labels the initial state vectors?*
+NSA relies on **Ingress Boundary Governance**:
+* **System Prompt Scope**: System instructions are assigned `SYSTEM` state vectors ($\sigma_{\text{security}} = 5$).
+* **RAG Vector Database Metadata**: Retained enterprise documents carry metadata tags directly mapped to $\boldsymbol{\sigma}$ (e.g. `doc_type=financial_report` $\to \sigma_{\text{license}} = 2$).
+* **User Input Boundary**: User queries receive `PUBLIC` or `UNTRUSTED` state labels by default.
 
 ---
 
-## 7. Conclusion
+## 7. Threat Model & Information Flow Limitations
 
-By separating the optimization of meaning from the optimization of information flow, Neural State Architecture transforms neural network policies from heuristic guardrails into foundational linear algebra.
+To maintain scientific clarity, we define the exact scope and boundary of NSA security guarantees.
+
+### 7.1 What NSA Guarantees
+* **Direct Attention Non-Interference**: Hard masking $\mathbf{M}(\boldsymbol{\sigma})_{ij} = -\infty$ guarantees that query position $i$ cannot compute non-zero softmax attention weights over key position $j$ if $\sigma_i \not\ge \sigma_j$.
+* **Algebraic State Propagation**: State transition operators $(w, V)$ enforce that information reclassification along forward trajectories is monotone non-decreasing in restriction.
+
+### 7.2 Information Flow Limitations & Mitigations
+* **Residual Stream Accumulation**: While direct cross-attention between position $i$ and position $j$ is zeroed, representations at position $j$ can theoretically influence residual activations downstream if multi-layer FFNs intermix representations across tokens. *Mitigation*: NSA applies state-gated residual connections and FFN state normalization.
+* **Empirical Capacity Trade-off**: Constraining the attention manifold via compatibility mask $\mathbf{M}(\boldsymbol{\sigma})$ reduces the available degrees of freedom in self-attention. Empirically, this results in a small representational capacity trade-off ($\approx 1\text{--}3\%$ loss delta relative to an unconstrained Transformer), which is a deliberate design trade-off in exchange for hard algebraic guarantees.
+
+---
+
+## 8. Applications
+
+* **Enterprise Multi-Tenant Data Governance**: Enforces tenant document boundary isolation directly inside RAG attention passes.
+* **Neural Metadata Propagation (NMP)**: Tracks confidence, provenance, copyright licensing, and toxicity dynamically across multi-hop reasoning.
+* **Jailbreak-Proof System Prompt Isolation**: Prevents untrusted external payloads from attending to or overwriting system instructions.
+* **Auditability & Compliance**: Enables real-time, non-invasive algebraic verification of internal state compliance.
+
+---
+
+## 9. Conclusion
+
+By separating the optimization of meaning from the optimization of information flow, Neural State Architecture transforms neural network policies from heuristic external wrappers into foundational linear algebra. Through Neural Metadata Propagation (NMP) and multi-dimensional state lattices, NSA provides a unified, architecture-agnostic primitive for secure, policy-aware neural computation.
+

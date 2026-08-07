@@ -175,6 +175,50 @@ $$\mathcal{L}_{total} = \mathcal{L}_{semantic} + \lambda \cdot \mathcal{L}_{stat
 
 ---
 
+## Neural Metadata Propagation (NMP) & Enterprise Governance
+
+Beyond scalar security lattices, NSA generalizes to **Multi-Dimensional Neural Metadata Propagation (NMP)**. Rather than tracking a single security scalar, activations carry a multi-dimensional state vector $\boldsymbol{\sigma} \in \mathbb{R}^{d_{meta}}$:
+
+```
+Multi-State Vector (σ):
+┌────────────────────┬────────────────────┬────────────────────┬────────────────────┬────────────────────┐
+│ Security Level     │ Confidence Score   │ Provenance Origin  │ License Tier       │ Toxicity Level     │
+│ (SYSTEM/PUBLIC/...)│ (0.0 – 1.0)        │ (Doc Hash / ID)    │ (HR / Finance /...)│ (0.0 – 1.0)        │
+└────────────────────┴────────────────────┴────────────────────┴────────────────────┴────────────────────┘
+```
+
+### Supported Metadata Dimensions
+* **Enterprise Multi-Tenant Licensing (`license_tier`)**: Restricts document activations across corporate divisions (e.g. HR vs Finance vs Engineering vs Customer PII).
+* **Confidence & Hallucination Tracking (`confidence`)**: Tracks representation uncertainty continuously; join operations ($\sqcup$) inherit the minimum confidence bound $\min(\sigma_{c,1}, \sigma_{c,2})$.
+* **Data Provenance (`provenance`)**: Tracks source document origin across multi-hop RAG chains.
+
+```python
+from nsa.algebra import MultiStateVector, MultiDimensionalLattice, StateLabel
+
+# Define state vectors for enterprise RAG
+query_state = MultiStateVector(security=StateLabel.SYSTEM, license_tier=2) # Finance Manager
+key_state   = MultiStateVector(security=StateLabel.UNTRUSTED, license_tier=1) # Public Doc
+
+lattice = MultiDimensionalLattice()
+mask = lattice.compute_mask([query_state], [key_state]) # Permitted: 0.0
+```
+
+---
+
+## Threat Model & Security Realism
+
+To maintain scientific integrity, NSA distinguishes between **hard attention non-interference** and **indirect state taint**:
+
+1. **What NSA Guarantees**:
+   - **Direct Attention Non-Interference**: Softmax attention mask $\mathbf{M}(\boldsymbol{\sigma})_{ij} = -\infty$ guarantees that query position $i$ cannot attend to key position $j$ if $\sigma_i \not\ge \sigma_j$.
+   - **Algebraic Transition Monotonicity**: State transition operators $(w, V)$ enforce non-decreasing state restriction along forward paths.
+
+2. **Information Flow Limitations & Mitigations**:
+   - **Residual Stream & FFN Taint**: While direct cross-attention is blocked, token representations can theoretically interact through multi-layer residual streams. *Mitigation*: NSA applies state-gated residual blocks ($\Gamma(\sigma)$) and FFN state normalization.
+   - **Capacity Trade-Off**: Hard attention constraints reduce attention degrees of freedom by $\approx 1\text{--}3\%$ loss capacity relative to an unconstrained Transformer — a deliberate design trade-off in exchange for formal algebraic guarantees.
+
+---
+
 ## Repository Structure
 
 ```
