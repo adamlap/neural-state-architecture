@@ -156,5 +156,44 @@ class TestNSALoRA(unittest.TestCase):
         self.assertEqual(out.shape, (2, 16, 64))
 
 
+@unittest.skipUnless(HAS_TORCH, "PyTorch required for Ecosystem tests")
+class TestNSAEcosystem(unittest.TestCase):
+    """Test suite for Triton kernel, HuggingFace integration, and KV-cache."""
+
+    def test_triton_fused_attention_module(self):
+        """Verify FusedTritonStateAttention forward pass and shapes."""
+        from nsa.triton_kernel import FusedTritonStateAttention
+        attn = FusedTritonStateAttention(d_model=32, state_dim=4, num_heads=4)
+        x = torch.randn(2, 16, 32)
+        state = torch.randn(2, 16, 4)
+        out, state_out = attn(x, state)
+        self.assertEqual(out.shape, (2, 16, 32))
+        self.assertEqual(state_out.shape, (2, 16, 4))
+
+    def test_hf_causal_lm_integration(self):
+        """Verify NSAForCausalLM HuggingFace interface output dict."""
+        from nsa.hf_integration import NSAConfig, NSAForCausalLM
+        config = NSAConfig(vocab_size=64, d_model=32, state_dim=4, num_layers=2, num_heads=4)
+        hf_model = NSAForCausalLM(config)
+        input_ids = torch.randint(0, 64, (2, 16))
+        labels = input_ids.clone()
+        res = hf_model(input_ids, labels=labels)
+        self.assertIn("loss", res)
+        self.assertIn("logits", res)
+        self.assertEqual(res["logits"].shape, (2, 16, 64))
+
+    def test_kv_cache_state_tracking(self):
+        """Verify NSAKVCache update and state tracking behavior."""
+        from nsa.kv_cache import NSAKVCache
+        cache = NSAKVCache(batch_size=2, max_seq_len=32, num_heads=4, d_head=8, state_dim=4)
+        k_new = torch.randn(2, 4, 4, 8)
+        v_new = torch.randn(2, 4, 4, 8)
+        state_new = torch.randn(2, 4, 4)
+
+        k_cached, v_cached, s_cached = cache.update(k_new, v_new, state_new)
+        self.assertEqual(k_cached.shape, (2, 4, 4, 8))
+        self.assertEqual(s_cached.shape, (2, 4, 4))
+
+
 if __name__ == "__main__":
     unittest.main()

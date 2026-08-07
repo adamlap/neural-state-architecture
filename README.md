@@ -135,13 +135,17 @@ neural-state-architecture/
 │   ├── attention.py                 # State-aware multi-head attention
 │   ├── fused_attention.py           # Pillar 2: Fused GPU-accelerated state-aware SDPA attention
 │   ├── lora.py                      # Pillar 3: NSA-LoRA post-hoc retrofitting adapters
+│   ├── triton_kernel.py             # Phase 2: Fused Triton GPU kernel with PyTorch fallback
+│   ├── hf_integration.py            # Phase 4: HuggingFace transformers integration
+│   ├── kv_cache.py                  # Phase 4: High-throughput KV-Cache state tracking
 │   ├── layers.py                    # NSATransformerBlock, NSATransformer, NSACausalLM
 │   ├── objectives.py                # Dual loss functions: SemanticLoss, StateConstraintLoss, NSALoss
 │   └── utils.py                     # Introspection, metrics, and visualization
 ├── tests/                           # Unit Test Suite
 │   └── test_nsa.py                  # Unit tests for algebra, primitives, and utilities
 ├── whitepaper/
-│   └── nsa_whitepaper.md            # Formal whitepaper & theoretical foundations
+│   ├── nsa_whitepaper.md            # Theoretical whitepaper & mathematical non-interference proof
+│   └── nsa_paper.tex                # Formal LaTeX conference paper (NeurIPS/IEEE S&P ready)
 ├── docs/
 │   └── state_algebra.md             # Algebraic specification and state lattice docs
 └── prototype/
@@ -152,6 +156,7 @@ neural-state-architecture/
     ├── benchmark_gpu.py             # Pillar 2: Fused GPU attention throughput benchmark
     ├── retrofit_lora.py             # Pillar 3: NSA-LoRA post-hoc retrofitting benchmark
     ├── prompt_injection_bench.py   # Pillar 4: Empirical red-teaming & prompt injection firewall benchmark
+    ├── open_llm_retrofit.py         # Phase 3: Scale open LLM retrofitting simulation benchmark
     ├── state_transformer.py         # Minimal working prototype block
     └── requirements.txt
 ```
@@ -195,6 +200,7 @@ make help
 | **`make pillar-3`** | — | Validates Pillar 3 post-hoc low-rank retrofitting requirements |
 | **`make prompt-injection`**| `uv run python` | Runs Pillar 4 Empirical Red-Teaming Prompt Injection Firewall benchmark (`prototype/prompt_injection_bench.py`) |
 | **`make pillar-4`** | — | Validates Pillar 4 indirect prompt injection firewall requirements |
+| **`make open-llm-retrofit`**| `uv run python` | Runs Phase 3 open LLM scale retrofitting simulation benchmark (`prototype/open_llm_retrofit.py`) |
 | **`make benchmarks`** | — | Runs complete suite of NSA experiments sequentially |
 | **`make prototype`** | `uv run python` | Runs minimal working NSA transformer block demo (`prototype/state_transformer.py`) |
 | **`make summary`** | `uv run python` | Prints default state lattice transition table and model info |
