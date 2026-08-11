@@ -86,6 +86,20 @@ class TestStateAlgebra(unittest.TestCase):
         mask = lattice.compute_mask([q1], [k1])
         self.assertEqual(mask[0][0], 0.0)  # SYSTEM query can attend to UNTRUSTED key
 
+    def test_bitpacking_roundtrip(self):
+        """Verify state vector tensor bitpacking and unpacking compression roundtrip."""
+        from nsa.algebra import bitpack_states, unpack_states
+        if HAS_TORCH:
+            states = torch.tensor([[[4.0, 3.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0]]], dtype=torch.float32)
+            packed = bitpack_states(states)
+            self.assertEqual(packed.dtype, torch.uint8)
+            self.assertEqual(packed.shape, (1, 2))
+            
+            unpacked = unpack_states(packed, state_dim=4)
+            self.assertEqual(unpacked.shape, (1, 2, 4))
+            self.assertEqual(unpacked[0, 0, 0].item(), 4.0)
+            self.assertEqual(unpacked[0, 0, 1].item(), 3.0)
+
 
 @unittest.skipUnless(HAS_TORCH, "PyTorch required for neural state primitives tests")
 class TestStatePrimitives(unittest.TestCase):

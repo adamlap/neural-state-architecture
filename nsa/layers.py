@@ -86,7 +86,11 @@ class StateUpdateNetwork(nn.Module):
         Returns
         -------
         state'  : [B, T, state_dim]
+
+        Security invariant: coordinate 0 (discrete security level) is preserved
+        so hard lattice masks remain valid across layers.
         """
+        hard_sec = state[..., 0:1]
         delta = self.transition(state)  # [B, T, state_dim]
 
         if self.condition_on_semantics:
@@ -94,7 +98,10 @@ class StateUpdateNetwork(nn.Module):
             sem_summary = self.mix(meaning)  # [B, T, state_dim]
             delta = delta + 0.1 * sem_summary   # small coefficient keeps state stable
 
-        return self.norm(state + delta)
+        updated = self.norm(state + delta)
+        # Restore hard security coordinate (non-decreasing optional clamp)
+        updated = torch.cat([hard_sec, updated[..., 1:]], dim=-1)
+        return updated
 
 
 # ---------------------------------------------------------------------------
@@ -172,8 +179,8 @@ class NSATransformerBlock(nn.Module):
         d_model:     int   = 128,
         state_dim:   int   = 8,
         num_heads:   int   = 8,
-        compat_mode: str   = "dot",
-        gate_mode:   str   = "soft",
+        compat_mode: str   = "level",
+        gate_mode:   str   = "hard",
         ffn_expansion: int = 4,
         dropout:     float = 0.0,
         lattice:     StateLattice = DEFAULT_LATTICE,
@@ -260,8 +267,8 @@ class NSATransformer(nn.Module):
         num_layers:  int   = 4,
         num_heads:   int   = 8,
         max_seq_len: int   = 512,
-        compat_mode: str   = "dot",
-        gate_mode:   str   = "soft",
+        compat_mode: str   = "level",
+        gate_mode:   str   = "hard",
         dropout:     float = 0.0,
         lattice:     StateLattice = DEFAULT_LATTICE,
     ) -> None:
@@ -333,8 +340,8 @@ class NSACausalLM(nn.Module):
         num_layers:  int   = 4,
         num_heads:   int   = 8,
         max_seq_len: int   = 512,
-        compat_mode: str   = "dot",
-        gate_mode:   str   = "soft",
+        compat_mode: str   = "level",
+        gate_mode:   str   = "hard",
         dropout:     float = 0.1,
         lattice:     StateLattice = DEFAULT_LATTICE,
         tie_weights: bool  = True,

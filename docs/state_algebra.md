@@ -67,3 +67,32 @@ To make lattice constraints differentiable for PyTorch models:
 3. **Loss Constraint**:
    $$\mathcal{L}_{state} = \text{ReLU}\left(\text{Level}(\sigma_{in}) - \text{Level}(\sigma_{out}) - \gamma\right)$$
    This penalizes any step where the output state restriction level falls below the input state restriction level.
+
+---
+
+## 4. State Gating Parameters & Mask Tensor ($M_{\text{state}}$)
+
+In State-Aware Attention, the additive state compatibility mask $M_{\text{state}}$ is injected into scaled dot-product attention:
+
+$$S_{i, j} = \frac{Q_i K_j^T}{\sqrt{d_k}} + M_{\text{state}}(\sigma_{Q, i}, \sigma_{K, j})$$
+
+### Gating Formulations
+
+1. **Hard Lattice Gating (`gate_mode="hard"`)**:
+   $$M_{\text{state}}(\sigma_Q, \sigma_K) = \begin{cases} 0.0 & \text{if } \sigma_Q \ge \sigma_K \\ -10000.0 & \text{if } \sigma_Q < \sigma_K \end{cases}$$
+
+2. **Differentiable Soft Log-Sigmoid Gating (`gate_mode="soft"`)**:
+   $$M_{\text{state}}(\sigma_Q, \sigma_K) = \alpha \cdot \log\left( \text{sigmoid}\left( \frac{\sigma_Q - \sigma_K}{T} \right) \right)$$
+   - $\alpha > 0$: Policy weight scale (default $\alpha = 10.0$).
+   - $T > 0$: Lattice temperature parameter (default $T = 1.0$).
+
+### Memory Efficiency: Bitpacked State Vectors (`BitpackedStateVector`)
+For high-concurrency production inference (e.g. vLLM integration via `nsa.vllm_plugin`), state vectors are compressed from `float32` into `uint8` bitpacked byte tensors:
+
+```python
+from nsa.algebra import bitpack_states, unpack_states
+
+# Compress float32 state tensor to uint8 bitpacked representation
+packed_states = bitpack_states(state_levels)  # 75% memory bandwidth reduction
+unpacked_states = unpack_states(packed_states)
+```

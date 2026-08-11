@@ -264,3 +264,156 @@ class SemanticGate(nn.Module):
         gated meaning : Tensor (..., d_model)
         """
         return meaning * self.gate(state)
+
+
+# ---------------------------------------------------------------------------
+# ContinuousStateEncoder
+# ---------------------------------------------------------------------------
+
+class ContinuousStateEncoder(nn.Module):
+    """Encodes structured metadata dictionaries into continuous state vectors σ ∈ ℝ^state_dim.
+
+    Maps discrete/symbolic attributes:
+      - Security Level (SYSTEM=5, CONFIDENTIAL=3, PUBLIC=1, UNTRUSTED=0)
+      - Confidence Bound (0.0 to 1.0)
+      - Provenance Bitmask / Source ID (0 to 255)
+      - License Tier (0 to 15)
+    into a continuous dense vector representation for neural propagation.
+    """
+
+    def __init__(self, state_dim: int = 8) -> None:
+        super().__init__()
+        self.state_dim = state_dim
+        self.attr_proj = nn.Linear(4, state_dim, bias=False)
+        nn.init.orthogonal_(self.attr_proj.weight)
+
+    def forward(
+        self,
+        security_level: torch.Tensor,   # [B, T]
+        confidence: torch.Tensor,       # [B, T]
+        provenance: torch.Tensor,       # [B, T]
+        license_tier: torch.Tensor,     # [B, T]
+    ) -> torch.Tensor:
+        """Returns continuous state tensor [B, T, state_dim]."""
+        attrs = torch.stack([
+            security_level.float(),
+            confidence.float(),
+            provenance.float(),
+            license_tier.float()
+        ], dim=-1)  # [B, T, 4]
+        
+        # Primary state level placed in slot 0 for direct lattice compatibility
+        state = self.attr_proj(attrs)  # [B, T, state_dim]
+        state[..., 0] = security_level.float()
+        return state
+
+
+# ---------------------------------------------------------------------------
+# LearnedStateTransitionCell
+# ---------------------------------------------------------------------------
+
+class LearnedStateTransitionCell(nn.Module):
+    """Computes dynamic adaptive state transition:
+    
+    σ_{l+1} = LayerNorm(σ_l + V_θ(σ_l) + α_l * W_h h_l)
+    where α_l = sigmoid(W_α [σ_l; h_l]) (initialized at α ≈ 0.01).
+    
+    Preserves Hard Security Invariants (σ[..., 0] = σ_hard) while allowing
+    soft uncertainty and context relevance parameters to learn adaptively.
+    """
+
+    def __init__(self, state_dim: int = 8, d_model: int = 128, init_alpha: float = 0.01) -> None:
+        super().__init__()
+        self.state_dim = state_dim
+        self.transition = StateTransitionOperator(state_dim=state_dim, monotone_clamp=True)
+        self.sem_proj = nn.Linear(d_model, state_dim, bias=False)
+        nn.init.zeros_(self.sem_proj.weight)
+        
+        # Adaptive coupling gate α = sigmoid(W_α [σ; h]) initialized to ~0.01
+        self.alpha_gate = nn.Linear(state_dim + d_model, 1)
+        init_bias = math.log(init_alpha / max(1.0 - init_alpha, 1e-5))
+        nn.init.constant_(self.alpha_gate.bias, init_bias)
+        nn.init.zeros_(self.alpha_gate.weight)
+        
+        self.norm = nn.LayerNorm(state_dim)
+
+    def forward(self, state: torch.Tensor, hidden_states: torch.Tensor) -> torch.Tensor:
+        # Preserve immutable hard security level (slot 0)
+        hard_security = state[..., 0:1]
+        
+        delta_state = self.transition(state)
+        delta_sem = self.sem_proj(hidden_states)
+        
+        # Adaptive coupling coefficient α_l ∈ [0, 1]
+        alpha = torch.sigmoid(self.alpha_gate(torch.cat([state, hidden_states], dim=-1)))
+        
+        state_next = self.norm(state + delta_state + alpha * delta_sem)
+        # Restore hard security invariant
+        state_next = torch.cat([hard_security, state_next[..., 1:]], dim=-1)
+        return state_next
+
+
+# ---------------------------------------------------------------------------
+# DeclassificationOperator
+# ---------------------------------------------------------------------------
+
+class DeclassificationOperator(nn.Module):
+    """Authorized state transformation operator D: (σ, m, AuthToken) -> (σ', m').
+
+    Permits controlled downward reclassification (e.g. PRIVATE raw data -> PUBLIC summary)
+    ONLY when an authorized cryptographic or policy token is provided *and*
+    :meth:`StateLattice.can_declassify` allows the transition.
+
+    Without auth, downward moves are rejected (state + meaning unchanged).
+    Upward / equal moves remain allowed under the lattice even without auth.
+    """
+
+    def __init__(
+        self,
+        state_dim: int = 8,
+        d_model: int = 128,
+        lattice: Optional["StateLattice"] = None,
+    ) -> None:
+        super().__init__()
+        from nsa.algebra import DEFAULT_LATTICE
+
+        self.state_dim = state_dim
+        self.lattice = lattice or DEFAULT_LATTICE
+        self.summary_proj = nn.Linear(d_model, d_model)
+        self.auth_gate = nn.Linear(32, state_dim)
+
+    def forward(
+        self,
+        meaning: torch.Tensor,
+        state: torch.Tensor,
+        target_level: StateLabel,
+        auth_token: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Returns (gated_meaning, declassified_state)."""
+        authorized = auth_token is not None
+        # Per-position check using current security coordinate
+        src_levels = state[..., 0].detach().round().long().clamp(0, 5)
+        # If any position would move downward without auth, reject whole op
+        flat = src_levels.reshape(-1)
+        for i in range(flat.numel()):
+            src = StateLabel(int(flat[i].item()))
+            if not self.lattice.can_declassify(src, target_level, authorized=authorized):
+                return meaning, state
+
+        if not authorized:
+            # Allowed only if every src can already transition to target (no down)
+            # meaning unchanged for pure level-preserving / upward without summary
+            declassified_state = state.clone()
+            declassified_state[..., 0] = float(target_level.value)
+            return meaning, declassified_state
+
+        # Authorized declassification -> summary transform + level adjust
+        declassified_state = state.clone()
+        declassified_state[..., 0] = float(target_level.value)
+        # Optional auth embedding modulates residual of summary (if shape matches)
+        summary_meaning = torch.tanh(self.summary_proj(meaning))
+        if auth_token is not None and auth_token.numel() >= 32:
+            gate = torch.sigmoid(self.auth_gate(auth_token[..., :32].to(meaning.dtype)))
+            # gate: [..., state_dim] — broadcast onto meaning channels lightly
+            summary_meaning = summary_meaning * gate.mean(dim=-1, keepdim=True).clamp(0.5, 1.0)
+        return summary_meaning, declassified_state

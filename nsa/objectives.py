@@ -114,9 +114,18 @@ class StateConstraintLoss(nn.Module):
         self.mode      = mode
         self.margin    = margin
 
-        # Learned projection to extract a "state level" scalar from the state vector
+        # Optional learned projection (used only if use_discrete_levels=False)
         self.level_proj = nn.Linear(state_dim, 1, bias=False)
-        nn.init.ones_(self.level_proj.weight)  # start with mean projection
+        with torch.no_grad():
+            self.level_proj.weight.zero_()
+            self.level_proj.weight[0, 0] = 1.0
+        self.use_discrete_levels = True
+
+    def _level(self, states: torch.Tensor) -> torch.Tensor:
+        """Extract scalar security level [B, T]."""
+        if self.use_discrete_levels:
+            return states[..., 0]
+        return self.level_proj(states).squeeze(-1)
 
     def forward(
         self,
@@ -146,8 +155,8 @@ class StateConstraintLoss(nn.Module):
         self, states_in: torch.Tensor, states_out: torch.Tensor
     ) -> torch.Tensor:
         """Hinge loss penalising reduction in state level (declassification)."""
-        level_in  = self.level_proj(states_in).squeeze(-1)   # [B, T]
-        level_out = self.level_proj(states_out).squeeze(-1)  # [B, T]
+        level_in  = self._level(states_in)   # [B, T]
+        level_out = self._level(states_out)  # [B, T]
         # Violation: level_out < level_in → information became "less restricted"
         violation = F.relu(level_in - level_out - self.margin)  # [B, T]
         return violation.mean()
@@ -155,22 +164,34 @@ class StateConstraintLoss(nn.Module):
     def _lattice_loss(
         self, states_in: torch.Tensor, states_out: torch.Tensor
     ) -> torch.Tensor:
-        """Lattice-based penalty.
+        """Lattice-based penalty using discrete levels on dim-0 when available.
 
-        Treats the state vector as a soft distribution over StateLabels.
-        Penalises expected transitions that violate the lattice.
+        Falls back to a soft distribution over labels from remaining dims.
         """
-        # Soft distribution over labels: softmax over state vector
         n_labels = len(StateLabel)
-        # Project state to n_labels logits
         B, T, D = states_in.shape
-        # Simple: use the first n_labels dims as logits (assume state_dim >= n_labels)
+
+        # Prefer exact discrete levels on coordinate 0
+        if self.use_discrete_levels:
+            lvl_in = states_in[..., 0].round().long().clamp(0, n_labels - 1)
+            lvl_out = states_out[..., 0].round().long().clamp(0, n_labels - 1)
+            labels = list(StateLabel)
+            # Pairwise penalty via lookup table
+            penalty_matrix = torch.zeros(n_labels, n_labels, device=states_in.device)
+            for i, src in enumerate(labels):
+                for j, dst in enumerate(labels):
+                    if not self.lattice.is_allowed(src, dst):
+                        penalty_matrix[i, j] = self.lattice.violation_penalty(src, dst)
+            # penalty[b,t] = M[lvl_in, lvl_out]
+            pen = penalty_matrix[lvl_in, lvl_out]
+            return pen.float().mean()
+
+        # Soft distribution over labels
         logits_in  = states_in[..., :n_labels]
         logits_out = states_out[..., :n_labels]
-        probs_in   = F.softmax(logits_in,  dim=-1)   # [B, T, n_labels]
-        probs_out  = F.softmax(logits_out, dim=-1)   # [B, T, n_labels]
+        probs_in   = F.softmax(logits_in,  dim=-1)
+        probs_out  = F.softmax(logits_out, dim=-1)
 
-        # Build penalty matrix from lattice
         labels = list(StateLabel)
         penalty_matrix = torch.zeros(n_labels, n_labels, device=states_in.device)
         for i, src in enumerate(labels):
@@ -178,10 +199,8 @@ class StateConstraintLoss(nn.Module):
                 if not self.lattice.is_allowed(src, dst):
                     penalty_matrix[i, j] = self.lattice.violation_penalty(src, dst)
 
-        # Expected penalty = Σ_{src,dst} p_in[src] * p_out[dst] * penalty[src,dst]
-        # [B, T, n_labels, 1] × [B, T, 1, n_labels] → [B, T, n_labels, n_labels]
         joint = probs_in.unsqueeze(-1) * probs_out.unsqueeze(-2)
-        penalty = (joint * penalty_matrix).sum(dim=(-1, -2))  # [B, T]
+        penalty = (joint * penalty_matrix).sum(dim=(-1, -2))
         return penalty.mean()
 
     def violation_rate(
@@ -192,8 +211,8 @@ class StateConstraintLoss(nn.Module):
         Useful as a metric (not differentiable — used for evaluation only).
         """
         with torch.no_grad():
-            level_in  = self.level_proj(states_in).squeeze(-1)
-            level_out = self.level_proj(states_out).squeeze(-1)
+            level_in  = self._level(states_in)
+            level_out = self._level(states_out)
             violations = (level_out < level_in - self.margin).float()
             return violations.mean().item()
 

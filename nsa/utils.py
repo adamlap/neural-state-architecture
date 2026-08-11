@@ -155,23 +155,32 @@ def state_labels_to_vectors(
     labels: torch.Tensor,   # [B, T] — integer state labels
     state_dim: int = 8,
     n_labels:  int = len(StateLabel),
+    noise: float = 0.0,
 ) -> torch.Tensor:
     """Convert discrete state labels to continuous state vectors.
 
-    Uses a one-hot encoding padded to state_dim with small noise.
-    In a real system, these would be learned embeddings.
+    Canonical layout used by hard lattice attention:
+        σ[..., 0] = discrete security level (exact integer as float)
+        σ[..., 1:n_labels] = one-hot over labels (optional features)
+        remaining dims = 0 (+ optional tiny noise on non-security dims)
+
+    Hard masks read only dim-0, so security identity is exact.
 
     Returns Tensor [B, T, state_dim].
     """
     B, T = labels.shape
-    one_hot = torch.zeros(B, T, n_labels, device=labels.device)
-    one_hot.scatter_(-1, labels.unsqueeze(-1), 1.0)
-    # Pad to state_dim
-    if state_dim > n_labels:
-        padding = torch.zeros(B, T, state_dim - n_labels, device=labels.device)
-        one_hot = torch.cat([one_hot, padding], dim=-1)
-    elif state_dim < n_labels:
-        one_hot = one_hot[..., :state_dim]
-    # Add small noise so the network can learn from it
-    one_hot += torch.randn_like(one_hot) * 0.05
-    return one_hot
+    device = labels.device
+    out = torch.zeros(B, T, state_dim, device=device, dtype=torch.float32)
+    # Dim-0 carries the exact lattice level for hard non-interference masks
+    out[..., 0] = labels.float()
+    # Optional one-hot features in remaining dims (skip dim-0)
+    if state_dim > 1:
+        n_oh = min(n_labels, state_dim - 1)
+        one_hot = torch.zeros(B, T, n_oh, device=device, dtype=torch.float32)
+        clamped = labels.clamp(0, n_oh - 1).unsqueeze(-1)
+        one_hot.scatter_(-1, clamped, 1.0)
+        out[..., 1:1 + n_oh] = one_hot
+    if noise > 0.0 and state_dim > 1:
+        # Never perturb the hard security coordinate
+        out[..., 1:] = out[..., 1:] + torch.randn_like(out[..., 1:]) * noise
+    return out

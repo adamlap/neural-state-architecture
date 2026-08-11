@@ -58,6 +58,14 @@ class NSALoRALinear(nn.Module):
 
         self.dropout = nn.Dropout(p=lora_dropout) if lora_dropout > 0 else nn.Identity()
 
+    @property
+    def weight(self) -> torch.Tensor:
+        return self.base_layer.weight + (self.lora_B @ self.lora_A) * self.scaling
+
+    @property
+    def bias(self) -> Optional[torch.Tensor]:
+        return self.base_layer.bias
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         base_out = self.base_layer(x)
         lora_out = (self.dropout(x) @ self.lora_A.T) @ self.lora_B.T
@@ -74,7 +82,7 @@ class NSALoRAAttention(nn.Module):
         num_heads: int = 8,
         r: int = 8,
         lora_alpha: float = 16.0,
-        gate_mode: str = "soft",
+        gate_mode: str = "hard",
         lattice: StateLattice = DEFAULT_LATTICE,
     ) -> None:
         super().__init__()
@@ -101,41 +109,218 @@ class NSALoRAAttention(nn.Module):
         return self.fused_attn(x, state, mask=mask)
 
 
+# Common projection attribute names across HF / custom transformers
+_LORA_TARGET_SUFFIXES = (
+    "q_proj", "k_proj", "v_proj", "o_proj",
+    "W_q", "W_k", "W_v", "W_o",
+    "query", "key", "value", "out_proj",
+    "c_attn", "c_proj",
+)
+
+
+def _count_param_stats(model: nn.Module) -> Dict[str, float]:
+    """Count total / trainable / frozen params without double-counting."""
+    total = 0
+    trainable = 0
+    for p in model.parameters():
+        n = p.numel()
+        total += n
+        if p.requires_grad:
+            trainable += n
+    frozen = total - trainable
+    return {
+        "total": total,
+        "trainable": trainable,
+        "frozen": frozen,
+        "pct_trainable": (trainable / max(total, 1)) * 100.0,
+    }
+
+
 def apply_nsa_lora_retrofit(
     model: nn.Module,
     state_dim: int = 8,
     r: int = 8,
     lora_alpha: float = 16.0,
-) -> Tuple[nn.Module, Dict[str, int]]:
-    """Freeze base model parameters and attach NSA-LoRA adapters to all attention layers.
+    target_modules: Optional[List[str]] = None,
+    add_state_emb: bool = True,
+) -> Tuple[nn.Module, Dict[str, float]]:
+    """Freeze base weights and wrap target Linear layers with NSA-LoRA adapters.
 
-    Returns:
-        retrofitted_model: nn.Module
-        param_counts     : Dict with trainable vs frozen parameter statistics
+    Parameters
+    ----------
+    model : nn.Module
+        Model to retrofit in-place.
+    state_dim : int
+        Dimensionality of optional state embedding table.
+    r, lora_alpha : LoRA rank / scale.
+    target_modules : optional list of attribute suffixes to wrap.
+        Defaults to common attention projection names.
+    add_state_emb : if True, attach ``model.state_emb`` when missing.
+
+    Returns
+    -------
+    model, param_stats
     """
-    total_params = 0
-    trainable_params = 0
+    targets = tuple(target_modules) if target_modules else _LORA_TARGET_SUFFIXES
 
-    # Freeze all existing parameters
+    # 1. Freeze everything first
     for p in model.parameters():
         p.requires_grad = False
-        total_params += p.numel()
 
-    # Create trainable state stream embedding if model lacks one
-    if not hasattr(model, "state_emb"):
-        model.state_emb = nn.Embedding(512, state_dim)
+    # 2. Walk modules and wrap matching Linear children
+    replaced = 0
+    for module_name, module in list(model.named_modules()):
+        for attr in targets:
+            if not hasattr(module, attr):
+                continue
+            child = getattr(module, attr)
+            if isinstance(child, NSALoRALinear):
+                continue
+            if isinstance(child, nn.Linear):
+                setattr(module, attr, NSALoRALinear(child, r=r, lora_alpha=lora_alpha))
+                replaced += 1
+
+    # 3. Optional trainable state embedding for label → σ lookup
+    if add_state_emb and not hasattr(model, "state_emb"):
+        emb = nn.Embedding(64, state_dim)
+        # Canonical init: dim-0 carries discrete label identity for labels 0..5
+        with torch.no_grad():
+            emb.weight.zero_()
+            for lab in range(min(6, emb.num_embeddings)):
+                emb.weight[lab, 0] = float(lab)
+        model.state_emb = emb
         for p in model.state_emb.parameters():
             p.requires_grad = True
-            trainable_params += p.numel()
-            total_params += p.numel()
 
-    for name, param in model.named_parameters():
-        if param.requires_grad:
-            trainable_params += param.numel()
+    stats = _count_param_stats(model)
+    stats["layers_wrapped"] = float(replaced)
+    if replaced == 0:
+        # Still valid if caller only wanted freeze + state_emb, but surface a signal
+        stats["warning"] = 1.0
+    return model, stats
 
-    return model, {
-        "total": total_params,
-        "trainable": trainable_params,
-        "frozen": total_params - trainable_params,
-        "pct_trainable": (trainable_params / max(total_params, 1)) * 100.0,
-    }
+
+# ---------------------------------------------------------------------------
+# DynamicNSARetrofitBlock (Multi-Path Gating: Attention + Residual + FFN)
+# ---------------------------------------------------------------------------
+
+class DynamicNSARetrofitBlock(nn.Module):
+    """Retrofit block with *selective* multi-path policy interventions.
+
+    Ablation flags (all measured independently):
+      gate_attention : if True, hard/soft state mask in attention; else plain residual attn
+      gate_residual  : if True, h' = h + sigmoid(W_Γ σ) ⊙ Attn(h); else h + Attn(h)
+      gate_ffn       : if True, multiply by sigmoid(W_ffn[σ;h]); else identity
+      learn_sigma    : if True, update non-security coords of σ; else pass-through
+      fixed_alpha    : if set, use constant coupling α; if None, learn α via sigmoid head
+
+    Coupling (when learn_sigma):
+      σ_{l+1}[...,1:] = LN(σ + α · Δ)[...,1:]
+      σ_{l+1}[...,0]  = σ[...,0]   # hard security coordinate never moves
+
+    This block is for controlled experiments — not a claim of whole-model NI.
+    """
+
+    def __init__(
+        self,
+        d_model: int = 128,
+        state_dim: int = 8,
+        num_heads: int = 8,
+        r: int = 8,
+        lora_alpha: float = 16.0,
+        gate_attention: bool = True,
+        gate_residual: bool = True,
+        gate_ffn: bool = True,
+        learn_sigma: bool = True,
+        init_alpha: float = 0.01,
+        fixed_alpha: Optional[float] = None,
+        attn_gate_mode: str = "hard",
+    ) -> None:
+        super().__init__()
+        self.d_model = d_model
+        self.state_dim = state_dim
+        self.gate_attention = gate_attention
+        self.gate_residual = gate_residual
+        self.gate_ffn = gate_ffn
+        self.learn_sigma = learn_sigma
+        self.fixed_alpha = fixed_alpha
+        self.attn_gate_mode = attn_gate_mode
+
+        # Attention path: always allocate NSA-LoRA attention so param counts
+        # stay comparable; gate_attention toggles whether state mask is applied.
+        self.nsa_attn = NSALoRAAttention(
+            d_model=d_model,
+            state_dim=state_dim,
+            num_heads=num_heads,
+            r=r,
+            lora_alpha=lora_alpha,
+            gate_mode=attn_gate_mode,
+        )
+        if not gate_attention:
+            # Disable policy mask while keeping the same LoRA-wrapped projections.
+            self.nsa_attn.fused_attn.gate_mode = "off"
+
+        if gate_residual:
+            self.residual_gate = nn.Linear(state_dim, d_model)
+            nn.init.zeros_(self.residual_gate.weight)
+            nn.init.zeros_(self.residual_gate.bias)
+
+        if gate_ffn:
+            self.ffn_gate = nn.Linear(state_dim + d_model, d_model)
+            nn.init.zeros_(self.ffn_gate.weight)
+            nn.init.zeros_(self.ffn_gate.bias)
+
+        if learn_sigma:
+            if fixed_alpha is None:
+                self.state_alpha = nn.Linear(state_dim + d_model, 1)
+                a0 = min(max(float(init_alpha), 1e-6), 1.0 - 1e-6)
+                init_bias = math.log(a0 / (1.0 - a0))
+                nn.init.constant_(self.state_alpha.bias, init_bias)
+                nn.init.zeros_(self.state_alpha.weight)
+            else:
+                self.register_buffer(
+                    "_fixed_alpha",
+                    torch.tensor(float(fixed_alpha), dtype=torch.float32),
+                )
+            self.state_transition = nn.Linear(state_dim + d_model, state_dim)
+            nn.init.zeros_(self.state_transition.weight)
+            nn.init.zeros_(self.state_transition.bias)
+            self.state_norm = nn.LayerNorm(state_dim)
+
+    def forward(
+        self,
+        h: torch.Tensor,                # [B, T, d_model]
+        sigma: torch.Tensor,            # [B, T, state_dim]
+        mask: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        hard_sec = sigma[..., 0:1]
+
+        # 1. Attention (state-masked iff gate_attention)
+        attn_out, _ = self.nsa_attn(h, sigma, mask=mask)
+
+        # 2. Residual path
+        if self.gate_residual:
+            res_gamma = torch.sigmoid(self.residual_gate(sigma))
+            h_res = h + res_gamma * attn_out
+        else:
+            h_res = h + attn_out
+
+        # 3. FFN-style multiplicative gate on residual stream
+        if self.gate_ffn:
+            ffn_gamma = torch.sigmoid(self.ffn_gate(torch.cat([sigma, h_res], dim=-1)))
+            h_out = h_res * ffn_gamma
+        else:
+            h_out = h_res
+
+        # 4. Optional learned σ (security coord frozen)
+        if not self.learn_sigma:
+            return h_out, sigma
+
+        if self.fixed_alpha is not None:
+            alpha = self._fixed_alpha.to(dtype=h_out.dtype, device=h_out.device)
+        else:
+            alpha = torch.sigmoid(self.state_alpha(torch.cat([sigma, h_out], dim=-1)))
+        delta_sigma = self.state_transition(torch.cat([sigma, h_out], dim=-1))
+        sigma_next = self.state_norm(sigma + alpha * delta_sigma)
+        sigma_next = torch.cat([hard_sec, sigma_next[..., 1:]], dim=-1)
+        return h_out, sigma_next

@@ -1,2 +1,6 @@
 torch>=2.0.0
 numpy>=1.20.0
+# Optional acceleration / integration (import-guarded in code)
+# triton>=2.1.0          # real @triton.jit path on CUDA
+# transformers>=4.36.0   # HF retrofit + NL red-team optional generate()
+# setuptools>=65         # required for some triton backend imports

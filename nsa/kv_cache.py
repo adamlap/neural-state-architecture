@@ -67,8 +67,63 @@ class NSAKVCache:
             self.state_cache[:, :end_idx, :],
         )
 
+    def predict_next_state(self, transition_fn) -> torch.Tensor:
+        """Autoregressively computes state for next token: σ_{t+1} = transition_fn(σ_t)."""
+        if self.seq_len == 0:
+            return torch.zeros((self.batch_size, 1, self.state_dim), device=self.device, dtype=self.dtype)
+        last_state = self.state_cache[:, self.seq_len - 1:self.seq_len, :]
+        return transition_fn(last_state)
+
     def reset(self) -> None:
         self.k_cache.zero_()
         self.v_cache.zero_()
         self.state_cache.zero_()
         self.seq_len = 0
+
+    def get_state_labels(self) -> torch.Tensor:
+        """Discrete security labels for cached tokens: round(σ[..., 0])."""
+        if self.seq_len == 0:
+            return torch.zeros((self.batch_size, 0), device=self.device, dtype=torch.long)
+        return self.state_cache[:, : self.seq_len, 0].round().long().clamp(0, 5)
+
+    def build_policy_mask(
+        self,
+        query_state: torch.Tensor,
+        *,
+        forbidden_value: float = float("-inf"),
+        lattice=None,
+    ) -> torch.Tensor:
+        """Additive NSA mask for current queries against the full K cache.
+
+        Parameters
+        ----------
+        query_state : Tensor [B, T_q, state_dim]
+        """
+        from nsa.algebra import DEFAULT_LATTICE, build_label_attention_mask
+
+        lattice = lattice or DEFAULT_LATTICE
+        q_lab = query_state[..., 0].round().long().clamp(0, 5)
+        k_lab = self.get_state_labels()
+        if k_lab.shape[-1] == 0:
+            B, Tq = q_lab.shape[0], q_lab.shape[1]
+            return torch.zeros(B, 1, Tq, 0, device=self.device, dtype=self.dtype)
+        return build_label_attention_mask(
+            q_lab, k_lab, lattice=lattice, forbidden_value=forbidden_value
+        ).to(device=self.device, dtype=self.dtype)
+
+    def clone_view(self) -> "NSAKVCache":
+        """Shallow metadata clone sharing storage (for multi-sequence fans)."""
+        other = NSAKVCache(
+            batch_size=self.batch_size,
+            max_seq_len=self.max_seq_len,
+            num_heads=self.num_heads,
+            d_head=self.d_head,
+            state_dim=self.state_dim,
+            device=self.device,
+            dtype=self.dtype,
+        )
+        other.k_cache = self.k_cache
+        other.v_cache = self.v_cache
+        other.state_cache = self.state_cache
+        other.seq_len = self.seq_len
+        return other

@@ -2,7 +2,7 @@
 # Makefile for Neural State Architecture (NSA) - Powered by uv
 # ==============================================================================
 
-.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier pretrain-lm pillar-1 benchmark-gpu pillar-2 retrofit-lora pillar-3 prompt-injection pillar-4 open-llm-retrofit llama-showcase showcase ablation benchmarks prototype lint format clean summary
+.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier pretrain-lm pillar-1 benchmark-gpu pillar-2 retrofit-lora pillar-3 prompt-injection pillar-4 nl-redteam hf-retrofit open-llm-retrofit llama-showcase showcase demo visualize report ablation benchmarks prototype lint format clean summary
 
 # Locate uv executable (PATH, ~/.local/bin/uv, or ~/.cargo/bin/uv)
 UV := $(shell command -v uv 2>/dev/null || (test -f ~/.local/bin/uv && echo ~/.local/bin/uv) || (test -f ~/.cargo/bin/uv && echo ~/.cargo/bin/uv) || echo "uv")
@@ -64,91 +64,175 @@ test: ## Run unit tests
 
 experiment: ## Run toy experiment (Baseline vs NSA)
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/toy_experiment.py; \
+		$(UV) run python prototype/experiments/toy_experiment.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/toy_experiment.py; \
+		PYTHONPATH=. $(PYTHON) prototype/experiments/toy_experiment.py; \
 	fi
 
 leakage-experiment: ## Run adversarial data leakage extraction benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/leakage_attack.py; \
+		$(UV) run python prototype/security/leakage_attack.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/leakage_attack.py; \
+		PYTHONPATH=. $(PYTHON) prototype/security/leakage_attack.py; \
 	fi
 
 multi-tier: ## Run multi-tier security lattice benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/multi_tier_experiment.py; \
+		$(UV) run python prototype/security/multi_tier_experiment.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/multi_tier_experiment.py; \
+		PYTHONPATH=. $(PYTHON) prototype/security/multi_tier_experiment.py; \
 	fi
 
 pretrain-lm: ## Run Pillar 1 Causal Language Model zero-degradation benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/pretrain_lm.py; \
+		$(UV) run python prototype/pillars/pretrain_lm.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/pretrain_lm.py; \
+		PYTHONPATH=. $(PYTHON) prototype/pillars/pretrain_lm.py; \
 	fi
 
 pillar-1: pretrain-lm ## Run Pillar 1 validation suite
 
 benchmark-gpu: ## Run Pillar 2 Fused GPU Attention throughput benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/benchmark_gpu.py; \
+		$(UV) run python prototype/pillars/benchmark_gpu.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/benchmark_gpu.py; \
+		PYTHONPATH=. $(PYTHON) prototype/pillars/benchmark_gpu.py; \
 	fi
 
 pillar-2: benchmark-gpu ## Run Pillar 2 validation suite
 
 retrofit-lora: ## Run Pillar 3 NSA-LoRA post-hoc retrofitting benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/retrofit_lora.py; \
+		$(UV) run python prototype/pillars/retrofit_lora.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/retrofit_lora.py; \
+		PYTHONPATH=. $(PYTHON) prototype/pillars/retrofit_lora.py; \
 	fi
 
 pillar-3: retrofit-lora ## Run Pillar 3 validation suite
 
 prompt-injection: ## Run Pillar 4 Empirical Red-Teaming Prompt Injection Firewall benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/prompt_injection_bench.py; \
+		$(UV) run python prototype/pillars/prompt_injection_bench.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/prompt_injection_bench.py; \
+		PYTHONPATH=. $(PYTHON) prototype/pillars/prompt_injection_bench.py; \
 	fi
 
 pillar-4: prompt-injection ## Run Pillar 4 validation suite
 
+nl-redteam: ## NL multi-attack / AdvGLUE-style label firewall suite
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/security/nl_redteam_suite.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/security/nl_redteam_suite.py; \
+	fi
+
+hf-retrofit: ## Real small HF model NSA-LoRA retrofit + lattice mask NI
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/retrofit/hf_nsa_retrofit.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/retrofit/hf_nsa_retrofit.py; \
+	fi
+
 open-llm-retrofit: ## Run Phase 3 open LLM scale retrofitting simulation benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/open_llm_retrofit.py; \
+		$(UV) run python prototype/retrofit/open_llm_retrofit.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/open_llm_retrofit.py; \
+		PYTHONPATH=. $(PYTHON) prototype/retrofit/open_llm_retrofit.py; \
 	fi
 
 llama-showcase: ## Run interactive Llama retrofitting security showcase
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/llama_security_showcase.py; \
+		$(UV) run python prototype/retrofit/llama_security_showcase.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/llama_security_showcase.py; \
+		PYTHONPATH=. $(PYTHON) prototype/retrofit/llama_security_showcase.py; \
 	fi
 
 showcase: llama-showcase ## Alias for llama-showcase
 
-ablation: ## Run systematic ablation study (Vanilla vs Security vs Product Algebra)
+demo: ## Launch interactive Gradio web showcase UI
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/ablation_study.py; \
+		$(UV) run python prototype/demos/web_demo.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/ablation_study.py; \
+		PYTHONPATH=. $(PYTHON) prototype/demos/web_demo.py; \
 	fi
 
-benchmarks: experiment leakage-experiment multi-tier pretrain-lm benchmark-gpu retrofit-lora prompt-injection open-llm-retrofit llama-showcase ablation ## Run full NSA benchmark suite
+eval-showcase: ## Run automated evaluation harness on showcase prompt scenarios
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/demos/eval_showcase_prompts.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/demos/eval_showcase_prompts.py; \
+	fi
+
+exp-3way: ## Run Native TNC vs Retrofit vs Baseline 3-way research benchmark
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/retrofit/native_vs_retrofit_exp.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/retrofit/native_vs_retrofit_exp.py; \
+	fi
+
+retrofit-bench: ## Run 4-level progressive retrofit evolution benchmark
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/retrofit/retrofit_evolution_bench.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/retrofit/retrofit_evolution_bench.py; \
+	fi
+
+ablation-study: ## Component matrix: which Dynamic NSA gates drive PPL vs leak trade-off
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/experiments/dynamic_nsa_tradeoff.py --no-alpha-sweep; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/experiments/dynamic_nsa_tradeoff.py --no-alpha-sweep; \
+	fi
+
+tradeoff: ## Full Dynamic NSA trade-off (component matrix + α coupling sweep)
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/experiments/dynamic_nsa_tradeoff.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/experiments/dynamic_nsa_tradeoff.py; \
+	fi
+
+multi-probe: ## Multi-level adversarial probing (linear/MLP) on toy hiddens — methodology demo
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/security/multi_probe_bench.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/security/multi_probe_bench.py; \
+	fi
+
+pareto-sweep: ## Sweep fixed coupling α on Dynamic-B (attn+residual+learn σ)
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/experiments/dynamic_nsa_tradeoff.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/experiments/dynamic_nsa_tradeoff.py; \
+	fi
+
+visualize: ## Generate interactive Plotly/HTML attention heatmap visualizer
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/demos/visualize_attention.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/demos/visualize_attention.py; \
+	fi
+
+report: ## Generate executive automated benchmark Markdown report
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/reporting/generate_benchmark_report.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/reporting/generate_benchmark_report.py; \
+	fi
+
+ablation: ## Run systematic ablation study (Vanilla vs Security vs Product Algebra)
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/experiments/ablation_study.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/experiments/ablation_study.py; \
+	fi
+
+benchmarks: experiment leakage-experiment multi-tier pretrain-lm benchmark-gpu retrofit-lora prompt-injection open-llm-retrofit llama-showcase ablation report ## Run full NSA benchmark suite
 
 prototype: ## Run prototype demonstration script
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/state_transformer.py; \
+		$(UV) run python prototype/experiments/state_transformer.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/state_transformer.py; \
+		PYTHONPATH=. $(PYTHON) prototype/experiments/state_transformer.py; \
 	fi
 
 summary: ## Print default state lattice structure and model info
