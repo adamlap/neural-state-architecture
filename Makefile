@@ -2,7 +2,7 @@
 # Makefile for Neural State Architecture (NSA) - Powered by uv
 # ==============================================================================
 
-.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier pretrain-lm pillar-1 benchmark-gpu pillar-2 retrofit-lora pillar-3 prompt-injection pillar-4 nl-redteam hf-retrofit open-llm-retrofit llama-showcase showcase demo visualize report ablation benchmarks prototype lint format clean summary
+.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier pretrain-lm pillar-1 benchmark-gpu pillar-2 retrofit-lora pillar-3 prompt-injection pillar-4 nl-redteam hf-retrofit open-llm-retrofit llama-showcase showcase demo visualize report ablation benchmarks prototype alignment-demo lint format clean summary
 
 # Locate uv executable (PATH, ~/.local/bin/uv, or ~/.cargo/bin/uv)
 UV := $(shell command -v uv 2>/dev/null || (test -f ~/.local/bin/uv && echo ~/.local/bin/uv) || (test -f ~/.cargo/bin/uv && echo ~/.cargo/bin/uv) || echo "uv")
@@ -170,6 +170,20 @@ exp-3way: ## Run Native TNC vs Retrofit vs Baseline 3-way research benchmark
 		PYTHONPATH=. $(PYTHON) prototype/retrofit/native_vs_retrofit_exp.py; \
 	fi
 
+exp-algebra-preserving: ## Run 5-way benchmark including Algebra-Preserving Native TNC
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/retrofit/native_vs_retrofit_exp.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/retrofit/native_vs_retrofit_exp.py; \
+	fi
+
+demo-algebra-real-data: ## Run Algebra-Preserving demo on actual text data (TinyShakespeare)
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/demos/algebra_preserving_real_data_demo.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/demos/algebra_preserving_real_data_demo.py; \
+	fi
+
 retrofit-bench: ## Run 4-level progressive retrofit evolution benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		$(UV) run python prototype/retrofit/retrofit_evolution_bench.py; \
@@ -182,6 +196,13 @@ ablation-study: ## Component matrix: which Dynamic NSA gates drive PPL vs leak t
 		$(UV) run python prototype/experiments/dynamic_nsa_tradeoff.py --no-alpha-sweep; \
 	else \
 		PYTHONPATH=. $(PYTHON) prototype/experiments/dynamic_nsa_tradeoff.py --no-alpha-sweep; \
+	fi
+
+alignment-demo: ## Run the 4-way Alignment Substrate demo: h=(m,σ,ν) — structural + behavioural proof
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/experiments/alignment_substrate_demo.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/experiments/alignment_substrate_demo.py; \
 	fi
 
 tradeoff: ## Full Dynamic NSA trade-off (component matrix + α coupling sweep)

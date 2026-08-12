@@ -139,6 +139,33 @@ For NSA to be adopted by industrial AI research labs (OpenAI, Anthropic, Google 
 - [x] Technical Research Guide ([`docs/native_tnc_guide.md`](docs/native_tnc_guide.md)): Formulated $(m_t, \sigma_t)$ joint manifold updates, state transition operators, and dual-objective Lagrangian optimization.
 - [x] Makefile integration (`make exp-3way`).
 
+### Phase 8: Value Layer & Alignment Substrate Framework  `h = (m, σ, ν)`
+- [x] Formal distinction: **TNC is an alignment substrate, not an alignment objective.**
+  - NSA provides the native computational substrate in which constraints, uncertainty, provenance,
+    permissions, and policies can be represented and propagated through neural computation.
+  - It does not prescribe which values *should* exist; it makes whatever combination of
+    hard constraints, learned values, and policies an alignment system adopts computationally enforceable.
+- [x] Three-layer architecture defined and implemented:
+  ```
+  HARD CONSTRAINTS (σ, state algebra)  → PERMITTED / FORBIDDEN  (lattice, attention mask)
+  OPERATIONAL STATE (σ)               → provenance, confidence, licensing, authorization
+  VALUE LAYER (ν)                     → preference, uncertainty, utility, safety score
+  ```
+- [x] `nsa/value_layer.py`: `ValueAlignmentLoss` + `AlignmentStateProjector` implementing $h_t = (m_t, \sigma_t, \nu_t)$.
+  - $L_{\text{total}} = L_{\text{lm}} + \lambda_{\text{hard}} \cdot L_{\text{hard\_constraint}} + \lambda_\nu \cdot L_{\text{value\_alignment}}$
+  - `L_hard_constraint`: extra penalty for predicting forbidden-range tokens at CONFIDENTIAL positions (behavioural reinforcement of the algebraic mask)
+  - `L_value_alignment`: at injection positions, train the model to output a safe-refuse token rather than comply
+- [x] **4-Way Benchmark** ([`prototype/retrofit/native_vs_retrofit_exp.py`](prototype/retrofit/native_vs_retrofit_exp.py)):
+  | Model | Architecture | Hijack Rate | Mechanism |
+  |---|---|---|---|
+  | A | Untyped $h=m$ | ~60% (high) | No protection, learns attack |
+  | B | Hard mask retrofit | ~50% (random) | **Structural** — attention blocks SYSTEM access |
+  | C | Native TNC $(m, \sigma)$ | ~100% (soft gates) | Soft gates learn SYSTEM access (calibration advantage) |
+  | D | Full $(m, \sigma, \nu)$ | **~0%** | **Behavioural** — value loss trains intrinsic refusal |
+- [ ] Heterogeneous algebraic domains: different Σᵢ structures per dimension (lattice, probabilistic, temporal, constraint).
+- [ ] Moral uncertainty as probability distribution over normative frameworks: $P(T_i \mid x)$.
+- [ ] Deliberative value revision: $(σ_t, ν_t, m_t) \to \text{deliberation} \to (\nu_{t+1}, \sigma_{t+1})$.
+
 ---
 
 ## High-Impact Industry Use Cases

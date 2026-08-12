@@ -53,6 +53,7 @@ try:
     from nsa.residual_taint import ResidualTaintTracker, join_levels, meet_levels
     from nsa.layers import NSATransformerBlock, NSATransformer, NSACausalLM
     from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
+    from nsa.value_layer import ValueAlignmentLoss, AlignmentStateProjector
     from nsa.utils import count_parameters, print_model_summary, state_labels_to_vectors
     HAS_TORCH = True
 except ImportError:
