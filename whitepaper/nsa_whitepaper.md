@@ -144,7 +144,7 @@ Each component lattice dimension has its own mathematically distinct algebraic j
 4. **License Restriction Tier ($\Sigma_{\text{license}}, \sqcup_l$)**: Maximal restriction bound $\max(l_1, l_2)$ for enterprise multi-tenant boundary isolation.
 
 ### 6.2 Typed Declassification Capabilities
-Downward reclassification algebraically requires passing an explicit typed capability $D: (\sigma, c_D) \to \sigma'$, where $\text{Valid}(c_D, \sigma, \sigma') = 1$ and the capability contains $c_D = (\text{issuer}, \text{purpose}, \text{scope}, \text{expiry}, \text{max\_downgrade})$. This turns declassification into a formal, auditable computational primitive rather than an unconstrained vulnerability.
+Downward reclassification algebraically requires passing an explicit typed capability $D: (\sigma, c_D) \to \sigma'$, where $\text{Valid}(c_D, \sigma, \sigma') = 1$ and the capability contains $c_D = (\text{issuer}, \text{purpose}, \text{scope}, \text{expiry}, \text{max downgrade})$. This turns declassification into a formal, auditable computational primitive rather than an unconstrained vulnerability.
 
 ### 6.2 TNC Compositionality Theorem
 > **Theorem 1 (Typed Neural Computation Compositionality)**: Let $\mathcal{D}$ be any metadata domain forming a bounded join-semilattice $(\mathcal{D}, \le_{\mathcal{D}}, \sqcup_{\mathcal{D}})$ satisfying algebraic closure, associativity, monotonicity, and identity. Then $\mathcal{D}$ can be composed into the product state space $\Sigma \times \mathcal{D}$ via product tensor operations without altering the underlying semantic update equations $m' = f(m, \sigma)$.

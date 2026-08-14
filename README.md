@@ -76,7 +76,7 @@ This command:
 ### SDPA-Optimized Mask Injection Performance
 
 > [!NOTE]
-> The custom Triton JIT kernel is defined but **not shipped** (`USING_TRITON_KERNEL=False`). The optimized path uses PyTorch SDPA with pre-computed NSA policy masks. Call this path **SDPA-optimized mask injection** to avoid implying a hand-written CUDA kernel.
+> The custom Triton JIT kernel is defined but **not shipped** (`USING_TRITON_KERNEL=False`). The optimized path uses PyTorch SDPA with pre-computed NSA policy masks. We are calling this path **SDPA-optimized mask injection** to avoid implying a hand-written CUDA kernel.
 
 The showcase demonstrates NSA's SDPA-optimized mask injection approach that:
 - **Hooks into HuggingFace's native `generate()`** via forward pre-hooks
@@ -93,7 +93,7 @@ The showcase demonstrates NSA's SDPA-optimized mask injection approach that:
 This makes the HF mask-injection path practical to demo while preserving KV-cache/SDPA. Treat production deployment as contingent on trusted label ingress and native hard-mask evaluation. A genuine CUDA-fused kernel would require a custom Triton JIT implementation (see `nsa/triton_kernel.py`).
 
 ### Empirical Benchmarks (`prototype/`)
-We preserve our heavy-duty research validation scripts in the `prototype/` directory:
+We have heavy-duty research validation scripts in the `prototype/` directory:
 - `prototype/security/nl_redteam_suite.py`: Natural language red-teaming evaluating mask resilience against semantic overrides.
 - `prototype/security/multi_probe_bench.py`: Progressively stronger adversarial classifiers attempting to extract protected secrets from hidden state representations, demonstrating reduced empirical recoverability under the evaluated probing suite.
 
@@ -178,7 +178,7 @@ $$\text{SYSTEM} > \text{PRIVATE} > \text{CONFIDENTIAL} > \text{TRUSTED} > \text{
 * **Meet ($\sqcap$)**: Computes greatest common permission level (infimum).
 * **Join ($\sqcup$)**: Computes least upper sensitivity level (supremum).
 * **Monotone Conservation**: Information reclassification must be non-decreasing along processing paths ($src \le dst$). Downward transitions (e.g. `PRIVATE -> PUBLIC`) violate conservation laws and incur heavy loss penalties $\mathcal{L}_{state}$ unless explicitly permitted by a gated declassification operator.
-* **Typed Declassification Primitive**: Downward reclassification algebraically requires passing an explicit typed capability: $D: (\sigma, c_D) \to \sigma'$ where $\text{Valid}(c_D, \sigma, \sigma') = 1$ and $c_D = (\text{issuer}, \text{purpose}, \text{scope}, \text{expiry}, \text{max\_downgrade})$. This turns declassification into a formal, auditable computational primitive.
+* **Typed Declassification Primitive**: Downward reclassification algebraically requires passing an explicit typed capability: $D: (\sigma, c_D) \to \sigma'$ where $\text{Valid}(c_D, \sigma, \sigma') = 1$ and $c_D = (\text{issuer}, \text{purpose}, \text{scope}, \text{expiry}, \text{max downgrade})$. This turns declassification into a formal, auditable computational primitive.
 
 ### 3. State-Aware Multi-Head Attention (`StateAwareAttention`)
 Standard scaled dot-product attention computes $A = \text{Softmax}\left(\frac{Q K^T}{\sqrt{d_k}}\right)$. NSA extends this by conditioning key-query compatibility on state compatibility:
@@ -316,30 +316,12 @@ Neural State Architecture establishes two distinct research and deployment pilla
 1. **Native TNC ($h_t = (m_t, \sigma_t)$)**: Pre-trains semantic activations $m$ and typed state $\sigma$ jointly from Step 0. Proves that typed metadata is a superior **inductive bias for neural computation**.
 2. **NSA-LoRA Retrofit ($h = m \to (m, \sigma)$)**: Attaches state adapters to frozen pre-trained LLMs post-hoc. Provides a **low-cost industrial adoption bridge** for existing models (e.g. Llama 3, Qwen 2.5).
 
-### 3-Way Benchmark (`make exp-3way`) — toy scale
+### Evaluation Methodology (`prototype/`)
 
-See [**NSA as an Alignment Substrate**](#nsa-as-an-alignment-substrate--h--m-σ-ν) above. The benchmark now runs **4 models** including Model D (NSA + Value Layer) which demonstrates behavioural alignment.
-
-### Dynamic NSA trade-off (primary research experiment)
-
-**Stop adding architecture layers until this matrix is understood.**  
-Question: which Dynamic NSA components drive security vs capability?
-
-```bash
-make tradeoff          # component matrix + α coupling sweep
-make ablation-study    # matrix only
-```
-
-- Implementation: [`prototype/experiments/dynamic_nsa_tradeoff.py`](prototype/experiments/dynamic_nsa_tradeoff.py)
-- Write-up + claim scope: [`docs/dynamic_nsa_tradeoff.md`](docs/dynamic_nsa_tradeoff.md)
-- Metrics are **measured** (PPL, gen-leak on UNTRUSTED, linear multi-class probe on post-block hiddens). Chance probe ≈ 25%.
-- LoRA integrity asserts every run: modules exist, `trainable < total`, base frozen.
-- Hard attention NI ≠ whole-model non-interference. Negative results (worse leak / high PPL under “Full Dynamic”) are published, not hidden.
-- Historical “84.5% → 0.20% probe” numbers are **not** authoritative.
-
-### 4-Level Progressive Retrofit (`make retrofit-bench`)
-
-Level-0 baseline only in this script; Levels 1–3 redirect to `dynamic_nsa_tradeoff.py`.
+All architectural claims, trade-off matrices, and empirical validation suites are maintained in the `prototype/` research directory. This includes:
+- **Security Probing**: `prototype/security/multi_probe_bench.py`
+- **Dynamic Trade-off Sweeps**: `prototype/experiments/dynamic_nsa_tradeoff.py`
+- **Ablation Studies**: `prototype/experiments/ablation_study.py`
 
 For complete technical documentation on multi-path gating, state-aware KV-caches, and declassification operators, see [**`docs/advanced_retrofit_guide.md`**](docs/advanced_retrofit_guide.md).
 
