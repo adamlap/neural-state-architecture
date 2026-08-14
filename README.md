@@ -85,13 +85,17 @@ The showcase demonstrates NSA's SDPA-optimized mask injection approach that:
 - **Reduces overhead from ~900% to ~5-15%** compared to naive Python loops
 
 > ⚠️ **The "Soft Mask" Necessity for Retrofitting**: Natively trained NSA models can handle mathematically rigid `-1e4` hard masks. However, post-hoc retrofitting standard LLMs with hard masks causes catastrophic out-of-distribution activation cascades (hallucinations) because standard models were not trained to handle 0% attention routing. The `demo/web_demo.py` utilizes a **Soft Mask Penalty (Alpha)** to smoothly dampen attention toward secrets, preserving semantic fluency while providing empirical leakage protection.
+>
+> This creates two distinct mathematical security semantics in the architecture:
+> - **Hard Policy Semantics (Native NSA)**: $A_{ij} = 0$. Provides a structural non-interference guarantee.
+> - **Risk-Weighted Policy Semantics (Retrofit NSA)**: $0 < A_{ij} \ll 1$. Treated as risk minimization, not absolute non-interference.
 
 This makes the HF mask-injection path practical to demo while preserving KV-cache/SDPA. Treat production deployment as contingent on trusted label ingress and native hard-mask evaluation. A genuine CUDA-fused kernel would require a custom Triton JIT implementation (see `nsa/triton_kernel.py`).
 
 ### Empirical Benchmarks (`prototype/`)
 We preserve our heavy-duty research validation scripts in the `prototype/` directory:
 - `prototype/security/nl_redteam_suite.py`: Natural language red-teaming evaluating mask resilience against semantic overrides.
-- `prototype/security/multi_probe_bench.py`: Progressively stronger adversarial classifiers attempting to extract protected secrets from hidden state representations, validating information-theoretic erasure.
+- `prototype/security/multi_probe_bench.py`: Progressively stronger adversarial classifiers attempting to extract protected secrets from hidden state representations, demonstrating reduced empirical recoverability under the evaluated probing suite.
 
 ---
 
@@ -111,7 +115,7 @@ $$\begin{aligned}
 m' &= w \cdot m \\
 \sigma' &= V \sigma
 \end{aligned}$$
-where $V \in \mathbb{R}^{d_{state} \times d_{state}}$ is a compact state transition matrix ($2 \times 2, 4 \times 4, 8 \times 8$).
+where $V \in \mathbb{R}^{d_{state} \times d_{state}}$ is a compact state transition matrix. Crucially, we enforce $V \in T_\Sigma$, where $T_\Sigma$ is by construction the set of legal state transitions. Illegal transitions are unrepresentable by projection, providing architectural policy enforcement rather than merely learned policy compliance.
 
 ### 3. Conservation Laws & State Algebra
 State labels form a bounded lattice $(\mathcal{S}, \le, \sqcap, \sqcup)$. Transitions must obey strict monotone conservation rules:
@@ -120,6 +124,10 @@ State labels form a bounded lattice $(\mathcal{S}, \le, \sqcap, \sqcup)$. Transi
     PRIVATE  ──▶  PRIVATE  (Allowed)
     PRIVATE  ──▶  PUBLIC   (Forbidden by algebra)
 ```
+
+By defining $G_\sigma$ as the permitted information-flow graph induced by the state algebra, the core theorem of NSA states that the computational graph $F$ must be a subset of the permitted flow:
+$$\text{Computational Graph}(F) \subseteq G_\sigma$$
+This allows us to prove non-interference for the entire network by composition of safe operators.
 
 ### 4. Dual-Objective Optimization
 NSA decouples semantic optimization from information flow governance:
@@ -166,10 +174,11 @@ State vectors reside on a bounded lattice $(\mathcal{S}, \le, \sqcap, \sqcup)$ w
 $$\text{SYSTEM} > \text{PRIVATE} > \text{CONFIDENTIAL} > \text{TRUSTED} > \text{PUBLIC} > \text{UNTRUSTED}$$
 
 * **Lattice Ordering ($\le$)**: Higher labels reflect strictly higher security/sensitivity levels.
+* **Product Lattices**: Security state can be split into independent orthogonal lattices: $\Sigma_{security} = \Sigma_{confidentiality} \times \Sigma_{integrity}$. This supports states like `(PRIVATE, UNTRUSTED)` or `(PUBLIC, TRUSTED)`.
 * **Meet ($\sqcap$)**: Computes greatest common permission level (infimum).
 * **Join ($\sqcup$)**: Computes least upper sensitivity level (supremum).
 * **Monotone Conservation**: Information reclassification must be non-decreasing along processing paths ($src \le dst$). Downward transitions (e.g. `PRIVATE -> PUBLIC`) violate conservation laws and incur heavy loss penalties $\mathcal{L}_{state}$ unless explicitly permitted by a gated declassification operator.
-* **Declassification Capability**: Downward reclassification algebraically requires passing an explicit `DeclassificationCapability` object (containing authorizing entity, reason, and maximum downgrade limits) ensuring all non-monotone paths are mathematically restricted and auditable.
+* **Typed Declassification Primitive**: Downward reclassification algebraically requires passing an explicit typed capability: $D: (\sigma, c_D) \to \sigma'$ where $\text{Valid}(c_D, \sigma, \sigma') = 1$ and $c_D = (\text{issuer}, \text{purpose}, \text{scope}, \text{expiry}, \text{max\_downgrade})$. This turns declassification into a formal, auditable computational primitive.
 
 ### 3. State-Aware Multi-Head Attention (`StateAwareAttention`)
 Standard scaled dot-product attention computes $A = \text{Softmax}\left(\frac{Q K^T}{\sqrt{d_k}}\right)$. NSA extends this by conditioning key-query compatibility on state compatibility:
@@ -190,7 +199,15 @@ $$\mathcal{L}_{total} = \mathcal{L}_{semantic} + \lambda \cdot \mathcal{L}_{stat
 
 ---
 
-## NSA as an Alignment Substrate  `h = (m, σ, ν)`
+## NSA as an Alignment Substrate `h = (m, σ_h, σ_s, ν)`
+
+The strongest conceptual formulation of NSA isolates the activation into four dedicated components:
+$$h = (m, \sigma_h, \sigma_s, \nu)$$
+
+* $\sigma_h$: **Hard, externally trusted, algebraically constrained state** (Confidentiality, Integrity, Licensing). Dictates *what computation is allowed*.
+* $\sigma_s$: **Soft operational state** (Confidence, Uncertainty, Risk). Dictates *how risky* the computation is.
+* $\nu$: **Preference/value layer**. Dictates *what permitted behavior is preferred*.
+* $m$: **Semantic content**.
 
 Through a detailed analysis mapping NSA against pluralistic AI alignment theory, a critical distinction emerges:
 

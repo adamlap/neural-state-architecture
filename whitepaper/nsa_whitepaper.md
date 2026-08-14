@@ -61,6 +61,8 @@ m' &= w \cdot m \\
 \sigma' &= V \sigma
 \end{aligned}$$
 
+where $V \in \mathbb{R}^{d_{state} \times d_{state}}$ is a low-rank or small matrix ($2 \times 2, 4 \times 4, \text{or } 8 \times 8$) acting as a **State Transition Operator**. Crucially, we enforce $V \in T_\Sigma$, where $T_\Sigma$ is by construction the set of legal state transitions. Illegal transitions are mathematically unrepresentable by $V$, providing architectural policy enforcement rather than merely learned policy compliance.
+
 For a full layer with weight matrix $W_m$ and state transition tensor $\mathbf{V}$:
 
 $$m_{l+1} = f(W_m m_l) \odot \Gamma(\sigma_{l+1})$$
@@ -88,6 +90,15 @@ $$A_{ij} = \text{softmax}\left(\frac{Q_i K_j^T}{\sqrt{d_k}} + \alpha \cdot \log 
    For soft discrete state distributions $\sigma_i, \sigma_j \in \Delta^{|\mathcal{S}|}$:
    $$g(\sigma_i, \sigma_j) = \sigma\left(\frac{\mathbb{E}[level(\sigma_j)] - \mathbb{E}[level(\sigma_i)]}{\tau}\right)$$
    This ensures that token $i$ cannot attend to token $j$ if information flow from $j \to i$ would violate the lattice restriction order.
+
+### 3.1 Hard vs Soft Policy Semantics
+The attention mask $M_{ij}$ creates two distinct mathematical security semantics depending on the deployment constraint:
+* **Hard Policy Semantics (Native NSA)**: $A_{ij} = 0$. Provides a structural non-interference guarantee by applying a rigid $-\infty$ mask to forbidden transitions.
+* **Risk-Weighted Policy Semantics (Retrofit NSA)**: $0 < A_{ij} \ll 1$. Applying a rigid $-\infty$ hard mask to standard LLMs via post-hoc retrofitting causes severe out-of-distribution activation spikes, resulting in hallucination. Practical retrofitting deployments utilize a Soft Mask Penalty ($-\alpha$). This is treated as risk minimization, not absolute non-interference.
+
+By defining $G_\sigma$ as the permitted information-flow graph induced by the state algebra, the core theorem of NSA states that the computational graph $F$ must be a subset of the permitted flow:
+$$\text{Computational Graph}(F) \subseteq G_\sigma$$
+This provides a formal path to prove non-interference for the entire network by composition of safe operators.
 
 ---
 
@@ -127,10 +138,13 @@ $$\boldsymbol{\sigma} \in \Sigma = \Sigma_{\text{security}} \times \Sigma_{\text
 
 ### 6.1 Component-Wise Product Operators
 Each component lattice dimension has its own mathematically distinct algebraic join ($\sqcup$) and meet ($\sqcap$) operators:
-1. **Security Lattice ($\Sigma_{\text{security}}, \sqcup_s$)**: Formally ordered lattice bounds ($\text{UNTRUSTED} < \text{PUBLIC} < \text{TRUSTED} < \text{CONFIDENTIAL} < \text{PRIVATE} < \text{SYSTEM}$).
+1. **Security Lattice ($\Sigma_{\text{security}}, \sqcup_s$)**: Can be further split orthogonally into $\Sigma_{\text{confidentiality}} \times \Sigma_{\text{integrity}}$, formally supporting mixed states like `(PRIVATE, UNTRUSTED)` or `(PUBLIC, TRUSTED)`.
 2. **Confidence & Hallucination Bound ($\Sigma_{\text{confidence}}, \sqcup_c$)**: Bayesian / Minimum bound $\min(c_1, c_2)$ tracking representation uncertainty propagation.
 3. **Data Provenance Set Union ($\Sigma_{\text{provenance}}, \sqcup_p$)**: Bitwise set union ($p_1 \mid p_2$) tracking document origin lineage.
 4. **License Restriction Tier ($\Sigma_{\text{license}}, \sqcup_l$)**: Maximal restriction bound $\max(l_1, l_2)$ for enterprise multi-tenant boundary isolation.
+
+### 6.2 Typed Declassification Capabilities
+Downward reclassification algebraically requires passing an explicit typed capability $D: (\sigma, c_D) \to \sigma'$, where $\text{Valid}(c_D, \sigma, \sigma') = 1$ and the capability contains $c_D = (\text{issuer}, \text{purpose}, \text{scope}, \text{expiry}, \text{max\_downgrade})$. This turns declassification into a formal, auditable computational primitive rather than an unconstrained vulnerability.
 
 ### 6.2 TNC Compositionality Theorem
 > **Theorem 1 (Typed Neural Computation Compositionality)**: Let $\mathcal{D}$ be any metadata domain forming a bounded join-semilattice $(\mathcal{D}, \le_{\mathcal{D}}, \sqcup_{\mathcal{D}})$ satisfying algebraic closure, associativity, monotonicity, and identity. Then $\mathcal{D}$ can be composed into the product state space $\Sigma \times \mathcal{D}$ via product tensor operations without altering the underlying semantic update equations $m' = f(m, \sigma)$.
@@ -180,10 +194,10 @@ To validate the theoretical guarantees of NSA, we implement a synthetic injectio
 | E — Algebra-Pres | $(m, \sigma_p)$ | ~1.65% | **Structural (Native)**: Invariants ($\sigma_{l+1} \ge \sigma_l$) mathematically block flow (returns to random guess floor). |
 | F — AlgPres+Value | $(m, \sigma_p, \nu)$ | **0.00%** | **Ultimate NSA**: Achieves both mathematical structural invariants and perfect behavioural refusal (0.00% hijack). |
 
-This demonstrates that NSA provides a robust substrate for alignment. While **Model E** guarantees that the structural path is secure (driving the attack success rate down to the random-guessing baseline), **Model F** proves that combining these structural invariants with a value-alignment behavioural objective fully eliminates the risk, achieving a perfect **0.00% hijack rate**.
+This demonstrates that NSA provides a robust substrate for alignment. While **Model E** guarantees that the structural path is secure (driving the attack success rate down to the random-guessing baseline), **Model F** is the strongest configuration demonstrated in this experiment, proving that combining these structural invariants with a value-alignment behavioural objective fully eliminates the risk on this synthetic benchmark.
 
 #### Independent Adversarial Probing
-To rigorously confirm that secret state vectors are information-theoretically erased from hidden states across the network, we provide the **Multi-Level Adversarial Probing Suite** (`prototype/security/multi_probe_bench.py`). This evaluates increasingly powerful adversaries—from linear logistic regressors to 4-layer residual MLPs and attention-based extractors—attempting to predict the classified token from the residual stream. Furthermore, the **Natural Language Redteam Suite** (`prototype/security/nl_redteam_suite.py`) provides AdvGLUE-style adversarial prompt evaluations for real-world injection resilience.
+To rigorously confirm that secret state vectors demonstrate drastically reduced empirical recoverability from hidden states across the network, we provide the **Multi-Level Adversarial Probing Suite** (`prototype/security/multi_probe_bench.py`). This evaluates increasingly powerful adversaries—from linear logistic regressors to 4-layer residual MLPs and attention-based extractors—attempting to predict the classified token from the residual stream. Furthermore, the **Natural Language Redteam Suite** (`prototype/security/nl_redteam_suite.py`) provides AdvGLUE-style adversarial prompt evaluations for real-world injection resilience.
 
 ---
 

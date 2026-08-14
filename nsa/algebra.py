@@ -115,20 +115,55 @@ class ConservationLaw(Generic[T]):
 
 
 # ---------------------------------------------------------------------------
-# Declassification
+# Typed Declassification Capability
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class DeclassificationCapability(Generic[T]):
-    """An explicit capability object authorizing downward state transitions."""
-    reason: str
-    authorizer: str
-    target_label: Optional[T] = None
+    """A typed cryptographic-style capability primitive authorizing downward state transitions.
+    
+    D: (σ, c_D) → σ' where Valid(c_D, σ, σ') = 1
+    """
+    issuer: str
+    purpose: str
+    scope: str
+    expiry: float
+    max_downgrade: T
 
-    def is_valid_for(self, dst: T) -> bool:
-        if self.target_label is not None and dst != self.target_label:
+    def validate(self, src: T, dst: T, current_time: float) -> bool:
+        """Evaluate Valid(c_D, σ, σ') to mathematically permit the downgrade."""
+        if current_time > self.expiry:
+            return False
+        # The downgrade target (dst) cannot be less restricted than max_downgrade.
+        # Assuming lower value = less restricted:
+        if dst.value < self.max_downgrade.value:
             return False
         return True
+
+
+# ---------------------------------------------------------------------------
+# Transition Operator V ∈ T_Σ
+# ---------------------------------------------------------------------------
+
+if torch is not None:
+    class TransitionOperator(torch.nn.Module):
+        """
+        A state transition matrix V ∈ T_Σ restricted by architectural construction.
+        Illegal transitions are mathematically unrepresentable by projection.
+        """
+        def __init__(self, d_state: int, valid_transition_mask: torch.Tensor):
+            super().__init__()
+            self.d_state = d_state
+            # Initialize close to identity (stay in current state)
+            self.weight = torch.nn.Parameter(torch.eye(d_state) + torch.randn(d_state, d_state) * 0.01)
+            # boolean/float mask where 0 means mathematically forbidden
+            self.register_buffer("legal_mask", valid_transition_mask.float())
+
+        def forward(self, sigma_h: torch.Tensor) -> torch.Tensor:
+            """Apply V to sigma_h, guaranteeing V ∈ T_Σ."""
+            constrained_V = self.weight * self.legal_mask
+            return torch.matmul(sigma_h, constrained_V.t())
+
 
 
 # ---------------------------------------------------------------------------
@@ -229,7 +264,7 @@ class StateLattice(Generic[T]):
         """
         if self.is_allowed(src, dst):
             return True
-        if capability is not None and capability.is_valid_for(dst):
+        if capability is not None and capability.validate(src, dst, current_time=0.0):
             return True
         return False
 

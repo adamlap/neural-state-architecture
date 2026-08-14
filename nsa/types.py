@@ -17,28 +17,41 @@ class TypedTensor(NamedTuple):
 
     Attributes:
         m (torch.Tensor): Semantic stream tensor [B, ..., d_model]
-        sigma (torch.Tensor): Structural state tensor [B, ..., state_dim]
+        sigma_h (torch.Tensor): Hard structural state (Confidentiality, Integrity) [B, ..., d_state_h]
+        sigma_s (torch.Tensor): Soft operational state (Confidence, Risk) [B, ..., d_state_s]
+        nu (torch.Tensor): Preference/value alignment [B, ..., d_val]
     """
     m: torch.Tensor
-    sigma: torch.Tensor
+    sigma_h: torch.Tensor
+    sigma_s: torch.Tensor
+    nu: torch.Tensor
 
     def join_with(self, other: "TypedTensor") -> "TypedTensor":
         """
         State composition for residual joins.
         m' = m1 + m2
-        sigma' = sigma1 ⊔ sigma2
+        sigma_h' = max(sigma_h1, sigma_h2)  # Join on hard lattice (most restrictive)
+        sigma_s' = min(sigma_s1, sigma_s2)  # Join on soft lattice (minimum confidence)
+        nu' = (nu1 + nu2) / 2.0             # Mean pool value alignment
         """
         new_m = self.m + other.m
         
-        # Element-wise maximum performs a lattice join for the standard dimensions
-        # (Confidentiality, Integrity, License Tier)
-        new_sigma = torch.maximum(self.sigma, other.sigma)
+        # Hard state lattice join (supremum - most restrictive)
+        new_sigma_h = torch.maximum(self.sigma_h, other.sigma_h)
         
-        return TypedTensor(m=new_m, sigma=new_sigma)
+        # Soft state lattice meet (infimum - least confidence)
+        new_sigma_s = torch.minimum(self.sigma_s, other.sigma_s)
+
+        # Value alignment pooling
+        new_nu = (self.nu + other.nu) / 2.0
+        
+        return TypedTensor(m=new_m, sigma_h=new_sigma_h, sigma_s=new_sigma_s, nu=new_nu)
 
     def to(self, *args, **kwargs) -> "TypedTensor":
-        """Move both tensors to the specified device/dtype."""
+        """Move all tensors to the specified device/dtype."""
         return TypedTensor(
             m=self.m.to(*args, **kwargs),
-            sigma=self.sigma.to(*args, **kwargs)
+            sigma_h=self.sigma_h.to(*args, **kwargs),
+            sigma_s=self.sigma_s.to(*args, **kwargs),
+            nu=self.nu.to(*args, **kwargs)
         )

@@ -220,25 +220,28 @@ class NSATransformerBlock(nn.Module):
         -------
         TypedTensor — updated semantic and state streams
         """
-        x, state = typed_x.m, typed_x.sigma
+        x, sigma_h, sigma_s, nu = typed_x.m, typed_x.sigma_h, typed_x.sigma_s, typed_x.nu
 
         # --- Attention ---
         x_norm          = self.attn_norm(x)
-        attn_out, _     = self.attn(x_norm, state, mask=mask)
+        # Pass sigma_h for structural non-interference
+        attn_out, _     = self.attn(x_norm, sigma_h, mask=mask)
         
-        # Mathematically strict residual join: m' = m + attn, σ' = σ ⊔ σ_attn
-        # Attention output assumes the taint of its inputs (here we simplify to current state)
-        x_updated       = typed_x.join_with(TypedTensor(m=attn_out, sigma=state))
-        x, state        = x_updated.m, x_updated.sigma
+        # Mathematically strict residual join: m' = m + attn, σ_h' = σ_h ⊔ σ_h_attn
+        x_updated       = typed_x.join_with(TypedTensor(m=attn_out, sigma_h=sigma_h, sigma_s=sigma_s, nu=nu))
+        x, sigma_h, sigma_s, nu = x_updated.m, x_updated.sigma_h, x_updated.sigma_s, x_updated.nu
 
         # --- State update (uses pre-residual meaning as conditioning) ---
-        state           = self.state_update(state, x)
+        sigma_h         = self.state_update(sigma_h, x)
 
         # --- Gated FFN ---
-        ffn_out         = self.ffn(x, state)
+        # Gated FFN relies on operational confidence (sigma_s) or hard state
+        ffn_out         = self.ffn(x, sigma_h)
         
         # Mathematically strict residual join: m'' = m' + ffn, σ'' = σ' ⊔ σ'_ffn
-        final_typed     = TypedTensor(m=x, sigma=state).join_with(TypedTensor(m=ffn_out, sigma=state))
+        final_typed     = TypedTensor(m=x, sigma_h=sigma_h, sigma_s=sigma_s, nu=nu).join_with(
+            TypedTensor(m=ffn_out, sigma_h=sigma_h, sigma_s=sigma_s, nu=nu)
+        )
 
         return final_typed
 
@@ -319,16 +322,20 @@ class NSATransformer(nn.Module):
         pos  = torch.arange(T, device=tokens.device).unsqueeze(0)  # [1, T]
 
         x     = self.drop(self.tok_emb(tokens) + self.pos_emb(pos))
-        state = state_init if state_init is not None else self.state_emb(pos).expand(B, T, -1)
+        sigma = state_init if state_init is not None else self.state_emb(pos).expand(B, T, -1)
+        
+        # Initialize default components if not provided
+        sigma_s = torch.ones(B, T, 1, device=x.device)
+        nu = torch.zeros(B, T, 1, device=x.device)
 
-        typed_x = TypedTensor(m=x, sigma=state)
+        typed_x = TypedTensor(m=x, sigma_h=sigma, sigma_s=sigma_s, nu=nu)
 
         for block in self.blocks:
             typed_x = block(typed_x, mask=mask)
 
         # Final LayerNorm applies only to semantic stream
         final_x = self.ln_f(typed_x.m)
-        return TypedTensor(m=final_x, sigma=typed_x.sigma)
+        return TypedTensor(m=final_x, sigma_h=typed_x.sigma_h, sigma_s=typed_x.sigma_s, nu=typed_x.nu)
 
 
 # ---------------------------------------------------------------------------
@@ -397,5 +404,5 @@ class NSACausalLM(nn.Module):
 
         typed_final = self.nsa(tokens, state_init=state_init, mask=causal_mask)
         logits = self.lm_head(typed_final.m)
-        return logits, typed_final.m, typed_final.sigma
+        return logits, typed_final.m, typed_final.sigma_h
 
