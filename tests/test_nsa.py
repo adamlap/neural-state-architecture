@@ -63,13 +63,13 @@ class TestStateAlgebra(unittest.TestCase):
     def test_product_state_vector(self):
         """Verify Product State Vector component-wise algebra."""
         from nsa.algebra import ProductStateVector
-        sv1 = ProductStateVector(security=StateLabel.PUBLIC, confidence=0.9, provenance=1, license_tier=1)
-        sv2 = ProductStateVector(security=StateLabel.PRIVATE, confidence=0.7, provenance=2, license_tier=2)
+        sv1 = ProductStateVector(confidentiality=StateLabel.PUBLIC, confidence=0.9, provenance=frozenset({"1"}), license_tier=1)
+        sv2 = ProductStateVector(confidentiality=StateLabel.PRIVATE, confidence=0.7, provenance=frozenset({"2"}), license_tier=2)
 
         joined = sv1.join_product(sv2)
-        self.assertEqual(joined.security, StateLabel.PRIVATE)
+        self.assertEqual(joined.confidentiality, StateLabel.PRIVATE)
         self.assertAlmostEqual(joined.confidence, 0.7)
-        self.assertEqual(joined.provenance, 3)  # bitwise OR: 1 | 2 = 3
+        self.assertEqual(joined.provenance, frozenset({"1", "2"}))  # set union
         self.assertEqual(joined.license_tier, 2)
 
         # Query with license_tier 2 can attend to key with license_tier 1
@@ -81,8 +81,8 @@ class TestStateAlgebra(unittest.TestCase):
         """Verify Product Lattice compatibility mask generation."""
         from nsa.algebra import ProductStateVector, ProductLattice
         lattice = ProductLattice()
-        q1 = ProductStateVector(security=StateLabel.SYSTEM, license_tier=3)
-        k1 = ProductStateVector(security=StateLabel.UNTRUSTED, license_tier=0)
+        q1 = ProductStateVector(confidentiality=StateLabel.SYSTEM, license_tier=3)
+        k1 = ProductStateVector(confidentiality=StateLabel.UNTRUSTED, license_tier=0)
         mask = lattice.compute_mask([q1], [k1])
         self.assertEqual(mask[0][0], 0.0)  # SYSTEM query can attend to UNTRUSTED key
 
@@ -99,6 +99,7 @@ class TestStateAlgebra(unittest.TestCase):
             self.assertEqual(unpacked.shape, (1, 2, 4))
             self.assertEqual(unpacked[0, 0, 0].item(), 4.0)
             self.assertEqual(unpacked[0, 0, 1].item(), 3.0)
+            self.assertEqual(unpacked[0, 0, 2].item(), 0.0)
 
 
 @unittest.skipUnless(HAS_TORCH, "PyTorch required for neural state primitives tests")

@@ -20,7 +20,7 @@ from typing import List, Optional, Sequence, Tuple
 
 import torch
 
-from nsa.algebra import DEFAULT_LATTICE, StateLabel, StateLattice
+from nsa.algebra import DEFAULT_LATTICE, StateLabel, StateLattice, DeclassificationCapability
 
 
 def join_levels(
@@ -199,15 +199,15 @@ class ResidualTaintTracker:
         positions: Sequence[Tuple[int, int]],
         target: StateLabel,
         *,
-        authorized: bool = False,
+        capability: Optional["DeclassificationCapability"] = None,
     ) -> None:
         """Attempt declassification of selected (batch, time) positions."""
         for b, t in positions:
             src = StateLabel(int(self.levels[b, t].item()))
-            if not self.lattice.can_declassify(src, target, authorized=authorized):
+            if not self.lattice.can_declassify(src, target, capability=capability):
                 raise PermissionError(
                     f"declassify {src.name} -> {target.name} denied at [{b},{t}] "
-                    f"(authorized={authorized})"
+                    f"(capability={capability})"
                 )
             self.levels[b, t] = target.value
             self.history.append(
@@ -215,7 +215,7 @@ class ResidualTaintTracker:
                     position=(b, t),
                     before=src.value,
                     after=target.value,
-                    source="declassify" if authorized else "declassify_denied",
+                    source="declassify" if capability else "declassify_denied",
                 )
             )
 

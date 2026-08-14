@@ -6,6 +6,8 @@ Standard retrofitting approaches apply a static attention policy mask on top of 
 
 The **Dynamic Learned NSA Retrofit Engine** evolves retrofitting across four distinct levels:
 
+> ⚠️ **Practical Retrofitting Limitation**: Standard base LLMs have not been trained to handle exact zero-attention (a rigid `-1e4` hard mask). Applying a hard mask in Level 1 and Level 2 retrofits often causes out-of-distribution activation cascades, leading to severe hallucination. Practical deployments (like the `demo/web_demo.py`) mitigate this via a **Soft Mask Penalty (Alpha)** (`gate_mode="soft"`) which smoothly dampens the secret token without shattering the semantic context. Natively trained NSA models do not suffer this limitation.
+
 ```
                             PROGRESSIVE RETROFIT EVOLUTION
                                           │
@@ -88,6 +90,8 @@ Ran via `make retrofit-bench` (`prototype/retrofit_evolution_bench.py`):
 | **Level 1: Static Masking** | 78,912.67 | 0.00% | 62.10% |
 | **Level 2: NSA-LoRA Adapters** | 74,359.88 | 0.00% | 31.40% |
 | **Level 3: Dynamic Engine (Multi-Path)** | 142,501.63 | **0.00%** | **0.20%** (Suppresses Hidden State Probes) |
+
+> ℹ️ **Validation Code**: The empirical multi-probe benchmarks running these tests are preserved in `prototype/security/multi_probe_bench.py` and `prototype/security/nl_redteam_suite.py`.
 
 ---
 

@@ -39,7 +39,8 @@ Experience NSA's real-world security enforcement with our interactive demo that 
 ### Quick Start
 
 ```bash
-make showcase
+make demo      # Launches the Interactive Gradio Web UI
+make showcase  # Runs the CLI-based Security Demonstration
 ```
 
 This command:
@@ -83,7 +84,14 @@ The showcase demonstrates NSA's SDPA-optimized mask injection approach that:
 - **Leverages KV-cache and SDPA/Flash Attention** for optimal performance
 - **Reduces overhead from ~900% to ~5-15%** compared to naive Python loops
 
-This makes the HF mask-injection path practical to demo while preserving KV-cache/SDPA. Treat production deployment as contingent on trusted label ingress and hard-mask evaluation. A genuine CUDA-fused kernel would require a custom Triton JIT implementation (see `nsa/triton_kernel.py`, `nsa/_triton_kernel_next.py`).
+> ⚠️ **The "Soft Mask" Necessity for Retrofitting**: Natively trained NSA models can handle mathematically rigid `-1e4` hard masks. However, post-hoc retrofitting standard LLMs with hard masks causes catastrophic out-of-distribution activation cascades (hallucinations) because standard models were not trained to handle 0% attention routing. The `demo/web_demo.py` utilizes a **Soft Mask Penalty (Alpha)** to smoothly dampen attention toward secrets, preserving semantic fluency while providing empirical leakage protection.
+
+This makes the HF mask-injection path practical to demo while preserving KV-cache/SDPA. Treat production deployment as contingent on trusted label ingress and native hard-mask evaluation. A genuine CUDA-fused kernel would require a custom Triton JIT implementation (see `nsa/triton_kernel.py`).
+
+### Empirical Benchmarks (`prototype/`)
+We preserve our heavy-duty research validation scripts in the `prototype/` directory:
+- `prototype/security/nl_redteam_suite.py`: Natural language red-teaming evaluating mask resilience against semantic overrides.
+- `prototype/security/multi_probe_bench.py`: Progressively stronger adversarial classifiers attempting to extract protected secrets from hidden state representations, validating information-theoretic erasure.
 
 ---
 
@@ -161,6 +169,7 @@ $$\text{SYSTEM} > \text{PRIVATE} > \text{CONFIDENTIAL} > \text{TRUSTED} > \text{
 * **Meet ($\sqcap$)**: Computes greatest common permission level (infimum).
 * **Join ($\sqcup$)**: Computes least upper sensitivity level (supremum).
 * **Monotone Conservation**: Information reclassification must be non-decreasing along processing paths ($src \le dst$). Downward transitions (e.g. `PRIVATE -> PUBLIC`) violate conservation laws and incur heavy loss penalties $\mathcal{L}_{state}$ unless explicitly permitted by a gated declassification operator.
+* **Declassification Capability**: Downward reclassification algebraically requires passing an explicit `DeclassificationCapability` object (containing authorizing entity, reason, and maximum downgrade limits) ensuring all non-monotone paths are mathematically restricted and auditable.
 
 ### 3. State-Aware Multi-Head Attention (`StateAwareAttention`)
 Standard scaled dot-product attention computes $A = \text{Softmax}\left(\frac{Q K^T}{\sqrt{d_k}}\right)$. NSA extends this by conditioning key-query compatibility on state compatibility:
@@ -426,35 +435,15 @@ make help
 | **`make help`** | — | Displays active engine status and formatted list of all available commands |
 | **`make install-uv`** | `curl \| sh` | Installs `uv` locally to `~/.local/bin/uv` |
 | **`make venv`** | `uv venv` | Creates isolated `.venv` virtual environment |
-| **`make install`** | `uv pip install` | Installs runtime requirements from `prototype/requirements.txt` |
+| **`make install`** | `uv pip install` | Installs runtime requirements from `requirements.txt` |
 | **`make install-dev`**| `uv pip install` | Installs runtime and dev tools (`pytest`, `ruff`, `black`, `mypy`) |
-| **`make test`** | `uv run pytest` | Executes all 30 unit tests covering algebra, autograd gradcheck, fuzzing, KV-cache, and masks |
-| **`make eval-showcase`**| `uv run python` | Runs **Automated Evaluation Harness**: evaluates Baseline vs NSA-Governed model across prompt scenarios |
-| **`make demo`** | `uv run python` | Launches interactive **Gradio Web Application UI** for live side-by-side prompt injection testing |
-| **`make visualize`** | `uv run python` | Generates interactive Plotly/HTML attention heatmap visualizer (`docs/attention_heatmap.html`) |
-| **`make report`** | `uv run python` | Generates executive automated Markdown benchmark report card (`docs/benchmark_report.md`) |
-| **`make showcase`** | `uv run python` | Runs **Live Security Showcase**: downloads a HuggingFace model (`Qwen2.5-0.5B-Instruct`), retrofits with NSA-LoRA |
-| **`make ablation`** | `uv run python` | Runs **Systematic Ablation Study**: measures Latency, Throughput, Perplexity, and ECE across 4 configurations |
-| **`make experiment`** | `uv run python` | Runs synthetic baseline vs NSA privacy experiment (`prototype/experiments/toy_experiment.py`) |
-| **`make leakage-experiment`** | `uv run python` | Runs adversarial data leakage extraction attack benchmark (`prototype/security/leakage_attack.py`) |
-| **`make multi-tier`** | `uv run python` | Runs 4-tier security lattice governance benchmark (`prototype/security/multi_tier_experiment.py`) |
-| **`make pretrain-lm`** | `uv run python` | Runs Pillar 1 Causal LLM zero-degradation benchmark (`prototype/pillars/pretrain_lm.py`) |
-| **`make pillar-1`** | — | Validates Pillar 1 language modeling zero-degradation requirements |
-| **`make benchmark-gpu`**| `uv run python` | Runs Pillar 2 Fused GPU Attention throughput benchmark (`prototype/pillars/benchmark_gpu.py`) |
-| **`make pillar-2`** | — | Validates Pillar 2 fused GPU throughput and latency overhead requirements |
-| **`make retrofit-lora`**| `uv run python` | Runs Pillar 3 NSA-LoRA post-hoc retrofitting benchmark (`prototype/pillars/retrofit_lora.py`) |
-| **`make pillar-3`** | — | Validates Pillar 3 post-hoc low-rank retrofitting requirements |
-| **`make prompt-injection`**| `uv run python` | Runs Pillar 4 Empirical Red-Teaming Prompt Injection Firewall benchmark (`prototype/pillars/prompt_injection_bench.py`) |
-| **`make pillar-4`** | — | Validates Pillar 4 indirect prompt injection firewall requirements |
-| **`make nl-redteam`** | `uv run python` | Runs NL multi-attack / AdvGLUE-style label firewall suite (`prototype/security/nl_redteam_suite.py`) |
-| **`make hf-retrofit`** | `uv run python` | Runs real HF model NSA-LoRA retrofit + lattice mask NI (`prototype/retrofit/hf_nsa_retrofit.py`) |
-| **`make open-llm-retrofit`**| `uv run python` | Runs Phase 3 open LLM scale retrofitting simulation benchmark (`prototype/retrofit/open_llm_retrofit.py`) |
-| **`make llama-showcase`**| `uv run python` | Alias for `make showcase` |
-| **`make benchmarks`** | — | Runs complete suite of NSA experiments sequentially |
-| **`make prototype`** | `uv run python` | Runs minimal working NSA transformer block demo (`prototype/experiments/state_transformer.py`) |
-| **`make summary`** | `uv run python` | Prints default state lattice transition table and model info |
+| **`make test`** | `uv run pytest` | Executes all unit tests covering algebra, properties, and invariants |
+| **`make demo`** | `uv run python` | Launches interactive **Gradio Web Application UI** |
+| **`make showcase`** | `uv run python` | Runs **Live Security Showcase** (CLI Retrofitting Demo) |
+| **`make eval-security`**| `uv run python` | Runs unified red-teaming security evaluations |
+| **`make eval-perf`** | `uv run python` | Runs unified performance and throughput benchmarks |
 | **`make lint`** | `uv run ruff` | Performs syntax, type, and code-style checks |
-| **`make format`** | `uv run ruff` | Auto-formats code in `nsa/`, `prototype/`, and `tests/` |
+| **`make format`** | `uv run ruff` | Auto-formats code in `nsa/`, `demo/`, `eval/`, and `tests/` |
 | **`make clean`** | `find rm` | Removes bytecode (`__pycache__`), `.pytest_cache`, `.uv_cache`, and build files |
 
 ---
@@ -493,13 +482,17 @@ make clean         # Clean cache directories
 ```python
 import torch
 from nsa import NSATransformerBlock, DEFAULT_LATTICE
+from nsa.types import TypedTensor
 
-# 1. Prepare inputs: semantic activations x and state vectors state
+# 1. Prepare inputs: semantic activations and state vectors
 batch_size, seq_len, d_model, state_dim = 2, 16, 128, 8
-x = torch.randn(batch_size, seq_len, d_model)      # Semantic stream [batch, seq_len, d_model]
-state = torch.randn(batch_size, seq_len, state_dim)    # State stream    [batch, seq_len, state_dim]
+m = torch.randn(batch_size, seq_len, d_model)          # Semantic stream [batch, seq_len, d_model]
+sigma = torch.randn(batch_size, seq_len, state_dim)    # State stream    [batch, seq_len, state_dim]
 
-# 2. Instantiate NSA Transformer Block
+# 2. Encapsulate into TypedTensor to guarantee non-interference bounds
+typed_x = TypedTensor(m=m, sigma=sigma)
+
+# 3. Instantiate NSA Transformer Block
 block = NSATransformerBlock(
     d_model=d_model,
     state_dim=state_dim,
@@ -509,11 +502,11 @@ block = NSATransformerBlock(
     lattice=DEFAULT_LATTICE,
 )
 
-# 3. Forward pass returns updated semantics and updated state vectors
-x_out, state_out = block(x, state)
+# 4. Forward pass structurally propagates typed state algebraically
+typed_out = block(typed_x)
 
-print("Output semantic shape:", x_out.shape)      # [2, 16, 128]
-print("Output state shape:   ", state_out.shape)  # [2, 16, 8]
+print("Output semantic shape:", typed_out.m.shape)      # [2, 16, 128]
+print("Output state shape:   ", typed_out.sigma.shape)  # [2, 16, 8]
 ```
 
 ---

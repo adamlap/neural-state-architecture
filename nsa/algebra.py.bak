@@ -39,7 +39,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Dict, FrozenSet, List, Optional, Tuple, TypeVar, Generic
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 try:
     import torch
@@ -51,22 +51,12 @@ except ImportError:
 # State Labels
 # ---------------------------------------------------------------------------
 
-class LatticeEnum(IntEnum):
-    def __str__(self) -> str:
-        return self.name
+class StateLabel(IntEnum):
+    """Ordered state labels forming the default security lattice.
 
-    def meet(self, other: "LatticeEnum") -> "LatticeEnum":
-        return self.__class__(min(self.value, other.value))
-
-    def join(self, other: "LatticeEnum") -> "LatticeEnum":
-        return self.__class__(max(self.value, other.value))
-
-    def allows_transition_to(self, target: "LatticeEnum") -> bool:
-        return target.value >= self.value
-
-
-class ConfidentialityLabel(LatticeEnum):
-    """Ordered confidentiality labels forming the primary security lattice."""
+    Higher integer value = more restricted / higher classification.
+    The ordering is: PUBLIC < TRUSTED < CONFIDENTIAL < PRIVATE < SYSTEM.
+    """
     UNTRUSTED    = 0
     PUBLIC       = 1
     TRUSTED      = 2
@@ -74,23 +64,36 @@ class ConfidentialityLabel(LatticeEnum):
     PRIVATE      = 4
     SYSTEM       = 5
 
-class IntegrityLabel(LatticeEnum):
-    """Ordered integrity labels (taint). Higher value = more untrusted."""
-    TRUSTED      = 0
-    UNTRUSTED    = 1
+    def __str__(self) -> str:
+        return self.name
 
-# Backward compatibility alias
-StateLabel = ConfidentialityLabel
+    # ------------------------------------------------------------------
+    # Lattice operations (on the default linear order)
+    # ------------------------------------------------------------------
+
+    def meet(self, other: "StateLabel") -> "StateLabel":
+        """Greatest lower bound (most permissive common state)."""
+        return StateLabel(min(self.value, other.value))
+
+    def join(self, other: "StateLabel") -> "StateLabel":
+        """Least upper bound (most restrictive common state)."""
+        return StateLabel(max(self.value, other.value))
+
+    def allows_transition_to(self, target: "StateLabel") -> bool:
+        """By default, information may become *more* restricted but not less.
+
+        i.e. PRIVATE → SYSTEM is allowed (adding restriction).
+             PRIVATE → PUBLIC  is forbidden (removing restriction).
+        """
+        return target.value >= self.value
 
 
 # ---------------------------------------------------------------------------
 # Conservation Law
 # ---------------------------------------------------------------------------
 
-T = TypeVar('T', bound=LatticeEnum)
-
 @dataclass(frozen=True)
-class ConservationLaw(Generic[T]):
+class ConservationLaw:
     """A single conservation law: 'from_state → to_state is {allowed/forbidden}'.
 
     Laws can express:
@@ -98,8 +101,8 @@ class ConservationLaw(Generic[T]):
         - Explicit exceptions: a declassification gate may allow PRIVATE → PUBLIC
           iff a certain condition is met (modeled as a soft penalty weight).
     """
-    from_label:   T
-    to_label:     T
+    from_label:   StateLabel
+    to_label:     StateLabel
     allowed:      bool   = True
     penalty_weight: float = 1.0   # weight in the state constraint loss
 
@@ -107,7 +110,7 @@ class ConservationLaw(Generic[T]):
         arrow = "->" if self.allowed else "->X"
         return f"{self.from_label} {arrow} {self.to_label}"
 
-    def is_violated(self, src: T, dst: T) -> bool:
+    def is_violated(self, src: StateLabel, dst: StateLabel) -> bool:
         """Return True if a transition src->dst violates this law."""
         if src == self.from_label and dst == self.to_label:
             return not self.allowed
@@ -115,43 +118,39 @@ class ConservationLaw(Generic[T]):
 
 
 # ---------------------------------------------------------------------------
-# Declassification
-# ---------------------------------------------------------------------------
-
-@dataclass(frozen=True)
-class DeclassificationCapability(Generic[T]):
-    """An explicit capability object authorizing downward state transitions."""
-    reason: str
-    authorizer: str
-    target_label: Optional[T] = None
-
-    def is_valid_for(self, dst: T) -> bool:
-        if self.target_label is not None and dst != self.target_label:
-            return False
-        return True
-
-
-# ---------------------------------------------------------------------------
 # State Lattice
 # ---------------------------------------------------------------------------
 
-class StateLattice(Generic[T]):
-    """A bounded lattice over generic LatticeEnum with configurable conservation laws.
+class StateLattice:
+    """A bounded lattice over StateLabels with configurable conservation laws.
+
+    By default, uses the monotone upward-only rule (no downward reclassification).
+    Additional custom laws can be added or default laws overridden.
+
+    Examples
+    --------
+    >>> lattice = StateLattice()
+    >>> lattice.is_allowed(StateLabel.PRIVATE, StateLabel.PUBLIC)
+    False
+    >>> lattice.is_allowed(StateLabel.PUBLIC, StateLabel.PRIVATE)
+    True
+    >>> lattice.is_allowed(StateLabel.PRIVATE, StateLabel.SYSTEM)
+    True
     """
 
     def __init__(
         self,
-        extra_laws: Optional[List[ConservationLaw[T]]] = None,
+        extra_laws: Optional[List[ConservationLaw]] = None,
         override_default: bool = False,
     ) -> None:
-        self._custom_laws: List[ConservationLaw[T]] = extra_laws or []
+        self._custom_laws: List[ConservationLaw] = extra_laws or []
         self._override_default = override_default
 
     # ------------------------------------------------------------------
     # Core query
     # ------------------------------------------------------------------
 
-    def is_allowed(self, src: T, dst: T) -> bool:
+    def is_allowed(self, src: StateLabel, dst: StateLabel) -> bool:
         """Check whether the transition src -> dst is permitted.
 
         Custom laws are checked first; they can explicitly permit or forbid.
@@ -169,7 +168,7 @@ class StateLattice(Generic[T]):
         # Default: information may only become *more* restricted.
         return src.allows_transition_to(dst)
 
-    def violation_penalty(self, src: T, dst: T) -> float:
+    def violation_penalty(self, src: StateLabel, dst: StateLabel) -> float:
         """Return the penalty weight for a forbidden transition (0 if allowed)."""
         if self.is_allowed(src, dst):
             return 0.0
@@ -183,70 +182,76 @@ class StateLattice(Generic[T]):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def meet(a: T, b: T) -> T:
+    def meet(a: StateLabel, b: StateLabel) -> StateLabel:
         return a.meet(b)
 
     @staticmethod
-    def join(a: T, b: T) -> T:
+    def join(a: StateLabel, b: StateLabel) -> StateLabel:
         return a.join(b)
 
     # ------------------------------------------------------------------
     # Derived utilities
     # ------------------------------------------------------------------
 
-    def can_attend(self, query: T, key: T) -> bool:
+    def can_attend(self, query: StateLabel, key: StateLabel) -> bool:
         """Return True if a query token may *read* a key token (can-read).
 
         Information flows key → query. Allowed iff the key's label may
         transition into the query's label under the lattice
         (query is at least as restricted as key):
+
+            can_attend(SYSTEM, UNTRUSTED) = True
+            can_attend(PUBLIC, PRIVATE)   = False
         """
         return self.is_allowed(key, query)
 
-    def can_read(self, query: T, key: T) -> bool:
+    def can_read(self, query: StateLabel, key: StateLabel) -> bool:
         """Alias of :meth:`can_attend` — directional read (key → query)."""
         return self.can_attend(query=query, key=key)
 
-    def can_write(self, writer: T, target: T) -> bool:
+    def can_write(self, writer: StateLabel, target: StateLabel) -> bool:
         """May ``writer`` *write into* storage/channel labelled ``target``?
 
         Bell-LaPadula-style *no write-down*: writer level must be ≤ target
         level (information may only flow to equal-or-more-restricted sinks).
+
+            can_write(PUBLIC, PRIVATE) = True
+            can_write(PRIVATE, PUBLIC) = False
         """
         return self.is_allowed(writer, target)
 
     def can_declassify(
         self,
-        src: T,
-        dst: T,
+        src: StateLabel,
+        dst: StateLabel,
         *,
-        capability: Optional["DeclassificationCapability[T]"] = None,
+        authorized: bool = False,
     ) -> bool:
         """May state transition ``src → dst`` under declassification policy?
 
         Upward / equal restriction is always allowed (standard monotone path).
-        Downward reclassification requires an explicit authorization capability.
+        Downward reclassification requires an explicit authorization bit
+        (auth token / declassification gate). Without ``authorized=True``,
+        downward moves are denied.
         """
         if self.is_allowed(src, dst):
             return True
-        if capability is not None and capability.is_valid_for(dst):
-            return True
-        return False
+        return bool(authorized)
 
-    def compatible(self, src: T, dst: T) -> bool:
+    def compatible(self, src: StateLabel, dst: StateLabel) -> bool:
         """Asymmetric attention compatibility: can ``src`` (query) read ``dst`` (key)?
 
         Historical name retained for API stability. Prefer :meth:`can_attend`.
         """
         return self.can_attend(query=src, key=dst)
 
-    def reachable_from(self, src: T) -> List[T]:
+    def reachable_from(self, src: StateLabel) -> List[StateLabel]:
         """All labels reachable (via allowed transitions) from src."""
-        return [s for s in src.__class__ if self.is_allowed(src, s)]
+        return [s for s in StateLabel if self.is_allowed(src, s)]
 
-    def summary(self, enum_cls) -> str:
+    def summary(self) -> str:
         lines = ["StateLattice transition table:"]
-        labels = list(enum_cls)
+        labels = list(StateLabel)
         header = "FROM\\TO  " + "  ".join(f"{s.name[:6]:>7}" for s in labels)
         lines.append(header)
         for src in labels:
@@ -259,11 +264,10 @@ class StateLattice(Generic[T]):
 
 
 # ---------------------------------------------------------------------------
-# Default singletons
+# Default singleton
 # ---------------------------------------------------------------------------
 
-DEFAULT_LATTICE = StateLattice[ConfidentialityLabel]()
-INTEGRITY_LATTICE = StateLattice[IntegrityLabel]()
+DEFAULT_LATTICE = StateLattice()
 
 
 # ---------------------------------------------------------------------------
@@ -275,36 +279,36 @@ class ProductStateVector:
     """Product state vector for Typed Neural Computation (TNC).
 
     Formulates the state space as a Product Lattice:
-        Σ = Σ_confidentiality × Σ_integrity × Σ_confidence × Σ_provenance × Σ_license
+        Σ = Σ_security × Σ_confidence × Σ_provenance × Σ_license
 
-    Each component carries its own distinct algebraic join (⊔) and meet (⊓) operators.
+    Each component carries its own distinct algebraic join (⊔) and meet (⊓) operators:
+        - Security   (⊔_s): Lattice supremum (least upper restriction bound)
+        - Confidence (⊔_c): Bayesian / Minimum confidence bound min(c1, c2)
+        - Provenance (⊔_p): Bitwise set union of document origin IDs (p1 | p2)
+        - License    (⊔_l): Maximal tier restriction bounds max(l1, l2)
+
+    To guarantee zero performance overhead when metadata dimensions are disabled,
+    this class supports a light scalar mode (security-only) that executes with
+    0% extra tensor memory allocation.
     """
-    confidentiality: ConfidentialityLabel = ConfidentialityLabel.PUBLIC
-    integrity: IntegrityLabel = IntegrityLabel.TRUSTED
+    security: StateLabel = StateLabel.PUBLIC
     confidence: float = 1.0
-    provenance: FrozenSet[str] = field(default_factory=frozenset)
+    provenance: int = 0
     license_tier: int = 0
 
-    @property
-    def security(self):
-        """Backward compatibility alias."""
-        return self.confidentiality
-
     def join_product(self, other: ProductStateVector) -> ProductStateVector:
-        """Product lattice join: (⊔_c, ⊔_i, ⊔_c, ⊔_p, ⊔_l)."""
+        """Product lattice join: (⊔_s, ⊔_c, ⊔_p, ⊔_l)."""
         return ProductStateVector(
-            confidentiality=self.confidentiality.join(other.confidentiality),
-            integrity=self.integrity.join(other.integrity),
+            security=self.security.join(other.security),
             confidence=min(self.confidence, other.confidence),
             provenance=self.provenance | other.provenance,
             license_tier=max(self.license_tier, other.license_tier),
         )
 
     def meet_product(self, other: ProductStateVector) -> ProductStateVector:
-        """Product lattice meet: (⊓_c, ⊓_i, ⊓_c, ⊓_p, ⊓_l)."""
+        """Product lattice meet: (⊓_s, ⊓_c, ⊓_p, ⊓_l)."""
         return ProductStateVector(
-            confidentiality=self.confidentiality.meet(other.confidentiality),
-            integrity=self.integrity.meet(other.integrity),
+            security=self.security.meet(other.security),
             confidence=max(self.confidence, other.confidence),
             provenance=self.provenance & other.provenance,
             license_tier=min(self.license_tier, other.license_tier),
@@ -312,25 +316,22 @@ class ProductStateVector:
 
     def allows_attention_from(self, query: ProductStateVector) -> bool:
         """Check coordinate-wise attention compatibility across all product dimensions."""
-        conf_ok = query.confidentiality.value >= self.confidentiality.value
-        int_ok = query.integrity.value >= self.integrity.value
+        sec_ok = query.security.value >= self.security.value
         lic_ok = query.license_tier >= self.license_tier
-        return conf_ok and int_ok and lic_ok
+        return sec_ok and lic_ok
 
 
 class ProductLattice:
     """Product Lattice manager evaluating component-wise operations across Σ."""
 
-    def __init__(self, conf_lattice: Optional[StateLattice[ConfidentialityLabel]] = None, int_lattice: Optional[StateLattice[IntegrityLabel]] = None):
-        self.conf_lattice = conf_lattice or DEFAULT_LATTICE
-        self.int_lattice = int_lattice or INTEGRITY_LATTICE
+    def __init__(self, security_lattice: Optional[StateLattice] = None):
+        self.security_lattice = security_lattice or DEFAULT_LATTICE
 
     def is_allowed(self, src: ProductStateVector, dst: ProductStateVector) -> bool:
         """Check state transition validity across product dimensions."""
-        conf_ok = self.conf_lattice.is_allowed(src.confidentiality, dst.confidentiality)
-        int_ok = self.int_lattice.is_allowed(src.integrity, dst.integrity)
+        sec_ok = self.security_lattice.is_allowed(src.security, dst.security)
         lic_ok = dst.license_tier >= src.license_tier
-        return conf_ok and int_ok and lic_ok
+        return sec_ok and lic_ok
 
     def compute_mask(self, query_states: List[ProductStateVector], key_states: List[ProductStateVector]) -> List[List[float]]:
         """Compute 2D additive compatibility mask for product lattice states."""
@@ -353,23 +354,20 @@ class ProductLattice:
 @dataclass
 class BitpackedStateVector:
     """Bitpacked state representation compressing 4D product state into a uint8 byte."""
-    packed_byte: int  # 8-bit integer: [confidentiality: 3 bits | integrity: 2 bits | license: 3 bits]
+    packed_byte: int  # 8-bit integer: [security: 3 bits | license: 3 bits | reserved: 2 bits]
 
     @classmethod
     def from_product(cls, sv: ProductStateVector) -> BitpackedStateVector:
-        conf_val = min(sv.confidentiality.value, 7) & 0x07
-        int_val = min(sv.integrity.value, 3) & 0x03
+        sec_val = min(sv.security.value, 7) & 0x07
         lic_val = min(sv.license_tier, 7) & 0x07
-        byte_val = (conf_val << 5) | (int_val << 3) | lic_val
+        byte_val = (sec_val << 5) | (lic_val << 2)
         return cls(packed_byte=byte_val)
 
     def to_product(self) -> ProductStateVector:
-        conf_val = (self.packed_byte >> 5) & 0x07
-        int_val = (self.packed_byte >> 3) & 0x03
-        lic_val = self.packed_byte & 0x07
+        sec_val = (self.packed_byte >> 5) & 0x07
+        lic_val = (self.packed_byte >> 2) & 0x07
         return ProductStateVector(
-            confidentiality=ConfidentialityLabel(conf_val if conf_val <= 4 else 4),
-            integrity=IntegrityLabel(int_val if int_val <= 1 else 1),
+            security=StateLabel(sec_val if sec_val <= 5 else 5),
             license_tier=lic_val
         )
 
@@ -379,28 +377,24 @@ def bitpack_states(states: torch.Tensor) -> torch.Tensor:
 
     Reduces memory footprint by 75% for multi-tenant and provenance tracking.
     """
-    conf_labels = torch.clamp(states[..., 0].round().long(), 0, 7)
-    int_labels = torch.clamp(states[..., 1].round().long(), 0, 3) if states.shape[-1] > 1 else torch.zeros_like(conf_labels)
-    lic_tiers = torch.clamp(states[..., 2].round().long(), 0, 7) if states.shape[-1] > 2 else torch.zeros_like(conf_labels)
+    sec_labels = torch.clamp(states[..., 0].round().long(), 0, 7)
+    lic_tiers = torch.clamp(states[..., 1].round().long(), 0, 7) if states.shape[-1] > 1 else torch.zeros_like(sec_labels)
     
-    packed = (conf_labels << 5) | (int_labels << 3) | lic_tiers
+    packed = (sec_labels << 5) | (lic_tiers << 2)
     return packed.to(torch.uint8)
 
 
 def unpack_states(packed: torch.Tensor, state_dim: int = 8) -> torch.Tensor:
     """Decompress uint8 packed byte tensors [B, T] back into float32 state vectors [B, T, state_dim]."""
     packed_long = packed.to(torch.long)
-    conf_labels = ((packed_long >> 5) & 0x07).to(torch.float32)
-    int_labels = ((packed_long >> 3) & 0x03).to(torch.float32)
-    lic_tiers = (packed_long & 0x07).to(torch.float32)
+    sec_labels = ((packed_long >> 5) & 0x07).to(torch.float32)
+    lic_tiers = ((packed_long >> 2) & 0x07).to(torch.float32)
 
     shape = list(packed.shape) + [state_dim]
     unpacked = torch.zeros(shape, dtype=torch.float32, device=packed.device)
-    unpacked[..., 0] = conf_labels
+    unpacked[..., 0] = sec_labels
     if state_dim > 1:
-        unpacked[..., 1] = int_labels
-    if state_dim > 2:
-        unpacked[..., 2] = lic_tiers
+        unpacked[..., 1] = lic_tiers
     return unpacked
 
 
@@ -422,13 +416,13 @@ class RAGMetadataIngressEncoder:
     into ProductStateVector and continuous PyTorch state tensors.
     """
 
-    LEVEL_MAP: Dict[str, ConfidentialityLabel] = {
-        "UNTRUSTED": ConfidentialityLabel.PUBLIC, # Map old untrusted to public
-        "PUBLIC": ConfidentialityLabel.PUBLIC,
-        "TRUSTED": ConfidentialityLabel.TRUSTED,
-        "CONFIDENTIAL": ConfidentialityLabel.CONFIDENTIAL,
-        "PRIVATE": ConfidentialityLabel.PRIVATE,
-        "SYSTEM": ConfidentialityLabel.SYSTEM,
+    LEVEL_MAP: Dict[str, StateLabel] = {
+        "UNTRUSTED": StateLabel.UNTRUSTED,
+        "PUBLIC": StateLabel.PUBLIC,
+        "TRUSTED": StateLabel.TRUSTED,
+        "CONFIDENTIAL": StateLabel.CONFIDENTIAL,
+        "PRIVATE": StateLabel.PRIVATE,
+        "SYSTEM": StateLabel.SYSTEM,
     }
 
     LICENSE_MAP: Dict[str, int] = {
@@ -445,19 +439,11 @@ class RAGMetadataIngressEncoder:
     @classmethod
     def encode_metadata_dict(cls, meta: Dict) -> ProductStateVector:
         """Encode a metadata dict into a :class:`ProductStateVector`."""
-        conf_str = str(meta.get("confidentiality", meta.get("security", "PUBLIC"))).upper()
-        conf_label = cls.LEVEL_MAP.get(conf_str, ConfidentialityLabel.PUBLIC)
-
-        int_str = str(meta.get("integrity", "TRUSTED")).upper()
-        int_label = IntegrityLabel.TRUSTED if int_str == "TRUSTED" else IntegrityLabel.UNTRUSTED
+        sec_str = str(meta.get("security", "UNTRUSTED")).upper()
+        sec_label = cls.LEVEL_MAP.get(sec_str, StateLabel.UNTRUSTED)
 
         conf = float(meta.get("confidence", 1.0))
-        
-        prov_raw = meta.get("provenance", [])
-        if isinstance(prov_raw, (int, str)):
-            prov = frozenset([str(prov_raw)])
-        else:
-            prov = frozenset(str(p) for p in prov_raw)
+        prov = int(meta.get("provenance", meta.get("provenance_mask", 0)))
 
         lic_raw = meta.get("license", meta.get("license_tier", 0))
         if isinstance(lic_raw, str):
@@ -466,8 +452,7 @@ class RAGMetadataIngressEncoder:
             lic = int(lic_raw)
 
         return ProductStateVector(
-            confidentiality=conf_label,
-            integrity=int_label,
+            security=sec_label,
             confidence=conf,
             provenance=prov,
             license_tier=lic,
@@ -486,8 +471,7 @@ class RAGMetadataIngressEncoder:
         rows = []
         for meta in metas:
             sv = cls.encode_metadata_dict(meta)
-            prov_hash = hash(sv.provenance) & 0xFF if sv.provenance else 0
-            vec = [float(sv.confidentiality.value), float(sv.integrity.value), float(sv.license_tier), float(sv.confidence), float(prov_hash)]
+            vec = [float(sv.security.value), float(sv.license_tier), float(sv.confidence), float(sv.provenance & 0xFF)]
             if state_dim > len(vec):
                 vec = vec + [0.0] * (state_dim - len(vec))
             else:

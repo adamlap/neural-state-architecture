@@ -2,7 +2,7 @@
 # Makefile for Neural State Architecture (NSA) - Powered by uv
 # ==============================================================================
 
-.PHONY: help install install-dev install-uv venv test experiment leakage-experiment multi-tier pretrain-lm pillar-1 benchmark-gpu pillar-2 retrofit-lora pillar-3 prompt-injection pillar-4 nl-redteam hf-retrofit open-llm-retrofit llama-showcase showcase demo visualize report ablation benchmarks prototype alignment-demo lint format clean summary
+.PHONY: help install install-dev install-uv venv test showcase demo eval-security eval-perf lint format clean showcase-web
 
 # Locate uv executable (PATH, ~/.local/bin/uv, or ~/.cargo/bin/uv)
 UV := $(shell command -v uv 2>/dev/null || (test -f ~/.local/bin/uv && echo ~/.local/bin/uv) || (test -f ~/.cargo/bin/uv && echo ~/.cargo/bin/uv) || echo "uv")
@@ -37,9 +37,9 @@ venv: ## Create virtual environment using uv or venv
 
 install: ## Install runtime requirements
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) pip install -r prototype/requirements.txt; \
+		$(UV) pip install -r requirements.txt; \
 	else \
-		$(PYTHON) -m pip install -r prototype/requirements.txt; \
+		$(PYTHON) -m pip install -r requirements.txt; \
 	fi
 
 install-dev: install ## Install runtime and development dependencies
@@ -62,221 +62,54 @@ test: ## Run unit tests
 		PYTHONPATH=. $(PYTHON) -m unittest discover -s tests -p "test_*.py"; \
 	fi
 
-experiment: ## Run toy experiment (Baseline vs NSA)
+showcase: ## Run interactive Llama retrofitting security showcase
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/experiments/toy_experiment.py; \
+		$(UV) run python demo/cli_showcase.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/experiments/toy_experiment.py; \
+		PYTHONPATH=. $(PYTHON) demo/cli_showcase.py; \
 	fi
 
-leakage-experiment: ## Run adversarial data leakage extraction benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/security/leakage_attack.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/security/leakage_attack.py; \
-	fi
-
-multi-tier: ## Run multi-tier security lattice benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/security/multi_tier_experiment.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/security/multi_tier_experiment.py; \
-	fi
-
-pretrain-lm: ## Run Pillar 1 Causal Language Model zero-degradation benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/pillars/pretrain_lm.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/pillars/pretrain_lm.py; \
-	fi
-
-pillar-1: pretrain-lm ## Run Pillar 1 validation suite
-
-benchmark-gpu: ## Run Pillar 2 Fused GPU Attention throughput benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/pillars/benchmark_gpu.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/pillars/benchmark_gpu.py; \
-	fi
-
-pillar-2: benchmark-gpu ## Run Pillar 2 validation suite
-
-retrofit-lora: ## Run Pillar 3 NSA-LoRA post-hoc retrofitting benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/pillars/retrofit_lora.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/pillars/retrofit_lora.py; \
-	fi
-
-pillar-3: retrofit-lora ## Run Pillar 3 validation suite
-
-prompt-injection: ## Run Pillar 4 Empirical Red-Teaming Prompt Injection Firewall benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/pillars/prompt_injection_bench.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/pillars/prompt_injection_bench.py; \
-	fi
-
-pillar-4: prompt-injection ## Run Pillar 4 validation suite
-
-nl-redteam: ## NL multi-attack / AdvGLUE-style label firewall suite
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/security/nl_redteam_suite.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/security/nl_redteam_suite.py; \
-	fi
-
-hf-retrofit: ## Real small HF model NSA-LoRA retrofit + lattice mask NI
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/retrofit/hf_nsa_retrofit.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/retrofit/hf_nsa_retrofit.py; \
-	fi
-
-open-llm-retrofit: ## Run Phase 3 open LLM scale retrofitting simulation benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/retrofit/open_llm_retrofit.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/retrofit/open_llm_retrofit.py; \
-	fi
-
-llama-showcase: ## Run interactive Llama retrofitting security showcase
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/retrofit/llama_security_showcase.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/retrofit/llama_security_showcase.py; \
-	fi
-
-showcase: llama-showcase ## Alias for llama-showcase
+showcase-web: ## Open the interactive NSA web showcase (static HTML, no Python server needed)
+	@echo "Opening NSA Interactive Showcase…"
+	@echo "  → Serving at http://localhost:8080"
+	@echo "  → Press Ctrl+C to stop"
+	@cd showcase && $(PYTHON) -m http.server 8080
 
 demo: ## Launch interactive Gradio web showcase UI
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/demos/web_demo.py; \
+		$(UV) run python demo/web_demo.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/demos/web_demo.py; \
+		PYTHONPATH=. $(PYTHON) demo/web_demo.py; \
 	fi
 
-eval-showcase: ## Run automated evaluation harness on showcase prompt scenarios
+eval-security: ## Run NL multi-attack / AdvGLUE-style label firewall suite
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/demos/eval_showcase_prompts.py; \
+		$(UV) run python eval/security_eval.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/demos/eval_showcase_prompts.py; \
+		PYTHONPATH=. $(PYTHON) eval/security_eval.py; \
 	fi
 
-exp-3way: ## Run Native TNC vs Retrofit vs Baseline 3-way research benchmark
+eval-perf: ## Run Fused GPU Attention throughput benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/retrofit/native_vs_retrofit_exp.py; \
+		$(UV) run python eval/performance_bench.py; \
 	else \
-		PYTHONPATH=. $(PYTHON) prototype/retrofit/native_vs_retrofit_exp.py; \
-	fi
-
-exp-algebra-preserving: ## Run 5-way benchmark including Algebra-Preserving Native TNC
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/retrofit/native_vs_retrofit_exp.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/retrofit/native_vs_retrofit_exp.py; \
-	fi
-
-demo-algebra-real-data: ## Run Algebra-Preserving demo on actual text data (TinyShakespeare)
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/demos/algebra_preserving_real_data_demo.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/demos/algebra_preserving_real_data_demo.py; \
-	fi
-
-retrofit-bench: ## Run 4-level progressive retrofit evolution benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/retrofit/retrofit_evolution_bench.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/retrofit/retrofit_evolution_bench.py; \
-	fi
-
-ablation-study: ## Component matrix: which Dynamic NSA gates drive PPL vs leak trade-off
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/experiments/dynamic_nsa_tradeoff.py --no-alpha-sweep; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/experiments/dynamic_nsa_tradeoff.py --no-alpha-sweep; \
-	fi
-
-alignment-demo: ## Run the 4-way Alignment Substrate demo: h=(m,σ,ν) — structural + behavioural proof
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/experiments/alignment_substrate_demo.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/experiments/alignment_substrate_demo.py; \
-	fi
-
-tradeoff: ## Full Dynamic NSA trade-off (component matrix + α coupling sweep)
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/experiments/dynamic_nsa_tradeoff.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/experiments/dynamic_nsa_tradeoff.py; \
-	fi
-
-multi-probe: ## Multi-level adversarial probing (linear/MLP) on toy hiddens — methodology demo
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/security/multi_probe_bench.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/security/multi_probe_bench.py; \
-	fi
-
-pareto-sweep: ## Sweep fixed coupling α on Dynamic-B (attn+residual+learn σ)
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/experiments/dynamic_nsa_tradeoff.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/experiments/dynamic_nsa_tradeoff.py; \
-	fi
-
-visualize: ## Generate interactive Plotly/HTML attention heatmap visualizer
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/demos/visualize_attention.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/demos/visualize_attention.py; \
-	fi
-
-report: ## Generate executive automated benchmark Markdown report
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/reporting/generate_benchmark_report.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/reporting/generate_benchmark_report.py; \
-	fi
-
-ablation: ## Run systematic ablation study (Vanilla vs Security vs Product Algebra)
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/experiments/ablation_study.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/experiments/ablation_study.py; \
-	fi
-
-benchmarks: experiment leakage-experiment multi-tier pretrain-lm benchmark-gpu retrofit-lora prompt-injection open-llm-retrofit llama-showcase ablation report ## Run full NSA benchmark suite
-
-prototype: ## Run prototype demonstration script
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python prototype/experiments/state_transformer.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/experiments/state_transformer.py; \
-	fi
-
-summary: ## Print default state lattice structure and model info
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python -c "from nsa import DEFAULT_LATTICE, print_lattice; print_lattice(DEFAULT_LATTICE)"; \
-	else \
-		PYTHONPATH=. $(PYTHON) -c "from nsa import DEFAULT_LATTICE, print_lattice; print_lattice(DEFAULT_LATTICE)"; \
+		PYTHONPATH=. $(PYTHON) eval/performance_bench.py; \
 	fi
 
 lint: ## Check code for syntax errors and style issues
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run ruff check nsa/ prototype/ tests/ 2>/dev/null || $(UV) run python -m compileall nsa prototype tests; \
+		$(UV) run ruff check nsa/ demo/ eval/ tests/ 2>/dev/null || $(UV) run python -m compileall nsa demo eval tests; \
 	elif command -v ruff >/dev/null 2>&1; then \
-		ruff check nsa/ prototype/ tests/; \
+		ruff check nsa/ demo/ eval/ tests/; \
 	else \
-		PYTHONPATH=. $(PYTHON) -m compileall nsa prototype tests; \
+		PYTHONPATH=. $(PYTHON) -m compileall nsa demo eval tests; \
 	fi
 
 format: ## Auto-format code using black or ruff
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run ruff format nsa/ prototype/ tests/ 2>/dev/null || $(UV) run black nsa/ prototype/ tests/ 2>/dev/null || echo "Install ruff or black to format code."; \
+		$(UV) run ruff format nsa/ demo/ eval/ tests/ 2>/dev/null || $(UV) run black nsa/ demo/ eval/ tests/ 2>/dev/null || echo "Install ruff or black to format code."; \
 	elif command -v black >/dev/null 2>&1; then \
-		black nsa/ prototype/ tests/; \
+		black nsa/ demo/ eval/ tests/; \
 	else \
 		echo "Neither black nor ruff found. Please install black or ruff for formatting."; \
 	fi

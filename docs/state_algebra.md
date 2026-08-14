@@ -18,7 +18,7 @@ The state stream operates over a **bounded lattice** structure.
 
 A lattice is a algebraic structure $(\mathcal{S}, \le, \sqcap, \sqcup)$ consisting of a partially ordered set $\mathcal{S}$ with unique greatest lower bound (meet $\sqcap$) and least upper bound (join $\sqcup$) for any pair of elements.
 
-### Default Security Lattice Hierarchy
+### Confidentiality Lattice Hierarchy
 
 ```
        [SYSTEM]          (Level 5 - Highest Restriction)
@@ -34,22 +34,22 @@ A lattice is a algebraic structure $(\mathcal{S}, \le, \sqcap, \sqcup)$ consisti
       [UNTRUSTED]       (Level 0 - Lowest Restriction)
 ```
 
+### Integrity Lattice Hierarchy (Taint)
+
+```
+      [UNTRUSTED]       (Level 1 - High Taint / Untrusted Source)
+          │
+       [TRUSTED]        (Level 0 - Verified Source)
+```
+
 ### Transition Rule Formula
 
-Information flow from state $s_{src}$ to $s_{dst}$ is **valid** if and only if:
+Information flow from state $s_{src}$ to $s_{dst}$ within a given dimension is **valid** if and only if:
 
 $$\text{is\_allowed}(s_{src}, s_{dst}) \iff s_{src} \le s_{dst}$$
 
-| From / To | UNTRUSTED | PUBLIC | TRUSTED | CONFIDENTIAL | PRIVATE | SYSTEM |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **UNTRUSTED** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **PUBLIC** | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **TRUSTED** | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
-| **CONFIDENTIAL** | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| **PRIVATE** | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
-| **SYSTEM** | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
-
-*Note: $\text{PRIVATE} \to \text{PUBLIC}$ is explicitly forbidden ($\mathbf{\text{✗}}$).*
+For the **Confidentiality Lattice**:
+*Note: $\text{PRIVATE} \to \text{PUBLIC}$ is explicitly forbidden and requires passing an explicit `DeclassificationCapability` object to the gating function.*
 
 ---
 

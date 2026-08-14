@@ -41,13 +41,16 @@ class TestLatticeSemantics(unittest.TestCase):
         self.assertFalse(lat.can_write(StateLabel.SYSTEM, StateLabel.UNTRUSTED))
 
     def test_can_declassify_requires_auth_for_downward(self):
+        from nsa.algebra import DeclassificationCapability
         lat = DEFAULT_LATTICE
         # upward / equal always ok
-        self.assertTrue(lat.can_declassify(StateLabel.PUBLIC, StateLabel.PRIVATE, authorized=False))
-        self.assertTrue(lat.can_declassify(StateLabel.PUBLIC, StateLabel.PUBLIC, authorized=False))
+        self.assertTrue(lat.can_declassify(StateLabel.PUBLIC, StateLabel.PRIVATE))
+        self.assertTrue(lat.can_declassify(StateLabel.PUBLIC, StateLabel.PUBLIC))
         # downward denied without auth
-        self.assertFalse(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC, authorized=False))
-        self.assertTrue(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC, authorized=True))
+        self.assertFalse(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC))
+        
+        cap = DeclassificationCapability(reason="test", authorizer="admin")
+        self.assertTrue(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC, capability=cap))
 
     def test_build_label_mask_blocks_downward(self):
         if not HAS_TORCH:
@@ -66,7 +69,7 @@ class TestLatticeSemantics(unittest.TestCase):
             {"security": "PRIVATE", "confidence": 0.9, "provenance": 3, "license": "INTERNAL"}
         )
         self.assertEqual(sv.security, StateLabel.PRIVATE)
-        self.assertEqual(sv.provenance, 3)
+        self.assertEqual(sv.provenance, frozenset({"3"}))
         self.assertEqual(sv.license_tier, 1)
         self.assertAlmostEqual(sv.confidence, 0.9)
 
@@ -116,8 +119,40 @@ class TestHardAttentionNonInterference(unittest.TestCase):
         labels = torch.tensor([[5, 1, 0, 4]])
         state = state_labels_to_vectors(labels, state_dim=8)
         x = torch.randn(1, 4, 32)
-        _, state_out = block(x, state)
-        self.assertTrue(torch.allclose(state_out[..., 0], state[..., 0]))
+        from nsa.types import TypedTensor
+        typed_x = TypedTensor(m=x, sigma=state)
+        typed_out = block(typed_x)
+        self.assertTrue(torch.allclose(typed_out.sigma[..., 0], state[..., 0]))
+
+    def test_metamorphic_non_interference(self):
+        """Metamorphic test: changing high-security inputs should not affect low-security outputs."""
+        from nsa.layers import NSATransformerBlock
+        from nsa.types import TypedTensor
+        from nsa.utils import state_labels_to_vectors
+
+        block = NSATransformerBlock(d_model=32, state_dim=8, num_heads=4, gate_mode="hard", compat_mode="level")
+        block.eval()
+
+        # Labels: [PUBLIC, SYSTEM, PUBLIC]
+        labels = torch.tensor([[1, 5, 1]])
+        state = state_labels_to_vectors(labels, state_dim=8)
+
+        # Baseline input
+        x_base = torch.randn(1, 3, 32)
+        typed_x_base = TypedTensor(m=x_base, sigma=state)
+        out_base = block(typed_x_base).m
+
+        # Perturbed input (change only the SYSTEM token)
+        x_perturbed = x_base.clone()
+        x_perturbed[0, 1, :] += torch.randn(32) * 10.0
+        typed_x_perturbed = TypedTensor(m=x_perturbed, sigma=state)
+        out_perturbed = block(typed_x_perturbed).m
+
+        # The PUBLIC tokens (indices 0 and 2) should remain exactly the same
+        self.assertTrue(torch.allclose(out_base[0, 0, :], out_perturbed[0, 0, :], atol=1e-5))
+        self.assertTrue(torch.allclose(out_base[0, 2, :], out_perturbed[0, 2, :], atol=1e-5))
+        # The SYSTEM token (index 1) should change
+        self.assertFalse(torch.allclose(out_base[0, 1, :], out_perturbed[0, 1, :], atol=1e-5))
 
 
 @unittest.skipUnless(HAS_TORCH, "torch required")
@@ -234,11 +269,14 @@ class TestResidualTaint(unittest.TestCase):
 
     def test_declassify_auth(self):
         from nsa.residual_taint import ResidualTaintTracker
+        from nsa.algebra import DeclassificationCapability
 
         tr = ResidualTaintTracker(torch.tensor([[4]]))
         with self.assertRaises(PermissionError):
-            tr.declassify([(0, 0)], StateLabel.PUBLIC, authorized=False)
-        tr.declassify([(0, 0)], StateLabel.PUBLIC, authorized=True)
+            tr.declassify([(0, 0)], StateLabel.PUBLIC)
+        
+        cap = DeclassificationCapability(reason="test", authorizer="admin")
+        tr.declassify([(0, 0)], StateLabel.PUBLIC, capability=cap)
         self.assertEqual(int(tr.levels[0, 0].item()), StateLabel.PUBLIC.value)
 
 
@@ -317,7 +355,7 @@ class TestNLRedTeamFirewall(unittest.TestCase):
         import sys
         from pathlib import Path
 
-        path = Path(__file__).resolve().parents[1] / "prototype" / "security" / "nl_redteam_suite.py"
+        path = Path(__file__).resolve().parents[1] / "eval" / "security_eval.py"
         spec = importlib.util.spec_from_file_location("nl_redteam_suite", path)
         mod = importlib.util.module_from_spec(spec)
         assert spec.loader is not None

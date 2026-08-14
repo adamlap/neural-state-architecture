@@ -42,6 +42,7 @@ import torch.nn.functional as F
 from nsa.algebra import StateLattice, DEFAULT_LATTICE
 from nsa.attention import StateAwareAttention
 from nsa.state import StateTransitionOperator, SemanticGate
+from nsa.types import TypedTensor
 
 
 # ---------------------------------------------------------------------------
@@ -211,28 +212,35 @@ class NSATransformerBlock(nn.Module):
 
     def forward(
         self,
-        x:     torch.Tensor,            # [B, T, d_model]
-        state: torch.Tensor,            # [B, T, state_dim]
+        typed_x: TypedTensor,
         mask:  Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> TypedTensor:
         """
         Returns
         -------
-        x'     : Tensor [B, T, d_model] — updated semantic stream
-        state' : Tensor [B, T, state_dim] — updated state stream
+        TypedTensor — updated semantic and state streams
         """
+        x, state = typed_x.m, typed_x.sigma
+
         # --- Attention ---
         x_norm          = self.attn_norm(x)
         attn_out, _     = self.attn(x_norm, state, mask=mask)
-        x               = x + attn_out                        # residual
+        
+        # Mathematically strict residual join: m' = m + attn, σ' = σ ⊔ σ_attn
+        # Attention output assumes the taint of its inputs (here we simplify to current state)
+        x_updated       = typed_x.join_with(TypedTensor(m=attn_out, sigma=state))
+        x, state        = x_updated.m, x_updated.sigma
 
         # --- State update (uses pre-residual meaning as conditioning) ---
         state           = self.state_update(state, x)
 
         # --- Gated FFN ---
-        x               = self.ffn(x, state)
+        ffn_out         = self.ffn(x, state)
+        
+        # Mathematically strict residual join: m'' = m' + ffn, σ'' = σ' ⊔ σ'_ffn
+        final_typed     = TypedTensor(m=x, sigma=state).join_with(TypedTensor(m=ffn_out, sigma=state))
 
-        return x, state
+        return final_typed
 
 
 # ---------------------------------------------------------------------------
@@ -301,12 +309,11 @@ class NSATransformer(nn.Module):
         tokens:     torch.Tensor,             # [B, T]  (token ids)
         state_init: Optional[torch.Tensor] = None,  # [B, T, state_dim] — optional override
         mask:       Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> TypedTensor:
         """
         Returns
         -------
-        x     : [B, T, d_model] — final semantic representations
-        state : [B, T, state_dim] — final state stream
+        TypedTensor — final semantic representations and state stream
         """
         B, T = tokens.shape
         pos  = torch.arange(T, device=tokens.device).unsqueeze(0)  # [1, T]
@@ -314,11 +321,14 @@ class NSATransformer(nn.Module):
         x     = self.drop(self.tok_emb(tokens) + self.pos_emb(pos))
         state = state_init if state_init is not None else self.state_emb(pos).expand(B, T, -1)
 
-        for block in self.blocks:
-            x, state = block(x, state, mask=mask)
+        typed_x = TypedTensor(m=x, sigma=state)
 
-        x = self.ln_f(x)
-        return x, state
+        for block in self.blocks:
+            typed_x = block(typed_x, mask=mask)
+
+        # Final LayerNorm applies only to semantic stream
+        final_x = self.ln_f(typed_x.m)
+        return TypedTensor(m=final_x, sigma=typed_x.sigma)
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +395,7 @@ class NSACausalLM(nn.Module):
         # Causal mask: [1, 1, T, T] (1 = allowed, 0 = masked)
         causal_mask = torch.tril(torch.ones(T, T, device=device)).unsqueeze(0).unsqueeze(0)
 
-        x, final_state = self.nsa(tokens, state_init=state_init, mask=causal_mask)
-        logits = self.lm_head(x)
-        return logits, x, final_state
+        typed_final = self.nsa(tokens, state_init=state_init, mask=causal_mask)
+        logits = self.lm_head(typed_final.m)
+        return logits, typed_final.m, typed_final.sigma
 

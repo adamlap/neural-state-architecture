@@ -163,6 +163,7 @@ To maintain scientific clarity, we define the exact scope and boundary of NSA se
 ### 7.2 Information Flow Limitations & Mitigations
 * **Residual Stream Accumulation**: While direct cross-attention between position $i$ and position $j$ is zeroed, representations at position $j$ can theoretically influence residual activations downstream if multi-layer FFNs intermix representations across tokens. *Mitigation*: NSA applies state-gated residual connections and FFN state normalization.
 * **Empirical Capacity Trade-off**: Constraining the attention manifold via compatibility mask $\mathbf{M}(\boldsymbol{\sigma})$ reduces the available degrees of freedom in self-attention. Empirically, this results in a small representational capacity trade-off ($\approx 1\text{--}3\%$ loss delta relative to an unconstrained Transformer), which is a deliberate design trade-off in exchange for hard algebraic guarantees.
+* **Soft Masking for Post-Hoc Retrofits**: Applying a rigid $-\infty$ hard mask to standard, natively unconstrained LLMs via post-hoc retrofitting causes severe out-of-distribution activation spikes, resulting in hallucination. Practical retrofitting deployments utilize a **Soft Mask Penalty** ($-\alpha \cdot \text{logsigmoid}(\delta / T)$) to smoothly dampen attention toward secrets without breaking semantic fluency. Natively trained NSA models do not suffer this limitation and fully support rigid mathematical masking.
 
 ---
 
@@ -180,6 +181,9 @@ To validate the theoretical guarantees of NSA, we implement a synthetic injectio
 | F — AlgPres+Value | $(m, \sigma_p, \nu)$ | **0.00%** | **Ultimate NSA**: Achieves both mathematical structural invariants and perfect behavioural refusal (0.00% hijack). |
 
 This demonstrates that NSA provides a robust substrate for alignment. While **Model E** guarantees that the structural path is secure (driving the attack success rate down to the random-guessing baseline), **Model F** proves that combining these structural invariants with a value-alignment behavioural objective fully eliminates the risk, achieving a perfect **0.00% hijack rate**.
+
+#### Independent Adversarial Probing
+To rigorously confirm that secret state vectors are information-theoretically erased from hidden states across the network, we provide the **Multi-Level Adversarial Probing Suite** (`prototype/security/multi_probe_bench.py`). This evaluates increasingly powerful adversaries—from linear logistic regressors to 4-layer residual MLPs and attention-based extractors—attempting to predict the classified token from the residual stream. Furthermore, the **Natural Language Redteam Suite** (`prototype/security/nl_redteam_suite.py`) provides AdvGLUE-style adversarial prompt evaluations for real-world injection resilience.
 
 ---
 

@@ -49,3 +49,6 @@ htmlcov/
 *.swo
 *~
 .DS_Store
+
+prototype/results/*
+.hypothesis/
