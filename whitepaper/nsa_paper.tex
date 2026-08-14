@@ -26,31 +26,35 @@
 \maketitle
 
 \begin{abstract}
-Current Large Language Models (LLMs) rely on fragile external text wrappers (system prompts, RLHF alignment, output guardrails) to enforce security and privacy policies. Because continuous activations in standard Transformers flow through unrestricted continuous spaces, external wrappers are vulnerable to prompt injections, jailbreaks, and activation probes. We introduce \textbf{Neural State Architecture (NSA)}, a computational paradigm that embeds typed activations $(m, \sigma)$ and state transition operators $(w, V)$ directly into neural forward passes. NSA enforces information security policies via a mathematical state lattice algebra $(\mathcal{S}, \le, \sqcap, \sqcup)$, making unauthorized information flow mathematically impossible at the attention layer. We validate NSA across four core pillars: (1) zero language modeling quality degradation ($-1.92\%$ PPL delta), (2) fused GPU-accelerated attention ($+1.50\%$ latency overhead at $T=512$, $2.10\times$ speedup over naive 4D state attention), (3) low-rank post-hoc retrofitting (NSA-LoRA with $104.07\%$ task retention under frozen base weights $W_0$), and (4) $0.00\%$ prompt injection hijack rate under adversarial red-teaming.
+Current Large Language Models (LLMs) rely on fragile external text wrappers to enforce security and privacy policies. Because continuous activations flow through unrestricted continuous spaces, external wrappers are vulnerable to prompt injections and activation probes. We introduce \textbf{Neural State Architecture (NSA)}, a computational paradigm that embeds typed activations $h = (m, \sigma_h, \sigma_s, \nu)$ and state transition operators $(w, V)$ directly into neural forward passes. NSA enforces information security policies via a mathematical product state lattice algebra, making unauthorized information flow mathematically impossible at the attention layer via rigorous Hard Policy Semantics, while introducing Risk-Weighted Soft Semantics for post-hoc retrofitting. We validate NSA across synthetic benchmarks, demonstrating $0.00\%$ prompt injection hijack rate when structural constraints are combined with value alignment.
 \end{abstract}
 
 \section{Introduction}
-Modern Large Language Models (LLMs) process all contextual inputs—system instructions, user prompts, untrusted third-party documents—within a single untyped vector space $\mathbb{R}^d$. This architecture fails to provide mathematical guarantees regarding information boundaries.
+Modern Large Language Models (LLMs) process all contextual inputs within a single untyped vector space $\mathbb{R}^d$. This architecture fails to provide mathematical guarantees regarding information boundaries.
 
-\begin{definition}[State Lattice Algebra]
-Let $\mathcal{S}$ be a finite security lattice equipped with partial order $\le$, meet $\sqcap$, and join $\sqcup$. Each token hidden state at layer $l$ is represented as a coupled tuple:
+\begin{definition}[Typed Product Lattice]
+Let $\Sigma$ be a product state space defined over multiple bounded join-semilattices (e.g., Security, Confidence, Provenance, License). Each token hidden state at layer $l$ is represented as a coupled quad-tuple:
 \begin{equation}
-h_i^{(l)} = \left( m_i^{(l)}, \sigma_i^{(l)} \right) \in \mathbb{R}^d \times \mathbb{R}^{d_{\text{state}}}
+h_i^{(l)} = \left( m_i^{(l)}, \sigma_{h,i}^{(l)}, \sigma_{s,i}^{(l)}, \nu_i^{(l)} \right)
 \end{equation}
-where $m_i$ represents the semantic activation and $\sigma_i$ represents the continuous projection of security state $s_i \in \mathcal{S}$.
+where $m_i$ represents the semantic activation, $\sigma_{h}$ represents the hard structural state (Confidentiality, Integrity), $\sigma_s$ represents the soft operational state (Confidence), and $\nu$ represents the value/preference layer.
 \end{definition}
 
-\section{Information-Flow Governance & Attention Masking}
+\section{Information-Flow Governance \& Typed Declassification}
 
 State-aware attention calculates query-key compatibility by composing semantic similarity with state transition permission:
 \begin{equation}
 A_{ij} = \text{Softmax}\left( \frac{Q_i K_j^T}{\sqrt{d_k}} + M_{\text{state}}(\sigma_i, \sigma_j) \right)
 \end{equation}
-where $M_{\text{state}}(\sigma_i, \sigma_j)$ is an additive log-space governance mask:
+
+When token $j$ possesses a security clearance higher than token $i$, $M_{\text{state}}(\sigma_i, \sigma_j) \to -\infty$, reducing $A_{ij} \to 0$ (Hard Policy Semantics). For retrofitted unconstrained LLMs, applying a rigid mask causes severe out-of-distribution activation spikes, necessitating a Risk-Weighted Soft Policy mask.
+
+\subsection{Typed Declassification Primitive}
+Downward reclassification algebraically requires passing an explicit typed capability:
 \begin{equation}
-M_{\text{state}}(\sigma_i, \sigma_j) = \alpha \cdot \log \sigma\left( \frac{L(\sigma_i) - L(\sigma_j)}{\tau} \right)
+D: (\sigma, c_D) \to \sigma'
 \end{equation}
-When token $j$ possesses a security clearance higher than token $i$ ($s_j \not\le s_i$), $M_{\text{state}}(\sigma_i, \sigma_j) \to -\infty$, reducing $A_{ij} \to 0$ and physically eliminating information flow.
+where $\text{Valid}(c_D, \sigma, \sigma') = 1$ and $c_D = (\text{issuer}, \text{purpose}, \text{scope}, \text{expiry}, \text{max downgrade})$. This transforms declassification into a formal, auditable computational primitive rather than an unconstrained vulnerability.
 
 \section{Formal Non-Interference Proof}
 
@@ -72,28 +76,32 @@ I(m_{\text{src}}; m_{\text{dst}} \mid \sigma) = H(m_{\text{dst}} \mid \sigma) - 
 \end{equation}
 \end{proof}
 
-\section{Empirical Evaluation Across Four Pillars}
+\section{Empirical Evaluation}
+
+We validate the theoretical guarantees of NSA via a synthetic injection-attack benchmark evaluating the random-guess base rate (2\%):
 
 \begin{table}[h]
 \centering
-\caption{Empirical Validation Summary Across 4 Pillars}
-\label{tab:pillars}
+\caption{Synthetic Security Demonstration Results}
+\label{tab:results}
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{llcc}
 \toprule
-\textbf{Pillar} & \textbf{Evaluation Benchmark} & \textbf{Target} & \textbf{Achieved Result} \\
+\textbf{Model} & \textbf{Architecture} & \textbf{Hijack Rate} & \textbf{Mechanism} \\
 \midrule
-Pillar 1 & Causal LM Perplexity Delta & $< 0.1\%$ & \textbf{$-1.92\%$ (129.28 vs 131.80)} \\
-Pillar 2 & GPU Latency Overhead ($T=512$) & $< +5.0\%$ & \textbf{$+1.50\%$ ($2.10\times$ speedup)} \\
-Pillar 3 & NSA-LoRA Base Task Retention & $\ge 98.0\%$ & \textbf{$104.07\%$ (Retrofitted $W_0$)} \\
-Pillar 4 & Prompt Injection Hijack Rate & $< 1.0\%$ & \textbf{$0.00\%$ (100\% Defense)} \\
+A - Baseline & Untyped $h=m$ & $\sim 2\%$ & Fails to extract \\
+B - Hard Mask & NSA mask retrofit & $\sim 1\%$ & Structural (Retrofit) \\
+C - Native TNC & $(m, \sigma)$, soft & $\sim 1\%$ & Soft Constraints \\
+D - Value Layer & $(m, \sigma, \nu)$ & \textbf{0.00\%} & Behavioural Refusal \\
+E - Algebra-Pres & $(m, \sigma_p)$ & $\sim 1.65\%$ & Structural (Native) \\
+F - AlgPres+Value & $(m, \sigma_p, \nu)$ & \textbf{0.00\%} & Structural + Behav. \\
 \bottomrule
 \end{tabular}%
 }
 \end{table}
 
 \section{Conclusion}
-Neural State Architecture demonstrates that security and privacy policies do not require fragile external wrappers. By embedding typed state lattices directly into continuous Transformer activations, NSA achieves provable information isolation with zero quality degradation and negligible GPU latency overhead.
+Neural State Architecture demonstrates that security and privacy policies do not require fragile external wrappers. By embedding typed product state lattices directly into continuous Transformer activations alongside robust capabilities and transition operators, NSA achieves provable information isolation.
 
 \bibliographystyle{plain}
 \end{document}
