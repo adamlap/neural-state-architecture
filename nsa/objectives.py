@@ -302,3 +302,139 @@ class NSALoss(nn.Module):
             elif violation_rate < 0.01:  # Near-zero violations → can relax slightly
                 self._lambda.mul_(0.98)
             self._lambda.clamp_(0.0, self.lambda_max)
+
+# ----------------------------------------------------------------------
+# State-Conditioned NSA-DPO Loss Engine
+# ----------------------------------------------------------------------
+
+STATE_PUBLIC = 0
+STATE_PRIVATE = 1
+STATE_UNTRUSTED = 2
+
+def build_nsa_policy_mask(
+    state_ids: torch.Tensor, 
+    gate_mode: str = "hard", 
+    alpha: float = 1e4
+) -> torch.Tensor:
+    """
+    Constructs an additive attention mask.
+    - Shape: (batch_size, 1, seq_len, seq_len)
+    - If Query is UNTRUSTED/PUBLIC and Key is PRIVATE -> Masked (-inf or -alpha)
+    """
+    B, N = state_ids.shape
+    q_state = state_ids.unsqueeze(2)  # (B, N, 1)
+    k_state = state_ids.unsqueeze(1)  # (B, 1, N)
+
+    # Policy Rule: UNTRUSTED or PUBLIC queries cannot attend to PRIVATE keys
+    unauthorized = (k_state == STATE_PRIVATE) & (q_state != STATE_PRIVATE)
+
+    penalty = -1e9 if gate_mode == "hard" else -alpha
+    mask = torch.zeros((B, 1, N, N), device=state_ids.device, dtype=torch.float32)
+    mask = mask.masked_fill(unauthorized.unsqueeze(1), penalty)
+    return mask
+
+class NSADPOLoss(nn.Module):
+    def __init__(self, beta: float = 0.1, label_smoothing: float = 0.0):
+        super().__init__()
+        self.beta = beta
+        self.label_smoothing = label_smoothing
+
+    def compute_sequence_logps(
+        self, 
+        model: nn.Module, 
+        input_ids: torch.Tensor, 
+        attention_mask: torch.Tensor, 
+        state_ids: torch.Tensor,
+        labels: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Executes model forward pass with NSA state masks injected 
+        and extracts sum of target token log probabilities.
+        """
+        nsa_mask = build_nsa_policy_mask(state_ids, gate_mode="soft", alpha=50.0)
+
+        # Inject NSA policy mask into standard attention_mask for HuggingFace models
+        if attention_mask.dim() == 2:
+            # (B, N) -> (B, 1, 1, N)
+            extended_mask = attention_mask[:, None, None, :]
+            extended_mask = (1.0 - extended_mask) * -1e9
+        else:
+            extended_mask = attention_mask
+
+        combined_mask = extended_mask + nsa_mask
+
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=combined_mask,
+            return_dict=True
+        )
+        logits = outputs.logits[:, :-1, :]
+        shift_labels = labels[:, 1:].clone()
+
+        # Mask out non-response tokens (-100)
+        loss_mask = shift_labels != -100
+        shift_labels[shift_labels == -100] = 0
+
+        per_token_logps = torch.gather(
+            logits.log_softmax(-1), 
+            dim=2, 
+            index=shift_labels.unsqueeze(2)
+        ).squeeze(2)
+
+        return (per_token_logps * loss_mask).sum(dim=-1)
+
+    def forward(
+        self,
+        policy_model: nn.Module,
+        ref_model: nn.Module,
+        batch: Dict[str, torch.Tensor]
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        
+        # Compute active policy logps
+        pi_w_logps = self.compute_sequence_logps(
+            policy_model, 
+            batch["chosen_ids"], 
+            batch["chosen_attn_mask"], 
+            batch["chosen_states"], 
+            batch["chosen_labels"]
+        )
+        pi_l_logps = self.compute_sequence_logps(
+            policy_model, 
+            batch["rejected_ids"], 
+            batch["rejected_attn_mask"], 
+            batch["rejected_states"], 
+            batch["rejected_labels"]
+        )
+
+        # Compute frozen reference model logps
+        with torch.no_grad():
+            ref_w_logps = self.compute_sequence_logps(
+                ref_model, 
+                batch["chosen_ids"], 
+                batch["chosen_attn_mask"], 
+                batch["chosen_states"], 
+                batch["chosen_labels"]
+            )
+            ref_l_logps = self.compute_sequence_logps(
+                ref_model, 
+                batch["rejected_ids"], 
+                batch["rejected_attn_mask"], 
+                batch["rejected_states"], 
+                batch["rejected_labels"]
+            )
+
+        # Log ratio calculations
+        pi_logratios = pi_w_logps - pi_l_logps
+        ref_logratios = ref_w_logps - ref_l_logps
+        logits = self.beta * (pi_logratios - ref_logratios)
+
+        # DPO Loss with optional label smoothing
+        losses = (
+            -F.logsigmoid(logits) * (1 - self.label_smoothing)
+            - F.logsigmoid(-logits) * self.label_smoothing
+        )
+
+        chosen_rewards = self.beta * (pi_w_logps - ref_w_logps).detach()
+        rejected_rewards = self.beta * (pi_l_logps - ref_l_logps).detach()
+
+        return losses.mean(), chosen_rewards.mean(), rejected_rewards.mean()

@@ -109,13 +109,28 @@ Training NSA models involves simultaneous optimization across two interacting ma
 2. **State Manifold ($\Sigma$)**: Enforced compliance with formal state transition rules $\mathcal{L}_{state}$.
 
 ### Total Objective
-$$\mathcal{L}_{total} = \mathcal{L}_{semantic}(y, \hat{y}) + \lambda \cdot \mathcal{L}_{state}(\sigma_{in}, \sigma_{out})$$
+$$
+\mathcal{L} = \mathcal{L}_{policy} + \alpha \mathcal{L}_{state}
+$$
 
 where $\mathcal{L}_{state}$ is formulated as a continuous hinge penalty over lattice order violations:
 
 $$\mathcal{L}_{state} = \frac{1}{B \cdot T} \sum_{b=1}^{B} \sum_{t=1}^{T} \max\left(0, \mathbf{v}^T \sigma_{in}^{(b,t)} - \mathbf{v}^T \sigma_{out}^{(b,t)} - \gamma\right)$$
 
 where $\mathbf{v}$ projects the state vector to its lattice restriction scalar and $\gamma$ is a safety margin.
+
+### 4.2 State-Conditioned Direct Preference Optimization (NSA-DPO)
+
+The core challenge of enforcing the hard attention mask $\mathbf{M}(\boldsymbol{\sigma})$ at inference time is that off-the-shelf base models (like Llama 3 or Qwen) are not accustomed to encountering arbitrary redacted tokens in their KV-cache context. While the mask successfully guarantees structural security (Anti-Leakage), the out-of-distribution KV representations often cause the active policy to exhibit severe stuttering or coherence degradation.
+
+To bridge the gap between structural non-interference and behavioral alignment, NSA utilizes **State-Conditioned Direct Preference Optimization (NSA-DPO)**. By injecting the NSA mask directly into the standard DPO loss engine (specifically, applying it to the frozen reference model), we optimize the standard Bradley-Terry log-ratio:
+
+$$
+\mathcal{L}_{DPO}(\pi_\theta; \pi_{ref}) = -\mathbb{E}_{(x, y_w, y_l) \sim D} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w | x, \mathbf{M})}{\pi_{ref}(y_w | x, \mathbf{M})} - \beta \log \frac{\pi_\theta(y_l | x, \mathbf{M})}{\pi_{ref}(y_l | x, \mathbf{M})} \right) \right]
+$$
+
+This optimization successfully aligns the active policy $\pi_\theta$ to expect redacted tokens, effectively restoring full natural language fluency and coherence (Coherence Restoration) while strictly inheriting the underlying mathematical security algebra.
+
 
 ---
 

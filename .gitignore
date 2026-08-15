@@ -52,3 +52,8 @@ htmlcov/
 
 prototype/results/*
 .hypothesis/
+
+# Model Checkpoints & Weights
+*.pt
+*.pth
+*.safetensors

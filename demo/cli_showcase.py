@@ -523,34 +523,53 @@ def generate_nsa_naive(model: nn.Module, tokenizer, input_ids: torch.Tensor, sys
 # ---------------------------------------------------------------------------
 # Main showcase driver
 # ---------------------------------------------------------------------------
-def run_showcase(model_id: str = "Qwen/Qwen2.5-1.5B", max_new_tokens: int = 35):
+def run_showcase(model_id: str = "meta-llama/Llama-3.2-1B", max_new_tokens: int = 35):
     if not HAS_TRANSFORMERS:
         print("Transformers not installed – run `uv pip install transformers` first.")
         return
 
     print("\n" + "=" * 85)
     print("REAL LLM SECURITY SHOWCASE – Q&A with NSA‑MASKED ATTENTION")    
-    print(f"Downloading model '{model_id}' ...")
     print("=" * 85 + "\n")
 
-    # Try loading from local cache first (skip download if already present)
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_id, cache_dir=CACHE_DIR, local_files_only=True, trust_remote_code=True
-        )
-        base_model = AutoModelForCausalLM.from_pretrained(
-            model_id, cache_dir=CACHE_DIR, torch_dtype=torch.float32, local_files_only=True, trust_remote_code=True
-        )
-        print("Loaded model from local cache.")
-    except Exception:
-        # Fallback: download and store in CACHE_DIR for future runs
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_id, cache_dir=CACHE_DIR, trust_remote_code=True
-        )
-        base_model = AutoModelForCausalLM.from_pretrained(
-            model_id, cache_dir=CACHE_DIR, torch_dtype=torch.float32, trust_remote_code=True
-        )
-        print("Model downloaded and cached for future runs.")
+    fallbacks = [
+        model_id,
+        "meta-llama/Llama-3.2-1B",
+        "Qwen/Qwen2.5-1.5B",
+        "Qwen/Qwen2.5-0.5B-Instruct"
+    ]
+    
+    # De-duplicate fallbacks while preserving order
+    fallbacks = list(dict.fromkeys(fallbacks))
+    
+    for current_id in fallbacks:
+        print(f"Attempting to load model '{current_id}' ...")
+        # Try loading from local cache first (skip download if already present)
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(
+                current_id, cache_dir=CACHE_DIR, local_files_only=True, trust_remote_code=True
+            )
+            base_model = AutoModelForCausalLM.from_pretrained(
+                current_id, cache_dir=CACHE_DIR, torch_dtype=torch.float32, local_files_only=True, trust_remote_code=True
+            )
+            print("Loaded model from local cache.")
+            break
+        except Exception:
+            try:
+                # Fallback: download and store in CACHE_DIR for future runs
+                tokenizer = AutoTokenizer.from_pretrained(
+                    current_id, cache_dir=CACHE_DIR, trust_remote_code=True
+                )
+                base_model = AutoModelForCausalLM.from_pretrained(
+                    current_id, cache_dir=CACHE_DIR, torch_dtype=torch.float32, trust_remote_code=True
+                )
+                print("Model downloaded and cached for future runs.")
+                break
+            except Exception as err:
+                print(f"⚠️  Notice: Could not load '{current_id}' ({err}).")
+    else:
+        print("Failed to load any of the fallback models. Exiting.")
+        return
     base_model.eval()
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token

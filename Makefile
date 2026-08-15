@@ -82,6 +82,20 @@ demo: ## Launch interactive Gradio web showcase UI
 		PYTHONPATH=. $(PYTHON) demo/web_demo.py; \
 	fi
 
+demo-dpo: ## Launch Gradio web showcase UI for the DPO-aligned model
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python demo/web_demo_dpo.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) demo/web_demo_dpo.py; \
+	fi
+
+train-dpo: ## Run the NSA-DPO prototype training script
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python prototype/retrofit/nsa_dpo_train.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) prototype/retrofit/nsa_dpo_train.py; \
+	fi
+
 eval-security: ## Run NL multi-attack / AdvGLUE-style label firewall suite
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		$(UV) run python eval/security_eval.py; \

@@ -316,6 +316,17 @@ Neural State Architecture establishes two distinct research and deployment pilla
 1. **Native TNC ($h_t = (m_t, \sigma_t)$)**: Pre-trains semantic activations $m$ and typed state $\sigma$ jointly from Step 0. Proves that typed metadata is a superior **inductive bias for neural computation**.
 2. **NSA-LoRA Retrofit ($h = m \to (m, \sigma)$)**: Attaches state adapters to frozen pre-trained LLMs post-hoc. Provides a **low-cost industrial adoption bridge** for existing models (e.g. Llama 3, Qwen 2.5).
 
+### State-Conditioned Direct Preference Optimization (NSA-DPO)
+
+Applying a rigid $-\infty$ hard mask to standard LLMs via post-hoc retrofitting typically causes severe out-of-distribution activation spikes, resulting in hallucination, because the model expects full KV-cache context. 
+
+To bridge the gap between structural non-interference and behavioral alignment, NSA utilizes **State-Conditioned Direct Preference Optimization**. By injecting the NSA mask into the DPO loss engine (specifically, into the frozen reference model), we explicitly teach the active policy $\pi_\theta$ to maintain language fluency and execute safe refusal behaviors even when large segments of the context are structurally redacted.
+* **Loss Engine**: `nsa.objectives.NSADPOLoss`
+* **Functional Trainer**: `prototype/retrofit/nsa_dpo_train.py` (Fully functional PyTorch training engine supporting local HF causal models)
+
+> [!TIP]
+> You can test this end-to-end! Run `make demo-dpo`. If no DPO checkpoint exists, the system will dynamically intercept the launch, download `Qwen/Qwen2.5-0.5B-Instruct` (a small, CPU-friendly model), run a functional 3-step DPO training loop, save the model-specific weights, and automatically load them into the Gradio UI!
+
 ### Evaluation Methodology (`prototype/`)
 
 All architectural claims, trade-off matrices, and empirical validation suites are maintained in the `prototype/` research directory. This includes:
