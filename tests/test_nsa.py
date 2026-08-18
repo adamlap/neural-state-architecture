@@ -7,15 +7,15 @@ Unit test suite for Neural State Architecture (NSA) components.
 import unittest
 
 from nsa.algebra import (
-    StateLabel,
-    StateLattice,
-    ConservationLaw,
     DEFAULT_LATTICE,
+    ConservationLaw,
+    StateLabel,
 )
 
 try:
     import torch
-    import torch.nn as nn
+    from torch import nn
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -55,7 +55,7 @@ class TestStateAlgebra(unittest.TestCase):
             from_label=StateLabel.PRIVATE,
             to_label=StateLabel.PUBLIC,
             allowed=False,
-            penalty_weight=2.5
+            penalty_weight=2.5,
         )
         self.assertTrue(law.is_violated(StateLabel.PRIVATE, StateLabel.PUBLIC))
         self.assertFalse(law.is_violated(StateLabel.PUBLIC, StateLabel.PRIVATE))
@@ -63,8 +63,19 @@ class TestStateAlgebra(unittest.TestCase):
     def test_product_state_vector(self):
         """Verify Product State Vector component-wise algebra."""
         from nsa.algebra import ProductStateVector
-        sv1 = ProductStateVector(confidentiality=StateLabel.PUBLIC, confidence=0.9, provenance=frozenset({"1"}), license_tier=1)
-        sv2 = ProductStateVector(confidentiality=StateLabel.PRIVATE, confidence=0.7, provenance=frozenset({"2"}), license_tier=2)
+
+        sv1 = ProductStateVector(
+            confidentiality=StateLabel.PUBLIC,
+            confidence=0.9,
+            provenance=frozenset({"1"}),
+            license_tier=1,
+        )
+        sv2 = ProductStateVector(
+            confidentiality=StateLabel.PRIVATE,
+            confidence=0.7,
+            provenance=frozenset({"2"}),
+            license_tier=2,
+        )
 
         joined = sv1.join_product(sv2)
         self.assertEqual(joined.confidentiality, StateLabel.PRIVATE)
@@ -79,7 +90,8 @@ class TestStateAlgebra(unittest.TestCase):
 
     def test_product_lattice(self):
         """Verify Product Lattice compatibility mask generation."""
-        from nsa.algebra import ProductStateVector, ProductLattice
+        from nsa.algebra import ProductLattice, ProductStateVector
+
         lattice = ProductLattice()
         q1 = ProductStateVector(confidentiality=StateLabel.SYSTEM, license_tier=3)
         k1 = ProductStateVector(confidentiality=StateLabel.UNTRUSTED, license_tier=0)
@@ -89,12 +101,15 @@ class TestStateAlgebra(unittest.TestCase):
     def test_bitpacking_roundtrip(self):
         """Verify state vector tensor bitpacking and unpacking compression roundtrip."""
         from nsa.algebra import bitpack_states, unpack_states
+
         if HAS_TORCH:
-            states = torch.tensor([[[4.0, 3.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0]]], dtype=torch.float32)
+            states = torch.tensor(
+                [[[4.0, 3.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0]]], dtype=torch.float32
+            )
             packed = bitpack_states(states)
             self.assertEqual(packed.dtype, torch.uint8)
             self.assertEqual(packed.shape, (1, 2))
-            
+
             unpacked = unpack_states(packed, state_dim=4)
             self.assertEqual(unpacked.shape, (1, 2, 4))
             self.assertEqual(unpacked[0, 0, 0].item(), 4.0)
@@ -109,6 +124,7 @@ class TestStatePrimitives(unittest.TestCase):
     def test_state_vector_creation(self):
         """Verify state vector initialization."""
         from nsa.state import StateVector
+
         sv = StateVector(state_dim=8, mode="discrete", init_label=StateLabel.PRIVATE)
         self.assertEqual(sv.state_dim, 8)
         self.assertEqual(sv.most_likely_label(), StateLabel.PRIVATE)
@@ -116,6 +132,7 @@ class TestStatePrimitives(unittest.TestCase):
     def test_transition_operator(self):
         """Verify state transition operator matrix dimensions."""
         from nsa.state import StateTransitionOperator
+
         op = StateTransitionOperator(state_dim=8)
         self.assertEqual(op.state_dim, 8)
         self.assertEqual(op.V.shape, (8, 8))
@@ -142,6 +159,7 @@ class TestUtils(unittest.TestCase):
     def test_format_layer_state_flow(self):
         """Test layer state flow inspection formatting."""
         from nsa.utils import format_layer_state_flow
+
         levels = torch.tensor([5.0, 1.0, 0.0])
         summary = format_layer_state_flow(0, ["SYSTEM", "PUBLIC", "UNTRUSTED"], levels)
         self.assertIn("Layer 0", summary)
@@ -155,6 +173,7 @@ class TestNSACausalLM(unittest.TestCase):
     def test_causal_lm_forward(self):
         """Verify NSACausalLM forward output tensor shapes."""
         from nsa.layers import NSACausalLM
+
         model = NSACausalLM(vocab_size=100, d_model=32, state_dim=4, num_layers=2, num_heads=4)
         tokens = torch.randint(0, 100, (2, 16))
         states = torch.randn(2, 16, 4)
@@ -172,6 +191,7 @@ class TestFusedStateAwareAttention(unittest.TestCase):
     def test_fused_attention_forward(self):
         """Verify FusedStateAwareAttention output shape and state preservation."""
         from nsa.fused_attention import FusedStateAwareAttention
+
         attn = FusedStateAwareAttention(d_model=32, state_dim=4, num_heads=4, gate_mode="soft")
         x = torch.randn(2, 16, 32)
         state = torch.randn(2, 16, 4)
@@ -189,6 +209,7 @@ class TestNSALoRA(unittest.TestCase):
     def test_lora_linear_forward(self):
         """Verify NSALoRALinear output shape and parameter freezing."""
         from nsa.lora import NSALoRALinear
+
         base_layer = nn.Linear(32, 64)
         adapter = NSALoRALinear(base_layer, r=4)
 
@@ -212,6 +233,7 @@ class TestNSAEcosystem(unittest.TestCase):
     def test_triton_fused_attention_module(self):
         """Verify FusedTritonStateAttention forward pass and shapes."""
         from nsa.triton_kernel import FusedTritonStateAttention
+
         attn = FusedTritonStateAttention(d_model=32, state_dim=4, num_heads=4)
         x = torch.randn(2, 16, 32)
         state = torch.randn(2, 16, 4)
@@ -222,6 +244,7 @@ class TestNSAEcosystem(unittest.TestCase):
     def test_hf_causal_lm_integration(self):
         """Verify NSAForCausalLM HuggingFace interface output dict."""
         from nsa.hf_integration import NSAConfig, NSAForCausalLM
+
         config = NSAConfig(vocab_size=64, d_model=32, state_dim=4, num_layers=2, num_heads=4)
         hf_model = NSAForCausalLM(config)
         input_ids = torch.randint(0, 64, (2, 16))
@@ -234,6 +257,7 @@ class TestNSAEcosystem(unittest.TestCase):
     def test_kv_cache_state_tracking(self):
         """Verify NSAKVCache update and state tracking behavior."""
         from nsa.kv_cache import NSAKVCache
+
         cache = NSAKVCache(batch_size=2, max_seq_len=32, num_heads=4, d_head=8, state_dim=4)
         k_new = torch.randn(2, 4, 4, 8)
         v_new = torch.randn(2, 4, 4, 8)

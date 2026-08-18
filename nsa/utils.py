@@ -10,23 +10,24 @@ from typing import Dict, List, Optional
 
 try:
     import torch
-    import torch.nn as nn
+    from torch import nn
+
     HAS_TORCH = True
 except ImportError:
     torch = None
     nn = None
     HAS_TORCH = False
 
-from nsa.algebra import StateLabel, StateLattice, DEFAULT_LATTICE
-
+from nsa.algebra import DEFAULT_LATTICE, StateLabel, StateLattice
 
 # ---------------------------------------------------------------------------
 # Model introspection
 # ---------------------------------------------------------------------------
 
+
 def count_parameters(model: nn.Module) -> Dict[str, int]:
     """Return parameter counts split by semantic vs. state streams."""
-    total     = sum(p.numel() for p in model.parameters())
+    total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     state_params = sum(
@@ -36,10 +37,10 @@ def count_parameters(model: nn.Module) -> Dict[str, int]:
     )
 
     return {
-        "total":     total,
+        "total": total,
         "trainable": trainable,
-        "state":     state_params,
-        "semantic":  trainable - state_params,
+        "state": state_params,
+        "semantic": trainable - state_params,
     }
 
 
@@ -52,7 +53,7 @@ def print_model_summary(model: nn.Module) -> None:
     print(f"  Trainable         : {counts['trainable']:>10,}")
     print(f"  Semantic stream   : {counts['semantic']:>10,}")
     print(f"  State stream      : {counts['state']:>10,}")
-    pct = 100 * counts['state'] / max(counts['trainable'], 1)
+    pct = 100 * counts["state"] / max(counts["trainable"], 1)
     print(f"  State overhead    : {pct:>9.1f}%")
     print("=" * 50)
 
@@ -61,9 +62,10 @@ def print_model_summary(model: nn.Module) -> None:
 # State visualisation
 # ---------------------------------------------------------------------------
 
+
 def state_level_heatmap(
-    states: torch.Tensor,        # [B, T, state_dim]
-    level_proj: nn.Linear,       # the level projection from StateConstraintLoss
+    states: torch.Tensor,  # [B, T, state_dim]
+    level_proj: nn.Linear,  # the level projection from StateConstraintLoss
     tokens: Optional[List[str]] = None,
 ) -> None:
     """Print an ASCII heatmap of per-token state levels.
@@ -72,17 +74,17 @@ def state_level_heatmap(
     during inference.
     """
     with torch.no_grad():
-        levels = level_proj(states).squeeze(-1)   # [B, T]
+        levels = level_proj(states).squeeze(-1)  # [B, T]
         B, T = levels.shape
-        for b in range(min(B, 3)):   # show up to 3 samples
+        for b in range(min(B, 3)):  # show up to 3 samples
             print(f"\nSample {b} state levels:")
             row = ""
             for t in range(T):
                 v = levels[b, t].item()
                 # Map level to a shade character
                 shade = "░▒▓█"[min(3, max(0, int(v * 2)))]
-                tok   = (tokens[t] if tokens and t < len(tokens) else str(t))
-                row  += f"[{shade}{tok[:4]:4s}]"
+                tok = tokens[t] if tokens and t < len(tokens) else str(t)
+                row += f"[{shade}{tok[:4]:4s}]"
             print(row)
 
 
@@ -95,7 +97,7 @@ def format_layer_state_flow(
     layer_idx: int,
     prompt_tokens: List[str],
     state_levels: torch.Tensor,
-    gated_attn_weights: Optional[torch.Tensor] = None
+    gated_attn_weights: Optional[torch.Tensor] = None,
 ) -> str:
     """Format an inspection summary of state levels and gating at a given layer depth.
 
@@ -122,12 +124,13 @@ def format_layer_state_flow(
 # Generating synthetic data (for toy experiments)
 # ---------------------------------------------------------------------------
 
+
 def make_privacy_dataset(
-    n_samples:    int   = 1000,
-    seq_len:      int   = 32,
-    vocab_size:   int   = 64,
+    n_samples: int = 1000,
+    seq_len: int = 32,
+    vocab_size: int = 64,
     private_frac: float = 0.3,
-    device:       str   = "cpu",
+    device: str = "cpu",
 ):
     """Generate a synthetic token dataset with PUBLIC/PRIVATE labels.
 
@@ -140,7 +143,7 @@ def make_privacy_dataset(
     """
     tokens = torch.randint(0, vocab_size, (n_samples, seq_len), device=device)
     # Assign PRIVATE label (4) to a fraction of tokens at random
-    private_mask = (torch.rand(n_samples, seq_len, device=device) < private_frac)
+    private_mask = torch.rand(n_samples, seq_len, device=device) < private_frac
     state_labels = torch.where(
         private_mask,
         torch.full_like(tokens, StateLabel.PRIVATE.value),
@@ -152,9 +155,9 @@ def make_privacy_dataset(
 
 
 def state_labels_to_vectors(
-    labels: torch.Tensor,   # [B, T] — integer state labels
+    labels: torch.Tensor,  # [B, T] — integer state labels
     state_dim: int = 8,
-    n_labels:  int = len(StateLabel),
+    n_labels: int = len(StateLabel),
     noise: float = 0.0,
 ) -> torch.Tensor:
     """Convert discrete state labels to continuous state vectors.
@@ -179,7 +182,7 @@ def state_labels_to_vectors(
         one_hot = torch.zeros(B, T, n_oh, device=device, dtype=torch.float32)
         clamped = labels.clamp(0, n_oh - 1).unsqueeze(-1)
         one_hot.scatter_(-1, clamped, 1.0)
-        out[..., 1:1 + n_oh] = one_hot
+        out[..., 1 : 1 + n_oh] = one_hot
     if noise > 0.0 and state_dim > 1:
         # Never perturb the hard security coordinate
         out[..., 1:] = out[..., 1:] + torch.randn_like(out[..., 1:]) * noise

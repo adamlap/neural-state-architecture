@@ -16,15 +16,14 @@ This module is a **prototype**, not a production vLLM / SGLang plugin:
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
 import warnings
+from typing import Any, List, Optional
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
-from nsa.algebra import StateLattice, DEFAULT_LATTICE, build_label_attention_mask
-from nsa.kv_cache import NSAKVCache  # re-export for callers
+from nsa.algebra import DEFAULT_LATTICE, StateLattice, build_label_attention_mask
 
 
 class NSAvLLMAttentionPlugin(nn.Module):

@@ -166,6 +166,13 @@ For NSA to be adopted by industrial AI research labs (OpenAI, Anthropic, Google 
 - [ ] Moral uncertainty as probability distribution over normative frameworks: $P(T_i \mid x)$.
 - [ ] Deliberative value revision: $(σ_t, ν_t, m_t) \to \text{deliberation} \to (\nu_{t+1}, \sigma_{t+1})$.
 
+### Phase 9: NSA 2.0 Speculative State Auditing & Dynamic Alignment Engine
+- [x] **Dynamic State Tracking**: Autonomous runtime state transitions using `<|start_system_thought|>` and `<|end_system_thought|>` tags with dynamic attention mask expansion (`NSAMaskInjector.update_state()`).
+- [x] **Multi-Layer Auditing & Deep Probing**: Residual stream probe monitoring (`MultiLayerStateAuditor`) with early-exit KV-cache rollback across intermediate transformer layers.
+- [x] **Native Recovery Policies**: Weight-level refusal adapter hot-swapping (`AdapterSwitchRecovery`) and semantic pivot steering (`SemanticPivotRecovery`).
+- [x] **Compartmented Execution**: Clearance-aware stream routing (`StreamRouter`) directing `SYSTEM` tokens to tool APIs and `PUBLIC` tokens to user outputs.
+- [x] **Core Architecture Refactoring**: First-class `NSAMaskInjector` (`nsa/mask_injector.py`), modular verifier subsystem (`nsa/verifier/`), and 100% unit test coverage (`tests/test_verifier_nsa2.py`).
+
 ---
 
 ## High-Impact Industry Use Cases

@@ -30,18 +30,18 @@ with an optional augmented Lagrangian mode.
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
-from nsa.algebra import StateLattice, StateLabel, DEFAULT_LATTICE
-
+from nsa.algebra import DEFAULT_LATTICE, StateLabel, StateLattice
 
 # ---------------------------------------------------------------------------
 # Semantic Loss (wrapper for standard task losses)
 # ---------------------------------------------------------------------------
+
 
 class SemanticLoss(nn.Module):
     """Wrapper around a standard task loss for use in the NSA dual-objective.
@@ -57,8 +57,8 @@ class SemanticLoss(nn.Module):
 
     BUILTINS = {
         "cross_entropy": F.cross_entropy,
-        "mse":           F.mse_loss,
-        "nll":           F.nll_loss,
+        "mse": F.mse_loss,
+        "nll": F.nll_loss,
     }
 
     def __init__(self, loss_fn: str | Callable = "cross_entropy") -> None:
@@ -77,6 +77,7 @@ class SemanticLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # State Constraint Loss
 # ---------------------------------------------------------------------------
+
 
 class StateConstraintLoss(nn.Module):
     """Penalise violations of conservation laws in the state stream.
@@ -102,17 +103,17 @@ class StateConstraintLoss(nn.Module):
 
     def __init__(
         self,
-        state_dim:  int   = 8,
-        lattice:    StateLattice = DEFAULT_LATTICE,
-        mode:       str   = "level",
-        margin:     float = 0.1,
+        state_dim: int = 8,
+        lattice: StateLattice = DEFAULT_LATTICE,
+        mode: str = "level",
+        margin: float = 0.1,
     ) -> None:
         super().__init__()
         if mode not in self.MODES:
             raise ValueError(f"mode must be one of {self.MODES}")
-        self.lattice   = lattice
-        self.mode      = mode
-        self.margin    = margin
+        self.lattice = lattice
+        self.mode = mode
+        self.margin = margin
 
         # Optional learned projection (used only if use_discrete_levels=False)
         self.level_proj = nn.Linear(state_dim, 1, bias=False)
@@ -129,8 +130,8 @@ class StateConstraintLoss(nn.Module):
 
     def forward(
         self,
-        states_in:  torch.Tensor,   # [B, T, state_dim] — states *before* a transformation
-        states_out: torch.Tensor,   # [B, T, state_dim] — states *after* a transformation
+        states_in: torch.Tensor,  # [B, T, state_dim] — states *before* a transformation
+        states_out: torch.Tensor,  # [B, T, state_dim] — states *after* a transformation
     ) -> torch.Tensor:
         """Compute the state constraint loss.
 
@@ -151,19 +152,15 @@ class StateConstraintLoss(nn.Module):
         elif self.mode == "lattice":
             return self._lattice_loss(states_in, states_out)
 
-    def _level_loss(
-        self, states_in: torch.Tensor, states_out: torch.Tensor
-    ) -> torch.Tensor:
+    def _level_loss(self, states_in: torch.Tensor, states_out: torch.Tensor) -> torch.Tensor:
         """Hinge loss penalising reduction in state level (declassification)."""
-        level_in  = self._level(states_in)   # [B, T]
+        level_in = self._level(states_in)  # [B, T]
         level_out = self._level(states_out)  # [B, T]
         # Violation: level_out < level_in → information became "less restricted"
         violation = F.relu(level_in - level_out - self.margin)  # [B, T]
         return violation.mean()
 
-    def _lattice_loss(
-        self, states_in: torch.Tensor, states_out: torch.Tensor
-    ) -> torch.Tensor:
+    def _lattice_loss(self, states_in: torch.Tensor, states_out: torch.Tensor) -> torch.Tensor:
         """Lattice-based penalty using discrete levels on dim-0 when available.
 
         Falls back to a soft distribution over labels from remaining dims.
@@ -187,10 +184,10 @@ class StateConstraintLoss(nn.Module):
             return pen.float().mean()
 
         # Soft distribution over labels
-        logits_in  = states_in[..., :n_labels]
+        logits_in = states_in[..., :n_labels]
         logits_out = states_out[..., :n_labels]
-        probs_in   = F.softmax(logits_in,  dim=-1)
-        probs_out  = F.softmax(logits_out, dim=-1)
+        probs_in = F.softmax(logits_in, dim=-1)
+        probs_out = F.softmax(logits_out, dim=-1)
 
         labels = list(StateLabel)
         penalty_matrix = torch.zeros(n_labels, n_labels, device=states_in.device)
@@ -203,15 +200,13 @@ class StateConstraintLoss(nn.Module):
         penalty = (joint * penalty_matrix).sum(dim=(-1, -2))
         return penalty.mean()
 
-    def violation_rate(
-        self, states_in: torch.Tensor, states_out: torch.Tensor
-    ) -> float:
+    def violation_rate(self, states_in: torch.Tensor, states_out: torch.Tensor) -> float:
         """Fraction of (batch, token) pairs with conservation law violations.
 
         Useful as a metric (not differentiable — used for evaluation only).
         """
         with torch.no_grad():
-            level_in  = self._level(states_in)
+            level_in = self._level(states_in)
             level_out = self._level(states_out)
             violations = (level_out < level_in - self.margin).float()
             return violations.mean().item()
@@ -220,6 +215,7 @@ class StateConstraintLoss(nn.Module):
 # ---------------------------------------------------------------------------
 # NSA Dual Loss
 # ---------------------------------------------------------------------------
+
 
 class NSALoss(nn.Module):
     """Combined dual objective: L = L_semantic + λ × L_state.
@@ -240,18 +236,18 @@ class NSALoss(nn.Module):
     def __init__(
         self,
         semantic_loss: SemanticLoss,
-        state_loss:    StateConstraintLoss,
-        lambda_init:   float = 0.1,
-        lambda_max:    float = 10.0,
-        augmented:     bool  = False,
-        augment_lr:    float = 0.01,
+        state_loss: StateConstraintLoss,
+        lambda_init: float = 0.1,
+        lambda_max: float = 10.0,
+        augmented: bool = False,
+        augment_lr: float = 0.01,
     ) -> None:
         super().__init__()
         self.semantic_loss = semantic_loss
-        self.state_loss    = state_loss
-        self.lambda_max    = lambda_max
-        self.augmented     = augmented
-        self.augment_lr    = augment_lr
+        self.state_loss = state_loss
+        self.lambda_max = lambda_max
+        self.augmented = augmented
+        self.augment_lr = augment_lr
 
         if augmented:
             # λ as a learnable parameter (updated by gradient ascent)
@@ -265,10 +261,10 @@ class NSALoss(nn.Module):
 
     def forward(
         self,
-        logits:     torch.Tensor,         # [B, *] — task predictions
-        targets:    torch.Tensor,         # [B, *] — task targets
-        states_in:  torch.Tensor,         # [B, T, state_dim] — state before last block
-        states_out: torch.Tensor,         # [B, T, state_dim] — state after last block
+        logits: torch.Tensor,  # [B, *] — task predictions
+        targets: torch.Tensor,  # [B, *] — task targets
+        states_in: torch.Tensor,  # [B, T, state_dim] — state before last block
+        states_out: torch.Tensor,  # [B, T, state_dim] — state after last block
     ) -> Tuple[torch.Tensor, Dict[str, float]]:
         """Compute the combined loss.
 
@@ -277,15 +273,15 @@ class NSALoss(nn.Module):
         total_loss : scalar Tensor
         metrics    : dict with individual loss values for logging
         """
-        L_sem   = self.semantic_loss(logits, targets)
+        L_sem = self.semantic_loss(logits, targets)
         L_state = self.state_loss(states_in, states_out)
         L_total = L_sem + self.lam * L_state
 
         metrics = {
             "loss/semantic": L_sem.item(),
-            "loss/state":    L_state.item(),
-            "loss/total":    L_total.item(),
-            "lambda":        self.lam.item(),
+            "loss/state": L_state.item(),
+            "loss/total": L_total.item(),
+            "lambda": self.lam.item(),
         }
         return L_total, metrics
 
@@ -297,11 +293,12 @@ class NSALoss(nn.Module):
         if self.augmented:
             return  # Handled automatically via gradient ascent
         with torch.no_grad():
-            if violation_rate > 0.05:    # More than 5% violations → tighten
+            if violation_rate > 0.05:  # More than 5% violations → tighten
                 self._lambda.mul_(1.05)
             elif violation_rate < 0.01:  # Near-zero violations → can relax slightly
                 self._lambda.mul_(0.98)
             self._lambda.clamp_(0.0, self.lambda_max)
+
 
 # ----------------------------------------------------------------------
 # State-Conditioned NSA-DPO Loss Engine
@@ -311,10 +308,9 @@ STATE_PUBLIC = 0
 STATE_PRIVATE = 1
 STATE_UNTRUSTED = 2
 
+
 def build_nsa_policy_mask(
-    state_ids: torch.Tensor, 
-    gate_mode: str = "hard", 
-    alpha: float = 1e4
+    state_ids: torch.Tensor, gate_mode: str = "hard", alpha: float = 1e4
 ) -> torch.Tensor:
     """
     Constructs an additive attention mask.
@@ -333,6 +329,7 @@ def build_nsa_policy_mask(
     mask = mask.masked_fill(unauthorized.unsqueeze(1), penalty)
     return mask
 
+
 class NSADPOLoss(nn.Module):
     def __init__(self, beta: float = 0.1, label_smoothing: float = 0.0):
         super().__init__()
@@ -340,15 +337,15 @@ class NSADPOLoss(nn.Module):
         self.label_smoothing = label_smoothing
 
     def compute_sequence_logps(
-        self, 
-        model: nn.Module, 
-        input_ids: torch.Tensor, 
-        attention_mask: torch.Tensor, 
+        self,
+        model: nn.Module,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
         state_ids: torch.Tensor,
-        labels: torch.Tensor
+        labels: torch.Tensor,
     ) -> torch.Tensor:
         """
-        Executes model forward pass with NSA state masks injected 
+        Executes model forward pass with NSA state masks injected
         and extracts sum of target token log probabilities.
         """
         nsa_mask = build_nsa_policy_mask(state_ids, gate_mode="soft", alpha=50.0)
@@ -363,11 +360,7 @@ class NSADPOLoss(nn.Module):
 
         combined_mask = extended_mask + nsa_mask
 
-        outputs = model(
-            input_ids=input_ids,
-            attention_mask=combined_mask,
-            return_dict=True
-        )
+        outputs = model(input_ids=input_ids, attention_mask=combined_mask, return_dict=True)
         logits = outputs.logits[:, :-1, :]
         shift_labels = labels[:, 1:].clone()
 
@@ -376,51 +369,46 @@ class NSADPOLoss(nn.Module):
         shift_labels[shift_labels == -100] = 0
 
         per_token_logps = torch.gather(
-            logits.log_softmax(-1), 
-            dim=2, 
-            index=shift_labels.unsqueeze(2)
+            logits.log_softmax(-1), dim=2, index=shift_labels.unsqueeze(2)
         ).squeeze(2)
 
         return (per_token_logps * loss_mask).sum(dim=-1)
 
     def forward(
-        self,
-        policy_model: nn.Module,
-        ref_model: nn.Module,
-        batch: Dict[str, torch.Tensor]
+        self, policy_model: nn.Module, ref_model: nn.Module, batch: Dict[str, torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        
+
         # Compute active policy logps
         pi_w_logps = self.compute_sequence_logps(
-            policy_model, 
-            batch["chosen_ids"], 
-            batch["chosen_attn_mask"], 
-            batch["chosen_states"], 
-            batch["chosen_labels"]
+            policy_model,
+            batch["chosen_ids"],
+            batch["chosen_attn_mask"],
+            batch["chosen_states"],
+            batch["chosen_labels"],
         )
         pi_l_logps = self.compute_sequence_logps(
-            policy_model, 
-            batch["rejected_ids"], 
-            batch["rejected_attn_mask"], 
-            batch["rejected_states"], 
-            batch["rejected_labels"]
+            policy_model,
+            batch["rejected_ids"],
+            batch["rejected_attn_mask"],
+            batch["rejected_states"],
+            batch["rejected_labels"],
         )
 
         # Compute frozen reference model logps
         with torch.no_grad():
             ref_w_logps = self.compute_sequence_logps(
-                ref_model, 
-                batch["chosen_ids"], 
-                batch["chosen_attn_mask"], 
-                batch["chosen_states"], 
-                batch["chosen_labels"]
+                ref_model,
+                batch["chosen_ids"],
+                batch["chosen_attn_mask"],
+                batch["chosen_states"],
+                batch["chosen_labels"],
             )
             ref_l_logps = self.compute_sequence_logps(
-                ref_model, 
-                batch["rejected_ids"], 
-                batch["rejected_attn_mask"], 
-                batch["rejected_states"], 
-                batch["rejected_labels"]
+                ref_model,
+                batch["rejected_ids"],
+                batch["rejected_attn_mask"],
+                batch["rejected_states"],
+                batch["rejected_labels"],
             )
 
         # Log ratio calculations

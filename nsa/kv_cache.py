@@ -9,7 +9,8 @@ Ensures policy governance state vectors σ_1:t are tracked per sequence layer.
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import Tuple
+
 import torch
 
 
@@ -35,17 +36,23 @@ class NSAKVCache:
         self.dtype = dtype
 
         # Allocated Cache Tensors
-        self.k_cache = torch.zeros((batch_size, num_heads, max_seq_len, d_head), device=device, dtype=dtype)
-        self.v_cache = torch.zeros((batch_size, num_heads, max_seq_len, d_head), device=device, dtype=dtype)
-        self.state_cache = torch.zeros((batch_size, max_seq_len, state_dim), device=device, dtype=dtype)
+        self.k_cache = torch.zeros(
+            (batch_size, num_heads, max_seq_len, d_head), device=device, dtype=dtype
+        )
+        self.v_cache = torch.zeros(
+            (batch_size, num_heads, max_seq_len, d_head), device=device, dtype=dtype
+        )
+        self.state_cache = torch.zeros(
+            (batch_size, max_seq_len, state_dim), device=device, dtype=dtype
+        )
 
         self.seq_len = 0
 
     def update(
         self,
-        k_new: torch.Tensor,     # [B, H, T_new, d_head]
-        v_new: torch.Tensor,     # [B, H, T_new, d_head]
-        state_new: torch.Tensor, # [B, T_new, state_dim]
+        k_new: torch.Tensor,  # [B, H, T_new, d_head]
+        v_new: torch.Tensor,  # [B, H, T_new, d_head]
+        state_new: torch.Tensor,  # [B, T_new, state_dim]
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Appends new tokens to key, value, and state caches.
 
@@ -70,8 +77,10 @@ class NSAKVCache:
     def predict_next_state(self, transition_fn) -> torch.Tensor:
         """Autoregressively computes state for next token: σ_{t+1} = transition_fn(σ_t)."""
         if self.seq_len == 0:
-            return torch.zeros((self.batch_size, 1, self.state_dim), device=self.device, dtype=self.dtype)
-        last_state = self.state_cache[:, self.seq_len - 1:self.seq_len, :]
+            return torch.zeros(
+                (self.batch_size, 1, self.state_dim), device=self.device, dtype=self.dtype
+            )
+        last_state = self.state_cache[:, self.seq_len - 1 : self.seq_len, :]
         return transition_fn(last_state)
 
     def reset(self) -> None:
@@ -111,7 +120,7 @@ class NSAKVCache:
             q_lab, k_lab, lattice=lattice, forbidden_value=forbidden_value
         ).to(device=self.device, dtype=self.dtype)
 
-    def clone_view(self) -> "NSAKVCache":
+    def clone_view(self) -> NSAKVCache:
         """Shallow metadata clone sharing storage (for multi-sequence fans)."""
         other = NSAKVCache(
             batch_size=self.batch_size,

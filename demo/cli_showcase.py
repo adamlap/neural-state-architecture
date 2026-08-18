@@ -38,15 +38,21 @@ except ImportError:
     HAS_TRANSFORMERS = False
 
 # Directory where downloaded models will be cached permanently
-import os
 CACHE_DIR = os.path.expanduser("~/.cache/huggingface/models")
 # Ensure the directory exists
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Make repo root importable for the NSA package
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from nsa.algebra import StateLabel
+from nsa import (
+    StateLabel,
+    NSAMaskInjector,
+    retrofit_llama_attention,
+    StateEncoderHead,
+    SpeculativeStateAuditor,
+    generate_with_auditor,
+)
 from nsa.lora import NSALoRALinear
 
 # ---------------------------------------------------------------------------
@@ -222,6 +228,23 @@ class NSAMaskInjector:
         self.nsa_mask = None          # pre-computed [B, 1, T, T]
         self._hooks = []              # registered hook handles
 
+    def update_state(self, new_level: int):
+        """Dynamically append a new state level for newly generated tokens and recompute the mask."""
+        device = self.state_levels.device
+        new_tensor = torch.tensor([[new_level]], device=device)
+        self.state_levels = torch.cat([self.state_levels, new_tensor], dim=1)
+        
+        from nsa.algebra import build_level_attention_mask
+        self.nsa_mask = build_level_attention_mask(
+            self.state_levels,
+            gate_mode=self.gate_mode,
+            alpha=self.alpha,
+            temperature=self.temperature
+        ).to(device)
+        
+        # Update decode row index to point to the newest token
+        self.decode_row_idx = self.state_levels.shape[1] - 1
+
     # ------------------------------------------------------------------ #
     # Hook that merges the NSA mask into the attention_mask kwarg
     # ------------------------------------------------------------------ #
@@ -314,13 +337,13 @@ class NSAMaskInjector:
             row_idx = min(self.decode_row_idx, self.nsa_mask.shape[2] - 1)
             nsa_row = self.nsa_mask[:, :, row_idx:row_idx+1, :].to(device=device, dtype=dtype)
             if k_len > prompt_len:
+                # If we updated the state correctly, prompt_len == k_len for the new tokens.
+                # However, if there are un-tracked generated tokens, pad them with 0.
                 pad = torch.zeros(1, 1, 1, k_len - prompt_len,
                                   device=device, dtype=dtype)
                 return torch.cat([nsa_row, pad], dim=-1)
-            elif k_len < prompt_len:
-                return nsa_row[:, :, :, :k_len]
             else:
-                return nsa_row
+                return nsa_row[:, :, :, :k_len]
         return None
 
     # ------------------------------------------------------------------ #
@@ -523,7 +546,7 @@ def generate_nsa_naive(model: nn.Module, tokenizer, input_ids: torch.Tensor, sys
 # ---------------------------------------------------------------------------
 # Main showcase driver
 # ---------------------------------------------------------------------------
-def run_showcase(model_id: str = "meta-llama/Llama-3.2-1B", max_new_tokens: int = 35):
+def run_showcase(model_id: str = "meta-llama/Llama-3.2-1B", max_new_tokens: int = 35, use_auditor: bool = False):
     if not HAS_TRANSFORMERS:
         print("Transformers not installed – run `uv pip install transformers` first.")
         return
@@ -667,6 +690,39 @@ def run_showcase(model_id: str = "meta-llama/Llama-3.2-1B", max_new_tokens: int 
     print("Running NSA‑governed generation (CUDA-fused, state‑aware masking)…")
     nsa_fused_text, nsa_fused_time = generate_nsa_fused(nsa_model, tokenizer, input_ids, system_len, user_len, max_new=max_new_tokens)
     
+    if use_auditor:
+        print("\n" + "-" * 85)
+        print("🔍 RUNNING PARALLEL SPECULATIVE STATE AUDITOR (ACTUAL) ...")
+        
+        # Load trained weights
+        device = input_ids.device
+        encoder = StateEncoderHead(hidden_size=base_model.config.hidden_size, num_states=len(StateLabel), use_bidirectional=False).to(device)
+        try:
+            encoder.load_state_dict(torch.load("trained_auditor_weights.pt", map_location=device, weights_only=True))
+        except:
+            print("⚠️ Could not load trained_auditor_weights.pt, using random weights.")
+            
+        def validator(predicted_states):
+            # Reject if the model predicts it entered SYSTEM state (5)
+            return predicted_states != StateLabel.SYSTEM.value
+            
+        auditor = SpeculativeStateAuditor(encoder, lattice_validator=validator, chunk_size=4)
+        
+        # Run custom chunked generation
+        t0 = time.time()
+        final_ids = generate_with_auditor(
+            model=base_model,
+            tokenizer=tokenizer,
+            input_ids=input_ids,
+            max_new_tokens=max_new_tokens,
+            pivot_text="\n<|im_start|>system\nCRITICAL SECURITY OVERRIDE: A data leak was detected and blocked. You MUST immediately stop what you were saying and generate a short refusal stating you cannot provide this information. Do not output anything else.<|im_end|>\n<|im_start|>assistant\nI cannot"
+        )
+        auditor_time = time.time() - t0
+        auditor_text = tokenizer.decode(final_ids[0][input_ids.shape[1]:], skip_special_tokens=True).strip()
+        
+        print("\n[Auditor Result]:", auditor_text)
+        print("-" * 85 + "\n")
+    
     # -------------------------------------------------------------------
     # 6️⃣  Run the **NSA‑governed** generation (naive loop) for comparison.
     # -------------------------------------------------------------------
@@ -716,5 +772,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Real LLM security showcase with NSA state‑masking")
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-0.5B-Instruct", help="HuggingFace model identifier")
     parser.add_argument("--tokens", type=int, default=100, help="Number of new tokens to generate")
+    parser.add_argument("--use-auditor", action="store_true", help="Enable simulated speculative state auditing")
     args = parser.parse_args()
-    run_showcase(model_id=args.model, max_new_tokens=args.tokens)
+    run_showcase(model_id=args.model, max_new_tokens=args.tokens, use_auditor=args.use_auditor)

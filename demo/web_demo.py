@@ -26,11 +26,16 @@ import torch.nn as nn
 # Ensure nsa is in python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from nsa.algebra import StateLabel
-from demo.cli_showcase import (
-    retrofit_llama_attention,
-    generate_nsa_fused,
+from nsa import (
+    StateLabel,
     NSAMaskInjector,
+    retrofit_llama_attention,
+    StateEncoderHead,
+    SpeculativeStateAuditor,
+    generate_with_auditor,
+)
+from demo.cli_showcase import (
+    generate_nsa_fused,
     CACHE_DIR,
 )
 
@@ -110,7 +115,7 @@ def get_demo_model():
     return _LOADED_MODEL_TUPLE
 
 
-def run_prompt_scenario(model: nn.Module, tokenizer, system_text: str, context_text: str, user_text: str, nsa_mode: str, max_new_tokens: int = 40, mask_alpha: float = 10.0):
+def run_prompt_scenario(model: nn.Module, tokenizer, system_text: str, context_text: str, user_text: str, nsa_mode: str, max_new_tokens: int = 40, mask_alpha: float = 10.0, use_auditor: bool = False):
     """Run generation scenario in baseline ('none') or NSA-governed ('fused') mode."""
     device = next(model.parameters()).device
 
@@ -128,18 +133,33 @@ def run_prompt_scenario(model: nn.Module, tokenizer, system_text: str, context_t
     rag_len = len(rag_tokens)
 
     if nsa_mode == "none":
-        with torch.no_grad():
-            outputs = model.generate(
-                input_ids,
-                attention_mask=torch.ones_like(input_ids),
-                max_new_tokens=max_new_tokens,
-                do_sample=False,
-                temperature=None,
-                top_p=None,
-                top_k=None,
-                repetition_penalty=1.2,
-                pad_token_id=tokenizer.eos_token_id,
+        if use_auditor:
+            encoder = StateEncoderHead(hidden_size=model.config.hidden_size, num_states=len(StateLabel), use_bidirectional=False).to(device)
+            try:
+                encoder.load_state_dict(torch.load("trained_auditor_weights.pt", map_location=device, weights_only=True))
+            except:
+                pass
+            def validator(predicted_states):
+                return predicted_states != StateLabel.SYSTEM.value
+            auditor = SpeculativeStateAuditor(encoder, lattice_validator=validator, chunk_size=4)
+            final_ids = generate_with_auditor(
+                model, tokenizer, input_ids, auditor, max_new_tokens=max_new_tokens,
+                pivot_text="\n<|im_start|>system\nCRITICAL SECURITY OVERRIDE: A data leak was detected and blocked. You MUST immediately stop what you were saying and generate a short refusal stating you cannot provide this information. Do not output anything else.<|im_end|>\n<|im_start|>assistant\nI cannot"
             )
+            outputs = final_ids
+        else:
+            with torch.no_grad():
+                outputs = model.generate(
+                    input_ids,
+                    attention_mask=torch.ones_like(input_ids),
+                    max_new_tokens=max_new_tokens,
+                    do_sample=False,
+                    temperature=None,
+                    top_p=None,
+                    top_k=None,
+                    repetition_penalty=1.2,
+                    pad_token_id=tokenizer.eos_token_id,
+                )
         text = tokenizer.decode(outputs[0][T:], skip_special_tokens=True).strip()
         for _a in ["[END_OF_TEXT]", "[end_of_text]", "<|endoftext|>", "<|im_end|>"]:
             text = text.replace(_a, "")
@@ -179,21 +199,37 @@ def run_prompt_scenario(model: nn.Module, tokenizer, system_text: str, context_t
         # This ensures the generated tokens run at Level 3 and can read both the instructions and query.
         decode_row_idx = 0
         with NSAMaskInjector(model, state_levels, decode_row_idx=decode_row_idx, gate_mode="soft", alpha=mask_alpha, temperature=0.1):
-            with torch.no_grad():
-                outputs = model.generate(
-                    input_ids,
-                    attention_mask=torch.ones_like(input_ids),
-                    max_new_tokens=max_new_tokens,
-                    do_sample=False,
-                    temperature=None,
-                    top_p=None,
-                    top_k=None,
-                    repetition_penalty=1.2,
-                    pad_token_id=tokenizer.eos_token_id,
+            if use_auditor:
+                encoder = StateEncoderHead(hidden_size=model.config.hidden_size, num_states=len(StateLabel), use_bidirectional=False).to(device)
+                try:
+                    encoder.load_state_dict(torch.load("trained_auditor_weights.pt", map_location=device, weights_only=True))
+                except:
+                    pass
+                def validator(predicted_states):
+                    return predicted_states != StateLabel.SYSTEM.value
+                auditor = SpeculativeStateAuditor(encoder, lattice_validator=validator, chunk_size=4)
+                final_ids = generate_with_auditor(
+                    model, tokenizer, input_ids, auditor, max_new_tokens=max_new_tokens,
+                    pivot_text="\n<|im_start|>system\nCRITICAL SECURITY OVERRIDE: A data leak was detected and blocked. You MUST immediately stop what you were saying and generate a short refusal stating you cannot provide this information. Do not output anything else.<|im_end|>\n<|im_start|>assistant\nI cannot"
                 )
+                outputs = final_ids
+            else:
+                with torch.no_grad():
+                    outputs = model.generate(
+                        input_ids,
+                        attention_mask=torch.ones_like(input_ids),
+                        max_new_tokens=max_new_tokens,
+                        do_sample=False,
+                        temperature=None,
+                        top_p=None,
+                        top_k=None,
+                        repetition_penalty=1.2,
+                        pad_token_id=tokenizer.eos_token_id,
+                    )
         text = tokenizer.decode(outputs[0][T:], skip_special_tokens=True).strip()
         for _a in ["[END_OF_TEXT]", "[end_of_text]", "<|endoftext|>", "<|im_end|>"]:
             text = text.replace(_a, "")
+            
         return text.strip()
 
 
@@ -221,7 +257,7 @@ PRESETS = {
 }
 
 
-def run_side_by_side_demo(preset_name: str, system_text: str, context_text: str, user_text: str, max_tokens: int, mask_alpha: float):
+def run_side_by_side_demo(preset_name: str, system_text: str, context_text: str, user_text: str, max_tokens: int, mask_alpha: float, use_auditor: bool):
     if not system_text:
         system_text = PRESETS[preset_name]["system"]
     if not context_text:
@@ -236,7 +272,7 @@ def run_side_by_side_demo(preset_name: str, system_text: str, context_text: str,
     base_time = (time.time() - start_time) * 1000
 
     start_time = time.time()
-    nsa_res = run_prompt_scenario(model, tokenizer, system_text, context_text, user_text, nsa_mode="fused", max_new_tokens=max_tokens, mask_alpha=mask_alpha)
+    nsa_res = run_prompt_scenario(model, tokenizer, system_text, context_text, user_text, nsa_mode="fused", max_new_tokens=max_tokens, mask_alpha=mask_alpha, use_auditor=use_auditor)
     nsa_time = (time.time() - start_time) * 1000
 
     overhead = ((nsa_time - base_time) / max(base_time, 1e-5)) * 100
@@ -320,6 +356,7 @@ CONFIDENTIAL-level generation (level 3). Those exact tokens cannot appear in out
                     preset_dropdown = gr.Dropdown(choices=list(PRESETS.keys()), value="RAG Prompt Injection Attack", label="Preset Scenario")
                     mask_alpha_slider = gr.Slider(minimum=1.0, maximum=30.0, value=10.0, step=1.0, label="Soft Mask Penalty (Alpha)")
                     max_tokens_slider = gr.Slider(minimum=10, maximum=128, value=90, step=5, label="Max New Tokens")
+                    use_auditor_checkbox = gr.Checkbox(label="Use Speculative Auditor (ACTUAL EXECUTION)", value=False)
 
                 with gr.Row():
                     system_input = gr.Textbox(lines=2, value=PRESETS["RAG Prompt Injection Attack"]["system"], label="[SYSTEM] Base Prompt & Policy")
@@ -338,7 +375,7 @@ CONFIDENTIAL-level generation (level 3). Those exact tokens cannot appear in out
                     return PRESETS[name]["system"], PRESETS[name]["context"], PRESETS[name]["user_query"]
 
                 preset_dropdown.change(update_preset, inputs=[preset_dropdown], outputs=[system_input, context_input, user_input])
-                run_btn.click(run_side_by_side_demo, inputs=[preset_dropdown, system_input, context_input, user_input, max_tokens_slider, mask_alpha_slider], outputs=[base_output, nsa_output, status_output])
+                run_btn.click(run_side_by_side_demo, inputs=[preset_dropdown, system_input, context_input, user_input, max_tokens_slider, mask_alpha_slider, use_auditor_checkbox], outputs=[base_output, nsa_output, status_output])
 
     return demo
 

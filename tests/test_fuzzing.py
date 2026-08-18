@@ -10,10 +10,16 @@ Verifies mathematical invariants:
 """
 
 import unittest
-from hypothesis import given, strategies as st
 
-from nsa.algebra import ConfidentialityLabel, IntegrityLabel, ProductStateVector, ProductLattice, DEFAULT_LATTICE
+from hypothesis import given
+from hypothesis import strategies as st
 
+from nsa.algebra import (
+    ConfidentialityLabel,
+    IntegrityLabel,
+    ProductLattice,
+    ProductStateVector,
+)
 
 # Hypothesis strategies for generating random state labels and product vectors
 confidentiality_st = st.sampled_from(list(ConfidentialityLabel))
@@ -47,7 +53,9 @@ class TestStateAlgebraFuzzing(unittest.TestCase):
         self.assertEqual(j1.license_tier, j2.license_tier)
 
     @given(sv1=product_vectors_st, sv2=product_vectors_st, sv3=product_vectors_st)
-    def test_join_associativity(self, sv1: ProductStateVector, sv2: ProductStateVector, sv3: ProductStateVector):
+    def test_join_associativity(
+        self, sv1: ProductStateVector, sv2: ProductStateVector, sv3: ProductStateVector
+    ):
         """Verify (sv1 ⊔ sv2) ⊔ sv3 == sv1 ⊔ (sv2 ⊔ sv3)."""
         left = (sv1.join_product(sv2)).join_product(sv3)
         right = sv1.join_product(sv2.join_product(sv3))
@@ -68,7 +76,9 @@ class TestStateAlgebraFuzzing(unittest.TestCase):
         self.assertEqual(joined.license_tier, sv.license_tier)
 
     @given(query=product_vectors_st, key=product_vectors_st)
-    def test_non_interference_monotonicity(self, query: ProductStateVector, key: ProductStateVector):
+    def test_non_interference_monotonicity(
+        self, query: ProductStateVector, key: ProductStateVector
+    ):
         """Verify Theorem 1 / Non-Interference: query.security < key.security => forbidden."""
         allowed = key.allows_attention_from(query)
         if query.confidentiality.value < key.confidentiality.value:
@@ -78,7 +88,10 @@ class TestStateAlgebraFuzzing(unittest.TestCase):
         if query.license_tier < key.license_tier:
             self.assertFalse(allowed)
 
-    @given(q_list=st.lists(product_vectors_st, min_size=1, max_size=5), k_list=st.lists(product_vectors_st, min_size=1, max_size=5))
+    @given(
+        q_list=st.lists(product_vectors_st, min_size=1, max_size=5),
+        k_list=st.lists(product_vectors_st, min_size=1, max_size=5),
+    )
     def test_product_lattice_mask_values(self, q_list, k_list):
         """Verify product lattice compute_mask generates valid 0.0 or -1e4 values."""
         lattice = ProductLattice()

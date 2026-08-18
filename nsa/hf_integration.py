@@ -1,28 +1,22 @@
 """
 nsa.hf_integration
 ==================
-Lightweight HuggingFace-style wrappers for NSA models.
-
-This is a *prototype* compatibility layer:
-  - NSAConfig mirrors common HF config fields (not a real PretrainedConfig subclass
-    unless `transformers` is installed).
-  - NSAForCausalLM exposes a dict-style forward used by simple training loops.
-
-It does **not** register with AutoModel or provide full `generate()` / cache
-parity with production HF models.  For real HF model retrofit + generate(),
-see ``prototype/llama_security_showcase.py`` (mask injection hooks).
+Lightweight HuggingFace-style wrappers and retrofitting utilities for NSA models.
 """
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional, Tuple
+
 import torch
-import torch.nn as nn
+from torch import nn
 
 from nsa.layers import NSACausalLM
+from nsa.lora import NSALoRALinear
 
 try:
     from transformers import PretrainedConfig
+
     HAS_TRANSFORMERS = True
 except ImportError:
     HAS_TRANSFORMERS = False
@@ -30,6 +24,7 @@ except ImportError:
 
 
 if HAS_TRANSFORMERS:
+
     class NSAConfig(PretrainedConfig):
         """HF PretrainedConfig subclass when transformers is available."""
 
@@ -62,6 +57,7 @@ if HAS_TRANSFORMERS:
             self.dropout = dropout
             self.max_seq_len = max_seq_len
 else:
+
     class NSAConfig:
         """Minimal config object when transformers is not installed."""
 
@@ -146,7 +142,7 @@ class NSAForCausalLM(nn.Module):
         }
 
     @classmethod
-    def from_config(cls, config: NSAConfig) -> "NSAForCausalLM":
+    def from_config(cls, config: NSAConfig) -> NSAForCausalLM:
         return cls(config)
 
     def get_input_embeddings(self) -> nn.Module:
@@ -154,3 +150,31 @@ class NSAForCausalLM(nn.Module):
 
     def get_output_embeddings(self) -> nn.Module:
         return self.model.lm_head
+
+
+def retrofit_llama_attention(model: nn.Module, r: int = 8) -> Tuple[nn.Module, int, int]:
+    """Freeze all original parameters and insert ``NSALoRALinear`` adapters into attention blocks."""
+    frozen_params = 0
+    trainable_params = 0
+
+    for p in model.parameters():
+        p.requires_grad = False
+        frozen_params += p.numel()
+
+    # Replace linear projections inside each attention block
+    for _name, module in model.named_modules():
+        for proj_name in ["q_proj", "k_proj", "v_proj", "o_proj", "W_q", "W_k", "W_v", "W_o"]:
+            if hasattr(module, proj_name):
+                old = getattr(module, proj_name)
+                if isinstance(old, nn.Linear):
+                    new = NSALoRALinear(old, r=r)
+                    setattr(module, proj_name, new)
+                    for p in new.parameters():
+                        if p.requires_grad:
+                            trainable_params += p.numel()
+
+    return model, frozen_params, trainable_params
+
+
+# Generic alias
+retrofit_hf_attention = retrofit_llama_attention

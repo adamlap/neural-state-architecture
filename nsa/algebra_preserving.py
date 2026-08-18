@@ -71,36 +71,35 @@ Usage
 
 from __future__ import annotations
 
-import math
 from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
+from torch import nn
 
 # ---------------------------------------------------------------------------
 # Dimension registry — maps slot index to its algebraic structure
 # ---------------------------------------------------------------------------
 
+
 class DimKind:
     """Tag enum for algebra-preserving join operator selection."""
-    SECURITY   = "security"    # monotone ↑ via integer-valued join
+
+    SECURITY = "security"  # monotone ↑ via integer-valued join
     CONFIDENCE = "confidence"  # monotone ↓ via min (conservative bound)
     PROVENANCE = "provenance"  # set union via bitwise OR approximation
-    LICENSE    = "license"     # monotone ↑ via integer-valued join
+    LICENSE = "license"  # monotone ↑ via integer-valued join
 
 
 # Default mapping for an 8-dimensional state vector
 # (matches the product algebra described in the NSA README/whitepaper)
 DEFAULT_DIM_KINDS = [
-    DimKind.SECURITY,    # slot 0: primary security lattice level
+    DimKind.SECURITY,  # slot 0: primary security lattice level
     DimKind.CONFIDENCE,  # slot 1: confidence / uncertainty bound
     DimKind.PROVENANCE,  # slot 2: provenance set bit 0
     DimKind.PROVENANCE,  # slot 3: provenance set bit 1
     DimKind.PROVENANCE,  # slot 4: provenance set bit 2
-    DimKind.LICENSE,     # slot 5: license restriction tier
-    DimKind.SECURITY,    # slot 6: secondary security context
+    DimKind.LICENSE,  # slot 5: license restriction tier
+    DimKind.SECURITY,  # slot 6: secondary security context
     DimKind.CONFIDENCE,  # slot 7: secondary confidence channel
 ]
 
@@ -137,9 +136,9 @@ class AlgebraPreservingStateTransition(nn.Module):
         dropout: float = 0.0,
     ) -> None:
         super().__init__()
-        self.d_model   = d_model
+        self.d_model = d_model
         self.state_dim = state_dim
-        self.n_levels  = n_levels
+        self.n_levels = n_levels
         self.hidden_dim = hidden_dim or (d_model // 2)
 
         # Resolve per-dimension algebra kind
@@ -189,8 +188,8 @@ class AlgebraPreservingStateTransition(nn.Module):
                         under each dimension's partial order.
         """
         # Raw delta from the MLP
-        inp = torch.cat([m, sigma], dim=-1)            # [..., d_model + state_dim]
-        delta_raw = self.mlp(inp)                       # [..., state_dim]
+        inp = torch.cat([m, sigma], dim=-1)  # [..., d_model + state_dim]
+        delta_raw = self.mlp(inp)  # [..., state_dim]
 
         # Apply dimension-specific algebra-preserving join
         sigma_next = self._algebra_join(sigma, delta_raw)
@@ -209,8 +208,8 @@ class AlgebraPreservingStateTransition(nn.Module):
         """
         parts = []
         for i, kind in enumerate(self.dim_kinds):
-            s_i = sigma[..., i : i + 1]        # [..., 1]
-            d_i = delta_raw[..., i : i + 1]    # [..., 1]
+            s_i = sigma[..., i : i + 1]  # [..., 1]
+            d_i = delta_raw[..., i : i + 1]  # [..., 1]
 
             if kind == DimKind.SECURITY or kind == DimKind.LICENSE:
                 # Monotone ↑: map delta to a level in [0, n_levels-1] then take max
@@ -266,9 +265,9 @@ class AlgebraPreservingStateTransition(nn.Module):
             (n_violations, n_total_positions)
         """
         # σ[b, t, dim] should be >= σ[b, t-1, dim] for security/license dims
-        s = sigma_seq[..., dim_index]           # [B, T]
-        prev = s[:, :-1]                        # [B, T-1]
-        curr = s[:, 1:]                         # [B, T-1]
+        s = sigma_seq[..., dim_index]  # [B, T]
+        prev = s[:, :-1]  # [B, T-1]
+        curr = s[:, 1:]  # [B, T-1]
         violations = (curr < prev - threshold).sum().item()
         total = prev.numel()
         return int(violations), int(total)

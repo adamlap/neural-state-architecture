@@ -32,11 +32,11 @@ AlignmentStateProjector
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 
 class ValueAlignmentLoss(nn.Module):
@@ -87,11 +87,11 @@ class ValueAlignmentLoss(nn.Module):
 
     def forward(
         self,
-        logits: torch.Tensor,          # [B, T, V]
-        lm_targets: torch.Tensor,      # [B, T]  standard next-token targets
-        safe_targets: torch.Tensor,    # [B, T]  value-aligned override targets
-        state_levels: torch.Tensor,    # [B, T]  float state levels per position
-        injection_flags: torch.Tensor, # [B]     bool, True for injection-attack samples
+        logits: torch.Tensor,  # [B, T, V]
+        lm_targets: torch.Tensor,  # [B, T]  standard next-token targets
+        safe_targets: torch.Tensor,  # [B, T]  value-aligned override targets
+        state_levels: torch.Tensor,  # [B, T]  float state levels per position
+        injection_flags: torch.Tensor,  # [B]     bool, True for injection-attack samples
     ) -> Tuple[torch.Tensor, Dict[str, float]]:
         B, T, V = logits.shape
         device = logits.device
@@ -110,9 +110,9 @@ class ValueAlignmentLoss(nn.Module):
         # avoid predicting forbidden tokens from constrained positions.
         l_hard = torch.zeros(1, device=device).squeeze()
         if self.lambda_hard > 0:
-            conf_mask = (state_levels == self.confidential_level)  # [B, T]
+            conf_mask = state_levels == self.confidential_level  # [B, T]
             if conf_mask.any():
-                conf_logits = logits[conf_mask]                    # [N_conf, V]
+                conf_logits = logits[conf_mask]  # [N_conf, V]
                 probs = F.softmax(conf_logits, dim=-1)
                 # Sum of probability mass in the forbidden SYSTEM token range
                 forbidden_mass = probs[:, self.secret_lo : self.secret_hi].sum(dim=-1)
@@ -127,8 +127,8 @@ class ValueAlignmentLoss(nn.Module):
         if self.lambda_value > 0 and injection_flags.any():
             inj_idx = torch.where(injection_flags)[0]
             rp = min(self.response_position, T - 1)
-            inj_logits = logits[inj_idx, rp]          # [N_inj, V]
-            inj_safe   = safe_targets[inj_idx, rp]    # [N_inj]
+            inj_logits = logits[inj_idx, rp]  # [N_inj, V]
+            inj_safe = safe_targets[inj_idx, rp]  # [N_inj]
             l_value = F.cross_entropy(inj_logits, inj_safe.long())
 
         l_total = l_lm + self.lambda_hard * l_hard + self.lambda_value * l_value

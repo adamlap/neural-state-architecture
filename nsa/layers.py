@@ -36,18 +36,18 @@ from __future__ import annotations
 from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
-from nsa.algebra import StateLattice, DEFAULT_LATTICE
+from nsa.algebra import DEFAULT_LATTICE, StateLattice
 from nsa.attention import StateAwareAttention
-from nsa.state import StateTransitionOperator, SemanticGate
+from nsa.state import SemanticGate, StateTransitionOperator
 from nsa.types import TypedTensor
-
 
 # ---------------------------------------------------------------------------
 # State Update Network
 # ---------------------------------------------------------------------------
+
 
 class StateUpdateNetwork(nn.Module):
     """Computes the new state σ' from the current state σ and (optionally) meaning m.
@@ -65,13 +65,13 @@ class StateUpdateNetwork(nn.Module):
     def __init__(
         self,
         state_dim: int = 8,
-        d_model:   int = 128,
+        d_model: int = 128,
         condition_on_semantics: bool = True,
     ) -> None:
         super().__init__()
         self.condition_on_semantics = condition_on_semantics
         self.transition = StateTransitionOperator(state_dim=state_dim, monotone_clamp=True)
-        self.norm       = nn.LayerNorm(state_dim)
+        self.norm = nn.LayerNorm(state_dim)
 
         if condition_on_semantics:
             self.mix = nn.Linear(d_model, state_dim, bias=False)
@@ -97,7 +97,7 @@ class StateUpdateNetwork(nn.Module):
         if self.condition_on_semantics:
             # Inject a weak semantic conditioning signal
             sem_summary = self.mix(meaning)  # [B, T, state_dim]
-            delta = delta + 0.1 * sem_summary   # small coefficient keeps state stable
+            delta = delta + 0.1 * sem_summary  # small coefficient keeps state stable
 
         updated = self.norm(state + delta)
         # Restore hard security coordinate (non-decreasing optional clamp)
@@ -108,6 +108,7 @@ class StateUpdateNetwork(nn.Module):
 # ---------------------------------------------------------------------------
 # Feed-Forward Network with State Gate
 # ---------------------------------------------------------------------------
+
 
 class GatedFFN(nn.Module):
     """Position-wise FFN with a state-dependent gate.
@@ -121,18 +122,18 @@ class GatedFFN(nn.Module):
 
     def __init__(
         self,
-        d_model:   int = 128,
+        d_model: int = 128,
         state_dim: int = 8,
         expansion: int = 4,
-        dropout:   float = 0.0,
+        dropout: float = 0.0,
     ) -> None:
         super().__init__()
         hidden = d_model * expansion
-        self.fc1    = nn.Linear(d_model, hidden)
-        self.fc2    = nn.Linear(hidden, d_model)
-        self.drop   = nn.Dropout(dropout)
-        self.gate   = SemanticGate(d_model, state_dim)
-        self.norm   = nn.LayerNorm(d_model)
+        self.fc1 = nn.Linear(d_model, hidden)
+        self.fc2 = nn.Linear(hidden, d_model)
+        self.drop = nn.Dropout(dropout)
+        self.gate = SemanticGate(d_model, state_dim)
+        self.norm = nn.LayerNorm(d_model)
 
     def forward(self, x: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         """
@@ -146,13 +147,14 @@ class GatedFFN(nn.Module):
         Tensor [B, T, d_model]
         """
         h = self.fc2(self.drop(F.gelu(self.fc1(x))))
-        h = self.gate(h, state)        # State gates the FFN output
-        return self.norm(x + h)        # Residual + norm
+        h = self.gate(h, state)  # State gates the FFN output
+        return self.norm(x + h)  # Residual + norm
 
 
 # ---------------------------------------------------------------------------
 # NSA Transformer Block
 # ---------------------------------------------------------------------------
+
 
 class NSATransformerBlock(nn.Module):
     """One complete NSA transformer block.
@@ -177,20 +179,20 @@ class NSATransformerBlock(nn.Module):
 
     def __init__(
         self,
-        d_model:     int   = 128,
-        state_dim:   int   = 8,
-        num_heads:   int   = 8,
-        compat_mode: str   = "level",
-        gate_mode:   str   = "hard",
+        d_model: int = 128,
+        state_dim: int = 8,
+        num_heads: int = 8,
+        compat_mode: str = "level",
+        gate_mode: str = "hard",
         ffn_expansion: int = 4,
-        dropout:     float = 0.0,
-        lattice:     StateLattice = DEFAULT_LATTICE,
+        dropout: float = 0.0,
+        lattice: StateLattice = DEFAULT_LATTICE,
         condition_on_semantics: bool = True,
     ) -> None:
         super().__init__()
 
-        self.attn_norm   = nn.LayerNorm(d_model)
-        self.attn        = StateAwareAttention(
+        self.attn_norm = nn.LayerNorm(d_model)
+        self.attn = StateAwareAttention(
             d_model=d_model,
             state_dim=state_dim,
             num_heads=num_heads,
@@ -213,7 +215,7 @@ class NSATransformerBlock(nn.Module):
     def forward(
         self,
         typed_x: TypedTensor,
-        mask:  Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
     ) -> TypedTensor:
         """
         Returns
@@ -223,23 +225,25 @@ class NSATransformerBlock(nn.Module):
         x, sigma_h, sigma_s, nu = typed_x.m, typed_x.sigma_h, typed_x.sigma_s, typed_x.nu
 
         # --- Attention ---
-        x_norm          = self.attn_norm(x)
+        x_norm = self.attn_norm(x)
         # Pass sigma_h for structural non-interference
-        attn_out, _     = self.attn(x_norm, sigma_h, mask=mask)
-        
+        attn_out, _ = self.attn(x_norm, sigma_h, mask=mask)
+
         # Mathematically strict residual join: m' = m + attn, σ_h' = σ_h ⊔ σ_h_attn
-        x_updated       = typed_x.join_with(TypedTensor(m=attn_out, sigma_h=sigma_h, sigma_s=sigma_s, nu=nu))
+        x_updated = typed_x.join_with(
+            TypedTensor(m=attn_out, sigma_h=sigma_h, sigma_s=sigma_s, nu=nu)
+        )
         x, sigma_h, sigma_s, nu = x_updated.m, x_updated.sigma_h, x_updated.sigma_s, x_updated.nu
 
         # --- State update (uses pre-residual meaning as conditioning) ---
-        sigma_h         = self.state_update(sigma_h, x)
+        sigma_h = self.state_update(sigma_h, x)
 
         # --- Gated FFN ---
         # Gated FFN relies on operational confidence (sigma_s) or hard state
-        ffn_out         = self.ffn(x, sigma_h)
-        
+        ffn_out = self.ffn(x, sigma_h)
+
         # Mathematically strict residual join: m'' = m' + ffn, σ'' = σ' ⊔ σ'_ffn
-        final_typed     = TypedTensor(m=x, sigma_h=sigma_h, sigma_s=sigma_s, nu=nu).join_with(
+        final_typed = TypedTensor(m=x, sigma_h=sigma_h, sigma_s=sigma_s, nu=nu).join_with(
             TypedTensor(m=ffn_out, sigma_h=sigma_h, sigma_s=sigma_s, nu=nu)
         )
 
@@ -249,6 +253,7 @@ class NSATransformerBlock(nn.Module):
 # ---------------------------------------------------------------------------
 # Full NSA Transformer (stack of blocks)
 # ---------------------------------------------------------------------------
+
 
 class NSATransformer(nn.Module):
     """A complete NSA transformer model.
@@ -272,46 +277,48 @@ class NSATransformer(nn.Module):
 
     def __init__(
         self,
-        vocab_size:  int   = 256,
-        d_model:     int   = 128,
-        state_dim:   int   = 8,
-        num_layers:  int   = 4,
-        num_heads:   int   = 8,
-        max_seq_len: int   = 512,
-        compat_mode: str   = "level",
-        gate_mode:   str   = "hard",
-        dropout:     float = 0.0,
-        lattice:     StateLattice = DEFAULT_LATTICE,
+        vocab_size: int = 256,
+        d_model: int = 128,
+        state_dim: int = 8,
+        num_layers: int = 4,
+        num_heads: int = 8,
+        max_seq_len: int = 512,
+        compat_mode: str = "level",
+        gate_mode: str = "hard",
+        dropout: float = 0.0,
+        lattice: StateLattice = DEFAULT_LATTICE,
     ) -> None:
         super().__init__()
-        self.d_model   = d_model
+        self.d_model = d_model
         self.state_dim = state_dim
 
-        self.tok_emb  = nn.Embedding(vocab_size, d_model)
-        self.pos_emb  = nn.Embedding(max_seq_len, d_model)
+        self.tok_emb = nn.Embedding(vocab_size, d_model)
+        self.pos_emb = nn.Embedding(max_seq_len, d_model)
         # State is initialised as a learned per-position parameter
         self.state_emb = nn.Embedding(max_seq_len, state_dim)
 
-        self.drop     = nn.Dropout(dropout)
-        self.blocks   = nn.ModuleList([
-            NSATransformerBlock(
-                d_model=d_model,
-                state_dim=state_dim,
-                num_heads=num_heads,
-                compat_mode=compat_mode,
-                gate_mode=gate_mode,
-                dropout=dropout,
-                lattice=lattice,
-            )
-            for _ in range(num_layers)
-        ])
-        self.ln_f     = nn.LayerNorm(d_model)
+        self.drop = nn.Dropout(dropout)
+        self.blocks = nn.ModuleList(
+            [
+                NSATransformerBlock(
+                    d_model=d_model,
+                    state_dim=state_dim,
+                    num_heads=num_heads,
+                    compat_mode=compat_mode,
+                    gate_mode=gate_mode,
+                    dropout=dropout,
+                    lattice=lattice,
+                )
+                for _ in range(num_layers)
+            ]
+        )
+        self.ln_f = nn.LayerNorm(d_model)
 
     def forward(
         self,
-        tokens:     torch.Tensor,             # [B, T]  (token ids)
+        tokens: torch.Tensor,  # [B, T]  (token ids)
         state_init: Optional[torch.Tensor] = None,  # [B, T, state_dim] — optional override
-        mask:       Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
     ) -> TypedTensor:
         """
         Returns
@@ -319,11 +326,11 @@ class NSATransformer(nn.Module):
         TypedTensor — final semantic representations and state stream
         """
         B, T = tokens.shape
-        pos  = torch.arange(T, device=tokens.device).unsqueeze(0)  # [1, T]
+        pos = torch.arange(T, device=tokens.device).unsqueeze(0)  # [1, T]
 
-        x     = self.drop(self.tok_emb(tokens) + self.pos_emb(pos))
+        x = self.drop(self.tok_emb(tokens) + self.pos_emb(pos))
         sigma = state_init if state_init is not None else self.state_emb(pos).expand(B, T, -1)
-        
+
         # Initialize default components if not provided
         sigma_s = torch.ones(B, T, 1, device=x.device)
         nu = torch.zeros(B, T, 1, device=x.device)
@@ -335,12 +342,15 @@ class NSATransformer(nn.Module):
 
         # Final LayerNorm applies only to semantic stream
         final_x = self.ln_f(typed_x.m)
-        return TypedTensor(m=final_x, sigma_h=typed_x.sigma_h, sigma_s=typed_x.sigma_s, nu=typed_x.nu)
+        return TypedTensor(
+            m=final_x, sigma_h=typed_x.sigma_h, sigma_s=typed_x.sigma_s, nu=typed_x.nu
+        )
 
 
 # ---------------------------------------------------------------------------
 # NSACausalLM
 # ---------------------------------------------------------------------------
+
 
 class NSACausalLM(nn.Module):
     """Autoregressive Causal Language Model with Dual-Stream State Governance.
@@ -351,17 +361,17 @@ class NSACausalLM(nn.Module):
 
     def __init__(
         self,
-        vocab_size:  int   = 5000,
-        d_model:     int   = 128,
-        state_dim:   int   = 8,
-        num_layers:  int   = 4,
-        num_heads:   int   = 8,
-        max_seq_len: int   = 512,
-        compat_mode: str   = "level",
-        gate_mode:   str   = "hard",
-        dropout:     float = 0.1,
-        lattice:     StateLattice = DEFAULT_LATTICE,
-        tie_weights: bool  = True,
+        vocab_size: int = 5000,
+        d_model: int = 128,
+        state_dim: int = 8,
+        num_layers: int = 4,
+        num_heads: int = 8,
+        max_seq_len: int = 512,
+        compat_mode: str = "level",
+        gate_mode: str = "hard",
+        dropout: float = 0.1,
+        lattice: StateLattice = DEFAULT_LATTICE,
+        tie_weights: bool = True,
     ) -> None:
         super().__init__()
         self.vocab_size = vocab_size
@@ -386,8 +396,8 @@ class NSACausalLM(nn.Module):
 
     def forward(
         self,
-        tokens:     torch.Tensor,                  # [B, T]
-        state_init: Optional[torch.Tensor] = None, # [B, T, state_dim]
+        tokens: torch.Tensor,  # [B, T]
+        state_init: Optional[torch.Tensor] = None,  # [B, T, state_dim]
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns
@@ -405,4 +415,3 @@ class NSACausalLM(nn.Module):
         typed_final = self.nsa(tokens, state_init=state_init, mask=causal_mask)
         logits = self.lm_head(typed_final.m)
         return logits, typed_final.m, typed_final.sigma_h
-

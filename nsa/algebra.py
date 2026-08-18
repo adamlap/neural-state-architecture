@@ -39,7 +39,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Dict, FrozenSet, List, Optional, Tuple, TypeVar, Generic
+from typing import Dict, FrozenSet, Generic, List, Optional, TypeVar
 
 try:
     import torch
@@ -51,33 +51,38 @@ except ImportError:
 # State Labels
 # ---------------------------------------------------------------------------
 
+
 class LatticeEnum(IntEnum):
     def __str__(self) -> str:
         return self.name
 
-    def meet(self, other: "LatticeEnum") -> "LatticeEnum":
+    def meet(self, other: LatticeEnum) -> LatticeEnum:
         return self.__class__(min(self.value, other.value))
 
-    def join(self, other: "LatticeEnum") -> "LatticeEnum":
+    def join(self, other: LatticeEnum) -> LatticeEnum:
         return self.__class__(max(self.value, other.value))
 
-    def allows_transition_to(self, target: "LatticeEnum") -> bool:
+    def allows_transition_to(self, target: LatticeEnum) -> bool:
         return target.value >= self.value
 
 
 class ConfidentialityLabel(LatticeEnum):
     """Ordered confidentiality labels forming the primary security lattice."""
-    UNTRUSTED    = 0
-    PUBLIC       = 1
-    TRUSTED      = 2
+
+    UNTRUSTED = 0
+    PUBLIC = 1
+    TRUSTED = 2
     CONFIDENTIAL = 3
-    PRIVATE      = 4
-    SYSTEM       = 5
+    PRIVATE = 4
+    SYSTEM = 5
+
 
 class IntegrityLabel(LatticeEnum):
     """Ordered integrity labels (taint). Higher value = more untrusted."""
-    TRUSTED      = 0
-    UNTRUSTED    = 1
+
+    TRUSTED = 0
+    UNTRUSTED = 1
+
 
 # Backward compatibility alias
 StateLabel = ConfidentialityLabel
@@ -87,7 +92,8 @@ StateLabel = ConfidentialityLabel
 # Conservation Law
 # ---------------------------------------------------------------------------
 
-T = TypeVar('T', bound=LatticeEnum)
+T = TypeVar("T", bound=LatticeEnum)
+
 
 @dataclass(frozen=True)
 class ConservationLaw(Generic[T]):
@@ -98,10 +104,11 @@ class ConservationLaw(Generic[T]):
         - Explicit exceptions: a declassification gate may allow PRIVATE → PUBLIC
           iff a certain condition is met (modeled as a soft penalty weight).
     """
-    from_label:   T
-    to_label:     T
-    allowed:      bool   = True
-    penalty_weight: float = 1.0   # weight in the state constraint loss
+
+    from_label: T
+    to_label: T
+    allowed: bool = True
+    penalty_weight: float = 1.0  # weight in the state constraint loss
 
     def __str__(self) -> str:
         arrow = "->" if self.allowed else "->X"
@@ -118,12 +125,14 @@ class ConservationLaw(Generic[T]):
 # Typed Declassification Capability
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class DeclassificationCapability(Generic[T]):
     """A typed cryptographic-style capability primitive authorizing downward state transitions.
-    
+
     D: (σ, c_D) → σ' where Valid(c_D, σ, σ') = 1
     """
+
     issuer: str
     purpose: str
     scope: str
@@ -146,16 +155,20 @@ class DeclassificationCapability(Generic[T]):
 # ---------------------------------------------------------------------------
 
 if torch is not None:
+
     class TransitionOperator(torch.nn.Module):
         """
         A state transition matrix V ∈ T_Σ restricted by architectural construction.
         Illegal transitions are mathematically unrepresentable by projection.
         """
+
         def __init__(self, d_state: int, valid_transition_mask: torch.Tensor):
             super().__init__()
             self.d_state = d_state
             # Initialize close to identity (stay in current state)
-            self.weight = torch.nn.Parameter(torch.eye(d_state) + torch.randn(d_state, d_state) * 0.01)
+            self.weight = torch.nn.Parameter(
+                torch.eye(d_state) + torch.randn(d_state, d_state) * 0.01
+            )
             # boolean/float mask where 0 means mathematically forbidden
             self.register_buffer("legal_mask", valid_transition_mask.float())
 
@@ -165,14 +178,13 @@ if torch is not None:
             return torch.matmul(sigma_h, constrained_V.t())
 
 
-
 # ---------------------------------------------------------------------------
 # State Lattice
 # ---------------------------------------------------------------------------
 
+
 class StateLattice(Generic[T]):
-    """A bounded lattice over generic LatticeEnum with configurable conservation laws.
-    """
+    """A bounded lattice over generic LatticeEnum with configurable conservation laws."""
 
     def __init__(
         self,
@@ -255,7 +267,7 @@ class StateLattice(Generic[T]):
         src: T,
         dst: T,
         *,
-        capability: Optional["DeclassificationCapability[T]"] = None,
+        capability: Optional[DeclassificationCapability[T]] = None,
     ) -> bool:
         """May state transition ``src → dst`` under declassification policy?
 
@@ -305,6 +317,7 @@ INTEGRITY_LATTICE = StateLattice[IntegrityLabel]()
 # Product Lattice & Typed Neural Computation (Product Algebra)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProductStateVector:
     """Product state vector for Typed Neural Computation (TNC).
@@ -314,6 +327,7 @@ class ProductStateVector:
 
     Each component carries its own distinct algebraic join (⊔) and meet (⊓) operators.
     """
+
     confidentiality: ConfidentialityLabel = ConfidentialityLabel.PUBLIC
     integrity: IntegrityLabel = IntegrityLabel.TRUSTED
     confidence: float = 1.0
@@ -356,7 +370,11 @@ class ProductStateVector:
 class ProductLattice:
     """Product Lattice manager evaluating component-wise operations across Σ."""
 
-    def __init__(self, conf_lattice: Optional[StateLattice[ConfidentialityLabel]] = None, int_lattice: Optional[StateLattice[IntegrityLabel]] = None):
+    def __init__(
+        self,
+        conf_lattice: Optional[StateLattice[ConfidentialityLabel]] = None,
+        int_lattice: Optional[StateLattice[IntegrityLabel]] = None,
+    ):
         self.conf_lattice = conf_lattice or DEFAULT_LATTICE
         self.int_lattice = int_lattice or INTEGRITY_LATTICE
 
@@ -367,7 +385,9 @@ class ProductLattice:
         lic_ok = dst.license_tier >= src.license_tier
         return conf_ok and int_ok and lic_ok
 
-    def compute_mask(self, query_states: List[ProductStateVector], key_states: List[ProductStateVector]) -> List[List[float]]:
+    def compute_mask(
+        self, query_states: List[ProductStateVector], key_states: List[ProductStateVector]
+    ) -> List[List[float]]:
         """Compute 2D additive compatibility mask for product lattice states."""
         mask = []
         for q in query_states:
@@ -385,10 +405,14 @@ class ProductLattice:
 # Bitpacked State Tensor Memory Optimization
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BitpackedStateVector:
     """Bitpacked state representation compressing 4D product state into a uint8 byte."""
-    packed_byte: int  # 8-bit integer: [confidentiality: 3 bits | integrity: 2 bits | license: 3 bits]
+
+    packed_byte: (
+        int  # 8-bit integer: [confidentiality: 3 bits | integrity: 2 bits | license: 3 bits]
+    )
 
     @classmethod
     def from_product(cls, sv: ProductStateVector) -> BitpackedStateVector:
@@ -403,9 +427,9 @@ class BitpackedStateVector:
         int_val = (self.packed_byte >> 3) & 0x03
         lic_val = self.packed_byte & 0x07
         return ProductStateVector(
-            confidentiality=ConfidentialityLabel(conf_val if conf_val <= 4 else 4),
-            integrity=IntegrityLabel(int_val if int_val <= 1 else 1),
-            license_tier=lic_val
+            confidentiality=ConfidentialityLabel(min(conf_val, 4)),
+            integrity=IntegrityLabel(min(int_val, 1)),
+            license_tier=lic_val,
         )
 
 
@@ -415,9 +439,17 @@ def bitpack_states(states: torch.Tensor) -> torch.Tensor:
     Reduces memory footprint by 75% for multi-tenant and provenance tracking.
     """
     conf_labels = torch.clamp(states[..., 0].round().long(), 0, 7)
-    int_labels = torch.clamp(states[..., 1].round().long(), 0, 3) if states.shape[-1] > 1 else torch.zeros_like(conf_labels)
-    lic_tiers = torch.clamp(states[..., 2].round().long(), 0, 7) if states.shape[-1] > 2 else torch.zeros_like(conf_labels)
-    
+    int_labels = (
+        torch.clamp(states[..., 1].round().long(), 0, 3)
+        if states.shape[-1] > 1
+        else torch.zeros_like(conf_labels)
+    )
+    lic_tiers = (
+        torch.clamp(states[..., 2].round().long(), 0, 7)
+        if states.shape[-1] > 2
+        else torch.zeros_like(conf_labels)
+    )
+
     packed = (conf_labels << 5) | (int_labels << 3) | lic_tiers
     return packed.to(torch.uint8)
 
@@ -443,6 +475,7 @@ def unpack_states(packed: torch.Tensor, state_dim: int = 8) -> torch.Tensor:
 # RAGMetadataIngressEncoder
 # ---------------------------------------------------------------------------
 
+
 class RAGMetadataIngressEncoder:
     """Encodes enterprise Vector DB metadata (Qdrant, Pinecone, PGVector) into NSA state vectors.
 
@@ -458,7 +491,7 @@ class RAGMetadataIngressEncoder:
     """
 
     LEVEL_MAP: Dict[str, ConfidentialityLabel] = {
-        "UNTRUSTED": ConfidentialityLabel.PUBLIC, # Map old untrusted to public
+        "UNTRUSTED": ConfidentialityLabel.PUBLIC,  # Map old untrusted to public
         "PUBLIC": ConfidentialityLabel.PUBLIC,
         "TRUSTED": ConfidentialityLabel.TRUSTED,
         "CONFIDENTIAL": ConfidentialityLabel.CONFIDENTIAL,
@@ -487,7 +520,7 @@ class RAGMetadataIngressEncoder:
         int_label = IntegrityLabel.TRUSTED if int_str == "TRUSTED" else IntegrityLabel.UNTRUSTED
 
         conf = float(meta.get("confidence", 1.0))
-        
+
         prov_raw = meta.get("provenance", [])
         if isinstance(prov_raw, (int, str)):
             prov = frozenset([str(prov_raw)])
@@ -522,7 +555,13 @@ class RAGMetadataIngressEncoder:
         for meta in metas:
             sv = cls.encode_metadata_dict(meta)
             prov_hash = hash(sv.provenance) & 0xFF if sv.provenance else 0
-            vec = [float(sv.confidentiality.value), float(sv.integrity.value), float(sv.license_tier), float(sv.confidence), float(prov_hash)]
+            vec = [
+                float(sv.confidentiality.value),
+                float(sv.integrity.value),
+                float(sv.license_tier),
+                float(sv.confidence),
+                float(prov_hash),
+            ]
             if state_dim > len(vec):
                 vec = vec + [0.0] * (state_dim - len(vec))
             else:
@@ -624,12 +663,10 @@ def build_level_attention_mask(
     elif gate_mode == "soft":
         # logsigmoid is numerically stable vs log(sigmoid(...))
         import torch.nn.functional as F
+
         temp = max(float(temperature), 1e-5)
         mask = alpha * F.logsigmoid(delta / temp)
     else:
         raise ValueError(f"Unknown gate_mode '{gate_mode}'")
 
     return mask.unsqueeze(1)  # [B, 1, T, T]
-
-
-

@@ -96,6 +96,20 @@ train-dpo: ## Run the NSA-DPO prototype training script
 		PYTHONPATH=. $(PYTHON) prototype/retrofit/nsa_dpo_train.py; \
 	fi
 
+train-audit: ## Run the functional training for the Speculative State Auditor
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONIOENCODING=utf-8 $(UV) run python prototype/retrofit/nsa_auditor_train.py; \
+	else \
+		PYTHONPATH=. PYTHONIOENCODING=utf-8 $(PYTHON) prototype/retrofit/nsa_auditor_train.py; \
+	fi
+
+test-verifier: ## Run NSA 2.0 Speculative Verifier test suite
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python -m pytest -v tests/test_verifier_nsa2.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) -m pytest -v tests/test_verifier_nsa2.py; \
+	fi
+
 eval-security: ## Run NL multi-attack / AdvGLUE-style label firewall suite
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		$(UV) run python eval/security_eval.py; \

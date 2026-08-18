@@ -31,16 +31,16 @@ import math
 from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
-from nsa.algebra import StateLattice, DEFAULT_LATTICE, build_label_attention_mask
+from nsa.algebra import DEFAULT_LATTICE, StateLattice, build_label_attention_mask
 from nsa.state import SemanticGate
-
 
 # ---------------------------------------------------------------------------
 # State Compatibility Functions
 # ---------------------------------------------------------------------------
+
 
 class DotCompatibility(nn.Module):
     """g(σ_i, σ_j) = sigmoid(σ_i · σ_j / √d_state).
@@ -48,6 +48,7 @@ class DotCompatibility(nn.Module):
     High when states are aligned, low when orthogonal/opposing.
     Differentiable and parameter-free.
     """
+
     def forward(self, si: torch.Tensor, sj: torch.Tensor) -> torch.Tensor:
         d = si.shape[-1]
         return torch.sigmoid((si * sj).sum(-1, keepdim=True) / math.sqrt(d))
@@ -58,6 +59,7 @@ class MLPCompatibility(nn.Module):
 
     Fully learned compatibility function. More expressive but has parameters.
     """
+
     def __init__(self, state_dim: int, hidden_dim: Optional[int] = None) -> None:
         super().__init__()
         hidden_dim = hidden_dim or state_dim * 2
@@ -85,6 +87,7 @@ class LevelCompatibility(nn.Module):
     σ[..., 0] so discrete lattice labels map 1:1 into the mask.  Otherwise a
     learned projection is used (less secure — levels can drift).
     """
+
     def __init__(
         self,
         state_dim: int = 8,
@@ -118,6 +121,7 @@ class LevelCompatibility(nn.Module):
 # State-Aware Multi-Head Attention
 # ---------------------------------------------------------------------------
 
+
 class StateAwareAttention(nn.Module):
     """Multi-head attention gated by state compatibility.
 
@@ -141,28 +145,28 @@ class StateAwareAttention(nn.Module):
     """
 
     COMPAT_MODES = ("dot", "mlp", "level", "lattice")
-    GATE_MODES   = ("soft", "hard")
+    GATE_MODES = ("soft", "hard")
 
     def __init__(
         self,
-        d_model:     int   = 128,
-        state_dim:   int   = 8,
-        num_heads:   int   = 8,
-        compat_mode: str   = "level",
-        gate_mode:   str   = "hard",
-        alpha:       float = 1.0,
-        dropout:     float = 0.0,
-        lattice:     StateLattice = DEFAULT_LATTICE,
+        d_model: int = 128,
+        state_dim: int = 8,
+        num_heads: int = 8,
+        compat_mode: str = "level",
+        gate_mode: str = "hard",
+        alpha: float = 1.0,
+        dropout: float = 0.0,
+        lattice: StateLattice = DEFAULT_LATTICE,
         use_discrete_levels: bool = True,
     ) -> None:
         super().__init__()
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
-        self.d_model   = d_model
+        self.d_model = d_model
         self.num_heads = num_heads
-        self.d_k       = d_model // num_heads
+        self.d_k = d_model // num_heads
         self.gate_mode = gate_mode
-        self.alpha     = alpha
-        self.lattice   = lattice
+        self.alpha = alpha
+        self.lattice = lattice
         self.compat_mode = compat_mode
         self.use_discrete_levels = use_discrete_levels
 
@@ -181,9 +185,7 @@ class StateAwareAttention(nn.Module):
         elif compat_mode == "mlp":
             self.compat = MLPCompatibility(state_dim)
         elif compat_mode in ("level", "lattice"):
-            self.compat = LevelCompatibility(
-                state_dim, use_discrete_levels=use_discrete_levels
-            )
+            self.compat = LevelCompatibility(state_dim, use_discrete_levels=use_discrete_levels)
         else:
             raise ValueError(f"compat_mode must be one of {self.COMPAT_MODES}")
 
@@ -199,9 +201,7 @@ class StateAwareAttention(nn.Module):
 
         # Discrete lattice path: hard non-interference from σ[..., 0] labels
         if self.compat_mode == "lattice" or (
-            self.compat_mode == "level"
-            and self.gate_mode == "hard"
-            and self.use_discrete_levels
+            self.compat_mode == "level" and self.gate_mode == "hard" and self.use_discrete_levels
         ):
             labels = state[..., 0].round().long().clamp(0, 5)
             return build_label_attention_mask(
@@ -229,9 +229,9 @@ class StateAwareAttention(nn.Module):
 
     def forward(
         self,
-        x:     torch.Tensor,            # [B, T, d_model]
-        state: torch.Tensor,            # [B, T, state_dim]
-        mask:  Optional[torch.Tensor] = None,  # [B, 1, T, T] or [B, T, T]
+        x: torch.Tensor,  # [B, T, d_model]
+        state: torch.Tensor,  # [B, T, state_dim]
+        mask: Optional[torch.Tensor] = None,  # [B, 1, T, T] or [B, T, T]
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Returns
@@ -240,10 +240,10 @@ class StateAwareAttention(nn.Module):
         state : Tensor [B, T, state_dim] — state is unchanged here (updated in layer)
         """
         B, T, _ = x.shape
-        H, dk   = self.num_heads, self.d_k
+        H, dk = self.num_heads, self.d_k
 
         # Project queries, keys, values
-        Q = self.W_q(x).view(B, T, H, dk).transpose(1, 2)   # [B, H, T, dk]
+        Q = self.W_q(x).view(B, T, H, dk).transpose(1, 2)  # [B, H, T, dk]
         K = self.W_k(x).view(B, T, H, dk).transpose(1, 2)
         V = self.W_v(x).view(B, T, H, dk).transpose(1, 2)
 

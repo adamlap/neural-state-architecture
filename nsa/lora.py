@@ -19,13 +19,12 @@ Trainable Parameter Ratio:
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
 
-from nsa.algebra import StateLattice, DEFAULT_LATTICE
+from nsa.algebra import DEFAULT_LATTICE, StateLattice
 from nsa.fused_attention import FusedStateAwareAttention
 
 
@@ -111,10 +110,20 @@ class NSALoRAAttention(nn.Module):
 
 # Common projection attribute names across HF / custom transformers
 _LORA_TARGET_SUFFIXES = (
-    "q_proj", "k_proj", "v_proj", "o_proj",
-    "W_q", "W_k", "W_v", "W_o",
-    "query", "key", "value", "out_proj",
-    "c_attn", "c_proj",
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "W_q",
+    "W_k",
+    "W_v",
+    "W_o",
+    "query",
+    "key",
+    "value",
+    "out_proj",
+    "c_attn",
+    "c_proj",
 )
 
 
@@ -204,6 +213,7 @@ def apply_nsa_lora_retrofit(
 # DynamicNSARetrofitBlock (Multi-Path Gating: Attention + Residual + FFN)
 # ---------------------------------------------------------------------------
 
+
 class DynamicNSARetrofitBlock(nn.Module):
     """Retrofit block with *selective* multi-path policy interventions.
 
@@ -289,8 +299,8 @@ class DynamicNSARetrofitBlock(nn.Module):
 
     def forward(
         self,
-        h: torch.Tensor,                # [B, T, d_model]
-        sigma: torch.Tensor,            # [B, T, state_dim]
+        h: torch.Tensor,  # [B, T, d_model]
+        sigma: torch.Tensor,  # [B, T, state_dim]
         mask: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         hard_sec = sigma[..., 0:1]

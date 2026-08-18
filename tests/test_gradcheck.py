@@ -10,13 +10,13 @@ Verifies:
 """
 
 import unittest
-import torch
-import torch.nn as nn
 
-from nsa.attention import StateAwareAttention
+import torch
+from torch import nn
+
 from nsa.fused_attention import FusedStateAwareAttention
+from nsa.objectives import StateConstraintLoss
 from nsa.state import SemanticGate
-from nsa.objectives import NSALoss, StateConstraintLoss
 
 
 class TestNSAGradcheck(unittest.TestCase):
@@ -29,7 +29,7 @@ class TestNSAGradcheck(unittest.TestCase):
         """Verify autograd gradcheck on SemanticGate."""
         d_model, state_dim = 16, 4
         gate = SemanticGate(d_model=d_model, state_dim=state_dim).to(torch.float64)
-        
+
         x = torch.randn(2, 4, d_model, dtype=torch.float64, requires_grad=True)
         state = torch.randn(2, 4, state_dim, dtype=torch.float64, requires_grad=True)
 
@@ -56,18 +56,20 @@ class TestNSAGradcheck(unittest.TestCase):
     def test_state_constraint_loss_differentiability(self):
         """Verify state constraint loss gradients flow into state transitions."""
         loss_fn = StateConstraintLoss()
-        src_state = torch.tensor([[[4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]], dtype=torch.float32)  # PRIVATE (state_dim=8)
-        
+        src_state = torch.tensor(
+            [[[4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]], dtype=torch.float32
+        )  # PRIVATE (state_dim=8)
+
         # Linear layer producing target state
         linear = nn.Linear(8, 8)
         opt = torch.optim.SGD(linear.parameters(), lr=0.1)
-        
+
         inp = torch.randn(1, 1, 8)
         dst_state = linear(inp)
-        
+
         loss = loss_fn(src_state, dst_state)
         loss.backward()
-        
+
         # Verify non-zero gradient flow into linear layer weights
         self.assertIsNotNone(linear.weight.grad)
         self.assertTrue(torch.abs(linear.weight.grad).sum() > 0.0)

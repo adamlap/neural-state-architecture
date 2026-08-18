@@ -39,8 +39,11 @@ Experience NSA's real-world security enforcement with our interactive demo that 
 ### Quick Start
 
 ```bash
-make demo      # Launches the Interactive Gradio Web UI
-make showcase  # Runs the CLI-based Security Demonstration
+make demo-dpo        # Launches DPO-Aligned Web UI Showcase (Recommended)
+make demo            # Launches Standard Web UI Showcase
+make showcase        # Runs CLI-based Security Demonstration
+make test-verifier   # Runs NSA 2.0 Speculative Verifier Test Suite
+make train-audit     # Trains Semantic State Encoder Head on base model
 ```
 
 This command:
@@ -338,6 +341,36 @@ For complete technical documentation on multi-path gating, state-aware KV-caches
 
 ---
 
+## NSA 2.0: Speculative State Auditing & Dynamic Alignment Engine
+
+**NSA 2.0** evolves the static attention-masking paradigm into an active, self-governing runtime execution environment:
+
+```
+                                NSA 2.0 RUNTIME ARCHITECTURE
+                                              │
+    ┌──────────────────┬──────────────────────┼──────────────────────┬──────────────────┐
+    ▼                  ▼                      ▼                      ▼                  ▼
+ Phase 1            Phase 2                Phase 3                Phase 4            Core Engine
+ Dynamic State      Multi-Layer Auditing   Native Recovery        Compartmented      NSAMaskInjector &
+ Tracking           & Deep Probing         Adapters               Execution          NSAGenerator
+ ("Moving Mask")    (Early Exit Probes)    (Weight Refusal)       (StreamRouter)     (Dual Cache Rollback)
+```
+
+1. **Dynamic State Tracking ("Moving Mask")**:
+   - Special tokens (`<|start_system_thought|>`, `<|end_system_thought|>`) allow the model to enter internal high-security scratchpads.
+   - `NSAMaskInjector.update_state()` dynamically expands the $\sigma$ tensor and recomputes the additive attention mask on-the-fly, mathematically barring subsequent $PUBLIC$ tokens from attending to internal reasoning scratchpads.
+2. **Multi-Layer Auditing & Residual Deep Probing**:
+   - `MultiLayerStateAuditor` evaluates intermediate residual hidden states (e.g. Layers 12, 18, 24).
+   - If an unsafe trajectory is detected deep in the residual stream before reaching output logits, it triggers an **Early Exit**, rolling back the KV-cache.
+3. **Native Recovery Adapters**:
+   - Replaces brittle prompt injection with weight-level `RecoveryPolicy` hot-swapping (`AdapterSwitchRecovery`), emitting verified refusals without context pollution.
+4. **Compartmented Execution & Clearance-Aware Stream Routing**:
+   - `StreamRouter` routes tokens dynamically based on active $StateLabel$: $SYSTEM$ tokens flow to internal tool APIs (e.g. secure SQL databases) while $PUBLIC$ tokens flow to user interfaces.
+
+> Read the full technical guide in [**`docs/nsa_2_0_guide.md`**](docs/nsa_2_0_guide.md).
+
+---
+
 ## Threat Model & Security Realism
 
 To maintain scientific integrity, NSA distinguishes between **hard attention non-interference** and **indirect state taint**:
@@ -363,61 +396,44 @@ neural-state-architecture/
 │   ├── algebra.py                   # State algebra: lattice, partial order, bitpacked states
 │   ├── state.py                     # StateVector, WeightedStateEdge, TransitionOperator
 │   ├── attention.py                 # State-aware multi-head attention
-│   ├── fused_attention.py           # Pillar 2: Fused GPU-accelerated state-aware SDPA attention
-│   ├── lora.py                      # Pillar 3: NSA-LoRA post-hoc retrofitting adapters
+│   ├── fused_attention.py           # Fused GPU-accelerated state-aware SDPA attention
+│   ├── lora.py                      # NSA-LoRA post-hoc retrofitting adapters
+│   ├── mask_injector.py             # First-class NSAMaskInjector with dynamic state tracking
 │   ├── triton_kernel.py             # SDPA state-mask backend (Triton JIT not shipped)
-│   ├── hf_integration.py            # Prototype HF-style config/model wrappers
+│   ├── hf_integration.py            # HF-style config/model wrappers & retrofit_hf_attention
 │   ├── kv_cache.py                  # KV-Cache + state tracking helper
-│   ├── vllm_plugin.py               # Prototype attention-hook helper (not a real vLLM plugin)
 │   ├── layers.py                    # NSATransformerBlock, NSATransformer, NSACausalLM
 │   ├── objectives.py                # Dual loss functions: SemanticLoss, StateConstraintLoss, NSALoss
-│   ├── value_layer.py               # Value layer ν: ValueAlignmentLoss, AlignmentStateProjector  h=(m,σ,ν)
+│   ├── value_layer.py               # Value layer ν: ValueAlignmentLoss, AlignmentStateProjector
+│   ├── verifier/                    # NSA 2.0 Speculative Auditing & Runtime Engine
+│   │   ├── encoder_head.py          # StateEncoderHead (probe classification head)
+│   │   ├── speculative.py           # MultiLayerStateAuditor & AuditResult (early exit)
+│   │   ├── tokens.py                # StateControlTokens registry (<|start_system_thought|>)
+│   │   ├── router.py                # StreamRouter for compartmented token dispatch
+│   │   ├── recovery.py              # RecoveryPolicy (AdapterSwitchRecovery, SemanticPivot)
+│   │   └── generation.py            # NSAGenerator (dual DynamicCache & tuple KV rollback)
 │   └── utils.py                     # Introspection, metrics, and visualization
-├── tests/                           # Complete Unit Test Suite (30 tests)
+├── tests/                           # Complete Unit Test Suite (67 tests, 100% passing)
 │   ├── test_nsa.py                  # Unit tests for algebra, primitives, and utilities
-│   ├── test_gradcheck.py            # PyTorch double-precision autograd gradcheck
+│   ├── test_verifier_nsa2.py        # Unit tests for NSA 2.0 verifier, router, injector
+│   ├── test_security_invariants.py  # Security non-interference invariant checks
+│   ├── test_gradcheck.py            # PyTorch autograd gradcheck
 │   ├── test_fuzzing.py              # Hypothesis property-based algebraic fuzzing
-│   ├── test_kv_cache.py             # KV-cache prefill & single-token decode tracking
+│   ├── test_kv_cache.py             # KV-cache tracking tests
 │   └── test_masks.py                # Attention mask precedence & parameter isolation
 ├── whitepaper/
 │   ├── nsa_whitepaper.md            # Theoretical whitepaper & mathematical non-interference proof
 │   └── nsa_paper.tex                # Formal LaTeX conference paper (NeurIPS/IEEE S&P ready)
 ├── docs/
+│   ├── nsa_2_0_guide.md             # NSA 2.0 Speculative Auditing & Dynamic Alignment Guide
 │   ├── state_algebra.md             # Algebraic specification and state lattice docs
-│   ├── alignment_substrate.md       # Alignment substrate framework: h=(m,σ,ν), three-layer architecture
-│   ├── benchmark_report.md          # Executive report card generated by make report
-│   └── attention_heatmap.html       # Interactive Plotly visualizer generated by make visualize
-└── prototype/
-    ├── pillars/
-    │   ├── pretrain_lm.py           # Pillar 1: Causal LLM zero quality degradation benchmark
-    │   ├── benchmark_gpu.py         # Pillar 2: Fused GPU attention throughput benchmark
-    │   ├── retrofit_lora.py         # Pillar 3: NSA-LoRA post-hoc retrofitting benchmark
-    │   └── prompt_injection_bench.py # Pillar 4: Empirical red-teaming & prompt injection benchmark
-    ├── security/
-    │   ├── leakage_attack.py        # Adversarial information leakage extraction benchmark
-    │   ├── multi_tier_experiment.py # 4-tier security lattice governance benchmark
-    │   ├── nl_redteam_suite.py      # NL multi-attack / AdvGLUE-style label firewall suite
-    │   └── multi_probe_bench.py     # Multi-level adversarial probing benchmark
-    ├── retrofit/
-    │   ├── open_llm_retrofit.py     # Phase 3: Scale open LLM retrofitting simulation
-    │   ├── hf_nsa_retrofit.py       # Real HF model NSA-LoRA retrofit (Pillar 3 real path)
-    │   ├── llama_security_showcase.py # Llama & Qwen2.5 security retrofit showcase
-    │   ├── native_vs_retrofit_exp.py # 3-way Native TNC vs Retrofit vs Baseline benchmark
-    │   └── retrofit_evolution_bench.py # 4-level progressive retrofit evolution benchmark
-    ├── experiments/
-    │   ├── toy_experiment.py        # End-to-end synthetic experiment (baseline vs NSA)
-    │   ├── state_transformer.py     # Minimal working prototype block
-    │   ├── dynamic_nsa_tradeoff.py  # Dynamic NSA component matrix + α coupling sweep
-    │   └── ablation_study.py        # Systematic ablation study across 4 configurations
-    ├── demos/
-    │   ├── web_demo.py              # Live Gradio web application UI (make demo)
-    │   ├── visualize_attention.py   # Interactive Plotly heatmap generator (make visualize)
-    │   └── eval_showcase_prompts.py # Automated prompt scenario evaluation harness
-    ├── reporting/
-    │   └── generate_benchmark_report.py # Automated report card generator (make report)
-    ├── results/                     # Output files (gitignored)
-    ├── *.py                         # Compatibility shims → redirect to subfolders above
-    └── requirements.txt
+│   ├── alignment_substrate.md       # Alignment substrate framework: h=(m,σ,ν)
+│   ├── advanced_retrofit_guide.md   # Multi-path gating and progressive retrofit guide
+│   └── benchmark_report.md          # Executive report card generated by make report
+└── demo/
+    ├── cli_showcase.py              # Live CLI security showcase with speculative auditing
+    ├── web_demo.py                  # Interactive Gradio web application UI (make demo)
+    └── web_demo_dpo.py              # Interactive DPO-aligned web UI (make demo-dpo)
 ```
 
 ---
@@ -447,9 +463,13 @@ make help
 | **`make venv`** | `uv venv` | Creates isolated `.venv` virtual environment |
 | **`make install`** | `uv pip install` | Installs runtime requirements from `requirements.txt` |
 | **`make install-dev`**| `uv pip install` | Installs runtime and dev tools (`pytest`, `ruff`, `black`, `mypy`) |
-| **`make test`** | `uv run pytest` | Executes all unit tests covering algebra, properties, and invariants |
-| **`make demo`** | `uv run python` | Launches interactive **Gradio Web Application UI** |
+| **`make test`** | `uv run pytest` | Executes all 67 unit tests covering algebra, verifier, and invariants |
+| **`make test-verifier`**| `uv run pytest`| Executes NSA 2.0 Speculative Verifier test suite |
+| **`make demo-dpo`** | `uv run python` | Launches interactive **DPO-Aligned Web Application UI** |
+| **`make demo`** | `uv run python` | Launches standard **Gradio Web Application UI** |
 | **`make showcase`** | `uv run python` | Runs **Live Security Showcase** (CLI Retrofitting Demo) |
+| **`make train-dpo`** | `uv run python` | Runs NSA-DPO preference alignment training |
+| **`make train-audit`**| `uv run python` | Trains semantic StateEncoderHead on base model |
 | **`make eval-security`**| `uv run python` | Runs unified red-teaming security evaluations |
 | **`make eval-perf`** | `uv run python` | Runs unified performance and throughput benchmarks |
 | **`make lint`** | `uv run ruff` | Performs syntax, type, and code-style checks |
@@ -519,6 +539,59 @@ print("Output semantic shape:", typed_out.m.shape)      # [2, 16, 128]
 print("Output state shape:   ", typed_out.sigma.shape)  # [2, 16, 8]
 ```
 
+### NSA 2.0 Speculative Generation with Dynamic Tracking & Auditing
+
+```python
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from nsa import (
+    StateLabel,
+    NSAMaskInjector,
+    StateEncoderHead,
+    MultiLayerStateAuditor,
+    StreamRouter,
+    AdapterSwitchRecovery,
+    generate_with_auditor,
+)
+
+# 1. Load model & tokenizer
+model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
+
+# 2. Configure compartmented execution router
+router = StreamRouter(tokenizer=tokenizer)
+router.register_sink(StateLabel.PUBLIC, lambda text, tid: print(f"[USER]: {text}", end=""))
+router.register_sink(StateLabel.SYSTEM, lambda text, tid: print(f"[TOOL_API]: {text}", end=""))
+
+# 3. Setup multi-layer auditor (probing intermediate and final layers)
+head = StateEncoderHead(hidden_size=model.config.hidden_size, num_states=len(StateLabel))
+head.load_state_dict(torch.load("trained_auditor_weights.pt", weights_only=True))
+
+auditor = MultiLayerStateAuditor(
+    encoder_head=head,
+    lattice_validator=lambda pred: pred != StateLabel.SYSTEM.value,
+    chunk_size=4,
+    probe_layers=[-1, 12],
+)
+
+# 4. Generate with dynamic attention mask expansion and early-exit auditing
+input_ids = tokenizer.encode("Explain system architecture", return_tensors="pt")
+state_levels = torch.tensor([[StateLabel.PUBLIC.value] * input_ids.shape[1]])
+injector = NSAMaskInjector(model, state_levels)
+
+with injector:
+    outputs = generate_with_auditor(
+        model=model,
+        tokenizer=tokenizer,
+        input_ids=input_ids,
+        auditor=auditor,
+        mask_injector=injector,
+        recovery_adapter=AdapterSwitchRecovery(),
+        stream_router=router,
+        max_new_tokens=40,
+    )
+```
+
 ---
 
 ## Applications
@@ -527,11 +600,15 @@ NSA provides a unified mathematical foundation for:
 * **Intrinsic Security & Privacy** (mathematically preventing private data leakage)
 * **Data Provenance & Lineage**
 * **Dynamic Confidence & Uncertainty Tracking**
+* **Dynamic State Verification** (Speculative state auditing using a parallel causal/bidirectional encoder)
 * **Auditability & Compliance Verification**
 
 ---
 
 ## Documentation & Whitepaper
 
+* Read the NSA 2.0 Speculative Guide in [**`docs/nsa_2_0_guide.md`**](docs/nsa_2_0_guide.md)
 * Read the full theoretical paper in [`whitepaper/nsa_whitepaper.md`](whitepaper/nsa_whitepaper.md)
 * Read the state algebra specification in [`docs/state_algebra.md`](docs/state_algebra.md)
+* Read the alignment substrate framework in [`docs/alignment_substrate.md`](docs/alignment_substrate.md)
+* Read the advanced retrofit guide in [`docs/advanced_retrofit_guide.md`](docs/advanced_retrofit_guide.md)

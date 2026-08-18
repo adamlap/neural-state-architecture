@@ -74,6 +74,34 @@ I(m_{\text{src}}; m_{\text{dst}} \mid \sigma) = H(m_{\text{dst}} \mid \sigma) - 
 \end{equation}
 \end{proof}
 
+\section{NSA 2.0: Speculative State Auditing \& Runtime Steering}
+
+While static attention masking isolates prefill prompt regions, \textbf{NSA 2.0} formalizes an active runtime execution engine that monitors and compartments autoregressive generation.
+
+\subsection{Dynamic State Tracking (The Moving Mask)}
+Control tokens $\tau \in \mathcal{T}_{\text{state}}$ (e.g., \texttt{<|start\_system\_thought|>}) trigger explicit transitions in the generation clearance level: $\sigma_{t+1} = \mathcal{T}_{\text{transition}}(\tau_t, \sigma_t)$. The runtime context manager dynamically expands the state sequence $\boldsymbol{\sigma}_{1:t+1}$ and recalculates the 4D attention mask $\mathbf{M}(\boldsymbol{\sigma})_{1:t+1, 1:t+1}$ on-the-fly, mathematically barring subsequent \texttt{PUBLIC} tokens from attending to internal reasoning scratchpads.
+
+\subsection{Multi-Layer Deep Probing \& Early-Exit}
+To prevent unsafe information from traversing the full network depth, intermediate probe heads $\Phi_{\text{head}}^{(l)}$ evaluate residual states $\mathbf{h}_k^{(l)}$ for layers $l \in \mathcal{L}_{\text{probe}} \subseteq \{1, \dots, L\}$. Over a chunk of $K$ tokens, the early-exit condition:
+\begin{equation}
+\exists k \in [1, K], \, l \in \mathcal{L}_{\text{probe}} \quad \text{s.t.} \quad \mathcal{V}_{\text{lattice}}\left(\hat{s}_k^{(l)}, \sigma_t\right) = \text{False}
+\end{equation}
+triggers an immediate forward halt and KV-cache rollback at index $k$, saving $O((L-l)K)$ compute.
+
+\subsection{Native Recovery Adapters}
+Upon rollback, the model hot-swaps to a dedicated recovery LoRA parameter subspace $\Delta W_{\text{recovery}}$, emitting a safe refusal at the parameter level without polluting the context window with brittle synthetic prompt injection.
+
+\subsection{Compartmented Multi-Stream Execution}
+Generated tokens are dynamically routed based on clearance:
+\begin{equation}
+\mathcal{Y}_t \xrightarrow{\text{route}} 
+\begin{cases}
+\text{STDOUT}_{\text{SYSTEM}} & \text{if } \sigma_t = \text{SYSTEM} \\
+\text{STDOUT}_{\text{PUBLIC}} & \text{if } \sigma_t \le \text{PUBLIC}
+\end{cases}
+\end{equation}
+enabling models to safely execute tool queries containing authentication secrets with provable non-leakage to user interfaces.
+
 \section{Empirical Evaluation}
 
 We validate the theoretical guarantees of NSA via a synthetic injection-attack benchmark evaluating the random-guess base rate (2\%):
@@ -99,7 +127,7 @@ F - AlgPres+Value & $(m, \sigma_p, \nu)$ & \textbf{0.00\%} & Structural + Behav.
 \end{table}
 
 \section{Conclusion}
-Neural State Architecture demonstrates that security and privacy policies do not require fragile external wrappers. By embedding typed product state lattices directly into continuous Transformer activations alongside robust capabilities and transition operators, NSA achieves provable information isolation.
+Neural State Architecture demonstrates that security and privacy policies do not require fragile external wrappers. By embedding typed product state lattices directly into continuous activations alongside speculative multi-layer auditing and compartmented stream routing, NSA achieves provable information isolation in both static and autoregressive runtime regimes.
 
 \bibliographystyle{plain}
 \end{document}

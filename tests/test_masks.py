@@ -10,8 +10,9 @@ Verifies:
 """
 
 import unittest
+
 import torch
-import torch.nn as nn
+from torch import nn
 
 from nsa.fused_attention import FusedStateAwareAttention
 from nsa.lora import NSALoRALinear
@@ -25,10 +26,10 @@ class TestNSAMasksAndLoRA(unittest.TestCase):
         attn = FusedStateAwareAttention(d_model=32, state_dim=4, num_heads=4, gate_mode="soft")
         x = torch.randn(2, 8, 32)
         state = torch.randn(2, 8, 4)
-        
+
         # 1 = allowed, 0 = causal masked
         causal_mask = torch.tril(torch.ones(8, 8)).unsqueeze(0).unsqueeze(0)
-        
+
         out, _ = attn(x, state, mask=causal_mask)
         self.assertEqual(out.shape, (2, 8, 32))
         self.assertFalse(torch.isnan(out).any())
@@ -64,7 +65,7 @@ class TestNSAMasksAndLoRA(unittest.TestCase):
         attn = FusedStateAwareAttention(d_model=32, state_dim=4, num_heads=4, gate_mode="hard")
         x = torch.randn(2, 8, 32)
         state = torch.randn(2, 8, 4)
-        
+
         out, _ = attn(x, state)
         self.assertEqual(out.shape, (2, 8, 32))
         self.assertFalse(torch.isnan(out).any())

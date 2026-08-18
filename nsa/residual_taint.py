@@ -20,7 +20,7 @@ from typing import List, Optional, Sequence, Tuple
 
 import torch
 
-from nsa.algebra import DEFAULT_LATTICE, StateLabel, StateLattice, DeclassificationCapability
+from nsa.algebra import DEFAULT_LATTICE, DeclassificationCapability, StateLabel, StateLattice
 
 
 def join_levels(
@@ -96,7 +96,7 @@ class ResidualTaintTracker:
         cls,
         state: torch.Tensor,
         lattice: StateLattice = DEFAULT_LATTICE,
-    ) -> "ResidualTaintTracker":
+    ) -> ResidualTaintTracker:
         """Build tracker from continuous state tensors (uses σ[..., 0])."""
         levels = state[..., 0].round().long().clamp(0, 5)
         return cls(levels, lattice=lattice)
@@ -151,7 +151,7 @@ class ResidualTaintTracker:
 
         # Readable mask under lattice can_attend
         q = query_levels.unsqueeze(2)  # [B,Tq,1]
-        k = key_levels.unsqueeze(1)    # [B,1,Tk]
+        k = key_levels.unsqueeze(1)  # [B,1,Tk]
         readable = q >= k  # default monotone; matches DEFAULT_LATTICE
 
         if attn_probs is not None:
@@ -199,7 +199,7 @@ class ResidualTaintTracker:
         positions: Sequence[Tuple[int, int]],
         target: StateLabel,
         *,
-        capability: Optional["DeclassificationCapability"] = None,
+        capability: Optional[DeclassificationCapability] = None,
     ) -> None:
         """Attempt declassification of selected (batch, time) positions."""
         for b, t in positions:

@@ -23,13 +23,13 @@ USING_TRITON_KERNEL
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
 import math
 import threading
+from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 from nsa.algebra import DEFAULT_LATTICE, StateLattice, build_label_attention_mask
 
@@ -65,13 +65,33 @@ if HAS_TRITON:
 
     @triton.jit
     def _nsa_attn_fwd_kernel(
-        Q, K, V, Out, Mask,
-        stride_qb, stride_qh, stride_qm, stride_qd,
-        stride_kb, stride_kh, stride_kn, stride_kd,
-        stride_vb, stride_vh, stride_vn, stride_vd,
-        stride_ob, stride_oh, stride_om, stride_od,
-        stride_mb, stride_mh, stride_mm, stride_mn,
-        Tq, Tk,
+        Q,
+        K,
+        V,
+        Out,
+        Mask,
+        stride_qb,
+        stride_qh,
+        stride_qm,
+        stride_qd,
+        stride_kb,
+        stride_kh,
+        stride_kn,
+        stride_kd,
+        stride_vb,
+        stride_vh,
+        stride_vn,
+        stride_vd,
+        stride_ob,
+        stride_oh,
+        stride_om,
+        stride_od,
+        stride_mb,
+        stride_mh,
+        stride_mm,
+        stride_mn,
+        Tq,
+        Tk,
         scale,
         BLOCK_M: tl.constexpr,
         BLOCK_N: tl.constexpr,
@@ -192,10 +212,14 @@ def _build_total_mask(
 
     Tk = state_mask.shape[-1]
     if causal and Tq == Tk:
-        causal_mask = torch.triu(
-            torch.full((Tq, Tk), float("-inf"), device=q.device, dtype=q.dtype),
-            diagonal=1,
-        ).unsqueeze(0).unsqueeze(0)
+        causal_mask = (
+            torch.triu(
+                torch.full((Tq, Tk), float("-inf"), device=q.device, dtype=q.dtype),
+                diagonal=1,
+            )
+            .unsqueeze(0)
+            .unsqueeze(0)
+        )
         return state_mask + causal_mask
     return state_mask
 
@@ -251,13 +275,33 @@ def _launch_triton_attn(
     USING_TRITON_KERNEL = True
     try:
         _nsa_attn_fwd_kernel[grid](
-            q_f, k_f, v_f, o_f, m_f,
-            q_f.stride(0), 0, q_f.stride(1), q_f.stride(2),
-            k_f.stride(0), 0, k_f.stride(1), k_f.stride(2),
-            v_f.stride(0), 0, v_f.stride(1), v_f.stride(2),
-            o_f.stride(0), 0, o_f.stride(1), o_f.stride(2),
-            m_f.stride(0), 0, m_f.stride(1), m_f.stride(2),
-            Tq, Tk,
+            q_f,
+            k_f,
+            v_f,
+            o_f,
+            m_f,
+            q_f.stride(0),
+            0,
+            q_f.stride(1),
+            q_f.stride(2),
+            k_f.stride(0),
+            0,
+            k_f.stride(1),
+            k_f.stride(2),
+            v_f.stride(0),
+            0,
+            v_f.stride(1),
+            v_f.stride(2),
+            o_f.stride(0),
+            0,
+            o_f.stride(1),
+            o_f.stride(2),
+            m_f.stride(0),
+            0,
+            m_f.stride(1),
+            m_f.stride(2),
+            Tq,
+            Tk,
             float(scale),
             BLOCK_M=BLOCK_M,
             BLOCK_N=BLOCK_N,
@@ -307,16 +351,13 @@ def triton_fused_state_attention(
         causal=causal,
     )
 
-    want_triton = (
-        force_backend == "triton"
-        or (
-            force_backend is None
-            and HAS_TRITON
-            and TRITON_KERNEL_DEFINED
-            and q.is_cuda
-            and k.is_cuda
-            and v.is_cuda
-        )
+    want_triton = force_backend == "triton" or (
+        force_backend is None
+        and HAS_TRITON
+        and TRITON_KERNEL_DEFINED
+        and q.is_cuda
+        and k.is_cuda
+        and v.is_cuda
     )
 
     if want_triton and force_backend not in ("sdpa", "manual"):
@@ -368,7 +409,7 @@ class FusedTritonStateAttention(nn.Module):
         self.state_dim = state_dim
         self.num_heads = num_heads
         self.d_head = d_model // num_heads
-        self.scale = 1.0 / (self.d_head ** 0.5)
+        self.scale = 1.0 / (self.d_head**0.5)
         self.temp = temp
         self.alpha = alpha
         self.gate_mode = gate_mode
@@ -398,10 +439,15 @@ class FusedTritonStateAttention(nn.Module):
 
         if mask is None:
             attn_out = triton_fused_state_attention(
-                q=q, k=k, v=v,
-                q_state=state, k_state=state,
+                q=q,
+                k=k,
+                v=v,
+                q_state=state,
+                k_state=state,
                 level_proj_weight=self.level_proj.weight,
-                scale=self.scale, temp=self.temp, alpha=self.alpha,
+                scale=self.scale,
+                temp=self.temp,
+                alpha=self.alpha,
                 gate_mode=self.gate_mode,
                 use_discrete_levels=self.use_discrete_levels,
                 lattice=self.lattice,

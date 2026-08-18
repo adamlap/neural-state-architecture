@@ -181,22 +181,57 @@ To ensure that expanding the state representation **never degrades computational
 
 ---
 
-## 7. Threat Model & Information Flow Limitations
+## 7. NSA 2.0: Speculative State Auditing & Dynamic Alignment Engine
+
+While NSA 1.0 establishes static attention-layer policy guarantees for fixed input regions, **NSA 2.0** formalizes an active, self-governing runtime execution environment that dynamically monitors, audits, and compartments autoregressive token generation.
+
+### 7.1 Dynamic State Tracking (The Moving Lattice Mask)
+In standard generation, the attention mask $\mathbf{M}(\boldsymbol{\sigma})$ remains fixed after prefill. NSA 2.0 enables autonomous state transitions during generation:
+1. **Control Tag Semantics**: Control tokens $\tau \in \mathcal{T}_{state}$ (e.g., `<|start_system_thought|>`, `<|end_system_thought|>`) signal explicit transitions in the generation state clearance:
+   $$\sigma_{t+1} = \mathcal{T}_{\text{transition}}(\tau_t, \sigma_t)$$
+2. **Moving Attention Mask**: The runtime context manager (`NSAMaskInjector`) appends the new state coordinate $\sigma_{t+1}$ to $\boldsymbol{\sigma}_{1:t+1}$ and recalculates the dynamic 4D attention mask $\mathbf{M}(\boldsymbol{\sigma})_{1:t+1, 1:t+1}$ on-the-fly.
+3. **Provable Downward Non-Interference**: When the model exits a $SYSTEM$ scratchpad, subsequent $PUBLIC$ output tokens have attention weights strictly zeroed:
+   $$\forall j \in \text{Scratchpad}: \quad A_{t_{\text{public}}, j} = 0$$
+   This mathematically prevents subsequent user-facing output from attending to or leaking internal chain-of-thought secrets.
+
+### 7.2 Multi-Layer Residual Stream Deep Probing & Early-Exit Criterion
+Waiting until the final transformer layer $L$ to evaluate state validity allows unsafe information to traverse the entire network depth. NSA 2.0 introduces **Multi-Layer Residual Probing**:
+* Let $\mathbf{h}_k^{(l)}$ denote the hidden state at generation step $k$ for layer $l \in \mathcal{L}_{\text{probe}} \subseteq \{1, \dots, L\}$.
+* A lightweight probe head $\Phi_{\text{head}}: \mathbb{R}^{d_{model}} \to \Delta^{|\mathcal{S}|}$ evaluates state distributions across intermediate depths:
+  $$\hat{s}_k^{(l)} = \arg\max \Phi_{\text{head}}(\mathbf{h}_k^{(l)})$$
+* **Early-Exit Criterion**: Over a generation chunk of length $K$, if any intermediate layer flags an impermissible lattice transition:
+  $$\exists k \in [1, K], \, l \in \mathcal{L}_{\text{probe}} \quad \text{s.t.} \quad \mathcal{V}_{\text{lattice}}(\hat{s}_k^{(l)}, \sigma_t) = \text{False}$$
+  the runtime halts the forward trajectory immediately, discarding the invalid chunk and triggering an early KV-cache rollback at index $k$, saving $O((L - l) \cdot K)$ computation.
+
+### 7.3 Native Recovery Policies & Parameter-Level Refusals
+To eliminate brittle semantic prompt injection during self-correction, NSA 2.0 defines formal **Recovery Policies** ($\mathcal{R}$):
+* **AdapterSwitchRecovery**: Upon KV-cache rollback, the model hot-swaps to a dedicated recovery LoRA parameter subspace $\Delta W_{\text{recovery}}$. The forward pass natively forces a safe refusal at the parameter level without polluting the context window with synthetic system instructions.
+* **SemanticPivotRecovery**: Injects a structured system override instruction with a bounded retry limit $N_{\text{pivot}}$.
+* **HaltRecovery**: Strict invariant enforcement terminating generation on the first detected violation.
+
+### 7.4 Compartmented Multi-Stream Execution
+Enterprise agents require models to reason about and transmit secrets to secure backend tools (e.g. database query APIs) without exposing them to user chat interfaces. NSA 2.0 introduces **Clearance-Aware Stream Routing**:
+$$\mathcal{Y}_{t} \xrightarrow{\text{route}} \begin{cases} \text{STDOUT}_{\text{SYSTEM}} & \text{if } \sigma_t = \text{SYSTEM} \\ \text{STDOUT}_{\text{PUBLIC}} & \text{if } \sigma_t \le \text{PUBLIC} \end{cases}$$
+Because the dynamic attention mask ensures that $\text{STDOUT}_{\text{PUBLIC}}$ tokens cannot compute non-zero attention over $\text{STDOUT}_{\text{SYSTEM}}$ tokens, the model can safely execute multi-step database queries containing confidential authentication tokens with zero risk of accidental user disclosure.
+
+---
+
+## 8. Threat Model & Information Flow Limitations
 
 To maintain scientific clarity, we define the exact scope and boundary of NSA security guarantees.
 
-### 7.1 What NSA Guarantees
+### 8.1 What NSA Guarantees
 * **Direct Attention Non-Interference**: Hard masking $\mathbf{M}(\boldsymbol{\sigma})_{ij} = -\infty$ guarantees that query position $i$ cannot compute non-zero softmax attention weights over key position $j$ if $\sigma_i \not\ge \sigma_j$.
 * **Algebraic State Propagation**: State transition operators $(w, V)$ enforce that information reclassification along forward trajectories is monotone non-decreasing in restriction.
 
-### 7.2 Information Flow Limitations & Mitigations
-* **Residual Stream Accumulation**: While direct cross-attention between position $i$ and position $j$ is zeroed, representations at position $j$ can theoretically influence residual activations downstream if multi-layer FFNs intermix representations across tokens. *Mitigation*: NSA applies state-gated residual connections and FFN state normalization.
+### 8.2 Information Flow Limitations & Mitigations
+* **Residual Stream Accumulation**: While direct cross-attention between position $i$ and position $j$ is zeroed, representations at position $j$ can theoretically influence residual activations downstream if multi-layer FFNs intermix representations across tokens. *Mitigation*: NSA applies state-gated residual connections, multi-layer residual probing (`MultiLayerStateAuditor`), and FFN state normalization.
 * **Empirical Capacity Trade-off**: Constraining the attention manifold via compatibility mask $\mathbf{M}(\boldsymbol{\sigma})$ reduces the available degrees of freedom in self-attention. Empirically, this results in a small representational capacity trade-off ($\approx 1\text{--}3\%$ loss delta relative to an unconstrained Transformer), which is a deliberate design trade-off in exchange for hard algebraic guarantees.
 * **Soft Masking for Post-Hoc Retrofits**: Applying a rigid $-\infty$ hard mask to standard, natively unconstrained LLMs via post-hoc retrofitting causes severe out-of-distribution activation spikes, resulting in hallucination. Practical retrofitting deployments utilize a **Soft Mask Penalty** ($-\alpha \cdot \text{logsigmoid}(\delta / T)$) to smoothly dampen attention toward secrets without breaking semantic fluency. Natively trained NSA models do not suffer this limitation and fully support rigid mathematical masking.
 
 ---
 
-## 8. Empirical Validation (Synthetic Security Demonstration)
+## 9. Empirical Validation (Synthetic Security Demonstration)
 
 To validate the theoretical guarantees of NSA, we implement a synthetic injection-attack benchmark across 6 model architectures. The benchmark task requires models to process untrusted queries alongside system secrets, where the secret is randomly sampled from a 50-token space (establishing a random-guess base rate of 2%).
 
@@ -216,16 +251,18 @@ To rigorously confirm that secret state vectors demonstrate drastically reduced 
 
 ---
 
-## 9. Applications
+## 10. Applications
 
 * **Enterprise Multi-Tenant Data Governance**: Enforces tenant document boundary isolation directly inside RAG attention passes.
 * **Neural Metadata Propagation (NMP)**: Tracks confidence, provenance, copyright licensing, and toxicity dynamically across multi-hop reasoning.
+* **Compartmented Tool Execution & Secret Isolation**: Safely provides authentication tokens to tool APIs while isolating conversational outputs.
 * **Jailbreak-Proof System Prompt Isolation**: Prevents untrusted external payloads from attending to or overwriting system instructions.
 * **Auditability & Compliance**: Enables real-time, non-invasive algebraic verification of internal state compliance.
 
 ---
 
-## 10. Conclusion
+## 11. Conclusion
 
-By separating the optimization of meaning from the optimization of information flow, Neural State Architecture transforms neural network policies from heuristic external wrappers into foundational linear algebra. Through Neural Metadata Propagation (NMP) and multi-dimensional state lattices, NSA provides a unified, architecture-agnostic primitive for secure, policy-aware neural computation.
+By separating the optimization of meaning from the optimization of information flow, Neural State Architecture transforms neural network policies from heuristic external wrappers into foundational linear algebra. Through Neural Metadata Propagation (NMP), multi-dimensional state lattices, and NSA 2.0 speculative runtime auditing, NSA provides a unified, architecture-agnostic primitive for secure, policy-aware neural computation.
+
 

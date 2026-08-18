@@ -5,7 +5,7 @@ Fused GPU-Accelerated State-Aware Attention for Pillar 2.
 
 High-Performance Optimization:
     Eliminates O(B * T^2 * state_dim) 4D tensor expansions by projecting
-    states into 1D scalar levels L(σ) = W_level · σ before computing 
+    states into 1D scalar levels L(σ) = W_level · σ before computing
     matrix differences ΔL = L_Q - L_Kᵀ ∈ R^{B x T x T}.
 
     Fuses state gating into PyTorch's C++/CUDA Scaled Dot-Product Attention (SDPA)
@@ -19,10 +19,10 @@ import math
 from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
-from nsa.algebra import StateLattice, DEFAULT_LATTICE, build_label_attention_mask
+from nsa.algebra import DEFAULT_LATTICE, StateLattice, build_label_attention_mask
 from nsa.state import SemanticGate
 
 
@@ -39,26 +39,26 @@ class FusedStateAwareAttention(nn.Module):
 
     def __init__(
         self,
-        d_model:     int   = 128,
-        state_dim:   int   = 8,
-        num_heads:   int   = 8,
-        gate_mode:   str   = "hard",
-        alpha:       float = 1.0,
-        dropout:     float = 0.0,
+        d_model: int = 128,
+        state_dim: int = 8,
+        num_heads: int = 8,
+        gate_mode: str = "hard",
+        alpha: float = 1.0,
+        dropout: float = 0.0,
         temperature: float = 1.0,
-        lattice:     StateLattice = DEFAULT_LATTICE,
+        lattice: StateLattice = DEFAULT_LATTICE,
         use_discrete_levels: bool = True,
     ) -> None:
         super().__init__()
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
-        self.d_model     = d_model
-        self.num_heads   = num_heads
-        self.d_k         = d_model // num_heads
-        self.gate_mode   = gate_mode
-        self.alpha       = alpha
-        self.dropout     = dropout
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+        self.gate_mode = gate_mode
+        self.alpha = alpha
+        self.dropout = dropout
         self.temperature = temperature
-        self.lattice     = lattice
+        self.lattice = lattice
         self.use_discrete_levels = use_discrete_levels
 
         # Semantic Q, K, V, O projections
@@ -84,9 +84,11 @@ class FusedStateAwareAttention(nn.Module):
 
     def forward(
         self,
-        x:     torch.Tensor,                  # [B, T, d_model]
-        state: torch.Tensor,                  # [B, T, state_dim]
-        mask:  Optional[torch.Tensor] = None,  # [B, 1, T, T] or [1, 1, T, T] (1 = allowed, 0 = masked)
+        x: torch.Tensor,  # [B, T, d_model]
+        state: torch.Tensor,  # [B, T, state_dim]
+        mask: Optional[
+            torch.Tensor
+        ] = None,  # [B, 1, T, T] or [1, 1, T, T] (1 = allowed, 0 = masked)
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Returns
@@ -95,7 +97,7 @@ class FusedStateAwareAttention(nn.Module):
         state : [B, T, state_dim] — state stream
         """
         B, T, _ = x.shape
-        H, dk   = self.num_heads, self.d_k
+        H, dk = self.num_heads, self.d_k
 
         # 1. Project Q, K, V -> [B, H, T, dk]
         Q = self.W_q(x).view(B, T, H, dk).transpose(1, 2)
@@ -136,7 +138,9 @@ class FusedStateAwareAttention(nn.Module):
         # 4. Execute PyTorch Native SDPA (C++/CUDA fused when supported)
         try:
             out = F.scaled_dot_product_attention(
-                Q, K, V,
+                Q,
+                K,
+                V,
                 attn_mask=combined_mask,
                 dropout_p=self.dropout if self.training else 0.0,
                 is_causal=False,

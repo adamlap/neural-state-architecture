@@ -28,15 +28,15 @@ import math
 from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
-from nsa.algebra import StateLattice, StateLabel, DEFAULT_LATTICE
-
+from nsa.algebra import DEFAULT_LATTICE, StateLabel, StateLattice
 
 # ---------------------------------------------------------------------------
 # StateVector
 # ---------------------------------------------------------------------------
+
 
 class StateVector(nn.Module):
     """A learned state embedding for a batch of tokens.
@@ -110,6 +110,7 @@ class StateVector(nn.Module):
 # ---------------------------------------------------------------------------
 # StateTransitionOperator
 # ---------------------------------------------------------------------------
+
 
 class StateTransitionOperator(nn.Module):
     """A small learnable matrix V that evolves the state vector.
@@ -185,6 +186,7 @@ class StateTransitionOperator(nn.Module):
 # WeightedStateEdge
 # ---------------------------------------------------------------------------
 
+
 class WeightedStateEdge(nn.Module):
     """The fundamental NSA edge: a pair (w, V).
 
@@ -226,13 +228,14 @@ class WeightedStateEdge(nn.Module):
         state'   : Tensor (..., state_dim)
         """
         meaning_out = meaning * self.w
-        state_out   = self.V(state)
+        state_out = self.V(state)
         return meaning_out, state_out
 
 
 # ---------------------------------------------------------------------------
 # SemanticGate  Γ(σ)
 # ---------------------------------------------------------------------------
+
 
 class SemanticGate(nn.Module):
     """Gate the semantic flow based on the current state: Γ(σ).
@@ -270,6 +273,7 @@ class SemanticGate(nn.Module):
 # ContinuousStateEncoder
 # ---------------------------------------------------------------------------
 
+
 class ContinuousStateEncoder(nn.Module):
     """Encodes structured metadata dictionaries into continuous state vectors σ ∈ ℝ^state_dim.
 
@@ -289,19 +293,17 @@ class ContinuousStateEncoder(nn.Module):
 
     def forward(
         self,
-        security_level: torch.Tensor,   # [B, T]
-        confidence: torch.Tensor,       # [B, T]
-        provenance: torch.Tensor,       # [B, T]
-        license_tier: torch.Tensor,     # [B, T]
+        security_level: torch.Tensor,  # [B, T]
+        confidence: torch.Tensor,  # [B, T]
+        provenance: torch.Tensor,  # [B, T]
+        license_tier: torch.Tensor,  # [B, T]
     ) -> torch.Tensor:
         """Returns continuous state tensor [B, T, state_dim]."""
-        attrs = torch.stack([
-            security_level.float(),
-            confidence.float(),
-            provenance.float(),
-            license_tier.float()
-        ], dim=-1)  # [B, T, 4]
-        
+        attrs = torch.stack(
+            [security_level.float(), confidence.float(), provenance.float(), license_tier.float()],
+            dim=-1,
+        )  # [B, T, 4]
+
         # Primary state level placed in slot 0 for direct lattice compatibility
         state = self.attr_proj(attrs)  # [B, T, state_dim]
         state[..., 0] = security_level.float()
@@ -312,12 +314,13 @@ class ContinuousStateEncoder(nn.Module):
 # LearnedStateTransitionCell
 # ---------------------------------------------------------------------------
 
+
 class LearnedStateTransitionCell(nn.Module):
     """Computes dynamic adaptive state transition:
-    
+
     σ_{l+1} = LayerNorm(σ_l + V_θ(σ_l) + α_l * W_h h_l)
     where α_l = sigmoid(W_α [σ_l; h_l]) (initialized at α ≈ 0.01).
-    
+
     Preserves Hard Security Invariants (σ[..., 0] = σ_hard) while allowing
     soft uncertainty and context relevance parameters to learn adaptively.
     """
@@ -328,25 +331,25 @@ class LearnedStateTransitionCell(nn.Module):
         self.transition = StateTransitionOperator(state_dim=state_dim, monotone_clamp=True)
         self.sem_proj = nn.Linear(d_model, state_dim, bias=False)
         nn.init.zeros_(self.sem_proj.weight)
-        
+
         # Adaptive coupling gate α = sigmoid(W_α [σ; h]) initialized to ~0.01
         self.alpha_gate = nn.Linear(state_dim + d_model, 1)
         init_bias = math.log(init_alpha / max(1.0 - init_alpha, 1e-5))
         nn.init.constant_(self.alpha_gate.bias, init_bias)
         nn.init.zeros_(self.alpha_gate.weight)
-        
+
         self.norm = nn.LayerNorm(state_dim)
 
     def forward(self, state: torch.Tensor, hidden_states: torch.Tensor) -> torch.Tensor:
         # Preserve immutable hard security level (slot 0)
         hard_security = state[..., 0:1]
-        
+
         delta_state = self.transition(state)
         delta_sem = self.sem_proj(hidden_states)
-        
+
         # Adaptive coupling coefficient α_l ∈ [0, 1]
         alpha = torch.sigmoid(self.alpha_gate(torch.cat([state, hidden_states], dim=-1)))
-        
+
         state_next = self.norm(state + delta_state + alpha * delta_sem)
         # Restore hard security invariant
         state_next = torch.cat([hard_security, state_next[..., 1:]], dim=-1)
@@ -356,6 +359,7 @@ class LearnedStateTransitionCell(nn.Module):
 # ---------------------------------------------------------------------------
 # DeclassificationOperator
 # ---------------------------------------------------------------------------
+
 
 class DeclassificationOperator(nn.Module):
     """Authorized state transformation operator D: (σ, m, AuthToken) -> (σ', m').
@@ -372,10 +376,9 @@ class DeclassificationOperator(nn.Module):
         self,
         state_dim: int = 8,
         d_model: int = 128,
-        lattice: Optional["StateLattice"] = None,
+        lattice: Optional[StateLattice] = None,
     ) -> None:
         super().__init__()
-        from nsa.algebra import DEFAULT_LATTICE
 
         self.state_dim = state_dim
         self.lattice = lattice or DEFAULT_LATTICE

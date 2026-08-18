@@ -2,17 +2,14 @@
 Property-based tests for NSA algebra.
 """
 
-import pytest
-from hypothesis import given, strategies as st
-from typing import FrozenSet
+from hypothesis import given
+from hypothesis import strategies as st
 
 from nsa.algebra import (
+    DEFAULT_LATTICE,
     ConfidentialityLabel,
     IntegrityLabel,
     ProductStateVector,
-    DEFAULT_LATTICE,
-    INTEGRITY_LATTICE,
-    ProductLattice,
 )
 
 # Strategies
@@ -31,6 +28,7 @@ st_product_state = st.builds(
     license_tier=st_license,
 )
 
+
 class TestConfidentialityLatticeProperties:
     @given(a=st_confidentiality, b=st_confidentiality)
     def test_commutativity(self, a: ConfidentialityLabel, b: ConfidentialityLabel):
@@ -38,9 +36,15 @@ class TestConfidentialityLatticeProperties:
         assert DEFAULT_LATTICE.meet(a, b) == DEFAULT_LATTICE.meet(b, a)
 
     @given(a=st_confidentiality, b=st_confidentiality, c=st_confidentiality)
-    def test_associativity(self, a: ConfidentialityLabel, b: ConfidentialityLabel, c: ConfidentialityLabel):
-        assert DEFAULT_LATTICE.join(a, DEFAULT_LATTICE.join(b, c)) == DEFAULT_LATTICE.join(DEFAULT_LATTICE.join(a, b), c)
-        assert DEFAULT_LATTICE.meet(a, DEFAULT_LATTICE.meet(b, c)) == DEFAULT_LATTICE.meet(DEFAULT_LATTICE.meet(a, b), c)
+    def test_associativity(
+        self, a: ConfidentialityLabel, b: ConfidentialityLabel, c: ConfidentialityLabel
+    ):
+        assert DEFAULT_LATTICE.join(a, DEFAULT_LATTICE.join(b, c)) == DEFAULT_LATTICE.join(
+            DEFAULT_LATTICE.join(a, b), c
+        )
+        assert DEFAULT_LATTICE.meet(a, DEFAULT_LATTICE.meet(b, c)) == DEFAULT_LATTICE.meet(
+            DEFAULT_LATTICE.meet(a, b), c
+        )
 
     @given(a=st_confidentiality)
     def test_idempotence(self, a: ConfidentialityLabel):
@@ -52,6 +56,7 @@ class TestConfidentialityLatticeProperties:
         assert DEFAULT_LATTICE.join(a, DEFAULT_LATTICE.meet(a, b)) == a
         assert DEFAULT_LATTICE.meet(a, DEFAULT_LATTICE.join(a, b)) == a
 
+
 class TestProductLatticeProperties:
     @given(a=st_product_state, b=st_product_state)
     def test_commutativity(self, a: ProductStateVector, b: ProductStateVector):
@@ -59,7 +64,9 @@ class TestProductLatticeProperties:
         assert a.meet_product(b) == b.meet_product(a)
 
     @given(a=st_product_state, b=st_product_state, c=st_product_state)
-    def test_associativity(self, a: ProductStateVector, b: ProductStateVector, c: ProductStateVector):
+    def test_associativity(
+        self, a: ProductStateVector, b: ProductStateVector, c: ProductStateVector
+    ):
         assert a.join_product(b.join_product(c)) == (a.join_product(b)).join_product(c)
         assert a.meet_product(b.meet_product(c)) == (a.meet_product(b)).meet_product(c)
 
