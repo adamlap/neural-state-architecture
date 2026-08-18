@@ -3,11 +3,10 @@ Neural State Architecture (NSA)
 ================================
 A mathematical framework for typed neural computation.
 
-Core concept: every activation is a pair (m, σ)
-  m = semantic representation
-  σ = state vector (permissions, provenance, confidence, trust, ...)
-
-Information flow is governed by a state algebra with conservation laws.
+Core concept: every activation is a semantic representation carried with
+explicit machine state.  The canonical framework state is available from
+``nsa.core`` and extends the original (m, sigma) abstraction into separate
+hard, soft, provenance and goal streams.
 """
 
 from nsa.algebra import (
@@ -23,6 +22,16 @@ from nsa.algebra import (
     build_label_attention_mask,
     build_level_attention_mask,
     unpack_states,
+)
+from nsa.core import (
+    CanonicalState,
+    GoalState,
+    HardState,
+    ProvenanceState,
+    SemanticState,
+    SoftState,
+    StateKind,
+    StateTransition,
 )
 from nsa.utils import print_lattice
 
@@ -84,8 +93,17 @@ try:
 except ImportError:
     HAS_TORCH = False
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = [
+    # Canonical typed core
+    "CanonicalState",
+    "SemanticState",
+    "HardState",
+    "SoftState",
+    "ProvenanceState",
+    "GoalState",
+    "StateTransition",
+    "StateKind",
     # Algebra
     "StateLabel",
     "StateLattice",
