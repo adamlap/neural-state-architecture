@@ -37,8 +37,9 @@ def _banner(title: str) -> None:
 def demo_value_layer_api() -> None:
     """Show how to use ValueAlignmentLoss and AlignmentStateProjector directly."""
     import torch
-    from nsa.value_layer import ValueAlignmentLoss, AlignmentStateProjector
+
     from nsa.algebra import StateLabel
+    from nsa.value_layer import AlignmentStateProjector, ValueAlignmentLoss
 
     _banner("1. Value Layer API  —  h = (m, σ, ν)")
 
@@ -74,7 +75,7 @@ def demo_value_layer_api() -> None:
     injection_flags[:B//2] = True
 
     loss, breakdown = criterion(logits, lm_targets, safe_targets, state_levels, injection_flags)
-    print(f"\n  Loss breakdown:")
+    print("\n  Loss breakdown:")
     for k, v in breakdown.items():
         print(f"    {k:<20} {v:.4f}")
 
@@ -91,7 +92,7 @@ def demo_value_layer_api() -> None:
 def demo_alignment_property() -> None:
     """Show the structural guarantee: hard mask prevents SYSTEM token prediction."""
     import torch
-    from nsa.value_layer import ValueAlignmentLoss
+
     from nsa.algebra import StateLabel, build_level_attention_mask
 
     _banner("2. Structural Guarantee  —  Hard mask blocks SYSTEM→CONFIDENTIAL")

@@ -17,13 +17,11 @@ from __future__ import annotations
 
 import math
 import threading
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import torch
 import torch.nn.functional as F
 from torch import nn
-
-from nsa.algebra import DEFAULT_LATTICE, StateLabel, StateLattice, build_label_attention_mask
 
 try:
     import triton
@@ -86,6 +84,7 @@ if HAS_TRITON:
         H: tl.constexpr,
         Tq,
         Tk,
+        D: tl.constexpr,
         scale,
         IS_CAUSAL: tl.constexpr,
         BLOCK_M: tl.constexpr,
@@ -97,6 +96,7 @@ if HAS_TRITON:
         Zero global N x N mask tensor in DRAM.
         State lattice compatibility (q_state >= k_state) is evaluated dynamically
         on-chip inside SRAM per tile!
+        Supports arbitrary head dimensions D with power-of-two BLOCK_D padding.
         """
         pid_m = tl.program_id(0)
         pid_bh = tl.program_id(1)
@@ -105,10 +105,10 @@ if HAS_TRITON:
         offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
         offs_d = tl.arange(0, BLOCK_D)
 
-        # 1. Load Q tile
+        # 1. Load Q tile (guarded by both sequence length and head dimension D)
         q_bh = Q + pid_bh * stride_qh
         q_ptrs = q_bh + offs_m[:, None] * stride_qm + offs_d[None, :] * stride_qd
-        q_mask = offs_m[:, None] < Tq
+        q_mask = (offs_m[:, None] < Tq) & (offs_d[None, :] < D)
         q = tl.load(q_ptrs, mask=q_mask, other=0.0) * scale
 
         # 2. Load Q_State tile (1D vector [BLOCK_M])
@@ -128,15 +128,15 @@ if HAS_TRITON:
             ks_ptr = K_State + b_idx * stride_ksb + offs_n * stride_ksn
             k_state = tl.load(ks_ptr, mask=offs_n < Tk, other=999)
 
-            # Load K and V tiles
+            # Load K and V tiles (guarded by Tk and D)
             k_bh = K + pid_bh * stride_kh
             v_bh = V + pid_bh * stride_vh
             k_ptrs = k_bh + offs_n[:, None] * stride_kn + offs_d[None, :] * stride_kd
             v_ptrs = v_bh + offs_n[:, None] * stride_vn + offs_d[None, :] * stride_vd
 
-            k_mask = offs_n[:, None] < Tk
-            k = tl.load(k_ptrs, mask=k_mask, other=0.0)
-            v = tl.load(v_ptrs, mask=k_mask, other=0.0)
+            kv_mask = (offs_n[:, None] < Tk) & (offs_d[None, :] < D)
+            k = tl.load(k_ptrs, mask=kv_mask, other=0.0)
+            v = tl.load(v_ptrs, mask=kv_mask, other=0.0)
 
             # Compute QK^T
             qk = tl.dot(q, tl.trans(k))
@@ -158,11 +158,12 @@ if HAS_TRITON:
             l_i = l_i * alpha + l_ij
             m_i = m_ij
 
-        # 5. Store Output
+        # 5. Store Output (guarded by Tq and D)
         acc = acc / l_i[:, None]
         o_bh = Out + pid_bh * stride_oh
         o_ptrs = o_bh + offs_m[:, None] * stride_om + offs_d[None, :] * stride_od
-        tl.store(o_ptrs, acc.to(Out.dtype.element_ty), mask=offs_m[:, None] < Tq)
+        o_mask = (offs_m[:, None] < Tq) & (offs_d[None, :] < D)
+        tl.store(o_ptrs, acc.to(Out.dtype.element_ty), mask=o_mask)
 
     _KERNEL_DEFINED = True
 
@@ -230,7 +231,7 @@ def triton_fused_state_attention(
             out = torch.empty_like(q)
             BLOCK_M = 32
             BLOCK_N = 32
-            BLOCK_D = d
+            BLOCK_D = triton.next_power_of_2(d)
 
             grid = (triton.cdiv(tq, BLOCK_M), b * h)
 
@@ -253,6 +254,7 @@ def triton_fused_state_attention(
                 H=h,
                 Tq=tq,
                 Tk=tk,
+                D=d,
                 scale=scale,
                 IS_CAUSAL=is_causal,
                 BLOCK_M=BLOCK_M,

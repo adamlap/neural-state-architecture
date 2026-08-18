@@ -17,27 +17,18 @@ Evaluates:
 from __future__ import annotations
 
 import argparse
-import sys
-import os
 import math
-import time
-from typing import Tuple, Dict
+import os
+import sys
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 # Allow parent module import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import StateLabel, DEFAULT_LATTICE, RAGMetadataIngressEncoder
-from nsa.state import ContinuousStateEncoder, LearnedStateTransitionCell, DeclassificationOperator
-from nsa.layers import NSACausalLM
-from nsa.lora import NSALoRALinear, DynamicNSARetrofitBlock
-from nsa.kv_cache import NSAKVCache
-from nsa.utils import count_parameters
+from nsa.algebra import StateLabel
 
 
 class BaselineLM(nn.Module):

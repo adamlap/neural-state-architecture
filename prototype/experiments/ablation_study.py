@@ -23,20 +23,17 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 import os
+import sys
 import time
-from typing import Dict, List, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 # Allow parent module import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import StateLabel, ProductStateVector, ProductLattice, DEFAULT_LATTICE
-from nsa.layers import NSATransformer, NSACausalLM
+from nsa.layers import NSACausalLM
 from nsa.utils import count_parameters
 
 
@@ -79,7 +76,6 @@ def run_ablation_study(num_steps: int = 100):
     batch_size = 8
 
     # Define model configurations using NSACausalLM
-    from nsa.layers import NSACausalLM
 
     configs = {
         "0. Vanilla Causal LM": NSACausalLM(vocab_size=vocab_size, d_model=d_model, num_layers=n_layers, state_dim=1, compat_mode="dot"),

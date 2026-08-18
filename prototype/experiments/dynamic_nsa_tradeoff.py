@@ -38,13 +38,12 @@ import json
 import math
 import os
 import sys
-from dataclasses import asdict, dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import asdict, dataclass
+from typing import Dict, List, Optional
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -491,8 +490,8 @@ def run_tradeoff(
             f"{r.fixed_alpha}" if r.fixed_alpha is not None else "-"
         )
         print(
-            f"{r.name:<14} {str(r.attn):<5} {str(r.residual):<5} {str(r.ffn):<5} "
-            f"{str(r.learn_sigma):<5} {a:<8} {r.ppl:>10.2f} {r.gen_leak_pct:>10.2f} {r.probe_leak_pct:>10.2f}"
+            f"{r.name:<14} {r.attn!s:<5} {r.residual!s:<5} {r.ffn!s:<5} "
+            f"{r.learn_sigma!s:<5} {a:<8} {r.ppl:>10.2f} {r.gen_leak_pct:>10.2f} {r.probe_leak_pct:>10.2f}"
         )
 
     if alpha_rows:

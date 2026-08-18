@@ -62,9 +62,9 @@ def generate_markdown_report(
 
 Evaluated across 4 structural configurations:
 1. **Vanilla Transformer**: Standard un-governed Transformer.
-2. **Security-Only**: Scalar security lattice governance ($\sigma \in \mathbb{{R}}^1$).
-3. **Security + Confidence**: Dual security + Bayesian confidence bound tracking ($\sigma \in \mathbb{{R}}^2$).
-4. **Full Product Algebra**: Complete Typed Neural Computation ($\Sigma = \Sigma_s \\times \Sigma_c \\times \Sigma_p \\times \Sigma_l$).
+2. **Security-Only**: Scalar security lattice governance ($\\sigma \\in \\mathbb{{R}}^1$).
+3. **Security + Confidence**: Dual security + Bayesian confidence bound tracking ($\\sigma \\in \\mathbb{{R}}^2$).
+4. **Full Product Algebra**: Complete Typed Neural Computation ($\\Sigma = \\Sigma_s \\times \\Sigma_c \\times \\Sigma_p \\times \\Sigma_l$).
 
 | Configuration | Latency (ms) | Throughput (tok/s) | Perplexity | ECE Calibration |
 | :--- | :---: | :---: | :---: | :---: |
@@ -78,7 +78,7 @@ Evaluated across 4 structural configurations:
         ppl_str = f"{ppl:.2e}" if ppl > 1e4 else f"{ppl:.2f}"
         report += f"| **{cfg}** | {lat:.2f} | {tp:.1f} | {ppl_str} | {ece:.4f} |\n"
 
-    report += """
+    report += r"""
 ---
 
 ## 3. Fused GPU Attention Throughput & Scaling

@@ -10,10 +10,10 @@ the fundamental architectural invariant:
 
 from __future__ import annotations
 
-import hmac
 import hashlib
-import time
+import hmac
 import secrets
+import time
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -68,7 +68,7 @@ class Capability:
         self,
         requested_state: SecurityExecutionState,
         current_time: Optional[float] = None,
-        verifier: Optional["CapabilityVerifier"] = None,
+        verifier: Optional[CapabilityVerifier] = None,
     ) -> bool:
         """Validate expiry, target state, and optional cryptographic signature."""
         if self.expires_at is not None:
@@ -162,9 +162,23 @@ class CapabilityVerifier:
 
         return True
 
+    def verify_and_consume(self, capability: Capability, current_time: Optional[float] = None) -> bool:
+        """Atomic Authorize(c) = Verify(c) + Consume(c).
+
+        Guarantees single-use capability invariant: forall c: #successful_uses(c) <= 1.
+        """
+        if not self.verify(capability, current_time=current_time):
+            return False
+        self._consumed_nonces.add(capability.nonce)
+        return True
+
     def consume_nonce(self, nonce: str) -> None:
         """Mark a nonce as consumed (single-use capability semantics)."""
         self._consumed_nonces.add(nonce)
+
+    def is_nonce_consumed(self, nonce: str) -> bool:
+        """Check if a nonce has already been consumed."""
+        return nonce in self._consumed_nonces
 
 
 class SecurityAutomaton:
@@ -202,7 +216,7 @@ class SecurityAutomaton:
         capability: Optional[Capability] = None,
         current_time: Optional[float] = None,
     ) -> bool:
-        """Evaluate predicate Authorized(c_t, q_t, q_{t+1})."""
+        """Evaluate predicate Authorized(c_t, q_t, q_{t+1}) (dry-run without consuming nonce)."""
         # De-escalation or staying in same level is always structurally safe
         if target_state.value <= self.current_state.value:
             return True
@@ -231,10 +245,36 @@ class SecurityAutomaton:
         capability: Optional[Capability] = None,
         current_time: Optional[float] = None,
     ) -> Tuple[bool, SecurityExecutionState]:
-        """Execute state transition delta(q_t, q_target, c_t)."""
-        if self.is_transition_authorized(target_state, capability, current_time=current_time):
+        """Execute state transition delta(q_t, q_target, c_t) with atomic capability consumption.
+
+        Enforces Authorize(c) = Verify(c) + Consume(c).
+        """
+        # De-escalation or staying in same level or recovery is always safe
+        if target_state.value <= self.current_state.value or target_state == SecurityExecutionState.RECOVERY:
             self.current_state = target_state
             return True, self.current_state
+
+        # Check explicitly supplied capability
+        matched_cap: Optional[Capability] = None
+        if capability is not None and capability.target_state == target_state:
+            matched_cap = capability
+        else:
+            for cap in list(self._capabilities.values()):
+                if cap.target_state == target_state:
+                    matched_cap = cap
+                    break
+
+        if matched_cap is not None:
+            if self.verifier is not None:
+                # Atomic Verify + Consume
+                if self.verifier.verify_and_consume(matched_cap, current_time=current_time):
+                    self._capabilities.pop(matched_cap.nonce, None)  # Remove consumed capability
+                    self.current_state = target_state
+                    return True, self.current_state
+            elif matched_cap.is_valid(target_state, current_time=current_time):
+                self._capabilities.pop(matched_cap.nonce, None)
+                self.current_state = target_state
+                return True, self.current_state
 
         # Blocked: remain in current state
         return False, self.current_state

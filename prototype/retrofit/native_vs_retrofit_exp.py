@@ -34,29 +34,27 @@ Metrics:
 from __future__ import annotations
 
 import argparse
-import sys
-import os
 import math
+import os
+import sys
 import time
-from typing import Tuple, Dict, List
+from typing import Dict, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 # Allow parent module import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import StateLabel, DEFAULT_LATTICE
+from nsa.algebra import DEFAULT_LATTICE, StateLabel
 from nsa.algebra_preserving import AlgebraPreservingStateTransition
-from nsa.layers import NSACausalLM, NSATransformerBlock, GatedFFN, StateAwareAttention
+from nsa.layers import GatedFFN, NSACausalLM, StateAwareAttention
 from nsa.lora import NSALoRALinear
 from nsa.objectives import NSALoss
-from nsa.value_layer import ValueAlignmentLoss
 from nsa.utils import count_parameters
-
+from nsa.value_layer import ValueAlignmentLoss
 
 # ---------------------------------------------------------------------------
 # Model E: Algebra-Preserving Native TNC Transformer Block
@@ -574,7 +572,8 @@ def run_6way_benchmark(
         confidential_level=StateLabel.CONFIDENTIAL.value,
         response_position=47,
     )
-    from nsa.objectives import SemanticLoss as _SL, StateConstraintLoss as _SCL
+    from nsa.objectives import SemanticLoss as _SL
+    from nsa.objectives import StateConstraintLoss as _SCL
     nsa_criterion_d = NSALoss(_SL("cross_entropy"), _SCL(state_dim=state_dim, lattice=DEFAULT_LATTICE), lambda_init=0.1)
 
     start_d = time.time()

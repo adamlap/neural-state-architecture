@@ -20,22 +20,18 @@ For each retrofit level, reports probe recovery rate (%) across all tiers.
 from __future__ import annotations
 
 import argparse
-import math
-import sys
 import os
-from typing import List, Dict
+import sys
+from typing import Dict
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from nsa.layers import NSACausalLM
-from nsa.lora import NSALoRALinear
-
 
 # ─────────────────────────────── Probe models ────────────────────────────────
 

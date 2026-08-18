@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 from nsa.algebra import StateLabel
-from nsa.verifier.automaton import SecurityAutomaton, SecurityExecutionState, Capability
+from nsa.verifier.automaton import Capability, SecurityAutomaton, SecurityExecutionState
 
 
 class StateControlTokens:

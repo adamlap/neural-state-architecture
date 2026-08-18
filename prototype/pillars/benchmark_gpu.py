@@ -20,19 +20,17 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 import os
+import sys
 import time
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
 
 # Allow parent module import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import DEFAULT_LATTICE
 from nsa.attention import StateAwareAttention
 from nsa.fused_attention import FusedStateAwareAttention
 

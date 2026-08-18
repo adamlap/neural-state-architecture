@@ -9,15 +9,13 @@ Unit tests for the True Fused State-Aware Attention Kernel:
 """
 
 import unittest
+
 import torch
-from torch import nn
 
 from nsa.algebra import StateLabel
-from nsa.attention import StateAwareAttention
 from nsa.triton_kernel import (
     TRITON_KERNEL_DEFINED,
     TritonFusedStateAwareAttention,
-    last_backend,
     triton_fused_state_attention,
 )
 from nsa.utils import state_labels_to_vectors

@@ -33,24 +33,22 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 import os
-import math
+import sys
 import time
-from typing import Dict, Tuple
+from typing import Tuple
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 # Allow parent module import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import StateLabel, DEFAULT_LATTICE
+from nsa.algebra import DEFAULT_LATTICE, StateLabel
 from nsa.layers import NSACausalLM
-from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
-from nsa.utils import count_parameters, state_labels_to_vectors
+from nsa.objectives import NSALoss, SemanticLoss, StateConstraintLoss
+from nsa.utils import state_labels_to_vectors
 from prototype.pillars.pretrain_lm import BaselineCausalLM
 
 
@@ -188,8 +186,8 @@ def run_prompt_injection_benchmark(
     print("\n" + "=" * 80)
     print("  PILLAR 4 BENCHMARK RESULTS SUMMARY")
     print("=" * 80)
-    print(f"  Metric                             Baseline        NSA            Improvement")
-    print(f"  -----------------------------------------------------------------------")
+    print("  Metric                             Baseline        NSA            Improvement")
+    print("  -----------------------------------------------------------------------")
     print(f"  Prompt Injection Hijack Rate       {base_hijack_rate:>6.2f}%       {nsa_hijack_rate:>6.2f}%       {-base_hijack_rate + nsa_hijack_rate:>+6.2f}%")
     print(f"  System Policy Preservation Rate    {100.0 - base_hijack_rate:>6.2f}%       {nsa_policy_preservation:>6.2f}%       {nsa_hijack_rate < base_hijack_rate and '+' or ''}{base_hijack_rate - nsa_hijack_rate:>6.2f}%")
     print(f"  Final State Violation Rate              N/A        {viol_rate * 100:>6.2f}%             —")

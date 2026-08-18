@@ -17,23 +17,22 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 import os
+import sys
 import time
 from typing import Tuple
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 # Allow parent module imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import StateLabel, DEFAULT_LATTICE
+from nsa.algebra import DEFAULT_LATTICE, StateLabel
 from nsa.layers import NSATransformer
-from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
-from nsa.utils import count_parameters, print_model_summary, print_lattice
+from nsa.objectives import NSALoss, SemanticLoss, StateConstraintLoss
+from nsa.utils import print_model_summary
 
 
 def make_multitier_dataset(

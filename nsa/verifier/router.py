@@ -11,7 +11,9 @@ Part of the Trusted Computing Base (TCB) governing model-to-sink authorization:
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import torch
+
 from nsa.algebra import StateLabel
 
 

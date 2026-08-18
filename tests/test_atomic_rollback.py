@@ -10,6 +10,7 @@ Rigorous verification of Complete Atomic Execution State Rollback:
 """
 
 import unittest
+
 import torch
 from torch import nn
 
@@ -25,7 +26,7 @@ from nsa.verifier.automaton import (
 from nsa.verifier.generation import NSAGenerator
 from nsa.verifier.recovery import HaltRecovery
 from nsa.verifier.router import StreamRouter
-from nsa.verifier.speculative import MultiLayerStateAuditor, AuditResult
+from nsa.verifier.speculative import MultiLayerStateAuditor
 
 
 class MockModelForRollback(nn.Module):
@@ -124,6 +125,34 @@ class TestAtomicRollback(unittest.TestCase):
         # 3. Nonce consumption (Replay prevention)
         self.verifier.consume_nonce(cap.nonce)
         self.assertFalse(self.verifier.verify(cap), "Replay attack was not prevented!")
+
+    def test_atomic_verify_and_consume_exhaustion(self):
+        """Verify Authorize(c) = Verify(c) + Consume(c) and single-use invariant forall c: uses <= 1."""
+        cap = self.signer.issue(
+            issuer="admin_tcb",
+            target_state=SecurityExecutionState.SYSTEM,
+            scope="kernel_exec",
+        )
+        automaton = SecurityAutomaton(
+            initial_state=SecurityExecutionState.CONFIDENTIAL,
+            capabilities=[cap],
+            verifier=self.verifier,
+        )
+
+        # 1. First transition: valid capability -> MUST SUCCEED and consume capability
+        success, state = automaton.transition(SecurityExecutionState.SYSTEM)
+        self.assertTrue(success)
+        self.assertEqual(state, SecurityExecutionState.SYSTEM)
+        self.assertTrue(self.verifier.is_nonce_consumed(cap.nonce), "Nonce was not atomically consumed!")
+
+        # 2. De-escalate back to CONFIDENTIAL
+        automaton.transition(SecurityExecutionState.CONFIDENTIAL)
+        self.assertEqual(automaton.current_state, SecurityExecutionState.CONFIDENTIAL)
+
+        # 3. Replay attack: try transitioning back to SYSTEM with the same consumed capability -> MUST FAIL
+        success_replay, state_replay = automaton.transition(SecurityExecutionState.SYSTEM, capability=cap)
+        self.assertFalse(success_replay, "Replay attack succeeded! Capability was reused.")
+        self.assertEqual(state_replay, SecurityExecutionState.CONFIDENTIAL)
 
     def test_atomic_rollback_reverts_all_components(self):
         """Task 3 & 4: Invariant Rollback(S_{t+k}) = S_t (automaton, router, injector, KV)."""

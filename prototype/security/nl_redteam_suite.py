@@ -31,14 +31,14 @@ import os
 import re
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import DEFAULT_LATTICE, StateLabel, build_label_attention_mask
+from nsa.algebra import StateLabel, build_label_attention_mask
 
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -250,7 +250,6 @@ def run_hf_optional(model_id: str, cases: Sequence[AttackCase], max_new: int = 3
     except Exception as exc:
         return {"skipped": True, "reason": f"model load failed: {exc}"}
 
-    from nsa.algebra import build_label_attention_mask as blam
 
     base_leaks = 0
     nsa_leaks = 0

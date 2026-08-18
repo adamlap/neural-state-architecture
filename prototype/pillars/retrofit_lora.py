@@ -22,15 +22,13 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
-import os
 import math
+import os
+import sys
 import time
-from typing import Dict, Tuple
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 # Allow parent module import
@@ -38,9 +36,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from nsa.algebra import DEFAULT_LATTICE
 from nsa.layers import NSACausalLM
-from nsa.lora import NSALoRAAttention, NSALoRALinear, apply_nsa_lora_retrofit
-from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
-from nsa.utils import count_parameters, make_privacy_dataset, state_labels_to_vectors
+from nsa.objectives import NSALoss, SemanticLoss, StateConstraintLoss
 from prototype.pillars.pretrain_lm import BaselineCausalLM, generate_lm_corpus
 
 

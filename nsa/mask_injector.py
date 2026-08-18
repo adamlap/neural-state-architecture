@@ -14,12 +14,13 @@ Supports:
 
 from __future__ import annotations
 
-from typing import Dict, Generator, List, Optional, Tuple, Union
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from typing import Generator, List, Optional, Tuple
 
-from nsa.algebra import build_level_attention_mask, StateLabel
+import torch
+import torch.nn.functional as F
+from torch import nn
+
+from nsa.algebra import build_level_attention_mask
 
 
 class NSAMaskInjector:
@@ -218,7 +219,7 @@ class NSAMaskInjector:
     # ------------------------------------------------------------------ #
     # Context manager entry / exit
     # ------------------------------------------------------------------ #
-    def __enter__(self) -> "NSAMaskInjector":
+    def __enter__(self) -> NSAMaskInjector:
         # Pre-compute NSA additive mask [B, 1, T, T]
         device = next(self.model.parameters()).device
         self.nsa_mask = build_level_attention_mask(

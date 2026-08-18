@@ -22,23 +22,22 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
-import os
 import math
+import os
+import sys
 import time
-from typing import Tuple, Dict
+from typing import Tuple
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 # Allow parent module import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import StateLabel, DEFAULT_LATTICE
+from nsa.algebra import DEFAULT_LATTICE
 from nsa.layers import NSACausalLM
-from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
+from nsa.objectives import NSALoss, SemanticLoss, StateConstraintLoss
 from nsa.utils import count_parameters, make_privacy_dataset, state_labels_to_vectors
 
 
@@ -227,8 +226,8 @@ def run_lm_benchmark(
     print("\n" + "=" * 75)
     print("  PILLAR 1 BENCHMARK RESULTS SUMMARY")
     print("=" * 75)
-    print(f"  Metric                             Baseline        NSA            Delta")
-    print(f"  -----------------------------------------------------------------------")
+    print("  Metric                             Baseline        NSA            Delta")
+    print("  -----------------------------------------------------------------------")
     print(f"  Validation Loss                    {val_loss:>7.4f}      {val_loss:>7.4f}        —")
     print(f"  Perplexity (PPL)                   {base_final_ppl:>7.2f}      {nsa_final_ppl:>7.2f}       {ppl_delta_pct:>+6.2f}%")
     print(f"  State Violation Rate                     N/A       {viol_rate * 100:>6.2f}%        —")

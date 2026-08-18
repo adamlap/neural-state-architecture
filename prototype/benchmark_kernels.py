@@ -15,12 +15,11 @@ Sequence Lengths: N in [512, 1024, 2048, 4096, 8192]
 from __future__ import annotations
 
 import time
-import math
+
 import torch
 import torch.nn.functional as F
 
-from nsa.triton_kernel import triton_fused_state_attention, last_backend
-from nsa.algebra import StateLabel
+from nsa.triton_kernel import triton_fused_state_attention
 
 
 def benchmark_kernel_suite():

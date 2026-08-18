@@ -28,31 +28,28 @@ Expected output:
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 # Allow importing from the parent directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import time
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
-from nsa.algebra import StateLattice, StateLabel, DEFAULT_LATTICE
+from nsa.algebra import DEFAULT_LATTICE
 from nsa.layers import NSATransformer
-from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
+from nsa.objectives import NSALoss, SemanticLoss, StateConstraintLoss
 from nsa.utils import (
-    count_parameters,
     make_privacy_dataset,
-    state_labels_to_vectors,
-    print_model_summary,
     print_lattice,
+    print_model_summary,
+    state_labels_to_vectors,
 )
-
 
 # ---------------------------------------------------------------------------
 # Config

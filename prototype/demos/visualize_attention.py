@@ -17,15 +17,14 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import torch
 
 # Ensure nsa is in python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import StateLabel, DEFAULT_LATTICE
-from nsa.attention import StateAwareAttention
+from nsa.algebra import StateLabel
 from nsa.fused_attention import FusedStateAwareAttention
 
 

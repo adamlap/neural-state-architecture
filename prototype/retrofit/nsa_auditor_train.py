@@ -1,15 +1,16 @@
 import os
-import torch
-import torch.nn as nn
 import sys
+
+import torch
+from torch import nn
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from nsa.verifier.encoder_head import StateEncoderHead
 from nsa.algebra import StateLabel
+from nsa.verifier.encoder_head import StateEncoderHead
 
 try:
-    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from transformers import AutoModelForCausalLM, AutoTokenizer
 except ImportError:
     print("Transformers not found, please install.")
     sys.exit(1)

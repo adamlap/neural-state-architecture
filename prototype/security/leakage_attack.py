@@ -26,21 +26,20 @@ Expected Results:
 from __future__ import annotations
 
 import argparse
-import sys
 import os
+import sys
 from typing import Tuple
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 # Enable parent module import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from nsa.algebra import StateLabel, DEFAULT_LATTICE
+from nsa.algebra import DEFAULT_LATTICE, StateLabel
 from nsa.layers import NSATransformer
-from nsa.objectives import SemanticLoss, StateConstraintLoss, NSALoss
+from nsa.objectives import NSALoss, SemanticLoss, StateConstraintLoss
 from nsa.utils import state_labels_to_vectors
 
 
@@ -266,8 +265,8 @@ def run_leakage_experiment(
     print("\n" + "=" * 70)
     print("  ADVERSARIAL LEAKAGE BENCHMARK RESULTS")
     print("=" * 70)
-    print(f"  Metric                             Baseline        NSA")
-    print(f"  -------------------------------------------------------")
+    print("  Metric                             Baseline        NSA")
+    print("  -------------------------------------------------------")
     print(f"  Primary Task Accuracy              {base_acc * 100:>6.2f}%    {nsa_acc * 100:>6.2f}%")
     print(f"  Adversarial Secret Extraction Acc  {base_probe_acc * 100:>6.2f}%    {nsa_probe_acc * 100:>6.2f}%")
 

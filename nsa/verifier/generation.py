@@ -16,16 +16,18 @@ Implements:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
+
 import torch
-import torch.nn as nn
+from torch import nn
 
 from nsa.algebra import StateLabel
-from .speculative import SpeculativeStateAuditor, AuditResult
-from .tokens import StateControlTokens
+
+from .automaton import Capability, CompleteExecutionState, SecurityAutomaton, SecurityExecutionState
+from .recovery import AdapterSwitchRecovery, HaltRecovery, RecoveryPolicy, SemanticPivotRecovery
 from .router import StreamRouter
-from .recovery import RecoveryPolicy, SemanticPivotRecovery, AdapterSwitchRecovery, HaltRecovery
-from .automaton import SecurityAutomaton, SecurityExecutionState, Capability, CompleteExecutionState
+from .speculative import AuditResult, SpeculativeStateAuditor
+from .tokens import StateControlTokens
 
 
 class NSAGenerator:

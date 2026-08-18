@@ -5,12 +5,15 @@ Reference prototype script demonstrating how to instantiate and use
 NSATransformerBlock and StateAwareAttention from the `nsa` core package.
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import torch
-from nsa import StateAwareAttention, NSATransformerBlock, DEFAULT_LATTICE, print_model_summary
+
+from nsa import DEFAULT_LATTICE, NSATransformerBlock, print_model_summary
+
 
 def main():
     print("=" * 60)

@@ -1,9 +1,11 @@
 import os
+
 import torch
-import torch.nn as nn
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from nsa.objectives import NSADPOLoss
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
 from demo.cli_showcase import retrofit_llama_attention
+from nsa.objectives import NSADPOLoss
+
 
 def _load_model(model_id: str):
     cache_dir = os.path.expanduser("~/.cache/huggingface/models")
@@ -84,7 +86,7 @@ def generate_toy_dpo_dataset(tokenizer, device):
     return batch
 
 def run_functional_dpo_training(model_id: str, checkpoint_path: str):
-    print(f"\n🚀 Initiating First-Time NSA-DPO Training...")
+    print("\n🚀 Initiating First-Time NSA-DPO Training...")
     
     # For CPU/small GPU, we should try to use a smaller fallback first to avoid OOM during training
     print(f"Loading frozen reference model (attempting {model_id} or smaller)...")
