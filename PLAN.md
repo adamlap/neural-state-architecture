@@ -1,197 +1,877 @@
-# Neural State Architecture (NSA): Prototype-to-Publication Master Plan
+# Neural State Architecture (NSA): Full Framework Master Plan
 
-> **Strategic Roadmap, Research Rationale, and Execution Plan for Intrinsic LLM Security & Privacy**
-
----
-
-## Executive Summary & Strategic Rationale
-
-Modern Large Language Models (LLMs) suffer from a fundamental security deficit: **all continuous activations flow through untyped, unrestricted continuous spaces**.
-
-Current AI security solutions rely entirely on **external wrappers**:
-* System prompts ("You are a helpful assistant. Do not output secret key X.")
-* Post-hoc Reinforcement Learning from Human Feedback (RLHF / DPO)
-* External guardrail classifier wrappers (Llama Guard, NeMo Guardrails)
-
-These external wrappers operate at the text output layer and are **fundamentally fragile**. Adversaries bypass them daily using prompt injections, jailbreak templates, base64 encoding, and mechanistic activation probes.
-
-```
-CURRENT LLM SECURITY (EXTERNAL WRAPPERS - FRAGILE):
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ Untrusted Input │───▶│  System Prompt  │───▶│ Standard LLM    │───▶│ Text Guardrail  │
-│ (Prompt Inject) │    │  ("Do not leak")│    │ (Untyped Attn)  │    │ (Bypassed!)     │
-└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
-
-NEURAL STATE ARCHITECTURE (INTRINSIC POLICY ALGEBRA - RIGOROUS):
-┌─────────────────┐    ┌────────────────────────────────────────┐    ┌─────────────────┐
-│ Untrusted Input │───▶│ NSA Transformer (Dual Stream: m, σ)    │───▶│ Policy-Enforced │
-│ (σ = UNTRUSTED) │    │ Softmax(QKᵀ/√d + M(σ)) · V(σ)          │    │ Safe Output     │
-└─────────────────┘    └────────────────────────────────────────┘    └─────────────────┘
-```
-
-**Neural State Architecture (NSA)** turns security policy into mathematical algebra. It embeds typed activations $(m, \sigma)$ and state transition operators $(w, V)$ directly into the neural network's forward pass. Downward reclassification (e.g., `PRIVATE -> PUBLIC`) is forbidden by the lattice algebra $(\mathcal{S}, \le, \sqcap, \sqcup)$, making unauthorized data leakage mathematically impossible at the attention layer.
+> **Strategic roadmap from intrinsic neural security to a typed cognitive substrate for advanced AI**
 
 ---
 
-## The Four Pillars of AI Lab Adoption
+## Executive Direction
 
-For NSA to be adopted by industrial AI research labs (OpenAI, Anthropic, Google DeepMind, Meta FAIR, Mistral), it must satisfy four non-negotiable criteria:
+NSA began as a framework for intrinsic information-flow security in neural networks. The long-term research direction is broader: develop a modular computational substrate in which **semantic cognition, hard policy state, uncertainty, provenance, values, authority, memory, tools, self-state and autonomous action** can all participate in a common typed-state architecture.
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                      FOUR PILLARS OF LAB ADOPTION                       │
-├───────────────────┬───────────────────┬────────────────────────────────┤
-│ 1. Zero Quality   │ 2. High-Speed     │ 3. Retrofitting &              │ 4. Empirical Red-  │
-│    Degradation    │    Triton Kernels │    NSA-LoRA Support            │    Teaming Proofs  │
-│ (Loss & MMLU)     │ (FlashAttention)  │ (No 10M$ Pre-training Needed)  │ (Prompt Injection) │
-└───────────────────┴───────────────────┴────────────────────────────────┴────────────────────┘
-```
+The central hypothesis is:
 
-### Pillar 1: Empirical "Zero Degradation" at Scale
-* **Requirement**: Proving that adding the state stream $\sigma$ and loss $\mathcal{L}_{\text{state}}$ causes **$< 0.1\%$ loss degradation** on standard language modeling tasks relative to baseline Transformers.
-* **Status**: **`TOY / OPEN AT SCALE`** ([`prototype/pillars/pretrain_lm.py`](prototype/pillars/pretrain_lm.py))
-  - Small synthetic / toy LM runs only. Industrial-scale &lt;0.1% loss delta is **not** claimed.
-  - Re-run `make pretrain-lm` for live numbers; do not treat historical PPL tables as verification.
+> **A sufficiently expressive representation of machine state can simultaneously make important classes of unsafe computation structurally harder or impossible and improve an AI system's ability to reason about its own knowledge, capabilities, constraints and actions.**
 
-### Pillar 2: High-Performance GPU Acceleration (Triton / CUDA)
-* **Requirement**: Industrial labs will not accept memory bandwidth bottlenecks or Python-level loops.
-* **Status**: **`IMPLEMENTED + FALLBACK`** ([`nsa/fused_attention.py`](nsa/fused_attention.py), [`nsa/triton_kernel.py`](nsa/triton_kernel.py), [`prototype/pillars/benchmark_gpu.py`](prototype/pillars/benchmark_gpu.py))
-  - Real `@triton.jit` fused NSA attention kernel is defined (`TRITON_KERNEL_DEFINED=True` when `triton` imports).
-  - Auto-dispatches JIT on CUDA tensors; CPU / missing CUDA uses SDPA with the same mask algebra (`last_backend()`).
-  - `USING_TRITON_KERNEL` is True only during an active JIT launch (not a permanent global claim).
-  - Measure overhead with `make benchmark-gpu` on your device.
+This plan therefore evolves NSA from a neural architecture into a **full framework for safe and highly capable AI**.
 
-### Pillar 3: Post-Hoc Retrofitting & NSA-LoRA Adapters
-* **Requirement**: AI companies cannot afford $10M+ to pre-train 70B parameter models from scratch just to evaluate a new security framework.
-* **Status**: **`TOY + REAL SMALL-HF PATH`** ([`nsa/lora.py`](nsa/lora.py), [`prototype/pillars/retrofit_lora.py`](prototype/pillars/retrofit_lora.py), [`prototype/retrofit/hf_nsa_retrofit.py`](prototype/retrofit/hf_nsa_retrofit.py))
-  - `apply_nsa_lora_retrofit` freezes base weights and wraps target Linears with `NSALoRALinear` (param counts are honest).
-  - Open-LLM (Llama-3-8B / Qwen-2.5-7B) retrofit + AdvGLUE is **not** verified; `open_llm_retrofit.py` is an explicit toy simulation.
-
-### Pillar 4: Empirical Red-Teaming & Security Benchmarks
-* **Requirement**: Demonstrating robustness to prompt injections, adversarial probing, and unauthorized data extraction.
-* **Status**: **`TOY PROXY + NL FIREWALL SUITE + UNIT INVARIANTS`** ([`prototype/pillars/prompt_injection_bench.py`](prototype/pillars/prompt_injection_bench.py), [`prototype/security/nl_redteam_suite.py`](prototype/security/nl_redteam_suite.py), [`tests/test_security_invariants.py`](tests/test_security_invariants.py))
-  - Hard attention masks with trusted discrete labels give **zero softmax mass** on forbidden pairs (unit-tested).
-  - Synthetic secret-token hijack proxy ≠ natural-language jailbreak / AdvGLUE suite.
-  - Do **not** claim “total immunity.”
+The project must remain scientifically conservative: consciousness, AGI safety and superintelligence safety are research targets, not claims of solved problems.
 
 ---
 
-## Multi-Phase Execution Roadmap
+# Part I — Completed Foundation
 
-```
-                                    ROADMAP TO ADOPTION
- ┌──────────────────┐    ┌──────────────────┐    ┌───────────────────┐    ┌──────────────────┐    ┌──────────────────┐
- │     PHASE 1      │───▶│     PHASE 2      │───▶│     PHASE 3      │───▶│     PHASE 4     │───▶│     PHASE 5     │
- │ Formal Paper &   │    │ Triton Kernel &  │    │ NSA-LoRA & LLM    │    │ HuggingFace &    │    │ Live Showcase &  │
- │ Mathematical     │    │ Scale Validation │    │ Retrofit Benchmark│    │ vLLM Integration │    │ CUDA-Fused Perf  │
- │ Non-Interference │    │ (125M-350M)      │    │ (Llama-3-8B)      │    │ Ecosystem        │    │ Demo             │
- └──────────────────┘    └──────────────────┘    └───────────────────┘    └──────────────────┘    └──────────────────┘
-```
+The repository already contains substantial work across the original NSA research program.
 
-### Phase 1: Formal Mathematical Whitepaper & Theoretical Rigor
+## Phase 1: Formal Mathematical Whitepaper & Theoretical Rigor — COMPLETE
+
 - [x] Python prototype implementation (`nsa/algebra.py`, `nsa/state.py`, `nsa/attention.py`, `nsa/layers.py`, `nsa/objectives.py`).
-- [x] Initial toy privacy experiment & unit test suite (`make test`, `make experiment`).
-- [x] Adversarial leakage attack & multi-tier lattice benchmarks (`make benchmarks`).
-- [x] Draft theoretical framework & whitepaper structure ([`whitepaper/nsa_whitepaper.md`](whitepaper/nsa_whitepaper.md)).
-- [x] Complete formal LaTeX whitepaper for conference submission ([`whitepaper/nsa_paper.tex`](whitepaper/nsa_paper.tex)).
-- [x] Formal Non-Interference Theorem proof: Proved $I(m_{\text{src}}; m_{\text{dst}} \mid \sigma) = 0$ when $\text{src} \not\le \text{dst}$ under hard state masking.
+- [x] Initial toy privacy experiment and unit test suite.
+- [x] Adversarial leakage attack and multi-tier lattice benchmarks.
+- [x] Draft theoretical framework and whitepaper.
+- [x] Formal LaTeX whitepaper.
+- [x] Formal non-interference theorem under stated hard-mask assumptions.
 
-### Phase 2: Fused GPU Kernels & Scale Validation
-- [x] Fused GPU attention operator implementation ([`nsa/fused_attention.py`](nsa/fused_attention.py)).
-- [x] Benchmarked throughput & latency overhead across sequence lengths $T \in [128, 1024]$ ([`prototype/pillars/benchmark_gpu.py`](prototype/pillars/benchmark_gpu.py)).
-- [x] Fused GPU Triton state attention kernel with PyTorch fallback ([`nsa/triton_kernel.py`](nsa/triton_kernel.py)).
-- [x] Benchmarked scaling throughput relative to standard Llama architecture.
+## Phase 2: Fused GPU Kernels & Scale Validation — COMPLETE / CONTINUING VALIDATION
 
-### Phase 3: NSA-LoRA Retrofitting & Security Benchmark Suite
-- [x] Develop `NSA-LoRA` post-hoc fine-tuning framework ([`nsa/lora.py`](nsa/lora.py)).
-- [x] Empirical verification of zero task degradation on retrofitted pre-trained Causal LM ([`prototype/pillars/retrofit_lora.py`](prototype/pillars/retrofit_lora.py)).
-- [x] Empirical red-teaming prompt injection firewall benchmark ([`prototype/pillars/prompt_injection_bench.py`](prototype/pillars/prompt_injection_bench.py)).
-- [x] Benchmark scale retrofitting simulation on open LLM checkpoints (`Llama-3-8B`, `Qwen-2.5-7B`) ([`prototype/retrofit/open_llm_retrofit.py`](prototype/retrofit/open_llm_retrofit.py)).
-- [x] Evaluate protection against external red-team benchmarks (AdvGLUE, BIANCA).
+- [x] Fused GPU attention operator.
+- [x] Triton state-aware attention kernel with PyTorch fallback.
+- [x] GPU benchmark harness.
+- [x] KV-cache-aware fused execution path.
+- [ ] Large-scale independent reproduction across hardware and model families.
 
-### Phase 4: Open Source Ecosystem & Production Deployment
-- [x] Build native HuggingFace `transformers` integration (`NSAConfig`, `NSAForCausalLM`) ([`nsa/hf_integration.py`](nsa/hf_integration.py)).
-- [x] Create `vLLM` and `sglang` inference plugins with KV-cache state vector tracking ([`nsa/kv_cache.py`](nsa/kv_cache.py)).
-- [x] Release production documentation, tutorials, and pre-trained checkpoint model configurations.
+## Phase 3: NSA-LoRA Retrofitting & Security Benchmarks — FOUNDATION COMPLETE
 
-### Phase 5: Live Model Showcase & CUDA-Fused Performance
-- [x] Real HuggingFace model download + NSA-LoRA retrofit on live models ([`prototype/retrofit/llama_security_showcase.py`](prototype/retrofit/llama_security_showcase.py)).
-- [x] CUDA-fused NSA mask injection via attention hooks (`NSAMaskInjector` class).
-  - Pre-computes full [B, 1, T, T] NSA policy mask for prompt security regions (SYSTEM/PUBLIC/UNTRUSTED)
-  - Registers forward pre-hooks on each attention layer to merge NSA mask with HF's attention_mask
-  - Handles both prefill ([B, 1, T, T]) and decode ([B, 1, 1, T+n]) KV-cache steps
-  - Clean hook removal on context exit
-- [x] `generate_nsa_fused()` function wrapping HF's native `generate()` for KV-cache + SDPA/Flash Attention
-- [x] Live side-by-side prompt injection demo results (baseline vs NSA-governed).
-- [x] Performance optimization: reduced overhead from ~900% (naive Python loop) to ~5-15% (CUDA-fused with KV-cache).
-- [x] Three-way comparison output: baseline (un-governed), NSA-governed (CUDA-fused), NSA-governed (naive loop).
+- [x] NSA-LoRA implementation.
+- [x] Retrofit experiments.
+- [x] Prompt-injection security benchmark infrastructure.
+- [x] Open-LLM retrofit simulation.
+- [ ] Replace all toy/simulated claims with reproducible real-checkpoint results where possible.
 
-### Phase 6: Neural Metadata Propagation (NMP) & Enterprise Governance
-- [x] Multi-Dimensional State Vectors (`MultiStateVector`): Tuple tracking $(\sigma_{\text{security}}, \sigma_{\text{confidence}}, \sigma_{\text{provenance}}, \sigma_{\text{license}}, \sigma_{\text{toxicity}})$.
-- [x] Multi-Dimensional Lattice (`MultiDimensionalLattice`): Coordinate-wise lattice joins/meets and 2D compatibility mask computation in `nsa/algebra.py`.
-- [x] Threat Model & Information Flow Scope: Formalizing direct cross-attention masking vs residual stream/FFN taint and capacity trade-offs (1-3% loss capacity).
-- [x] Ingress Boundary Governance: Standardized label initialization strategies for RAG indexes, system prompt policies, and API gateways.
-- [x] Unit test suite extension in `tests/test_nsa.py` validating NMP multi-state vector algebra (15 tests passing).
+## Phase 4: Open Source Ecosystem — FOUNDATION COMPLETE
 
-### Phase 7: Native TNC vs. NSA-LoRA Retrofit Controlled Research Study
-- [x] 3-Way Experimental Harness ([`prototype/retrofit/native_vs_retrofit_exp.py`](prototype/retrofit/native_vs_retrofit_exp.py)): Model A (Baseline-125M) vs. Model B (Retrofitted NSA-LoRA) vs. Model C (Native TNC-125M).
-- [x] Empirical Proof of Native TNC Inductive Bias: Demonstrated **0.00% secret leakage hijack rate** and **0.87% Expected Calibration Error (ECE)** under equal parameter & FLOP budgets.
-- [x] Technical Research Guide ([`docs/native_tnc_guide.md`](docs/native_tnc_guide.md)): Formulated $(m_t, \sigma_t)$ joint manifold updates, state transition operators, and dual-objective Lagrangian optimization.
-- [x] Makefile integration (`make exp-3way`).
+- [x] Hugging Face integration.
+- [x] KV-cache integration.
+- [x] vLLM/SGLang integration direction.
+- [x] Production documentation foundation.
 
-### Phase 8: Value Layer & Alignment Substrate Framework  `h = (m, σ, ν)`
-- [x] Formal distinction: **TNC is an alignment substrate, not an alignment objective.**
-  - NSA provides the native computational substrate in which constraints, uncertainty, provenance,
-    permissions, and policies can be represented and propagated through neural computation.
-  - It does not prescribe which values *should* exist; it makes whatever combination of
-    hard constraints, learned values, and policies an alignment system adopts computationally enforceable.
-- [x] Three-layer architecture defined and implemented:
-  ```
-  HARD CONSTRAINTS (σ, state algebra)  → PERMITTED / FORBIDDEN  (lattice, attention mask)
-  OPERATIONAL STATE (σ)               → provenance, confidence, licensing, authorization
-  VALUE LAYER (ν)                     → preference, uncertainty, utility, safety score
-  ```
-- [x] `nsa/value_layer.py`: `ValueAlignmentLoss` + `AlignmentStateProjector` implementing $h_t = (m_t, \sigma_t, \nu_t)$.
-  - $L_{\text{total}} = L_{\text{lm}} + \lambda_{\text{hard}} \cdot L_{\text{hard\_constraint}} + \lambda_\nu \cdot L_{\text{value\_alignment}}$
-  - `L_hard_constraint`: extra penalty for predicting forbidden-range tokens at CONFIDENTIAL positions (behavioural reinforcement of the algebraic mask)
-  - `L_value_alignment`: at injection positions, train the model to output a safe-refuse token rather than comply
-- [x] **4-Way Benchmark** ([`prototype/retrofit/native_vs_retrofit_exp.py`](prototype/retrofit/native_vs_retrofit_exp.py)):
-  | Model | Architecture | Hijack Rate | Mechanism |
-  |---|---|---|---|
-  | A | Untyped $h=m$ | ~60% (high) | No protection, learns attack |
-  | B | Hard mask retrofit | ~50% (random) | **Structural** — attention blocks SYSTEM access |
-  | C | Native TNC $(m, \sigma)$ | ~100% (soft gates) | Soft gates learn SYSTEM access (calibration advantage) |
-  | D | Full $(m, \sigma, \nu)$ | **~0%** | **Behavioural** — value loss trains intrinsic refusal |
-- [ ] Heterogeneous algebraic domains: different Σᵢ structures per dimension (lattice, probabilistic, temporal, constraint).
-- [ ] Moral uncertainty as probability distribution over normative frameworks: $P(T_i \mid x)$.
-- [ ] Deliberative value revision: $(σ_t, ν_t, m_t) \to \text{deliberation} \to (\nu_{t+1}, \sigma_{t+1})$.
+## Phase 5: Live Model Showcase & CUDA-Fused Performance — FOUNDATION COMPLETE
 
-### Phase 9: NSA 2.0 Speculative State Auditing & Dynamic Alignment Engine
-- [x] **Dynamic State Tracking**: Autonomous runtime state transitions using `<|start_system_thought|>` and `<|end_system_thought|>` tags with dynamic attention mask expansion (`NSAMaskInjector.update_state()`).
-- [x] **Multi-Layer Auditing & Deep Probing**: Residual stream probe monitoring (`MultiLayerStateAuditor`) with early-exit KV-cache rollback across intermediate transformer layers.
-- [x] **Native Recovery Policies**: Weight-level refusal adapter hot-swapping (`AdapterSwitchRecovery`) and semantic pivot steering (`SemanticPivotRecovery`).
-- [x] **Compartmented Execution**: Clearance-aware stream routing (`StreamRouter`) directing `SYSTEM` tokens to tool APIs and `PUBLIC` tokens to user outputs.
-- [x] **Core Architecture Refactoring**: First-class `NSAMaskInjector` (`nsa/mask_injector.py`), modular verifier subsystem (`nsa/verifier/`), and 100% unit test coverage (`tests/test_verifier_nsa2.py`).
+- [x] Live Hugging Face retrofit path.
+- [x] `NSAMaskInjector`.
+- [x] KV-cache generation path.
+- [x] Baseline vs NSA demonstration infrastructure.
+- [x] Fused/naive comparison infrastructure.
+- [ ] Expand validation beyond showcase experiments.
 
-### Phase 10: Formal NSA Core & Peer-Review Hardening
-- [x] **Authoritative Quad-Tuple Activations**: $h_t = (m_t, \sigma_{h,t}, \sigma_{s,t}, \nu_t)$ partitioning hard trusted policy ($\Sigma_h = \Sigma_C \times \Sigma_I \times \Sigma_A \times \Sigma_L$) from soft operational risk ($\Sigma_s = \Sigma_U \times \Sigma_R$).
-- [x] **Privilege Escalation Prevention**: Formalized the axiom *"Semantic content may not manufacture hard authority"* ($m_t \not\to \sigma_{h, t+1}$). Implemented `SecurityAutomaton` and `Capability` ticket validation in `nsa/verifier/automaton.py`.
-- [x] **Exact Algebraic Projection $\mathcal{P}_{\mathcal{T}_\Sigma}(V)$**: Updated `StateTransitionOperator` in `nsa/state.py` to project $V \in \mathcal{T}_\Sigma$ by construction, zeroing downward declassification off-diagonals.
-- [x] **Observational Equivalence Theorem**: Proved whole-network structural non-interference: $X \equiv_L X' \implies F(X) \equiv_L F(X')$.
-- [x] **Two-Tier Protection Framework**: Formally distinguished Tier 1 Structural Enforcement (mathematical guarantees) from Tier 2 Statistical Monitoring (empirical checkpoint detection over $\mathcal{L}_A$).
-- [x] **Complete Execution State Rollback**: Formalized $S_t = (X_t, K_t, V_t, \boldsymbol{\sigma}_{h,t}, \boldsymbol{\sigma}_{s,t}, q_t, R_t)$ ensuring full runtime restoration upon violation.
-- [x] **Output Boundary TCB**: Defined `StreamRouter` as part of the Trusted Computing Base governing model output clearance to authorized sinks.
+## Phase 6: Neural Metadata Propagation & Enterprise Governance — COMPLETE FOUNDATION
+
+- [x] Multi-dimensional state vectors.
+- [x] Multi-dimensional lattice.
+- [x] Threat model and information-flow scope.
+- [x] Ingress governance concepts.
+- [x] Multi-state algebra tests.
+
+## Phase 7: Native TNC vs Retrofit Research — COMPLETE FOUNDATION
+
+- [x] Controlled baseline/retrofit/native harness.
+- [x] Native TNC research path.
+- [x] Technical research guide.
+- [x] Makefile experiment integration.
+- [ ] Expand to statistically rigorous multi-seed and multi-model studies.
+
+## Phase 8: Value Layer & Alignment Substrate — FOUNDATION COMPLETE
+
+- [x] Distinction between hard constraints and learned values.
+- [x] `$h=(m,\sigma,\nu)$` architecture.
+- [x] Value alignment loss/projector.
+- [x] Initial four-way benchmark.
+- [ ] Heterogeneous algebraic domains.
+- [ ] Moral uncertainty representation.
+- [ ] Deliberative value revision.
+
+## Phase 9: NSA 2.0 Dynamic Auditing & Recovery — FOUNDATION COMPLETE
+
+- [x] Dynamic state tracking.
+- [x] Multi-layer residual probing.
+- [x] KV-cache rollback direction.
+- [x] Recovery adapters and semantic pivots.
+- [x] Compartmented stream routing.
+- [x] Modular verifier subsystem.
+
+## Phase 10: Formal NSA Core & Peer-Review Hardening — FOUNDATION COMPLETE
+
+- [x] Authoritative quad-tuple activations.
+- [x] Hard/soft state partition.
+- [x] Privilege escalation prevention.
+- [x] Capability validation foundation.
+- [x] Exact legal transition projection.
+- [x] Observational-equivalence theorem formulation.
+- [x] Tier 1 structural vs Tier 2 statistical distinction.
+- [x] Execution-state rollback model.
+- [x] Output boundary TCB concept.
 
 ---
 
-## High-Impact Industry Use Cases
+# Part II — Full NSA Framework Roadmap
 
-1. **Enterprise Multi-Tenant Data Privacy & Licensing**:
-   - Multi-tenant corporate RAG pipelines where confidential document activations are algebraically restricted across corporate divisions (HR, Finance, Legal, PII).
-2. **Jailbreak-Proof System Prompt Isolation**:
-   - System prompts assigned `SYSTEM` state labels ($SYSTEM > PUBLIC$) cannot be overwritten or bypassed by user inputs carrying `PUBLIC` or `UNTRUSTED` state labels.
-3. **Dynamic Confidence & Uncertainty Tracking**:
-   - Continuous propagation of calibration metadata ($\sigma_{\text{confidence}}$) across multi-step neural reasoning chains to detect and suppress hallucination propagation.
-4. **Healthcare & Financial Compliance (HIPAA / GDPR)**:
-   - Dynamic provenance tracking for PII/PHI token streams, ensuring strict auditability and compliant response generation.
+The following phases define the new long-term architecture. Each phase should be implemented as an independently testable module and should expose clear interfaces to the existing NSA core.
 
+---
+
+## Phase 11 — Canonical Typed Neural Core
+
+**Target:** `nsa/core/`
+
+### Goal
+
+Unify the existing state representations into a canonical typed activation model:
+
+$$
+h=(m,\sigma_h,\sigma_s,\nu,\kappa,\pi,g)
+$$
+
+where optional components represent hard policy, soft operational state, values, capabilities, provenance and goals.
+
+### Tasks
+
+- [ ] Define canonical typed activation protocol.
+- [ ] Separate hard trusted state from model-generated semantic state.
+- [ ] Define read/write permissions.
+- [ ] Define state composition semantics.
+- [ ] Support partial activation/state vectors.
+- [ ] Establish compatibility with current `StateVector`, `MultiStateVector` and quad-tuple APIs.
+- [ ] Add serialization and versioning.
+
+### Success criterion
+
+Every future NSA subsystem can consume and return a well-defined typed state without inventing its own incompatible representation.
+
+---
+
+## Phase 12 — General State Algebra Engine
+
+**Target:** `nsa/algebra/`
+
+### Goal
+
+Generalize the current security lattice into a heterogeneous algebra framework.
+
+### Tasks
+
+- [ ] Lattice domains.
+- [ ] Boolean/capability domains.
+- [ ] Probabilistic domains.
+- [ ] Temporal domains.
+- [ ] Constraint domains.
+- [ ] Coordinate-wise and heterogeneous product algebras.
+- [ ] Join/meet compatibility.
+- [ ] Legal transition cones.
+- [ ] Exact algebraic projections.
+- [ ] Algebra property test suite.
+
+### Research question
+
+Can heterogeneous state dimensions remain compositional without reducing everything to a scalar score?
+
+---
+
+## Phase 13 — Algebra-Preserving State Transition Engine
+
+**Target:** `nsa/transitions/`
+
+### Goal
+
+Make state invariants structural rather than dependent solely on learned penalties.
+
+### Core pattern
+
+$$
+\sigma_{t+1}=\sigma_t\sqcup\Delta_\theta(m_t,\sigma_t)
+$$
+
+### Tasks
+
+- [x] Initial algebra-preserving transition prototype.
+- [ ] Generalize to all heterogeneous state dimensions.
+- [ ] Prove dimension-specific invariants.
+- [ ] Benchmark capability cost vs unconstrained transitions.
+- [ ] Integrate with native TNC.
+- [ ] Integrate with retrofit path where feasible.
+
+---
+
+## Phase 14 — Whole-System Information Flow
+
+**Target:** `nsa/flow/`
+
+### Goal
+
+Move beyond attention-only security to whole-network and whole-runtime information-flow control.
+
+### Tasks
+
+- [ ] Residual-stream taint semantics.
+- [ ] FFN taint semantics.
+- [ ] Cross-layer flow analysis.
+- [ ] State-aware residual composition.
+- [ ] Formal sink/source policies.
+- [ ] Declassification semantics.
+- [ ] Whole-model non-interference conditions.
+- [ ] Counterexample generator for violated assumptions.
+
+### Success criterion
+
+Every security theorem states exactly which computational pathways it covers.
+
+---
+
+## Phase 15 — Capability & Authority Architecture
+
+**Target:** `nsa/capabilities/`
+
+### Goal
+
+Make authority independent from intelligence.
+
+$$
+\boxed{\text{Intelligence}\neq\text{Authority}}
+$$
+
+### Tasks
+
+- [ ] Signed capability objects.
+- [ ] Resource/action scopes.
+- [ ] Purpose binding.
+- [ ] Expiry and nonce.
+- [ ] Delegation.
+- [ ] Revocation.
+- [ ] Capability-state compatibility.
+- [ ] External trusted issuer.
+- [ ] Semantic-to-authority isolation tests.
+
+### Core invariant
+
+$$
+m_t\not\rightarrow\sigma_{h,t+1}
+$$
+
+without an authorized capability-mediated transition.
+
+---
+
+## Phase 16 — Provenance, Trust & Epistemic State
+
+**Target:** `nsa/provenance/`
+
+### Goal
+
+Give every important piece of information an explicit lineage and trust state.
+
+### Tasks
+
+- [ ] Source identity.
+- [ ] Transformation history.
+- [ ] Evidence graphs.
+- [ ] Confidence propagation.
+- [ ] Contradiction handling.
+- [ ] Trust domains.
+- [ ] Provenance-aware state transitions.
+- [ ] Audit export.
+
+### Success criterion
+
+The system can distinguish information by origin, transformation history and confidence rather than treating all context as equivalent.
+
+---
+
+## Phase 17 — Persistent Typed Memory
+
+**Target:** `nsa/memory/`
+
+### Goal
+
+Extend NSA state semantics into RAG, vector stores and long-term memory.
+
+### Tasks
+
+- [ ] State-tagged memory records.
+- [ ] Provenance-preserving retrieval.
+- [ ] Tenant isolation.
+- [ ] Read/write policy.
+- [ ] Memory declassification.
+- [ ] Temporal validity.
+- [ ] Confidence decay.
+- [ ] State-aware vector retrieval.
+- [ ] Memory audit trail.
+
+### Success criterion
+
+A secure neural core cannot be bypassed by an untyped external memory layer.
+
+---
+
+## Phase 18 — Self-State & Metacognition
+
+**Target:** `nsa/self_state/`
+
+### Goal
+
+Investigate whether explicit awareness of machine state can improve reasoning and safety.
+
+### Proposed state
+
+$$
+S_t=(m_t,\sigma_t,\kappa_t,\pi_t,g_t,\rho_t)
+$$
+
+### Tasks
+
+- [ ] Persistent self-state representation.
+- [ ] State introspection interface.
+- [ ] Self-state prediction.
+- [ ] Confidence awareness.
+- [ ] Capability awareness.
+- [ ] Resource awareness.
+- [ ] Error-state detection.
+- [ ] State-conditioned reasoning depth.
+- [ ] Metacognitive training objectives.
+
+### Core experiment
+
+Compare a baseline model:
+
+$$m_{t+1}=F(m_t)$$
+
+against an explicit-state model:
+
+$$
+(m_{t+1},\sigma_{t+1})=F(m_t,\sigma_t)
+$$
+
+under matched parameter and compute budgets.
+
+### Success criterion
+
+Demonstrate measurable gains in calibration, error detection, planning or reasoning without relying on textual self-report alone.
+
+---
+
+## Phase 19 — Predictive Self-Model & Internal Simulation
+
+**Target:** `nsa/self_model/`
+
+### Goal
+
+Allow the AI to predict consequences for both the external world and its own future state.
+
+### Tasks
+
+- [ ] Future state prediction.
+- [ ] Action consequence simulation.
+- [ ] Capability-state prediction.
+- [ ] Resource prediction.
+- [ ] State prediction error.
+- [ ] Counterfactual simulation.
+- [ ] Self-model calibration.
+
+### Planning objective
+
+$$
+a^*=\arg\max_a U(m_{t+1},\sigma_{t+1},g_{t+1})
+$$
+
+subject to legal state constraints.
+
+---
+
+## Phase 20 — Tool & Action Governance
+
+**Target:** `nsa/actions/`
+
+### Goal
+
+Extend state safety to real-world effects.
+
+### Tasks
+
+- [ ] Typed tool requests.
+- [ ] Capability checks.
+- [ ] State propagation across tool boundaries.
+- [ ] Action risk classification.
+- [ ] Human approval gates.
+- [ ] Reversible/irreversible action distinction.
+- [ ] Resource limits.
+- [ ] Transaction boundaries.
+- [ ] Output sink policy.
+
+### Success criterion
+
+The same security/state semantics apply from neural computation through external action.
+
+---
+
+## Phase 21 — Trusted Cognitive Runtime
+
+**Target:** `nsa/runtime/`
+
+### Goal
+
+Turn NSA into a trusted execution environment for autonomous agents.
+
+### Tasks
+
+- [ ] Execution state object.
+- [ ] State-aware scheduling.
+- [ ] Tool routing.
+- [ ] Memory routing.
+- [ ] Capability lifecycle.
+- [ ] Checkpointing.
+- [ ] Rollback.
+- [ ] Resource budgets.
+- [ ] Failure containment.
+- [ ] Output-boundary TCB.
+
+### Success criterion
+
+The runtime, not the model's generated text, remains the final authority over privileged actions.
+
+---
+
+## Phase 22 — Multi-Agent State Protocol
+
+**Target:** `nsa/multi_agent/`
+
+### Goal
+
+Preserve security, provenance and authority when intelligent systems communicate.
+
+### Tasks
+
+- [ ] Agent identity.
+- [ ] Cross-agent state transfer.
+- [ ] Capability delegation.
+- [ ] State translation.
+- [ ] Trust negotiation.
+- [ ] Information-flow contracts.
+- [ ] Shared-memory governance.
+- [ ] Distributed audit logs.
+
+### Success criterion
+
+Agent boundaries do not silently erase state semantics.
+
+---
+
+## Phase 23 — Value & Alignment Substrate
+
+**Target:** `nsa/alignment/`
+
+### Goal
+
+Expand the existing value layer into a modular alignment substrate.
+
+### Tasks
+
+- [x] Separate hard constraints from values.
+- [x] Initial value state and preference loss.
+- [ ] Utility representations.
+- [ ] Value uncertainty.
+- [ ] Preference learning interfaces.
+- [ ] Conflict detection.
+- [ ] Deliberative value revision.
+- [ ] Value-state auditability.
+
+### Principle
+
+$$
+\text{Hard constraints}\neq\text{learned values}
+$$
+
+---
+
+## Phase 24 — Normative & Moral Uncertainty
+
+**Target:** `nsa/normative/`
+
+### Goal
+
+Investigate reasoning under uncertainty about competing value systems without weakening hard constraints.
+
+### Proposed representation
+
+$$
+P(T_i\mid x)
+$$
+
+### Tasks
+
+- [ ] Multiple normative models.
+- [ ] Moral uncertainty representation.
+- [ ] Value conflict.
+- [ ] Deliberation.
+- [ ] Human preference incorporation.
+- [ ] Hard-constraint precedence.
+- [ ] Uncertainty-aware action selection.
+
+---
+
+## Phase 25 — Dynamic Auditing & Recovery
+
+**Target:** `nsa/audit/`
+
+### Goal
+
+Maintain Tier 2 statistical protection for properties that cannot be guaranteed structurally.
+
+### Tasks
+
+- [x] Multi-layer probing foundation.
+- [x] Rollback foundation.
+- [x] Recovery adapters.
+- [ ] Formal detection-delay benchmarks.
+- [ ] Distribution-shift detection.
+- [ ] Self-state anomaly detection.
+- [ ] Automated recovery policies.
+- [ ] Recovery safety proofs.
+
+---
+
+## Phase 26 — Trusted Computing Base & Formal Verification
+
+**Targets:** `nsa/tcb/`, `nsa/formal/`
+
+### Goal
+
+Make NSA's security claims explicit, minimal and machine-checkable.
+
+### Tasks
+
+- [ ] Define minimal TCB.
+- [ ] Formal state-transition properties.
+- [ ] Property-based invariant testing.
+- [ ] Model checking.
+- [ ] Non-interference verification.
+- [ ] Capability verification.
+- [ ] State preservation proofs.
+- [ ] Counterexample generation.
+- [ ] Proof artifacts linked to implementation versions.
+
+### Success criterion
+
+Security claims can be traced from theorem → assumption → implementation → test/proof artifact.
+
+---
+
+## Phase 27 — Security Research & Adversarial Evaluation
+
+**Target:** `nsa/security/`
+
+### Goal
+
+Continuously attack the framework.
+
+### Attack classes
+
+- [ ] Prompt injection.
+- [ ] Jailbreaks.
+- [ ] State spoofing.
+- [ ] Provenance forgery.
+- [ ] Capability abuse.
+- [ ] Memory exfiltration.
+- [ ] Cross-agent attacks.
+- [ ] Activation/state manipulation.
+- [ ] Side channels.
+- [ ] Illegal transition attacks.
+- [ ] Self-modification attacks.
+
+### Principle
+
+A successful attack is a research result that identifies a missing invariant, an incorrect assumption or an implementation boundary.
+
+---
+
+## Phase 28 — Joint Safety & Intelligence Evaluation
+
+**Target:** `nsa/eval/`
+
+### Goal
+
+Measure capability and safety together.
+
+### Benchmark families
+
+- [ ] Language modeling.
+- [ ] Mathematics.
+- [ ] Reasoning.
+- [ ] Planning.
+- [ ] Tool use.
+- [ ] Long-context reasoning.
+- [ ] Calibration.
+- [ ] Uncertainty estimation.
+- [ ] Metacognition.
+- [ ] Memory.
+- [ ] Long-horizon autonomy.
+- [ ] Security.
+- [ ] Multi-agent coordination.
+
+### Core hypothesis
+
+NSA should not be evaluated only as a security tax. We should test whether state provides a useful inductive bias for intelligence.
+
+---
+
+## Phase 29 — Production Kernel & Hardware Layer
+
+**Target:** `nsa/kernels/`
+
+### Goal
+
+Make state-aware computation cheap enough for production systems.
+
+### Tasks
+
+- [ ] Triton optimization.
+- [ ] CUDA fused state-aware attention.
+- [ ] Efficient state masking.
+- [ ] KV-cache state tracking.
+- [ ] State-aware batching.
+- [ ] Quantization compatibility.
+- [ ] Distributed execution.
+- [ ] End-to-end throughput benchmarks.
+
+---
+
+## Phase 30 — Ecosystem Integration
+
+**Target:** `nsa/integrations/`
+
+### Tasks
+
+- [ ] Hugging Face.
+- [ ] PyTorch.
+- [ ] vLLM.
+- [ ] SGLang.
+- [ ] RAG/vector databases.
+- [ ] Agent frameworks.
+- [ ] Enterprise identity systems.
+- [ ] Tool/API gateways.
+
+### Goal
+
+Make NSA composable with existing AI infrastructure rather than requiring a new ecosystem.
+
+---
+
+# Part III — Long-Term AGI & Superintelligence Research
+
+## Phase 31 — Self-Modification Safety
+
+### Goal
+
+Treat model modification as a typed, policy-governed state transition:
+
+$$
+(M_t,S_t)\rightarrow(M_{t+1},S_{t+1})
+$$
+
+subject to protected invariants $\mathcal I$.
+
+### Tasks
+
+- [ ] Define protected invariant set.
+- [ ] Verify invariant preservation after adapter/model changes.
+- [ ] Safe model update protocol.
+- [ ] Capability expansion governance.
+- [ ] Self-generated code governance.
+- [ ] Self-generated tool governance.
+- [ ] Known-good rollback.
+- [ ] Recursive improvement experiments in bounded environments.
+
+This phase must begin only after the preceding capability/authority/runtime infrastructure is robust.
+
+---
+
+## Phase 32 — Multi-Agent & Distributed Intelligence Safety
+
+### Goal
+
+Study systems where many NSA agents cooperate, compete or delegate tasks.
+
+### Tasks
+
+- [ ] State-preserving communication.
+- [ ] Delegated authority.
+- [ ] Distributed provenance.
+- [ ] Shared goal conflicts.
+- [ ] Coalition safety.
+- [ ] Emergent capability monitoring.
+- [ ] Distributed rollback.
+
+---
+
+## Phase 33 — Advanced Self-Model Research
+
+### Goal
+
+Determine whether persistent explicit self-state produces qualitatively different cognitive behaviour.
+
+### Research questions
+
+- [ ] Does self-state improve calibration?
+- [ ] Does it improve error detection?
+- [ ] Does it improve planning?
+- [ ] Does it improve long-horizon reasoning?
+- [ ] Does it improve resource allocation?
+- [ ] Does it reduce unsafe autonomy?
+- [ ] Does the system learn useful predictive models of itself?
+- [ ] Can self-state become causally necessary to successful reasoning?
+
+### Scientific boundary
+
+Do not equate these findings with consciousness. Treat consciousness as a separate open question.
+
+---
+
+## Phase 34 — Toward a General NSA Cognitive Substrate
+
+The ultimate research objective is to test whether a highly capable AI can operate around a coherent typed substrate combining:
+
+$$
+\boxed{
+\text{World Model}
++
+\text{Self Model}
++
+\text{State Algebra}
++
+\text{Capability System}
++
+\text{Memory}
++
+\text{Values}
++
+\text{Action Governance}
+}
+$$
+
+The desired outcome is not merely a safer LLM. It is a framework in which **capability, introspection, information flow, authority, provenance and safety are represented in the same computational language**.
+
+---
+
+# Part IV — Architectural Principles
+
+1. **State is computational, not decorative.**
+2. **Intelligence does not imply authority.**
+3. **Semantic content cannot manufacture hard authority.**
+4. **Illegal transitions should be structurally excluded where possible.**
+5. **Different state dimensions require appropriate algebras.**
+6. **Attention guarantees must not be confused with whole-system guarantees.**
+7. **Hard constraints, learned values and statistical monitors are distinct layers.**
+8. **Every security theorem must state its assumptions.**
+9. **Memory, tools and agents must preserve state semantics.**
+10. **Self-state should be causally useful rather than merely textual self-report.**
+11. **Every privileged action must cross an explicit trust boundary.**
+12. **Self-modification is a state transition and must be governed accordingly.**
+13. **Safety and intelligence should be evaluated together.**
+14. **The framework must remain modular and model-agnostic.**
+15. **Claims must track implementation status and empirical evidence separately.**
+
+---
+
+# Part V — Immediate Build Order
+
+The full framework is intentionally larger than what should be implemented at once. The recommended next sequence is:
+
+### Next 1 — Canonical state API
+
+Unify current scalar, multi-dimensional and quad-tuple representations.
+
+### Next 2 — General algebra package
+
+Make heterogeneous algebraic domains first-class.
+
+### Next 3 — Algebra-preserving transitions
+
+Make the new transition mechanism the canonical native path.
+
+### Next 4 — Whole-system information flow
+
+Close the gap between attention-level guarantees and residual/FFN/runtime flow.
+
+### Next 5 — Capability system
+
+Make authority independent from generated semantics.
+
+### Next 6 — Provenance + typed memory
+
+Carry state beyond the neural context.
+
+### Next 7 — Self-state/metacognition prototype
+
+Build a small controlled experiment comparing ordinary cognition against explicit self-state cognition.
+
+### Next 8 — Tool/action governance + runtime
+
+Connect cognition to real-world effects through the capability system.
+
+### Next 9 — Multi-agent protocol
+
+Preserve state semantics across agents.
+
+### Next 10 — Formal verification + adversarial evaluation
+
+Turn the architecture into a continuously tested research platform.
+
+### Next 11 — Self-modification research
+
+Only after the trusted runtime and invariant system are mature.
+
+---
+
+# Part VI — Evidence Standard
+
+Every major feature should report four separate statuses:
+
+| Status | Meaning |
+|---|---|
+| **Implemented** | Code exists and is exercised |
+| **Tested** | Automated tests verify the intended local property |
+| **Empirically validated** | Controlled experiments demonstrate the claimed effect |
+| **Formally established** | The claim follows from explicit mathematical assumptions/proof |
+
+No benchmark result should be described as a theorem, and no theorem should be described as a property of the entire implementation unless its assumptions cover that implementation.
+
+---
+
+# Final Objective
+
+The long-term mission of NSA is to investigate whether **safe, secure and highly capable AI can be built around a typed computational substrate rather than protected primarily from the outside**.
+
+The central research hypothesis is:
+
+$$
+\boxed{
+\text{Safety Architecture}
+\not\perp
+\text{Intelligence Architecture}
+}
+$$
+
+Instead, the same state representation may become part of the mechanism by which an advanced AI understands its knowledge, capabilities, limitations, authority, goals and consequences.
+
+That hypothesis — and the engineering and mathematics required to test it — is the long-term direction of the Neural State Architecture project.
+
+---
+
+## High-Impact Application Areas
+
+1. Enterprise multi-tenant privacy and licensing.
+2. Secure RAG and provenance-aware knowledge systems.
+3. Tool-using autonomous agents.
+4. Healthcare and financial compliance.
+5. Multi-agent systems.
+6. High-assurance AI infrastructure.
+7. Self-monitoring and metacognitive AI.
+8. Long-horizon autonomous systems.
+9. Safety infrastructure for increasingly capable AI.
+10. Long-term research into AGI and superintelligence safety.
