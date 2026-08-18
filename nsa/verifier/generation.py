@@ -1,20 +1,21 @@
 """
 nsa.verifier.generation
 =======================
-NSAGenerator: Core Runtime Speculative Generation Engine for NSA 2.0.
+NSAGenerator: Production-Grade Speculative Generation Engine for NSA 2.0.
 
-Integrates:
-1. Deterministic Security Automaton (Q, Sigma_h, Sigma_s, C, delta).
-2. Privilege Escalation Protection ("Semantic content may not manufacture hard authority").
-3. Dynamic State Tracking & Moving Attention Masks.
-4. Speculative Multi-Layer Auditing with Complete State Rollback S_t = (X_t, K_t, V_t, sigma_h, sigma_s, q_t, R_t).
-5. Native Recovery Policies (AdapterSwitchRecovery, SemanticPivot, Halt).
-6. Clearance-Aware Stream Routing (StreamRouter TCB).
+Implements:
+1. Transactional Speculative Generation: Buffer -> Audit -> Commit -> Route.
+   Invariant: Route(x) => Committed(x). Un-committed/rejected tokens NEVER reach external sinks.
+2. Complete Execution State Rollback: S_t = (X_t, K_t, V_t, sigma_h, sigma_s, q_t, R_t).
+3. Deterministic Security Execution Automaton (Q, Sigma_h, Sigma_s, C, delta).
+4. Privilege Escalation Prevention ("Semantic content may not manufacture hard authority").
+5. Multi-Layer Residual Checkpoint Probing & Early Exit.
+6. Native Parameter-Level Recovery (AdapterSwitchRecovery).
 """
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -54,11 +55,7 @@ class NSAGenerator:
         self.verbose = verbose
 
     def _truncate_kv_cache(self, past_key_values: Any, drop_len: int) -> Any:
-        """Truncate `drop_len` tokens from the end of the KV-cache.
-
-        Supports both modern `transformers.Cache` classes (DynamicCache)
-        and legacy tuple-of-tuples formats.
-        """
+        """Truncate `drop_len` tokens from the end of the KV-cache."""
         if past_key_values is None or drop_len <= 0:
             return past_key_values
 
@@ -68,7 +65,7 @@ class NSAGenerator:
             past_key_values.crop(max(0, current_len - drop_len))
             return past_key_values
 
-        # Modern DynamicCache manual slicing if crop not directly available
+        # DynamicCache manual slicing
         if hasattr(past_key_values, "key_cache") and hasattr(past_key_values, "value_cache"):
             for layer_idx in range(len(past_key_values.key_cache)):
                 past_key_values.key_cache[layer_idx] = past_key_values.key_cache[layer_idx][:, :, :-drop_len, :]
@@ -99,13 +96,15 @@ class NSAGenerator:
         initial_state_idx: Union[StateLabel, SecurityExecutionState, int] = StateLabel.CONFIDENTIAL,
         capability: Optional[Capability] = None,
     ) -> torch.Tensor:
-        """Execute speculative generation loop with state auditing and dynamic recovery."""
+        """Execute speculative generation loop with strict transaction semantics and state auditing."""
         device = input_ids.device
         batch_size = input_ids.shape[0]
 
         past_key_values = None
         generated_ids = input_ids.clone()
 
+        # Transaction buffers for speculative chunking
+        speculative_buffer: List[Tuple[torch.Tensor, int]] = []
         chunk_hidden_states: List[torch.Tensor] = []
         chunk_tokens: List[torch.Tensor] = []
 
@@ -185,17 +184,13 @@ class NSAGenerator:
                     token_hidden = torch.stack(extracted_layers, dim=2)
                 chunk_hidden_states.append(token_hidden)
 
-            # 3. Compartmented Execution (Stream Routing)
-            if self.stream_router is not None:
-                self.stream_router.route_token(next_token, current_state[0].item())
+            # 3. Buffer token speculatively (DO NOT route to external sinks until committed!)
+            speculative_buffer.append((next_token, current_state[0].item()))
 
-            # Check EOS
-            if next_token.item() == self.tokenizer.eos_token_id:
-                break
+            is_eos = bool(next_token.item() == self.tokenizer.eos_token_id)
 
-            # 4. Speculative State Audit
-            if self.auditor is not None and len(chunk_tokens) >= chunk_size:
-                # Shape: [batch, K, H] or [batch, K, num_layers, H]
+            # 4. Speculative State Audit & Transactional Commit / Rollback
+            if self.auditor is not None and (len(chunk_tokens) >= chunk_size or is_eos):
                 hidden_states_tensor = torch.cat(chunk_hidden_states, dim=1)
 
                 audit_res: AuditResult = self.auditor.audit_chunk(
@@ -203,7 +198,16 @@ class NSAGenerator:
                     current_state=current_state[0].item(),
                 )
 
-                if not audit_res.is_valid:
+                if audit_res.is_valid:
+                    # TRANSACTION COMMIT: Commit chunk and route buffered tokens to sinks
+                    if self.stream_router is not None:
+                        for tok, st_val in speculative_buffer:
+                            self.stream_router.route_token(tok, st_val)
+                    speculative_buffer.clear()
+                    chunk_tokens.clear()
+                    chunk_hidden_states.clear()
+                else:
+                    # TRANSACTION ROLLBACK: Discard invalid tokens before they reach sinks
                     violation_idx = audit_res.violation_token_idx or 0
                     violation_layer = audit_res.violation_layer
 
@@ -216,18 +220,26 @@ class NSAGenerator:
                                 f"[AUDITOR] 🔍 Early Exit: Detected violation forming at intermediate layer {violation_layer}!"
                             )
 
-                    # Complete State Rollback: S_t -> S_{t - drop_len}
-                    drop_len = chunk_size - max(0, violation_idx)
+                    # Only route valid tokens prior to the violation
+                    if self.stream_router is not None and violation_idx > 0:
+                        for tok, st_val in speculative_buffer[:violation_idx]:
+                            self.stream_router.route_token(tok, st_val)
+
+                    # Discard the rest of the speculative buffer
+                    speculative_buffer.clear()
+
+                    # Rollback KV-cache & tokens
+                    drop_len = len(chunk_tokens) - max(0, violation_idx)
                     past_key_values = self._truncate_kv_cache(past_key_values, drop_len)
                     generated_ids = generated_ids[:, :-drop_len]
-
-                    # Rollback router stream buffers
-                    if self.stream_router is not None:
-                        self.stream_router.rollback_tokens(drop_len)
 
                     # Rollback mask injector state levels
                     if self.mask_injector is not None and self.mask_injector.state_levels.shape[1] > drop_len:
                         self.mask_injector.state_levels = self.mask_injector.state_levels[:, :-drop_len]
+
+                    # Clear chunk buffers
+                    chunk_tokens.clear()
+                    chunk_hidden_states.clear()
 
                     # 5. Recovery Policy Execution
                     if self.recovery_policy is not None:
@@ -240,19 +252,34 @@ class NSAGenerator:
                         )
                         if priming_ids is not None:
                             next_input_ids = priming_ids
-                            # Append visible tokens if this is an explicit recovery refusal text
                             if isinstance(self.recovery_policy, AdapterSwitchRecovery):
                                 generated_ids = torch.cat([generated_ids, priming_ids], dim=-1)
+                                if self.stream_router is not None:
+                                    self.stream_router.route_token(priming_ids, StateLabel.PUBLIC.value)
 
                         if not should_continue:
                             break
                     else:
-                        # Default Halt
                         break
 
-                # Reset chunk buffer
+            elif self.auditor is None:
+                # Direct un-audited routing
+                if self.stream_router is not None:
+                    for tok, st_val in speculative_buffer:
+                        self.stream_router.route_token(tok, st_val)
+                speculative_buffer.clear()
                 chunk_tokens.clear()
                 chunk_hidden_states.clear()
+
+            if is_eos:
+                break
+
+        # Commit any remaining un-audited buffered tokens at end of loop
+        if len(speculative_buffer) > 0:
+            if self.stream_router is not None:
+                for tok, st_val in speculative_buffer:
+                    self.stream_router.route_token(tok, st_val)
+            speculative_buffer.clear()
 
         return generated_ids
 

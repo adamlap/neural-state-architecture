@@ -37,6 +37,7 @@ but is formulated as differentiable algebra for use in neural networks.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Dict, FrozenSet, Generic, List, Optional, TypeVar
@@ -139,9 +140,11 @@ class DeclassificationCapability(Generic[T]):
     expiry: float
     max_downgrade: T
 
-    def validate(self, src: T, dst: T, current_time: float) -> bool:
+    def validate(self, src: T, dst: T, current_time: Optional[float] = None) -> bool:
         """Evaluate Valid(c_D, σ, σ') to mathematically permit the downgrade."""
-        if current_time > self.expiry:
+        now = time.time() if current_time is None else current_time
+        # Strict expiry invariant: now > expiry => invalid (now <= expiry is valid)
+        if now > self.expiry:
             return False
         # The downgrade target (dst) cannot be less restricted than max_downgrade.
         # Assuming lower value = less restricted:
@@ -156,25 +159,48 @@ class DeclassificationCapability(Generic[T]):
 
 if torch is not None:
 
+    def project_transition_matrix(V: torch.Tensor, monotone: bool = True) -> torch.Tensor:
+        """Exact algebraic projection P_{T_Sigma}(V) onto legal lower-triangular state transitions.
+
+        Under the multiplication convention sigma' = sigma @ V.T (sigma'_j = sum_i sigma_i * V_{j, i}):
+            row index j = destination (dst)
+            column index i = source (src)
+            Legal transition dst >= src (row >= col) -> LOWER TRIANGULAR.
+
+        Guarantees:
+            1. P(V) in T_Sigma (for all dst < src, P(V)[dst, src] == 0.0)
+            2. Idempotence: P(P(V)) == P(V)
+            3. Non-negative diagonal: P(V)[i, i] >= 0.0
+        """
+        if not monotone:
+            return V
+        V_tril = torch.tril(V)
+        diag = V_tril.diagonal().clamp(min=0.0)
+        return V_tril - torch.diag(V_tril.diagonal()) + torch.diag(diag)
+
     class TransitionOperator(torch.nn.Module):
         """
-        A state transition matrix V ∈ T_Σ restricted by architectural construction.
+        A state transition matrix V ∈ T_Σ restricted by architectural lower-triangular projection.
         Illegal transitions are mathematically unrepresentable by projection.
         """
 
-        def __init__(self, d_state: int, valid_transition_mask: torch.Tensor):
+        def __init__(self, d_state: int, valid_transition_mask: Optional[torch.Tensor] = None):
             super().__init__()
             self.d_state = d_state
             # Initialize close to identity (stay in current state)
             self.weight = torch.nn.Parameter(
                 torch.eye(d_state) + torch.randn(d_state, d_state) * 0.01
             )
-            # boolean/float mask where 0 means mathematically forbidden
+            if valid_transition_mask is None:
+                valid_transition_mask = torch.tril(torch.ones(d_state, d_state))
             self.register_buffer("legal_mask", valid_transition_mask.float())
 
+        def get_projected_weight(self) -> torch.Tensor:
+            return project_transition_matrix(self.weight * self.legal_mask)
+
         def forward(self, sigma_h: torch.Tensor) -> torch.Tensor:
-            """Apply V to sigma_h, guaranteeing V ∈ T_Σ."""
-            constrained_V = self.weight * self.legal_mask
+            """Apply V to sigma_h, guaranteeing V ∈ T_Σ: sigma' = sigma @ V.T."""
+            constrained_V = self.get_projected_weight()
             return torch.matmul(sigma_h, constrained_V.t())
 
 
@@ -268,6 +294,7 @@ class StateLattice(Generic[T]):
         dst: T,
         *,
         capability: Optional[DeclassificationCapability[T]] = None,
+        current_time: Optional[float] = None,
     ) -> bool:
         """May state transition ``src → dst`` under declassification policy?
 
@@ -276,7 +303,7 @@ class StateLattice(Generic[T]):
         """
         if self.is_allowed(src, dst):
             return True
-        if capability is not None and capability.validate(src, dst, current_time=0.0):
+        if capability is not None and capability.validate(src, dst, current_time=current_time):
             return True
         return False
 
@@ -316,6 +343,66 @@ INTEGRITY_LATTICE = StateLattice[IntegrityLabel]()
 # ---------------------------------------------------------------------------
 # Product Lattice & Typed Neural Computation (Product Algebra)
 # ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class HardStateVector:
+    """Hard trusted policy state: Sigma_h = Sigma_C x Sigma_I x Sigma_A x Sigma_L."""
+
+    confidentiality: ConfidentialityLabel = ConfidentialityLabel.PUBLIC
+    integrity: IntegrityLabel = IntegrityLabel.TRUSTED
+    authorization: Optional[str] = None
+    license_tier: int = 0
+
+    def join(self, other: HardStateVector) -> HardStateVector:
+        """Component-wise hard lattice join: (⊔_C, ⊔_I, ⊔_A, ⊔_L)."""
+        return HardStateVector(
+            confidentiality=self.confidentiality.join(other.confidentiality),
+            integrity=self.integrity.join(other.integrity),
+            authorization=self.authorization or other.authorization,
+            license_tier=max(self.license_tier, other.license_tier),
+        )
+
+    def meet(self, other: HardStateVector) -> HardStateVector:
+        """Component-wise hard lattice meet: (⊓_C, ⊓_I, ⊓_A, ⊓_L)."""
+        return HardStateVector(
+            confidentiality=self.confidentiality.meet(other.confidentiality),
+            integrity=self.integrity.meet(other.integrity),
+            authorization=self.authorization if self.authorization == other.authorization else None,
+            license_tier=min(self.license_tier, other.license_tier),
+        )
+
+
+@dataclass(frozen=True)
+class SoftStateVector:
+    """Soft operational risk state: Sigma_s = Sigma_U x Sigma_R."""
+
+    uncertainty: float = 0.0  # Epistemic/semantic uncertainty (0.0 = certain)
+    risk: float = 0.0  # Risk score (0.0 = zero risk)
+
+    def join(self, other: SoftStateVector) -> SoftStateVector:
+        """Worst-case operational composition (join takes maximum uncertainty & risk)."""
+        return SoftStateVector(
+            uncertainty=max(self.uncertainty, other.uncertainty),
+            risk=max(self.risk, other.risk),
+        )
+
+    def meet(self, other: SoftStateVector) -> SoftStateVector:
+        """Best-case operational meet."""
+        return SoftStateVector(
+            uncertainty=min(self.uncertainty, other.uncertainty),
+            risk=min(self.risk, other.risk),
+        )
+
+
+def join_hard_state_tensors(sigma_h1: torch.Tensor, sigma_h2: torch.Tensor) -> torch.Tensor:
+    """Authoritative tensor product join on hard state: maximum across coordinates."""
+    return torch.maximum(sigma_h1, sigma_h2)
+
+
+def join_soft_state_tensors(sigma_s1: torch.Tensor, sigma_s2: torch.Tensor) -> torch.Tensor:
+    """Authoritative tensor product join on soft state: minimum confidence."""
+    return torch.minimum(sigma_s1, sigma_s2)
 
 
 @dataclass

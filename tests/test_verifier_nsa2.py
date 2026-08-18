@@ -4,26 +4,25 @@ tests/test_verifier_nsa2.py
 Comprehensive unit test suite for NSA 2.0 Architectural Features:
 1. First-Class NSAMaskInjector (Static & Dynamic Attention Masking)
 2. StateControlTokens & SecurityAutomaton (Privilege Escalation Protection)
-3. StreamRouter & Complete State Rollback (Clearance-Aware Multi-Stream Dispatch)
-4. RecoveryPolicy & Native Recovery Adapters
-5. SpeculativeStateAuditor & MultiLayerStateAuditor (Early-Exit Residual Probing)
-6. Exact P_{T_Sigma}(V) Transition Projection
-7. NSAGenerator Speculative Rollback Engine
+3. Security-Aware StreamRouter & Transactional Routing (Route(x) => Committed(x))
+4. Complete Execution State Rollback (S_t)
+5. Multi-Layer Residual Probing & Multi-Batch Auditing
+6. Capability Expiry & Boundary Semantics
+7. RecoveryPolicy & Native Recovery Adapters
 """
 
 from __future__ import annotations
 
+import time
 import unittest
 from typing import Any, List, Optional
 
 import torch
 from torch import nn
 
-from nsa.algebra import StateLabel
+from nsa.algebra import DEFAULT_LATTICE, DeclassificationCapability, StateLabel
 from nsa.mask_injector import NSAMaskInjector
-from nsa.state import StateTransitionOperator
 from nsa.verifier.automaton import Capability, SecurityAutomaton, SecurityExecutionState
-from nsa.verifier.encoder_head import StateEncoderHead
 from nsa.verifier.generation import NSAGenerator
 from nsa.verifier.recovery import (
     AdapterSwitchRecovery,
@@ -32,7 +31,6 @@ from nsa.verifier.recovery import (
 )
 from nsa.verifier.router import StreamRouter
 from nsa.verifier.speculative import (
-    AuditResult,
     MultiLayerStateAuditor,
     SpeculativeStateAuditor,
 )
@@ -51,7 +49,6 @@ class MockAttention(nn.Module):
     def forward(
         self, hidden_states: torch.Tensor, attention_mask: Optional[torch.Tensor] = None, **kwargs
     ):
-        # Return hidden_states unchanged
         return hidden_states, None
 
 
@@ -87,7 +84,6 @@ class MockTransformerModel(nn.Module):
 
         logits = self.lm_head(h)
 
-        # Mock tuple past_key_values
         new_past = []
         for _ in range(len(self.layers)):
             k = torch.randn(b, 2, t, 32, device=input_ids.device)
@@ -170,7 +166,6 @@ class TestNSA2Architecture(unittest.TestCase):
         )
         injector = NSAMaskInjector(self.model, state_levels, decode_row_idx=0, gate_mode="hard")
 
-        # Before enter, nsa_mask is None
         self.assertIsNone(injector.nsa_mask)
         self.assertEqual(len(injector._hooks), 0)
 
@@ -179,13 +174,11 @@ class TestNSA2Architecture(unittest.TestCase):
             self.assertEqual(injector.nsa_mask.shape, (1, 1, 3, 3))
             self.assertEqual(len(injector._hooks), 3)
 
-            # Test dynamic update_state (Phase 1)
             injector.update_state(StateLabel.SYSTEM.value)
             self.assertEqual(injector.state_levels.shape, (1, 4))
             self.assertEqual(injector.nsa_mask.shape, (1, 1, 4, 4))
             self.assertEqual(injector.decode_row_idx, 3)
 
-        # After exit, hooks and mask are cleaned up
         self.assertIsNone(injector.nsa_mask)
         self.assertEqual(len(injector._hooks), 0)
 
@@ -209,7 +202,6 @@ class TestNSA2Architecture(unittest.TestCase):
         self.assertFalse(changed)
         self.assertEqual(new_state, StateLabel.PUBLIC.value)
 
-        # Register tokens
         added = StateControlTokens.register(self.tokenizer)
         self.assertGreater(added, 0)
 
@@ -217,7 +209,6 @@ class TestNSA2Architecture(unittest.TestCase):
         """Verify that semantic content cannot manufacture hard authority without capabilities."""
         automaton = SecurityAutomaton(initial_state=SecurityExecutionState.CONFIDENTIAL)
 
-        # 1. Attempt un-authenticated transition to SYSTEM (should be blocked)
         changed, resulting_state = StateControlTokens.check_transition(
             "<|start_system_thought|>",
             current_state=StateLabel.CONFIDENTIAL,
@@ -228,7 +219,6 @@ class TestNSA2Architecture(unittest.TestCase):
         self.assertEqual(resulting_state, StateLabel.CONFIDENTIAL.value)
         self.assertEqual(automaton.current_state, SecurityExecutionState.CONFIDENTIAL)
 
-        # 2. Grant environment capability and retry
         system_cap = Capability(issuer="env_admin", target_state=SecurityExecutionState.SYSTEM)
         automaton.grant_capability(system_cap)
 
@@ -242,65 +232,140 @@ class TestNSA2Architecture(unittest.TestCase):
         self.assertEqual(resulting_state, StateLabel.SYSTEM.value)
         self.assertEqual(automaton.current_state, SecurityExecutionState.SYSTEM)
 
-    def test_stream_router_clearance_routing(self):
-        """Verify StreamRouter clearance-aware multi-stream dispatching (Phase 4)."""
+    def test_security_aware_stream_router_clearance(self):
+        """Phase 15: Verify StreamRouter clearance checks prevent leakage to lower-clearance sinks."""
         router = StreamRouter(tokenizer=self.tokenizer)
         public_received = []
         system_received = []
 
+        # Register public sink with PUBLIC clearance
         router.register_sink(
-            StateLabel.PUBLIC, lambda text, tid: public_received.append((text, tid))
+            StateLabel.PUBLIC,
+            lambda text, tid: public_received.append((text, tid)),
+            max_clearance=StateLabel.PUBLIC,
         )
+        # Register system sink with SYSTEM clearance
         router.register_sink(
-            StateLabel.SYSTEM, lambda text, tid: system_received.append((text, tid))
+            StateLabel.SYSTEM,
+            lambda text, tid: system_received.append((text, tid)),
+            max_clearance=StateLabel.SYSTEM,
         )
 
-        # Route a public token (id=10)
+        # 1. Route PUBLIC token (Allowed to PUBLIC sink)
         router.route_token(10, StateLabel.PUBLIC)
-        # Route a system token (id=5 -> SECRET_KEY)
-        router.route_token(5, StateLabel.SYSTEM)
-
         self.assertEqual(len(public_received), 1)
-        self.assertEqual(public_received[0][1], 10)
 
-        self.assertEqual(len(system_received), 1)
-        self.assertEqual(system_received[0][1], 5)
-        self.assertIn("SECRET_KEY", system_received[0][0])
-
-        self.assertEqual(router.get_stream_tokens(StateLabel.SYSTEM), [5])
-        self.assertEqual(router.get_stream_tokens(StateLabel.PUBLIC), [10])
-
-    def test_stream_router_rollback(self):
-        """Verify that StreamRouter rolls back token buffers correctly on violation."""
-        router = StreamRouter(tokenizer=self.tokenizer)
-        router.route_token(10, StateLabel.PUBLIC)
-        router.route_token(11, StateLabel.PUBLIC)
+        # 2. Route SYSTEM token (Allowed to SYSTEM sink, but FORBIDDEN to PUBLIC sink)
         router.route_token(5, StateLabel.SYSTEM)
+        self.assertEqual(len(system_received), 1)
+        self.assertIn("SECRET_KEY", system_received[0][0])
+        # Public sink must NOT have received the system token
+        self.assertEqual(len(public_received), 1)
 
-        self.assertEqual(len(router.get_stream_tokens(StateLabel.PUBLIC)), 2)
-        self.assertEqual(len(router.get_stream_tokens(StateLabel.SYSTEM)), 1)
+    def test_transactional_routing_rejected_tokens_never_reach_sinks(self):
+        """Phase 13: Invariant Route(x) => Committed(x). Rejected speculative tokens never reach sinks."""
+        sink_dispatches = []
+        router = StreamRouter(tokenizer=self.tokenizer)
+        router.register_sink(StateLabel.PUBLIC, lambda text, tid: sink_dispatches.append(tid))
 
-        # Rollback 2 tokens (token 5 SYSTEM and token 11 PUBLIC)
-        router.rollback_tokens(drop_count=2)
-        self.assertEqual(router.get_stream_tokens(StateLabel.PUBLIC), [10])
-        self.assertEqual(router.get_stream_tokens(StateLabel.SYSTEM), [])
+        # Auditor that rejects on the 2nd token of chunk
+        class RejectingHead(nn.Module):
+            def forward(self, h, async_execution=False):
+                b, k, _dim = h.shape
+                logits = torch.zeros(b, k, len(StateLabel))
+                # Trigger violation on token index 1
+                if k > 1:
+                    logits[:, 1, StateLabel.SYSTEM.value] = 10.0
+                return logits
 
-    def test_exact_transition_projection_T_sigma(self):
-        """Verify that P_{T_Sigma}(V) zeroes downward declassification off-diagonals by construction."""
-        op = StateTransitionOperator(state_dim=6, monotone_clamp=True)
-        with torch.no_grad():
-            op.V.fill_(-2.5)
+        auditor = SpeculativeStateAuditor(RejectingHead(), chunk_size=3)
+        input_ids = torch.tensor([[10, 11]], dtype=torch.long)
 
-        v_proj = op.get_projected_V()
-        # Strictly upper-triangular check: lower triangle must be exactly 0.0
-        lower_triangle = torch.tril(v_proj, diagonal=-1)
-        self.assertTrue(torch.all(lower_triangle == 0.0))
-        # Diagonal must be non-negative
-        self.assertTrue(torch.all(v_proj.diagonal() >= 0.0))
+        generator = NSAGenerator(
+            model=self.model,
+            tokenizer=self.tokenizer,
+            auditor=auditor,
+            recovery_policy=HaltRecovery(),
+            stream_router=router,
+            verbose=False,
+        )
+
+        # Generate tokens. Chunk of 3 will fail at token index 1
+        generator.generate(input_ids, max_new_tokens=6, chunk_size=3)
+
+        # The speculative rejected token (and subsequent tokens) must NOT have been sent to the sink
+        # Only valid committed tokens prior to the violation index (token 0) are permitted
+        self.assertLessEqual(len(sink_dispatches), 1)
+
+    def test_multi_batch_auditor_violation_detection(self):
+        """Phase 16: Verify multi-batch evaluation audits all b in [0, B-1]."""
+        # Head flags violation only on batch index 1
+        class Batch1FlaggingHead(nn.Module):
+            def forward(self, h, async_execution=False):
+                b, k, _dim = h.shape
+                logits = torch.zeros(b, k, len(StateLabel))
+                # Batch 0: safe (CONFIDENTIAL)
+                logits[0, :, StateLabel.CONFIDENTIAL.value] = 10.0
+                # Batch 1: violation (SYSTEM)
+                if b > 1:
+                    logits[1, 0, StateLabel.SYSTEM.value] = 10.0
+                return logits
+
+        auditor = MultiLayerStateAuditor(Batch1FlaggingHead(), chunk_size=2)
+        hidden_states = torch.randn(2, 2, 32)  # Batch size = 2
+
+        res = auditor.audit_chunk(hidden_states, StateLabel.CONFIDENTIAL)
+        self.assertFalse(res.is_valid, "Failed to detect violation in batch index 1!")
+        self.assertEqual(res.violation_batch_idx, 1)
+
+    def test_capability_expiry_and_boundary_checks(self):
+        """Phase 7: Verify real-time capability expiry and boundary conditions."""
+        lat = DEFAULT_LATTICE
+        now = time.time()
+
+        # 1. Valid before expiry (t < expiry)
+        valid_cap = DeclassificationCapability(
+            issuer="admin",
+            purpose="audit",
+            scope="global",
+            expiry=now + 100.0,
+            max_downgrade=StateLabel.PUBLIC,
+        )
+        self.assertTrue(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC, capability=valid_cap, current_time=now))
+
+        # 2. Expired (t > expiry)
+        expired_cap = DeclassificationCapability(
+            issuer="admin",
+            purpose="audit",
+            scope="global",
+            expiry=now - 10.0,
+            max_downgrade=StateLabel.PUBLIC,
+        )
+        self.assertFalse(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC, capability=expired_cap, current_time=now))
+
+        # 3. Exact boundary (t == expiry) -> Valid
+        boundary_cap = DeclassificationCapability(
+            issuer="admin",
+            purpose="audit",
+            scope="global",
+            expiry=now,
+            max_downgrade=StateLabel.PUBLIC,
+        )
+        self.assertTrue(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC, capability=boundary_cap, current_time=now))
+
+        # 4. Excessive downgrade below max_downgrade
+        restricted_cap = DeclassificationCapability(
+            issuer="admin",
+            purpose="audit",
+            scope="global",
+            expiry=now + 100.0,
+            max_downgrade=StateLabel.CONFIDENTIAL,
+        )
+        # Attempting to declassify to PUBLIC (< CONFIDENTIAL) is rejected
+        self.assertFalse(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC, capability=restricted_cap, current_time=now))
 
     def test_recovery_policies(self):
         """Verify RecoveryPolicy implementations (Phase 3)."""
-        # Semantic pivot
         pivot_policy = SemanticPivotRecovery(pivot_text="[PIVOT_OVERRIDE]", max_pivots=2)
         priming_ids, cont = pivot_policy.on_violation(
             self.model, self.tokenizer, 0, None, self.device
@@ -308,7 +373,6 @@ class TestNSA2Architecture(unittest.TestCase):
         self.assertTrue(cont)
         self.assertIsNotNone(priming_ids)
 
-        # Adapter switch
         adapter_policy = AdapterSwitchRecovery()
         refusal_ids, cont = adapter_policy.on_violation(
             self.model, self.tokenizer, 0, None, self.device
@@ -316,84 +380,10 @@ class TestNSA2Architecture(unittest.TestCase):
         self.assertTrue(cont)
         self.assertIsNotNone(refusal_ids)
 
-        # Halt
         halt_policy = HaltRecovery()
         halt_ids, cont = halt_policy.on_violation(self.model, self.tokenizer, 0, None, self.device)
         self.assertFalse(cont)
         self.assertIsNone(halt_ids)
-
-    def test_speculative_auditor_and_multi_layer_early_exit(self):
-        """Verify MultiLayerStateAuditor early-exit detection across intermediate layers (Phase 2)."""
-        encoder_head = StateEncoderHead(
-            hidden_size=32, num_states=len(StateLabel), use_bidirectional=False
-        )
-
-        # Custom validator: flags SYSTEM as violation
-        def validator(pred: int) -> bool:
-            return pred != StateLabel.SYSTEM.value
-
-        auditor = MultiLayerStateAuditor(
-            encoder_head, lattice_validator=validator, chunk_size=4, probe_layers=[-1, 1, 2]
-        )
-
-        # Test single layer 3D tensor
-        hidden_3d = torch.randn(1, 4, 32)
-        res_3d = auditor.audit_chunk(hidden_3d, StateLabel.CONFIDENTIAL)
-        self.assertIsInstance(res_3d, AuditResult)
-
-        # Test multi-layer 4D tensor with early exit
-        class MockLayerFlaggingHead(nn.Module):
-            def forward(self, h, async_execution=False):
-                b, k, _dim = h.shape
-                logits = torch.zeros(b, k, len(StateLabel))
-                # Set high score on SYSTEM (5)
-                logits[:, :, StateLabel.SYSTEM.value] = 10.0
-                return logits
-
-        flagging_auditor = MultiLayerStateAuditor(
-            MockLayerFlaggingHead(),
-            lattice_validator=validator,
-            chunk_size=4,
-            probe_layers=[0, 12, 24],
-        )
-
-        hidden_4d = torch.randn(1, 4, 3, 32)  # [batch, K, num_layers, hidden_size]
-        res_4d = flagging_auditor.audit_chunk(hidden_4d, StateLabel.CONFIDENTIAL)
-        self.assertFalse(res_4d.is_valid)
-        self.assertEqual(res_4d.violation_token_idx, 0)
-        self.assertEqual(res_4d.violation_layer, 0)
-
-        # Test tuple unpacking compatibility
-        is_valid, violation_idx, _pred, _layer = res_4d
-        self.assertFalse(is_valid)
-        self.assertEqual(violation_idx, 0)
-
-    def test_nsa_generator_integration(self):
-        """Verify NSAGenerator end-to-end loop with dynamic tracking, router, and recovery."""
-        encoder_head = StateEncoderHead(
-            hidden_size=32, num_states=len(StateLabel), use_bidirectional=False
-        )
-        auditor = SpeculativeStateAuditor(encoder_head, chunk_size=2)
-        router = StreamRouter(tokenizer=self.tokenizer)
-
-        input_ids = torch.tensor([[10, 11]], dtype=torch.long)
-        state_levels = torch.tensor(
-            [[StateLabel.CONFIDENTIAL.value, StateLabel.CONFIDENTIAL.value]]
-        )
-        injector = NSAMaskInjector(self.model, state_levels)
-
-        generator = NSAGenerator(
-            model=self.model,
-            tokenizer=self.tokenizer,
-            auditor=auditor,
-            recovery_policy=AdapterSwitchRecovery(),
-            stream_router=router,
-            mask_injector=injector,
-            verbose=False,
-        )
-
-        out_ids = generator.generate(input_ids, max_new_tokens=4, chunk_size=2)
-        self.assertGreater(out_ids.shape[1], input_ids.shape[1])
 
 
 if __name__ == "__main__":

@@ -6,10 +6,10 @@ State Control Tokens & Vocabulary Registry for Dynamic State Tracking.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 from nsa.algebra import StateLabel
-from nsa.verifier.automaton import Capability, SecurityAutomaton, SecurityExecutionState
+from nsa.verifier.automaton import SecurityAutomaton, SecurityExecutionState, Capability
 
 
 class StateControlTokens:

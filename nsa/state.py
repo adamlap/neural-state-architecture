@@ -160,15 +160,28 @@ class StateTransitionOperator(nn.Module):
     def get_projected_V(self) -> torch.Tensor:
         """Exact algebraic projection P_{T_Sigma}(V) onto the cone of legal state transitions.
 
-        Guarantees V in T_Sigma by zeroing downward declassification off-diagonals
-        and clamping diagonal directional rates to be non-negative.
+        Mathematical convention:
+            sigma' = sigma @ V.T, or equivalently sigma'_j = sum_i sigma_i * V_{j, i}.
+            Here:
+                row index j = destination state (dst)
+                column index i = source state (src)
+                V[dst, src] represents the transition rate from src -> dst.
+
+            Lattice ordering: UNTRUSTED(0) < PUBLIC(1) < TRUSTED(2) < CONFIDENTIAL(3) < PRIVATE(4) < SYSTEM(5).
+            A transition is legal iff dst >= src (row >= col).
+            Therefore, the legal transition matrix T_Sigma is LOWER TRIANGULAR under this [dst, src] convention.
+
+        Properties guaranteed by construction:
+            1. Legality: for all dst < src, P(V)[dst, src] == 0.0 (no unauthorized downward declassification).
+            2. Idempotence: P(P(V)) == P(V).
+            3. Non-negative diagonal: P(V)[i, i] >= 0.0.
         """
         V = self.V
         if self.monotone_clamp:
-            # Monotone upper triangular projection + non-negative diagonal
-            V_triu = torch.triu(V)
-            diag = V_triu.diagonal().clamp(min=0.0)
-            V = V_triu - torch.diag(V_triu.diagonal()) + torch.diag(diag)
+            # Lower triangular projection: zero out row < col (dst < src)
+            V_tril = torch.tril(V)
+            diag = V_tril.diagonal().clamp(min=0.0)
+            V = V_tril - torch.diag(V_tril.diagonal()) + torch.diag(diag)
         return V
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:

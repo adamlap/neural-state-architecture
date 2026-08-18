@@ -3,7 +3,7 @@
 **Abstract**
 Standard deep neural networks lack intrinsic constraints on information flow; activations are untyped continuous vectors whose transformations conserve no physical or structural quantities. We present **Neural State Architecture (NSA)**, a foundational framework that equips neural computation with typed activations and explicit conservation laws. In NSA, every activation is represented as a formal quad-tuple $h = (m, \sigma_h, \sigma_s, \nu)$, decoupling semantic representation $m \in \mathbb{R}^{d_{model}}$ from a hard trusted policy state $\sigma_h \in \Sigma_h$, a soft operational risk state $\sigma_s \in \Sigma_s$, and a value/preference state $\nu \in \mathcal{V}$. Edge weights are expanded from scalar values $w$ to paired transition operators $(w, V)$, where $V \in \mathcal{T}_\Sigma$ is an exact algebraic projection onto the cone of legal state transitions. 
 
-By separating **Tier 1 Structural Enforcement** (hard attention non-interference $A_{ij} = 0$, algebra-preserving transitions $V \in \mathcal{T}_\Sigma$, and cryptographic-style capability authorization) from **Tier 2 Statistical Monitoring** (speculative multi-layer residual probing with checkpoint coverage $\mathcal{L}_A$), NSA turns policy, security, and auditability into intrinsic algebraic properties of neural forward passes without sacrificing computational throughput.
+By separating **Tier 1 Structural Enforcement** (hard attention non-interference $A_{ij} = 0$, lower-triangular transition projection $V \in \mathcal{T}_\Sigma$, and cryptographic-style capability authorization) from **Tier 2 Statistical Monitoring** (speculative multi-layer residual probing with checkpoint coverage $\mathcal{L}_A$), NSA turns policy, security, and auditability into intrinsic algebraic properties of neural forward passes without sacrificing computational throughput.
 
 ---
 
@@ -60,15 +60,24 @@ To maintain strict mathematical soundness, network operations have explicit read
 **Core Invariant**: *Semantic content $m$ cannot directly write to $\sigma_h$ without an authorized external capability $c_t$.*
 
 ### 2.3 Exact State Transition Projection $V \in \mathcal{T}_\Sigma$
-Edges are parameterized as typed pairs $\mathbf{e} = (w, V)$. Forward propagation is defined as:
+Edges are parameterized as typed pairs $\mathbf{e} = (w, V)$. Forward propagation follows the multiplication convention:
 $$\begin{aligned}
 m' &= w \cdot m \\
-\sigma_h' &= \mathcal{P}_{\mathcal{T}_\Sigma}(V) \sigma_h
+\sigma_h' &= \sigma_h \cdot \mathcal{P}_{\mathcal{T}_\Sigma}(V)^T \iff \sigma'_{h, j} = \sum_i \sigma_{h, i} \cdot \mathcal{P}_{\mathcal{T}_\Sigma}(V)_{j, i}
 \end{aligned}$$
 
-The algebraic projection $\mathcal{P}_{\mathcal{T}_\Sigma}(V)$ onto the cone of legal transitions is given by:
-$$\mathcal{P}_{\mathcal{T}_\Sigma}(V) = \text{triu}(V) - \text{diag}(\text{diag}(V)) + \text{diag}(\max(0, \text{diag}(V)))$$
-This guarantees that all off-diagonal downward declassification entries are identically $0.0$ by construction, rendering unauthorized declassifications mathematically unrepresentable.
+Under this convention:
+* Row index $j$ represents the **destination state** ($\text{dst}$).
+* Column index $i$ represents the **source state** ($\text{src}$).
+* $V_{\text{dst}, \text{src}}$ governs the transition $\text{src} \to \text{dst}$.
+
+Because a transition is legal iff $\text{dst} \ge \text{src}$ ($\text{row} \ge \text{col}$), the legal transition space $\mathcal{T}_\Sigma$ is strictly **lower-triangular**. The exact algebraic projection $\mathcal{P}_{\mathcal{T}_\Sigma}(V)$ is given by:
+$$\mathcal{P}_{\mathcal{T}_\Sigma}(V) = \text{tril}(V) - \text{diag}(\text{diag}(V)) + \text{diag}(\max(0, \text{diag}(V)))$$
+
+This projection satisfies three essential properties:
+1. **Legality**: For all $\text{dst} < \text{src}$, $\mathcal{P}_{\mathcal{T}_\Sigma}(V)_{\text{dst}, \text{src}} \equiv 0.0$ by construction.
+2. **Idempotence**: $\mathcal{P}_{\mathcal{T}_\Sigma}(\mathcal{P}_{\mathcal{T}_\Sigma}(V)) = \mathcal{P}_{\mathcal{T}_\Sigma}(V)$.
+3. **Basis State Support**: For any basis state $e_{\text{src}}$, $\text{support}(e_{\text{src}} \mathcal{P}_{\mathcal{T}_\Sigma}(V)^T) \subseteq \{\text{dst} : \text{dst} \ge \text{src}\}$.
 
 ---
 
@@ -88,15 +97,24 @@ Let $L \in \Sigma_h$ denote an observer's clearance level. Two input activation 
 $$\forall t \in [1, T] : \sigma_{h, t} \le L \implies X_t = X'_t$$
 \end{definition}
 
+\begin{definition}[Observer Function $\text{Obs}_L$]
+For an activation tensor $Y \in \mathbb{R}^{T \times d}$, $\text{Obs}_L(Y)$ denotes the sequence of outputs observable at clearance $L$:
+$$\text{Obs}_L(Y) = \{ Y_t : \sigma_{h, t} \le L \}$$
+\end{definition}
+
 \begin{theorem}[Whole-Network Structural Non-Interference]
-Let $F: \mathbb{R}^{T \times d} \to \mathbb{R}^{T \times d}$ be an $N$-layer NSA network with hard state masking $\mathbf{M}(\boldsymbol{\sigma})$ and exact transition operators $V \in \mathcal{T}_\Sigma$. For any observer level $L$ and any two input sequences $X, X'$:
-$$X \equiv_L X' \implies F(X) \equiv_L F(X')$$
+Let $F: \mathbb{R}^{T \times d} \to \mathbb{R}^{T \times d}$ be an $N$-layer NSA network. Under the structural assumptions:
+1. **Hard attention masking**: $A_{ij} = 0$ whenever $\sigma_{h, i} < \sigma_{h, j}$,
+2. **Exact transition projection**: $V = \mathcal{P}_{\mathcal{T}_\Sigma}(V) \in \mathcal{T}_\Sigma$,
+3. **Hard state immutability**: $\sigma_h^{\text{out}} = \sigma_h^{\text{in}}$ across continuous layers,
+then for any observer level $L$ and any two input sequences $X, X'$:
+$$X \equiv_L X' \implies \text{Obs}_L(F(X)) = \text{Obs}_L(F(X'))$$
 \end{theorem}
 
 \begin{proof}
 By induction on network depth $l \in [1, N]$. For attention block $l$, value aggregation for output position $i$ with $\sigma_{h, i} \le L$ is:
 $$v_{\text{out}, i}^{(l)} = \sum_{j : \sigma_{h, j} \le \sigma_{h, i} \le L} A_{ij}^{(l)} V(m_j^{(l)})$$
-Because $A_{ij} = 0$ for all $j$ where $\sigma_{h, j} \not\le \sigma_{h, i}$, $v_{\text{out}, i}^{(l)}$ is a pure mathematical function of only the $L$-observable coordinates $\{m_j : \sigma_{h, j} \le L\}$. By inductive hypothesis, these coordinates are identical between $X$ and $X'$. Therefore, $F(X)_i = F(X')_i$ for all $i$ where $\sigma_{h, i} \le L$.
+Because $A_{ij} = 0$ for all $j$ where $\sigma_{h, j} \not\le \sigma_{h, i}$, $v_{\text{out}, i}^{(l)}$ is a pure mathematical function of only the $L$-observable coordinates $\{m_j : \sigma_{h, j} \le L\}$. By inductive hypothesis, these coordinates are identical between $X$ and $X'$. Therefore, $\text{Obs}_L(F(X)) = \text{Obs}_L(F(X'))$.
 \end{proof}
 
 ---
@@ -115,9 +133,9 @@ NSA establishes a rigorous distinction between structural mathematical guarantee
 │   (Mathematical Guarantee)   │   │     (Empirical Defense)       │
 ├───────────────────────────────┤   ├───────────────────────────────┤
 │ • Hard Attention Mask A_ij=0  │   │ • Multi-Layer Probe Checkpoint│
-│ • Exact Projection V in T_Σ   │   │ • Statistical Anomaly Detect  │
+│ • Exact Lower-Triangular V    │   │ • Statistical Anomaly Detect  │
 │ • Capability-Gated Automaton  │   │ • Early-Exit KV Rollback      │
-│ • StreamRouter TCB Boundary   │   │ • Recovery LoRA Switching     │
+│ • StreamRouter Clearance TCB  │   │ • Recovery LoRA Switching     │
 └───────────────────────────────┘   └───────────────────────────────┘
 ```
 
@@ -131,7 +149,7 @@ NSA establishes a rigorous distinction between structural mathematical guarantee
 NSA 2.0 formalizes an active, self-governing runtime environment for dynamic autoregressive generation.
 
 ### 5.1 The Privilege Escalation Rule & Security Automaton
-> **Axiom (Privilege Escalation Prevention)**: *Semantic content may not manufacture hard authority.*
+> **Axiom (Privilege Escalation Prevention)**: *Semantic content may not manufacture hard authority.* ($m_t \not\to \sigma_{h, t+1}$).
 > A model emitting `<|start_system_thought|>` cannot unilaterally escalate privilege into $SYSTEM$ state.
 
 We define the **Security Execution Automaton** $(Q, \Sigma_h, \Sigma_s, \mathcal{C}, \delta)$:
@@ -142,20 +160,18 @@ We define the **Security Execution Automaton** $(Q, \Sigma_h, \Sigma_s, \mathcal
 If an un-authenticated model attempts to emit a system control tag without an active capability $c_t \in \mathcal{C}$, the transition is rejected, preventing prompt-injection privilege escalation.
 
 ### 5.2 Multi-Layer Residual Probing & Checkpoint Coverage Model
-Probe heads evaluate residual activations across audited checkpoint layers $\mathcal{L}_A = \{l_1, l_2, \dots, l_k\}$:
-$$\hat{s}_k^{(l)} = \arg\max \Phi_{\text{head}}(\mathbf{h}_k^{(l)}), \quad l \in \mathcal{L}_A$$
-If $\exists l \in \mathcal{L}_A : \mathcal{V}(\hat{s}_k^{(l)}) = \text{False}$, the early-exit trigger immediately halts execution at layer $l$, saving $O((L - l) \cdot K)$ computation.
+Probe heads evaluate residual activations across audited checkpoint layers $\mathcal{L}_A = \{l_1, l_2, \dots, l_k\}$ across all batch sequences $b \in [0, B-1]$:
+$$\hat{s}_k^{(l, b)} = \arg\max \Phi_{\text{head}}(\mathbf{h}_k^{(l, b)}), \quad l \in \mathcal{L}_A$$
+If $\exists b, l \in \mathcal{L}_A : \mathcal{V}(\hat{s}_k^{(l, b)}) = \text{False}$, the early-exit trigger immediately halts execution at layer $l$, saving $O((L - l) \cdot K)$ computation.
 
-### 5.3 Complete Execution State Rollback
-A rollback must restore the entire neural runtime state, not just KV-cache tensor slices. NSA 2.0 formalizes the complete state tuple:
-$$S_t = \left( X_t, K_t, V_t, \boldsymbol{\sigma}_{h, t}, \boldsymbol{\sigma}_{s, t}, q_t, R_t \right)$$
-Upon rollback:
-$$\text{Rollback}(S_t \to S_{t - k})$$
-restores tokens $X$, KV-caches $(K, V)$, mask coordinates $\boldsymbol{\sigma}_h$, automaton state $q_t$, and stream router buffers $R_t$ in full synchronization.
+### 5.3 Transactional Generation Semantics
+NSA 2.0 enforces the transactional invariant:
+$$\text{Route}(x) \implies \text{Committed}(x)$$
+During speculative generation, tokens are buffered locally. Only upon successful validation of the chunk by the auditor are tokens committed and dispatched to external sink callbacks. Rejected speculative tokens are discarded immediately without ever reaching external sinks.
 
 ### 5.4 Output Boundary & StreamRouter TCB
 The runtime `StreamRouter` forms part of the **Trusted Computing Base (TCB)**, enforcing:
-$$\text{Model Output Clearance } \sigma_t \implies \text{Permitted Sink } \mathcal{Y}_{\text{sink}}$$
+$$\text{Route}(x, \text{sink}) \text{ permitted} \iff \sigma_x \le \text{Clearance}(\text{sink})$$
 Tokens generated under $SYSTEM$ clearance are routed strictly to tool APIs, while $PUBLIC$ tokens are dispatched to user interfaces.
 
 ---
@@ -185,4 +201,4 @@ This trains $\pi_\theta$ to maintain natural language fluency under redacted KV 
 
 ## 8. Conclusion
 
-Neural State Architecture decouples the representation of meaning from the algebra of information flow. By embedding typed product lattices directly into continuous Transformer activations, establishing exact algebraic transition projections ($V \in \mathcal{T}_\Sigma$), enforcing capability-governed execution automata, and maintaining complete state rollback semantics, NSA provides a mathematically sound, production-ready foundation for trustworthy neural computation.
+Neural State Architecture decouples the representation of meaning from the algebra of information flow. By establishing exact lower-triangular transition projections ($V \in \mathcal{T}_\Sigma$), capability-governed execution automata, transactional generation semantics, and whole-network observational equivalence, NSA provides a mathematically sound, production-ready foundation for policy-aware neural computation.

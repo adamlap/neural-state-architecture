@@ -24,7 +24,7 @@
 \maketitle
 
 \begin{abstract}
-Current Large Language Models (LLMs) process continuous activations within untyped vector spaces, rendering them vulnerable to prompt injection attacks and unauthorized activation probes. We introduce \textbf{Neural State Architecture (NSA)}, a computational paradigm that embeds typed activations $h = (m, \sigma_h, \sigma_s, \nu)$ and exact algebraic transition operators $V \in \mathcal{T}_\Sigma$ directly into neural forward passes. We rigorously distinguish between \textbf{Tier 1 Structural Enforcement} (hard attention non-interference $A_{ij} = 0$, exact transition projection, and capability-gated security execution automata) and \textbf{Tier 2 Statistical Monitoring} (speculative multi-layer residual probing over checkpoint coverage $\mathcal{L}_A$). We prove whole-network non-interference via observational equivalence ($x \equiv_L x' \implies F(x) \equiv_L F(x')$) and validate NSA on injection benchmarks, demonstrating a $0.00\%$ hijack rate when structural constraints compose with value alignment.
+Current Large Language Models (LLMs) process continuous activations within untyped vector spaces, rendering them vulnerable to prompt injection attacks and unauthorized activation probes. We introduce \textbf{Neural State Architecture (NSA)}, a computational paradigm that embeds typed activations $h = (m, \sigma_h, \sigma_s, \nu)$ and exact algebraic transition operators $V \in \mathcal{T}_\Sigma$ directly into neural forward passes. We rigorously distinguish between \textbf{Tier 1 Structural Enforcement} (hard attention non-interference $A_{ij} = 0$, lower-triangular transition projection, transactional routing, and capability-gated security execution automata) and \textbf{Tier 2 Statistical Monitoring} (speculative multi-layer residual probing over checkpoint coverage $\mathcal{L}_A$). We prove whole-network non-interference via observational equivalence ($X \equiv_L X' \implies \text{Obs}_L(F(X)) = \text{Obs}_L(F(X'))$) and validate NSA on injection benchmarks, demonstrating a $0.00\%$ hijack rate when structural constraints compose with value alignment.
 \end{abstract}
 
 \section{Introduction}
@@ -39,11 +39,11 @@ where $m_i$ is the semantic activation, $\sigma_h \in \Sigma_C \times \Sigma_I \
 \end{definition}
 
 \section{Exact Transition Projection \& Policy Semantics}
-Edges carry paired operators $(w, V)$ where $V \in \mathcal{T}_\Sigma$ is projected onto the cone of legal transitions:
+Under the multiplication convention $\sigma' = \sigma V^T \iff \sigma'_j = \sum_i \sigma_i V_{j, i}$, row $j$ represents the destination state and column $i$ represents the source state ($V_{\text{dst}, \text{src}}$). Because a legal transition requires $\text{dst} \ge \text{src}$ ($\text{row} \ge \text{col}$), the legal transition space $\mathcal{T}_\Sigma$ is lower-triangular:
 \begin{equation}
-\mathcal{P}_{\mathcal{T}_\Sigma}(V) = \text{triu}(V) - \text{diag}(\text{diag}(V)) + \text{diag}(\max(0, \text{diag}(V)))
+\mathcal{P}_{\mathcal{T}_\Sigma}(V) = \text{tril}(V) - \text{diag}(\text{diag}(V)) + \text{diag}(\max(0, \text{diag}(V)))
 \end{equation}
-rendering unauthorized downward declassifications unrepresentable by construction.
+rendering unauthorized downward declassifications unrepresentable by construction ($\mathcal{P}(\mathcal{P}(V)) = \mathcal{P}(V)$).
 
 State-aware attention enforces policy via:
 \begin{equation}
@@ -60,15 +60,19 @@ Let $L \in \Sigma_h$ denote an observer's clearance. Two input sequences $X, X'$
 \end{equation}
 \end{definition}
 
+\begin{definition}[Observer Function $\text{Obs}_L$]
+For an output tensor $Y$, $\text{Obs}_L(Y) = \{ Y_t : \sigma_{h,t} \le L \}$.
+\end{definition}
+
 \begin{theorem}[Whole-Network Structural Non-Interference]
-Let $F$ be an $N$-layer NSA network with hard state masking and exact transition operators $V \in \mathcal{T}_\Sigma$. For any observer clearance $L$:
+Let $F$ be an $N$-layer NSA network. Under the structural assumptions of hard state masking, exact lower-triangular projection $V \in \mathcal{T}_\Sigma$, and hard state immutability across continuous layers, for any observer clearance $L$:
 \begin{equation}
-X \equiv_L X' \implies F(X) \equiv_L F(X')
+X \equiv_L X' \implies \text{Obs}_L(F(X)) = \text{Obs}_L(F(X'))
 \end{equation}
 \end{theorem}
 
 \begin{proof}
-For any layer $l$ and query position $i$ with $\sigma_{h,i} \le L$, attention weights $A_{ij}^{(l)} = 0$ for all $j$ where $\sigma_{h,j} \not\le \sigma_{h,i}$. Hence, the output activation $v_{\text{out}, i}^{(l)}$ depends exclusively on coordinates with $\sigma_{h,j} \le L$, which are identical between $X$ and $X'$. By induction on depth, $F(X)_i = F(X')_i$ for all positions observable at clearance $L$.
+For any layer $l$ and query position $i$ with $\sigma_{h,i} \le L$, attention weights $A_{ij}^{(l)} = 0$ for all $j$ where $\sigma_{h,j} \not\le \sigma_{h,i}$. Hence, the output activation $v_{\text{out}, i}^{(l)}$ depends exclusively on coordinates with $\sigma_{h,j} \le L$, which are identical between $X$ and $X'$. By induction on depth, $\text{Obs}_L(F(X)) = \text{Obs}_L(F(X'))$.
 \end{proof}
 
 \section{Two-Tier Defense \& NSA 2.0 Runtime}
@@ -80,23 +84,15 @@ For any layer $l$ and query position $i$ with $\sigma_{h,i} \le L$, attention we
 \end{equation}
 
 \subsection{Statistical Checkpoint Monitoring}
-Probe heads $\Phi_{\text{head}}^{(l)}$ evaluate residual states across audited checkpoints $\mathcal{L}_A = \{l_1, \dots, l_k\}$. Because $P(\hat{\sigma} = \sigma) < 1$, the auditor operates as an empirical anomaly detector triggering early-exit KV rollback upon detecting potential out-of-distribution transitions.
+Probe heads $\Phi_{\text{head}}^{(l)}$ evaluate residual states across audited checkpoints $\mathcal{L}_A = \{l_1, \dots, l_k\}$ over all batch sequences $b \in [0, B-1]$.
 
-\subsection{Complete Rollback State}
-Rollback restores the complete execution state tuple:
-\begin{equation}
-S_t = (X_t, K_t, V_t, \boldsymbol{\sigma}_{h,t}, \boldsymbol{\sigma}_{s,t}, q_t, R_t)
-\end{equation}
-guaranteeing exact restoration across tokens, KV-caches, state coordinates, automaton state, and router buffers.
+\subsection{Transactional Routing Semantics}
+NSA 2.0 enforces $\text{Route}(x) \implies \text{Committed}(x)$. Speculative chunk tokens are buffered and only dispatched to external sinks after commit.
 
 \subsection{Output Boundary TCB}
 The runtime \texttt{StreamRouter} enforces:
 \begin{equation}
-\mathcal{Y}_t \xrightarrow{\text{route}} 
-\begin{cases}
-\text{STDOUT}_{\text{SYSTEM}} & \text{if } \sigma_t = \text{SYSTEM} \\
-\text{STDOUT}_{\text{PUBLIC}} & \text{if } \sigma_t \le \text{PUBLIC}
-\end{cases}
+\text{Route}(x, \text{sink}) \iff \sigma_x \le \text{Clearance}(\text{sink})
 \end{equation}
 
 \section{Empirical Validation}
@@ -122,7 +118,7 @@ F - Complete NSA & $(m, \sigma_h, \sigma_s, \nu)$ & \textbf{0.00\%} & Structural
 \end{table}
 
 \section{Conclusion}
-By establishing exact algebraic transition projections ($V \in \mathcal{T}_\Sigma$), capability-governed execution automata, complete state rollback, and whole-network observational equivalence, NSA provides a mathematically sound foundation for policy-aware neural computation.
+By establishing exact lower-triangular transition projections ($V \in \mathcal{T}_\Sigma$), capability-governed execution automata, transactional generation semantics, and whole-network observational equivalence, NSA provides a mathematically sound foundation for policy-aware neural computation.
 
 \bibliographystyle{plain}
 \end{document}

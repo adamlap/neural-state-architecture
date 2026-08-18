@@ -37,13 +37,15 @@ class TypedTensor(NamedTuple):
         sigma_s' = min(sigma_s1, sigma_s2)  # Join on soft lattice (minimum confidence)
         nu' = (nu1 + nu2) / 2.0             # Mean pool value alignment
         """
+        from nsa.algebra import join_hard_state_tensors, join_soft_state_tensors
+
         new_m = self.m + other.m
 
-        # Hard state lattice join (supremum - most restrictive)
-        new_sigma_h = torch.maximum(self.sigma_h, other.sigma_h)
+        # Authoritative Hard state product lattice join (supremum - most restrictive)
+        new_sigma_h = join_hard_state_tensors(self.sigma_h, other.sigma_h)
 
-        # Soft state lattice meet (infimum - least confidence)
-        new_sigma_s = torch.minimum(self.sigma_s, other.sigma_s)
+        # Authoritative Soft state lattice meet (infimum - least confidence)
+        new_sigma_s = join_soft_state_tensors(self.sigma_s, other.sigma_s)
 
         # Value alignment pooling
         new_nu = (self.nu + other.nu) / 2.0
