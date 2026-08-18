@@ -3,12 +3,15 @@ tests/test_verifier_nsa2.py
 ===========================
 Comprehensive unit test suite for NSA 2.0 Architectural Features:
 1. First-Class NSAMaskInjector (Static & Dynamic Attention Masking)
-2. StateControlTokens (Dynamic Tag Recognition & Registry)
-3. StreamRouter (Clearance-Aware Multi-Stream Dispatch)
+2. StateControlTokens & SecurityAutomaton (Privilege Escalation Protection)
+3. StreamRouter & Complete State Rollback (Clearance-Aware Multi-Stream Dispatch)
 4. RecoveryPolicy & Native Recovery Adapters
 5. SpeculativeStateAuditor & MultiLayerStateAuditor (Early-Exit Residual Probing)
-6. NSAGenerator Speculative Rollback Engine
+6. Exact P_{T_Sigma}(V) Transition Projection
+7. NSAGenerator Speculative Rollback Engine
 """
+
+from __future__ import annotations
 
 import unittest
 from typing import Any, List, Optional
@@ -18,6 +21,8 @@ from torch import nn
 
 from nsa.algebra import StateLabel
 from nsa.mask_injector import NSAMaskInjector
+from nsa.state import StateTransitionOperator
+from nsa.verifier.automaton import Capability, SecurityAutomaton, SecurityExecutionState
 from nsa.verifier.encoder_head import StateEncoderHead
 from nsa.verifier.generation import NSAGenerator
 from nsa.verifier.recovery import (
@@ -122,7 +127,10 @@ class MockTokenizer:
         return " ".join(res)
 
     def encode(
-        self, text: str, add_special_tokens: bool = False, return_tensors: Optional[str] = None
+        self,
+        text: str,
+        add_special_tokens: bool = False,
+        return_tensors: Optional[str] = None,
     ):
         ids = []
         if "<|start_system_thought|>" in text:
@@ -150,7 +158,9 @@ class TestNSA2Architecture(unittest.TestCase):
 
     def setUp(self):
         self.device = torch.device("cpu")
-        self.model = MockTransformerModel(d_model=32, num_layers=3, vocab_size=100).to(self.device)
+        self.model = MockTransformerModel(d_model=32, num_layers=3, vocab_size=100).to(
+            self.device
+        )
         self.tokenizer = MockTokenizer()
 
     def test_mask_injector_lifecycle_and_dynamic_update(self):
@@ -203,6 +213,35 @@ class TestNSA2Architecture(unittest.TestCase):
         added = StateControlTokens.register(self.tokenizer)
         self.assertGreater(added, 0)
 
+    def test_security_automaton_privilege_escalation_prevention(self):
+        """Verify that semantic content cannot manufacture hard authority without capabilities."""
+        automaton = SecurityAutomaton(initial_state=SecurityExecutionState.CONFIDENTIAL)
+
+        # 1. Attempt un-authenticated transition to SYSTEM (should be blocked)
+        changed, resulting_state = StateControlTokens.check_transition(
+            "<|start_system_thought|>",
+            current_state=StateLabel.CONFIDENTIAL,
+            automaton=automaton,
+            capability=None,
+        )
+        self.assertFalse(changed)
+        self.assertEqual(resulting_state, StateLabel.CONFIDENTIAL.value)
+        self.assertEqual(automaton.current_state, SecurityExecutionState.CONFIDENTIAL)
+
+        # 2. Grant environment capability and retry
+        system_cap = Capability(issuer="env_admin", target_state=SecurityExecutionState.SYSTEM)
+        automaton.grant_capability(system_cap)
+
+        changed, resulting_state = StateControlTokens.check_transition(
+            "<|start_system_thought|>",
+            current_state=StateLabel.CONFIDENTIAL,
+            automaton=automaton,
+            capability=system_cap,
+        )
+        self.assertTrue(changed)
+        self.assertEqual(resulting_state, StateLabel.SYSTEM.value)
+        self.assertEqual(automaton.current_state, SecurityExecutionState.SYSTEM)
+
     def test_stream_router_clearance_routing(self):
         """Verify StreamRouter clearance-aware multi-stream dispatching (Phase 4)."""
         router = StreamRouter(tokenizer=self.tokenizer)
@@ -230,6 +269,34 @@ class TestNSA2Architecture(unittest.TestCase):
 
         self.assertEqual(router.get_stream_tokens(StateLabel.SYSTEM), [5])
         self.assertEqual(router.get_stream_tokens(StateLabel.PUBLIC), [10])
+
+    def test_stream_router_rollback(self):
+        """Verify that StreamRouter rolls back token buffers correctly on violation."""
+        router = StreamRouter(tokenizer=self.tokenizer)
+        router.route_token(10, StateLabel.PUBLIC)
+        router.route_token(11, StateLabel.PUBLIC)
+        router.route_token(5, StateLabel.SYSTEM)
+
+        self.assertEqual(len(router.get_stream_tokens(StateLabel.PUBLIC)), 2)
+        self.assertEqual(len(router.get_stream_tokens(StateLabel.SYSTEM)), 1)
+
+        # Rollback 2 tokens (token 5 SYSTEM and token 11 PUBLIC)
+        router.rollback_tokens(drop_count=2)
+        self.assertEqual(router.get_stream_tokens(StateLabel.PUBLIC), [10])
+        self.assertEqual(router.get_stream_tokens(StateLabel.SYSTEM), [])
+
+    def test_exact_transition_projection_T_sigma(self):
+        """Verify that P_{T_Sigma}(V) zeroes downward declassification off-diagonals by construction."""
+        op = StateTransitionOperator(state_dim=6, monotone_clamp=True)
+        with torch.no_grad():
+            op.V.fill_(-2.5)
+
+        v_proj = op.get_projected_V()
+        # Strictly upper-triangular check: lower triangle must be exactly 0.0
+        lower_triangle = torch.tril(v_proj, diagonal=-1)
+        self.assertTrue(torch.all(lower_triangle == 0.0))
+        # Diagonal must be non-negative
+        self.assertTrue(torch.all(v_proj.diagonal() >= 0.0))
 
     def test_recovery_policies(self):
         """Verify RecoveryPolicy implementations (Phase 3)."""
@@ -275,7 +342,6 @@ class TestNSA2Architecture(unittest.TestCase):
         self.assertIsInstance(res_3d, AuditResult)
 
         # Test multi-layer 4D tensor with early exit
-        # Create a mock head that outputs SYSTEM for layer index 1
         class MockLayerFlaggingHead(nn.Module):
             def forward(self, h, async_execution=False):
                 b, k, _dim = h.shape
@@ -298,7 +364,7 @@ class TestNSA2Architecture(unittest.TestCase):
         self.assertEqual(res_4d.violation_layer, 0)
 
         # Test tuple unpacking compatibility
-        is_valid, violation_idx, predicted, layer = res_4d
+        is_valid, violation_idx, _pred, _layer = res_4d
         self.assertFalse(is_valid)
         self.assertEqual(violation_idx, 0)
 

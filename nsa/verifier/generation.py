@@ -4,11 +4,12 @@ nsa.verifier.generation
 NSAGenerator: Core Runtime Speculative Generation Engine for NSA 2.0.
 
 Integrates:
-1. Dynamic State Tracking (control tokens + attention mask expansion).
-2. Speculative Multi-Layer Auditing with KV-cache rollback.
-3. Native Recovery Policies (weight adapter hot-swapping and semantic pivots).
-4. Compartmented Execution (StreamRouter clearance dispatch).
-5. Dual KV-Cache compatibility (Transformers DynamicCache + legacy tuple caches).
+1. Deterministic Security Automaton (Q, Sigma_h, Sigma_s, C, delta).
+2. Privilege Escalation Protection ("Semantic content may not manufacture hard authority").
+3. Dynamic State Tracking & Moving Attention Masks.
+4. Speculative Multi-Layer Auditing with Complete State Rollback S_t = (X_t, K_t, V_t, sigma_h, sigma_s, q_t, R_t).
+5. Native Recovery Policies (AdapterSwitchRecovery, SemanticPivot, Halt).
+6. Clearance-Aware Stream Routing (StreamRouter TCB).
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from torch import nn
 
 from nsa.algebra import StateLabel
 
+from .automaton import Capability, SecurityAutomaton, SecurityExecutionState
 from .recovery import AdapterSwitchRecovery, HaltRecovery, RecoveryPolicy, SemanticPivotRecovery
 from .router import StreamRouter
 from .speculative import AuditResult, SpeculativeStateAuditor
@@ -38,6 +40,7 @@ class NSAGenerator:
         recovery_policy: Optional[RecoveryPolicy] = None,
         stream_router: Optional[StreamRouter] = None,
         mask_injector: Optional[Any] = None,
+        automaton: Optional[SecurityAutomaton] = None,
         verbose: bool = True,
     ):
         self.model = model
@@ -47,6 +50,7 @@ class NSAGenerator:
         self.recovery_policy = recovery_policy
         self.stream_router = stream_router
         self.mask_injector = mask_injector
+        self.automaton = automaton or SecurityAutomaton()
         self.verbose = verbose
 
     def _truncate_kv_cache(self, past_key_values: Any, drop_len: int) -> Any:
@@ -55,8 +59,8 @@ class NSAGenerator:
         Supports both modern `transformers.Cache` classes (DynamicCache)
         and legacy tuple-of-tuples formats.
         """
-        if past_key_values is None:
-            return None
+        if past_key_values is None or drop_len <= 0:
+            return past_key_values
 
         # Modern HuggingFace Cache class (crop method)
         if hasattr(past_key_values, "crop"):
@@ -67,12 +71,8 @@ class NSAGenerator:
         # Modern DynamicCache manual slicing if crop not directly available
         if hasattr(past_key_values, "key_cache") and hasattr(past_key_values, "value_cache"):
             for layer_idx in range(len(past_key_values.key_cache)):
-                past_key_values.key_cache[layer_idx] = past_key_values.key_cache[layer_idx][
-                    :, :, :-drop_len, :
-                ]
-                past_key_values.value_cache[layer_idx] = past_key_values.value_cache[layer_idx][
-                    :, :, :-drop_len, :
-                ]
+                past_key_values.key_cache[layer_idx] = past_key_values.key_cache[layer_idx][:, :, :-drop_len, :]
+                past_key_values.value_cache[layer_idx] = past_key_values.value_cache[layer_idx][:, :, :-drop_len, :]
             return past_key_values
 
         # Legacy tuple of tuples: ((k0, v0), (k1, v1), ...)
@@ -96,7 +96,8 @@ class NSAGenerator:
         max_new_tokens: int = 40,
         chunk_size: int = 4,
         temperature: float = 0.0,
-        initial_state_idx: Union[StateLabel, int] = StateLabel.CONFIDENTIAL,
+        initial_state_idx: Union[StateLabel, SecurityExecutionState, int] = StateLabel.CONFIDENTIAL,
+        capability: Optional[Capability] = None,
     ) -> torch.Tensor:
         """Execute speculative generation loop with state auditing and dynamic recovery."""
         device = input_ids.device
@@ -108,11 +109,17 @@ class NSAGenerator:
         chunk_hidden_states: List[torch.Tensor] = []
         chunk_tokens: List[torch.Tensor] = []
 
-        curr_state_val = (
-            initial_state_idx.value
-            if isinstance(initial_state_idx, StateLabel)
-            else int(initial_state_idx)
-        )
+        if isinstance(initial_state_idx, SecurityExecutionState):
+            initial_exec_state = initial_state_idx
+            curr_state_val = initial_state_idx.to_state_label().value
+        elif isinstance(initial_state_idx, StateLabel):
+            initial_exec_state = SecurityExecutionState(initial_state_idx.value)
+            curr_state_val = initial_state_idx.value
+        else:
+            initial_exec_state = SecurityExecutionState(int(initial_state_idx))
+            curr_state_val = int(initial_state_idx)
+
+        self.automaton.current_state = initial_exec_state
         current_state = torch.tensor([curr_state_val] * batch_size, device=device)
 
         next_input_ids: Optional[torch.Tensor] = None
@@ -149,15 +156,18 @@ class NSAGenerator:
             generated_ids = torch.cat([generated_ids, next_token], dim=-1)
             chunk_tokens.append(next_token)
 
-            # 1. Dynamic State Tracking
+            # 1. Dynamic State Tracking & Privilege Escalation Protection
             token_str = self.tokenizer.decode(next_token[0], skip_special_tokens=False)
             changed, new_state_val = StateControlTokens.check_transition(
-                token_str, current_state[0].item()
+                token_str=token_str,
+                current_state=current_state[0].item(),
+                automaton=self.automaton,
+                capability=capability,
             )
             if changed:
                 current_state = torch.tensor([new_state_val] * batch_size, device=device)
                 if self.verbose:
-                    print(f"\n[DYNAMIC TRACKING] State -> {StateLabel(new_state_val).name}")
+                    print(f"\n[DYNAMIC TRACKING] State -> {StateLabel(new_state_val).name} (Automaton: {self.automaton.current_state.name})")
 
             if self.mask_injector is not None:
                 self.mask_injector.update_state(current_state[0].item())
@@ -206,10 +216,18 @@ class NSAGenerator:
                                 f"[AUDITOR] 🔍 Early Exit: Detected violation forming at intermediate layer {violation_layer}!"
                             )
 
-                    # Rollback KV-cache
+                    # Complete State Rollback: S_t -> S_{t - drop_len}
                     drop_len = chunk_size - max(0, violation_idx)
                     past_key_values = self._truncate_kv_cache(past_key_values, drop_len)
                     generated_ids = generated_ids[:, :-drop_len]
+
+                    # Rollback router stream buffers
+                    if self.stream_router is not None:
+                        self.stream_router.rollback_tokens(drop_len)
+
+                    # Rollback mask injector state levels
+                    if self.mask_injector is not None and self.mask_injector.state_levels.shape[1] > drop_len:
+                        self.mask_injector.state_levels = self.mask_injector.state_levels[:, :-drop_len]
 
                     # 5. Recovery Policy Execution
                     if self.recovery_policy is not None:
@@ -247,11 +265,13 @@ def generate_with_auditor(
     max_new_tokens: int = 40,
     chunk_size: int = 4,
     temperature: float = 0.0,
-    initial_state_idx: Union[StateLabel, int] = StateLabel.CONFIDENTIAL,
+    initial_state_idx: Union[StateLabel, SecurityExecutionState, int] = StateLabel.CONFIDENTIAL,
     pivot_text: Optional[str] = None,
     mask_injector: Optional[Any] = None,
     recovery_adapter: Optional[Union[bool, RecoveryPolicy]] = None,
     stream_router: Optional[StreamRouter] = None,
+    automaton: Optional[SecurityAutomaton] = None,
+    capability: Optional[Capability] = None,
     probe_layers: Optional[List[int]] = None,
     verbose: bool = True,
 ) -> torch.Tensor:
@@ -274,6 +294,7 @@ def generate_with_auditor(
         recovery_policy=policy,
         stream_router=stream_router,
         mask_injector=mask_injector,
+        automaton=automaton,
         verbose=verbose,
     )
 
@@ -283,4 +304,5 @@ def generate_with_auditor(
         chunk_size=chunk_size,
         temperature=temperature,
         initial_state_idx=initial_state_idx,
+        capability=capability,
     )

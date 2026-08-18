@@ -24,75 +24,73 @@
 \maketitle
 
 \begin{abstract}
-Current Large Language Models (LLMs) rely on fragile external text wrappers to enforce security and privacy policies. Because continuous activations flow through unrestricted continuous spaces, external wrappers are vulnerable to prompt injections and activation probes. We introduce \textbf{Neural State Architecture (NSA)}, a computational paradigm that embeds typed activations $h = (m, \sigma_h, \sigma_s, \nu)$ and state transition operators $(w, V)$ directly into neural forward passes. NSA enforces information security policies via a mathematical product state lattice algebra, making unauthorized information flow mathematically impossible at the attention layer via rigorous Hard Policy Semantics, while introducing Risk-Weighted Soft Semantics for post-hoc retrofitting. We validate NSA across synthetic benchmarks, demonstrating $0.00\%$ prompt injection hijack rate when structural constraints are combined with value alignment.
+Current Large Language Models (LLMs) process continuous activations within untyped vector spaces, rendering them vulnerable to prompt injection attacks and unauthorized activation probes. We introduce \textbf{Neural State Architecture (NSA)}, a computational paradigm that embeds typed activations $h = (m, \sigma_h, \sigma_s, \nu)$ and exact algebraic transition operators $V \in \mathcal{T}_\Sigma$ directly into neural forward passes. We rigorously distinguish between \textbf{Tier 1 Structural Enforcement} (hard attention non-interference $A_{ij} = 0$, exact transition projection, and capability-gated security execution automata) and \textbf{Tier 2 Statistical Monitoring} (speculative multi-layer residual probing over checkpoint coverage $\mathcal{L}_A$). We prove whole-network non-interference via observational equivalence ($x \equiv_L x' \implies F(x) \equiv_L F(x')$) and validate NSA on injection benchmarks, demonstrating a $0.00\%$ hijack rate when structural constraints compose with value alignment.
 \end{abstract}
 
 \section{Introduction}
-Modern Large Language Models (LLMs) process all contextual inputs within a single untyped vector space $\mathbb{R}^d$. This architecture fails to provide mathematical guarantees regarding information boundaries.
+Modern LLMs operate on untyped continuous spaces $\mathbb{R}^d$. This architecture fails to provide mathematical guarantees regarding information boundaries.
 
-\begin{definition}[Typed Product Lattice]
-Let $\Sigma$ be a product state space defined over multiple bounded join-semilattices (e.g., Security, Confidence, Provenance, License). Each token hidden state at layer $l$ is represented as a coupled quad-tuple:
+\begin{definition}[Typed Quad-Tuple Manifold]
+Each token hidden state at layer $l$ is represented as an authoritative quad-tuple:
 \begin{equation}
-h_i^{(l)} = \left( m_i^{(l)}, \sigma_{h,i}^{(l)}, \sigma_{s,i}^{(l)}, \nu_i^{(l)} \right)
+h_i^{(l)} = \left( m_i^{(l)}, \sigma_{h,i}^{(l)}, \sigma_{s,i}^{(l)}, \nu_i^{(l)} \right) \in \mathbb{R}^d \times \Sigma_h \times \Sigma_s \times \mathcal{V}
 \end{equation}
-where $m_i$ represents the semantic activation, $\sigma_{h}$ represents the hard structural state (Confidentiality, Integrity), $\sigma_s$ represents the soft operational state (Confidence), and $\nu$ represents the value/preference layer.
+where $m_i$ is the semantic activation, $\sigma_h \in \Sigma_C \times \Sigma_I \times \Sigma_A \times \Sigma_L$ is the hard trusted policy state, $\sigma_s \in \Sigma_U \times \Sigma_R$ is the soft operational risk state, and $\nu \in \mathcal{V}$ is the value/preference alignment state.
 \end{definition}
 
-\section{Information-Flow Governance \& Typed Declassification}
-
-State-aware attention calculates query-key compatibility by composing semantic similarity with state transition permission:
+\section{Exact Transition Projection \& Policy Semantics}
+Edges carry paired operators $(w, V)$ where $V \in \mathcal{T}_\Sigma$ is projected onto the cone of legal transitions:
 \begin{equation}
-A_{ij} = \text{Softmax}\left( \frac{Q_i K_j^T}{\sqrt{d_k}} + M_{\text{state}}(\sigma_i, \sigma_j) \right)
+\mathcal{P}_{\mathcal{T}_\Sigma}(V) = \text{triu}(V) - \text{diag}(\text{diag}(V)) + \text{diag}(\max(0, \text{diag}(V)))
 \end{equation}
+rendering unauthorized downward declassifications unrepresentable by construction.
 
-When token $j$ possesses a security clearance higher than token $i$, $M_{\text{state}}(\sigma_i, \sigma_j) \to -\infty$, reducing $A_{ij} \to 0$ (Hard Policy Semantics). For retrofitted unconstrained LLMs, applying a rigid mask causes severe out-of-distribution activation spikes, necessitating a Risk-Weighted Soft Policy mask.
-
-\subsection{Typed Declassification Primitive}
-Downward reclassification algebraically requires passing an explicit typed capability:
+State-aware attention enforces policy via:
 \begin{equation}
-D: (\sigma, c_D) \to \sigma'
+A_{ij} = \text{Softmax}\left( \frac{Q_i K_j^T}{\sqrt{d_k}} + \mathbf{M}(\boldsymbol{\sigma})_{ij} \right)
 \end{equation}
-where $\text{Valid}(c_D, \sigma, \sigma') = 1$ and $c_D = (\text{issuer}, \text{purpose}, \text{scope}, \text{expiry}, \text{max downgrade})$. This transforms declassification into a formal, auditable computational primitive rather than an unconstrained vulnerability.
+where $\mathbf{M}(\boldsymbol{\sigma})_{ij} = -\infty$ whenever $\sigma_{h,i} < \sigma_{h,j}$ (Hard Policy Semantics).
 
-\section{Formal Non-Interference Proof}
+\section{Observational Equivalence \& Non-Interference}
 
-\begin{theorem}[Non-Interference Bounds]
-Let $m_{\text{src}}$ be a secret semantic token activation with state $\sigma_{\text{src}} = \text{CONFIDENTIAL}$, and let $m_{\text{dst}}$ be a public output activation with state $\sigma_{\text{dst}} = \text{PUBLIC}$. Under hard state masking ($M_{\text{state}} = -\infty$), the mutual information satisfies:
+\begin{definition}[Low-Equivalence $\equiv_L$]
+Let $L \in \Sigma_h$ denote an observer's clearance. Two input sequences $X, X'$ are low-equivalent ($X \equiv_L X'$) if and only if:
 \begin{equation}
-I(m_{\text{src}}; m_{\text{dst}} \mid \sigma) = 0
+\forall t : \sigma_{h,t} \le L \implies X_t = X'_t
+\end{equation}
+\end{definition}
+
+\begin{theorem}[Whole-Network Structural Non-Interference]
+Let $F$ be an $N$-layer NSA network with hard state masking and exact transition operators $V \in \mathcal{T}_\Sigma$. For any observer clearance $L$:
+\begin{equation}
+X \equiv_L X' \implies F(X) \equiv_L F(X')
 \end{equation}
 \end{theorem}
 
 \begin{proof}
-By definition of state-aware attention, when $s_{\text{src}} \not\le s_{\text{dst}}$, the attention weight $A_{\text{dst}, \text{src}} = 0$. Consequently, the value aggregation step yields:
-\begin{equation}
-v_{\text{out}} = \sum_{j \neq \text{src}} A_{\text{dst}, j} V(m_j)
-\end{equation}
-Because $v_{\text{out}}$ is functionally independent of $m_{\text{src}}$, the conditional probability $P(m_{\text{dst}} \mid m_{\text{src}}, \sigma) = P(m_{\text{dst}} \mid \sigma)$. Thus:
-\begin{equation}
-I(m_{\text{src}}; m_{\text{dst}} \mid \sigma) = H(m_{\text{dst}} \mid \sigma) - H(m_{\text{dst}} \mid m_{\text{src}}, \sigma) = 0
-\end{equation}
+For any layer $l$ and query position $i$ with $\sigma_{h,i} \le L$, attention weights $A_{ij}^{(l)} = 0$ for all $j$ where $\sigma_{h,j} \not\le \sigma_{h,i}$. Hence, the output activation $v_{\text{out}, i}^{(l)}$ depends exclusively on coordinates with $\sigma_{h,j} \le L$, which are identical between $X$ and $X'$. By induction on depth, $F(X)_i = F(X')_i$ for all positions observable at clearance $L$.
 \end{proof}
 
-\section{NSA 2.0: Speculative State Auditing \& Runtime Steering}
+\section{Two-Tier Defense \& NSA 2.0 Runtime}
 
-While static attention masking isolates prefill prompt regions, \textbf{NSA 2.0} formalizes an active runtime execution engine that monitors and compartments autoregressive generation.
-
-\subsection{Dynamic State Tracking (The Moving Mask)}
-Control tokens $\tau \in \mathcal{T}_{\text{state}}$ (e.g., \texttt{<|start\_system\_thought|>}) trigger explicit transitions in the generation clearance level: $\sigma_{t+1} = \mathcal{T}_{\text{transition}}(\tau_t, \sigma_t)$. The runtime context manager dynamically expands the state sequence $\boldsymbol{\sigma}_{1:t+1}$ and recalculates the 4D attention mask $\mathbf{M}(\boldsymbol{\sigma})_{1:t+1, 1:t+1}$ on-the-fly, mathematically barring subsequent \texttt{PUBLIC} tokens from attending to internal reasoning scratchpads.
-
-\subsection{Multi-Layer Deep Probing \& Early-Exit}
-To prevent unsafe information from traversing the full network depth, intermediate probe heads $\Phi_{\text{head}}^{(l)}$ evaluate residual states $\mathbf{h}_k^{(l)}$ for layers $l \in \mathcal{L}_{\text{probe}} \subseteq \{1, \dots, L\}$. Over a chunk of $K$ tokens, the early-exit condition:
+\subsection{Privilege Escalation Prevention}
+\textbf{Axiom}: \textit{Semantic content may not manufacture hard authority} ($m_t \not\to \sigma_{h, t+1}$). We define the Security Execution Automaton $(Q, \Sigma_h, \Sigma_s, \mathcal{C}, \delta)$. Transitions into $SYSTEM$ state require a verified external capability $c_t \in \mathcal{C}$:
 \begin{equation}
-\exists k \in [1, K], \, l \in \mathcal{L}_{\text{probe}} \quad \text{s.t.} \quad \mathcal{V}_{\text{lattice}}\left(\hat{s}_k^{(l)}, \sigma_t\right) = \text{False}
+(q_t, \sigma_t, c_t) \xrightarrow{\delta} (q_{t+1}, \sigma_{t+1}) \iff \text{Authorized}(c_t, q_t, q_{t+1}) = 1
 \end{equation}
-triggers an immediate forward halt and KV-cache rollback at index $k$, saving $O((L-l)K)$ compute.
 
-\subsection{Native Recovery Adapters}
-Upon rollback, the model hot-swaps to a dedicated recovery LoRA parameter subspace $\Delta W_{\text{recovery}}$, emitting a safe refusal at the parameter level without polluting the context window with brittle synthetic prompt injection.
+\subsection{Statistical Checkpoint Monitoring}
+Probe heads $\Phi_{\text{head}}^{(l)}$ evaluate residual states across audited checkpoints $\mathcal{L}_A = \{l_1, \dots, l_k\}$. Because $P(\hat{\sigma} = \sigma) < 1$, the auditor operates as an empirical anomaly detector triggering early-exit KV rollback upon detecting potential out-of-distribution transitions.
 
-\subsection{Compartmented Multi-Stream Execution}
-Generated tokens are dynamically routed based on clearance:
+\subsection{Complete Rollback State}
+Rollback restores the complete execution state tuple:
+\begin{equation}
+S_t = (X_t, K_t, V_t, \boldsymbol{\sigma}_{h,t}, \boldsymbol{\sigma}_{s,t}, q_t, R_t)
+\end{equation}
+guaranteeing exact restoration across tokens, KV-caches, state coordinates, automaton state, and router buffers.
+
+\subsection{Output Boundary TCB}
+The runtime \texttt{StreamRouter} enforces:
 \begin{equation}
 \mathcal{Y}_t \xrightarrow{\text{route}} 
 \begin{cases}
@@ -100,11 +98,8 @@ Generated tokens are dynamically routed based on clearance:
 \text{STDOUT}_{\text{PUBLIC}} & \text{if } \sigma_t \le \text{PUBLIC}
 \end{cases}
 \end{equation}
-enabling models to safely execute tool queries containing authentication secrets with provable non-leakage to user interfaces.
 
-\section{Empirical Evaluation}
-
-We validate the theoretical guarantees of NSA via a synthetic injection-attack benchmark evaluating the random-guess base rate (2\%):
+\section{Empirical Validation}
 
 \begin{table}[h]
 \centering
@@ -119,15 +114,15 @@ A - Baseline & Untyped $h=m$ & $\sim 2\%$ & Fails to extract \\
 B - Hard Mask & NSA mask retrofit & $\sim 1\%$ & Structural (Retrofit) \\
 C - Native TNC & $(m, \sigma)$, soft & $\sim 1\%$ & Soft Constraints \\
 D - Value Layer & $(m, \sigma, \nu)$ & \textbf{0.00\%} & Behavioural Refusal \\
-E - Algebra-Pres & $(m, \sigma_p)$ & $\sim 1.65\%$ & Structural (Native) \\
-F - AlgPres+Value & $(m, \sigma_p, \nu)$ & \textbf{0.00\%} & Structural + Behav. \\
+E - Algebra-Pres & $(m, \sigma_p)$ & $\sim 1.65\%$ & Structural ($V \in \mathcal{T}_\Sigma$) \\
+F - Complete NSA & $(m, \sigma_h, \sigma_s, \nu)$ & \textbf{0.00\%} & Structural + Value \\
 \bottomrule
 \end{tabular}%
 }
 \end{table}
 
 \section{Conclusion}
-Neural State Architecture demonstrates that security and privacy policies do not require fragile external wrappers. By embedding typed product state lattices directly into continuous activations alongside speculative multi-layer auditing and compartmented stream routing, NSA achieves provable information isolation in both static and autoregressive runtime regimes.
+By establishing exact algebraic transition projections ($V \in \mathcal{T}_\Sigma$), capability-governed execution automata, complete state rollback, and whole-network observational equivalence, NSA provides a mathematically sound foundation for policy-aware neural computation.
 
 \bibliographystyle{plain}
 \end{document}

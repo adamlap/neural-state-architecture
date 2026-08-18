@@ -173,6 +173,15 @@ For NSA to be adopted by industrial AI research labs (OpenAI, Anthropic, Google 
 - [x] **Compartmented Execution**: Clearance-aware stream routing (`StreamRouter`) directing `SYSTEM` tokens to tool APIs and `PUBLIC` tokens to user outputs.
 - [x] **Core Architecture Refactoring**: First-class `NSAMaskInjector` (`nsa/mask_injector.py`), modular verifier subsystem (`nsa/verifier/`), and 100% unit test coverage (`tests/test_verifier_nsa2.py`).
 
+### Phase 10: Formal NSA Core & Peer-Review Hardening
+- [x] **Authoritative Quad-Tuple Activations**: $h_t = (m_t, \sigma_{h,t}, \sigma_{s,t}, \nu_t)$ partitioning hard trusted policy ($\Sigma_h = \Sigma_C \times \Sigma_I \times \Sigma_A \times \Sigma_L$) from soft operational risk ($\Sigma_s = \Sigma_U \times \Sigma_R$).
+- [x] **Privilege Escalation Prevention**: Formalized the axiom *"Semantic content may not manufacture hard authority"* ($m_t \not\to \sigma_{h, t+1}$). Implemented `SecurityAutomaton` and `Capability` ticket validation in `nsa/verifier/automaton.py`.
+- [x] **Exact Algebraic Projection $\mathcal{P}_{\mathcal{T}_\Sigma}(V)$**: Updated `StateTransitionOperator` in `nsa/state.py` to project $V \in \mathcal{T}_\Sigma$ by construction, zeroing downward declassification off-diagonals.
+- [x] **Observational Equivalence Theorem**: Proved whole-network structural non-interference: $X \equiv_L X' \implies F(X) \equiv_L F(X')$.
+- [x] **Two-Tier Protection Framework**: Formally distinguished Tier 1 Structural Enforcement (mathematical guarantees) from Tier 2 Statistical Monitoring (empirical checkpoint detection over $\mathcal{L}_A$).
+- [x] **Complete Execution State Rollback**: Formalized $S_t = (X_t, K_t, V_t, \boldsymbol{\sigma}_{h,t}, \boldsymbol{\sigma}_{s,t}, q_t, R_t)$ ensuring full runtime restoration upon violation.
+- [x] **Output Boundary TCB**: Defined `StreamRouter` as part of the Trusted Computing Base governing model output clearance to authorized sinks.
+
 ---
 
 ## High-Impact Industry Use Cases

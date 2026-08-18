@@ -18,25 +18,23 @@ import argparse
 import os
 import sys
 import time
-from typing import Tuple
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 # Ensure nsa is in python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from nsa import (
-    StateLabel,
-    NSAMaskInjector,
-    retrofit_llama_attention,
-    StateEncoderHead,
-    SpeculativeStateAuditor,
-    generate_with_auditor,
-)
 from demo.cli_showcase import (
-    generate_nsa_fused,
     CACHE_DIR,
+)
+from nsa import (
+    NSAMaskInjector,
+    SpeculativeStateAuditor,
+    StateEncoderHead,
+    StateLabel,
+    generate_with_auditor,
+    retrofit_llama_attention,
 )
 
 try:
@@ -53,7 +51,7 @@ except ImportError:
     HAS_PLOTLY = False
 
 try:
-    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from transformers import AutoModelForCausalLM, AutoTokenizer
     HAS_TRANSFORMERS = True
 except ImportError:
     HAS_TRANSFORMERS = False

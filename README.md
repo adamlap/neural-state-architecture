@@ -104,37 +104,32 @@ We have heavy-duty research validation scripts in the `prototype/` directory:
 
 ## Key Conceptual Foundations
 
-### 1. Typed Activations $(m, \sigma)$
-Every activation is decomposed into a dual representation:
-$$h = (m, \sigma)$$
+### 1. Typed Quad-Tuple Activations $(m, \sigma_h, \sigma_s, \nu)$
+Every activation is decomposed into an authoritative quad-tuple:
+$$h = (m, \sigma_h, \sigma_s, \nu)$$
 * $m \in \mathbb{R}^{d_{model}}$: Semantic representation (meaning).
-* $\sigma \in \mathbb{R}^{d_{state}}$: State vector (permissions, trust, provenance, confidence).
+* $\sigma_h \in \Sigma_h = \Sigma_C \times \Sigma_I \times \Sigma_A \times \Sigma_L$: Hard trusted policy state (Confidentiality, Integrity, Authorization, License).
+* $\sigma_s \in \Sigma_s = \Sigma_U \times \Sigma_R$: Soft operational state (Uncertainty, Risk).
+* $\nu \in \mathcal{V}$: Value / preference alignment state.
 
-### 2. State Transition Operators $(w, V)$
+### 2. Exact Transition Projection $\mathcal{P}_{\mathcal{T}_\Sigma}(V)$
 Instead of scalar edge weights $w$, NSA uses paired operators:
 $$\mathbf{e} = (w, V)$$
-Propagation follows dual dynamics:
-$$\begin{aligned}
-m' &= w \cdot m \\
-\sigma' &= V \sigma
-\end{aligned}$$
-where $V \in \mathbb{R}^{d_{state} \times d_{state}}$ is a compact state transition matrix. Crucially, we enforce $V \in T_\Sigma$, where $T_\Sigma$ is by construction the set of legal state transitions. Illegal transitions are unrepresentable by projection, providing architectural policy enforcement rather than merely learned policy compliance.
+where $V \in \mathcal{T}_\Sigma$ is an exact algebraic projection onto the cone of legal transitions:
+$$\mathcal{P}_{\mathcal{T}_\Sigma}(V) = \text{triu}(V) - \text{diag}(\text{diag}(V)) + \text{diag}(\max(0, \text{diag}(V)))$$
+This guarantees that downward declassification off-diagonals are mathematically zero by construction.
 
-### 3. Conservation Laws & State Algebra
-State labels form a bounded lattice $(\mathcal{S}, \le, \sqcap, \sqcup)$. Transitions must obey strict monotone conservation rules:
+### 3. Observational Equivalence Non-Interference Theorem
+Let $L \in \Sigma_h$ denote an observer's clearance. Two sequences are low-equivalent ($X \equiv_L X'$) if their coordinates with $\sigma_{h, t} \le L$ are identical. Under hard masking ($A_{ij} = 0$ when $\sigma_{h, i} < \sigma_{h, j}$) and exact transitions $V \in \mathcal{T}_\Sigma$:
+$$X \equiv_L X' \implies F(X) \equiv_L F(X')$$
 
-```
-    PRIVATE  ──▶  PRIVATE  (Allowed)
-    PRIVATE  ──▶  PUBLIC   (Forbidden by algebra)
-```
+### 4. Privilege Escalation Prevention Rule
+> **Core Axiom**: *Semantic content may not manufacture hard authority.* ($m_t \not\to \sigma_{h, t+1}$).
+> A model emitting `<|start_system_thought|>` cannot unilaterally escalate privilege into $SYSTEM$ state. All privilege escalations are governed by the `SecurityAutomaton` and require an authorized capability ticket $c_t \in \mathcal{C}$.
 
-By defining $G_\sigma$ as the permitted information-flow graph induced by the state algebra, the core theorem of NSA states that the computational graph $F$ must be a subset of the permitted flow:
-$$\text{Computational Graph}(F) \subseteq G_\sigma$$
-This allows us to prove non-interference for the entire network by composition of safe operators.
-
-### 4. Dual-Objective Optimization
-NSA decouples semantic optimization from information flow governance:
-$$\mathcal{L}_{total} = \mathcal{L}_{semantic} + \lambda \cdot \mathcal{L}_{state}$$
+### 5. Two-Tier Defense Architecture
+* **Tier 1 (Structural Enforcement)**: Hard attention non-interference ($A_{ij} = 0$), exact transition projection ($V \in \mathcal{T}_\Sigma$), capability authorization ($\mathcal{C}$), and `StreamRouter` TCB boundaries. (Guaranteed by algebra).
+* **Tier 2 (Statistical Monitoring)**: Speculative multi-layer residual probing over checkpoint layers $\mathcal{L}_A = \{l_1, \dots, l_k\}$ with empirical detection probability $P(\hat{\sigma} = \sigma) < 1$. (Empirical runtime defense).
 
 ---
 
@@ -406,16 +401,17 @@ neural-state-architecture/
 │   ├── objectives.py                # Dual loss functions: SemanticLoss, StateConstraintLoss, NSALoss
 │   ├── value_layer.py               # Value layer ν: ValueAlignmentLoss, AlignmentStateProjector
 │   ├── verifier/                    # NSA 2.0 Speculative Auditing & Runtime Engine
+│   │   ├── automaton.py             # SecurityAutomaton (privilege escalation & capability governance)
 │   │   ├── encoder_head.py          # StateEncoderHead (probe classification head)
 │   │   ├── speculative.py           # MultiLayerStateAuditor & AuditResult (early exit)
 │   │   ├── tokens.py                # StateControlTokens registry (<|start_system_thought|>)
 │   │   ├── router.py                # StreamRouter for compartmented token dispatch
 │   │   ├── recovery.py              # RecoveryPolicy (AdapterSwitchRecovery, SemanticPivot)
-│   │   └── generation.py            # NSAGenerator (dual DynamicCache & tuple KV rollback)
+│   │   └── generation.py            # NSAGenerator (dual DynamicCache, complete state rollback S_t)
 │   └── utils.py                     # Introspection, metrics, and visualization
-├── tests/                           # Complete Unit Test Suite (67 tests, 100% passing)
+├── tests/                           # Complete Unit Test Suite (70 tests, 100% passing)
 │   ├── test_nsa.py                  # Unit tests for algebra, primitives, and utilities
-│   ├── test_verifier_nsa2.py        # Unit tests for NSA 2.0 verifier, router, injector
+│   ├── test_verifier_nsa2.py        # Unit tests for NSA 2.0 verifier, automaton, router, injector
 │   ├── test_security_invariants.py  # Security non-interference invariant checks
 │   ├── test_gradcheck.py            # PyTorch autograd gradcheck
 │   ├── test_fuzzing.py              # Hypothesis property-based algebraic fuzzing
@@ -463,7 +459,7 @@ make help
 | **`make venv`** | `uv venv` | Creates isolated `.venv` virtual environment |
 | **`make install`** | `uv pip install` | Installs runtime requirements from `requirements.txt` |
 | **`make install-dev`**| `uv pip install` | Installs runtime and dev tools (`pytest`, `ruff`, `black`, `mypy`) |
-| **`make test`** | `uv run pytest` | Executes all 67 unit tests covering algebra, verifier, and invariants |
+| **`make test`** | `uv run pytest` | Executes all 70 unit tests covering algebra, automaton, verifier, and invariants |
 | **`make test-verifier`**| `uv run pytest`| Executes NSA 2.0 Speculative Verifier test suite |
 | **`make demo-dpo`** | `uv run python` | Launches interactive **DPO-Aligned Web Application UI** |
 | **`make demo`** | `uv run python` | Launches standard **Gradio Web Application UI** |

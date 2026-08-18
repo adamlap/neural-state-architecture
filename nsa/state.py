@@ -157,29 +157,28 @@ class StateTransitionOperator(nn.Module):
         else:
             nn.init.kaiming_uniform_(self.V, a=math.sqrt(5))
 
-    def forward(self, state: torch.Tensor) -> torch.Tensor:
-        """Apply state transition.
+    def get_projected_V(self) -> torch.Tensor:
+        """Exact algebraic projection P_{T_Sigma}(V) onto the cone of legal state transitions.
 
-        Parameters
-        ----------
-        state : Tensor of shape (..., state_dim)
-
-        Returns
-        -------
-        Tensor of shape (..., state_dim)
+        Guarantees V in T_Sigma by zeroing downward declassification off-diagonals
+        and clamping diagonal directional rates to be non-negative.
         """
         V = self.V
         if self.monotone_clamp:
-            # Soft clamping: diagonal entries ≥ 0 (no inversion of state direction)
-            diag = V.diagonal().clamp(min=0.0)
-            V = V - torch.diag(V.diagonal()) + torch.diag(diag)
+            # Monotone upper triangular projection + non-negative diagonal
+            V_triu = torch.triu(V)
+            diag = V_triu.diagonal().clamp(min=0.0)
+            V = V_triu - torch.diag(V_triu.diagonal()) + torch.diag(diag)
+        return V
 
-        # (..., state_dim) @ (state_dim, state_dim).T → (..., state_dim)
-        return state @ V.T
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        """Apply state transition under exact algebraic projection V in T_Sigma."""
+        V_proj = self.get_projected_V()
+        return state @ V_proj.T
 
     def frobenius_norm(self) -> torch.Tensor:
-        """‖V‖_F — useful as a regulariser."""
-        return self.V.norm("fro")
+        """||V||_F — useful as a regulariser."""
+        return self.get_projected_V().norm("fro")
 
 
 # ---------------------------------------------------------------------------

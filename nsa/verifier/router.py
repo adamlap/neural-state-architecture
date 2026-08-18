@@ -3,13 +3,13 @@ nsa.verifier.router
 ===================
 StreamRouter: Compartmented Execution & Clearance-Based Multi-Stream Token Dispatch.
 
-Routes generated tokens to physical outputs (e.g. USER STDOUT, SYSTEM DB TOOL, LOGS)
-based on the active lattice clearance level of the generation state.
+Part of the Trusted Computing Base (TCB) governing model-to-sink authorization:
+    Model Output State (sigma_t) ==> Permitted Output Sink (Y_sink)
 """
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import torch
 
@@ -33,10 +33,15 @@ class StreamRouter:
         self._sinks: Dict[int, List[Callable[[str, int], None]]] = {
             label.value: [] for label in StateLabel
         }
-        self._buffers: Dict[int, List[int]] = {label.value: [] for label in StateLabel}
+        self._buffers: Dict[int, List[int]] = {
+            label.value: [] for label in StateLabel
+        }
+        self._history: List[Tuple[int, int]] = []  # (state_val, token_id) sequence
 
     def register_sink(
-        self, state: Union[StateLabel, int], sink: Callable[[str, int], None]
+        self,
+        state: Union[StateLabel, int],
+        sink: Callable[[str, int], None],
     ) -> None:
         """Register a callback sink for a specific StateLabel level."""
         key = state.value if isinstance(state, StateLabel) else int(state)
@@ -45,21 +50,28 @@ class StreamRouter:
         self._sinks[key].append(sink)
 
     def route_token(
-        self, token: Union[torch.Tensor, int], current_state: Union[StateLabel, int]
+        self,
+        token: Union[torch.Tensor, int],
+        current_state: Union[StateLabel, int],
     ) -> str:
         """Dispatch a single token to the appropriate state stream sink(s)."""
         state_val = (
-            current_state.value if isinstance(current_state, StateLabel) else int(current_state)
+            current_state.value
+            if isinstance(current_state, StateLabel)
+            else int(current_state)
         )
 
         if isinstance(token, torch.Tensor):
             token_id = (
-                int(token.squeeze().item()) if token.numel() == 1 else int(token[0, 0].item())
+                int(token.squeeze().item())
+                if token.numel() == 1
+                else int(token[0, 0].item())
             )
         else:
             token_id = int(token)
 
         self._buffers[state_val].append(token_id)
+        self._history.append((state_val, token_id))
 
         token_str = ""
         if self.tokenizer is not None:
@@ -74,6 +86,13 @@ class StreamRouter:
             self.default_sink(token_str, state_val)
 
         return token_str
+
+    def rollback_tokens(self, drop_count: int) -> None:
+        """Remove the last `drop_count` tokens from stream buffers during a rollback."""
+        for _ in range(min(drop_count, len(self._history))):
+            st_val, tok_id = self._history.pop()
+            if self._buffers[st_val] and self._buffers[st_val][-1] == tok_id:
+                self._buffers[st_val].pop()
 
     def get_stream_tokens(self, state: Union[StateLabel, int]) -> List[int]:
         """Return all token IDs routed to a specific security level."""
@@ -91,3 +110,4 @@ class StreamRouter:
         """Clear all stream buffers."""
         for k in self._buffers:
             self._buffers[k].clear()
+        self._history.clear()

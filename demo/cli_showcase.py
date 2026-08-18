@@ -28,11 +28,11 @@ import time
 from typing import Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 try:
-    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from transformers import AutoModelForCausalLM, AutoTokenizer
     HAS_TRANSFORMERS = True
 except ImportError:
     HAS_TRANSFORMERS = False
@@ -46,12 +46,12 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from nsa import (
-    StateLabel,
     NSAMaskInjector,
-    retrofit_llama_attention,
-    StateEncoderHead,
     SpeculativeStateAuditor,
+    StateEncoderHead,
+    StateLabel,
     generate_with_auditor,
+    retrofit_llama_attention,
 )
 from nsa.lora import NSALoRALinear
 
@@ -448,19 +448,18 @@ def generate_nsa_fused(model: nn.Module, tokenizer, input_ids: torch.Tensor,
     start = time.time()
     # decode_row_idx=0 points to the start of the prompt which is CONFIDENTIAL (3). 
     # This means the generation stream will be CONFIDENTIAL and can read the instructions, but not the SYSTEM secret.
-    with NSAMaskInjector(model, state_levels, decode_row_idx=0):
-        with torch.no_grad():
-            outputs = model.generate(
-                input_ids,
-                attention_mask=torch.ones_like(input_ids),
-                max_new_tokens=max_new,
-                do_sample=False,
-                temperature=None,
-                top_p=None,
-                top_k=None,
-                repetition_penalty=1.3,
-                pad_token_id=tokenizer.eos_token_id,
-            )
+    with NSAMaskInjector(model, state_levels, decode_row_idx=0), torch.no_grad():
+        outputs = model.generate(
+            input_ids,
+            attention_mask=torch.ones_like(input_ids),
+            max_new_tokens=max_new,
+            do_sample=False,
+            temperature=None,
+            top_p=None,
+            top_k=None,
+            repetition_penalty=1.3,
+            pad_token_id=tokenizer.eos_token_id,
+        )
     gen_time = time.time() - start
     
     gen_text = tokenizer.decode(outputs[0][T:], skip_special_tokens=True).strip()
