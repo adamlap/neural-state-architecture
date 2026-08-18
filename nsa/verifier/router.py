@@ -11,9 +11,7 @@ Part of the Trusted Computing Base (TCB) governing model-to-sink authorization:
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-
 import torch
-
 from nsa.algebra import StateLabel
 
 
@@ -137,6 +135,16 @@ class StreamRouter:
             raise ValueError("Tokenizer must be configured on StreamRouter to decode text.")
         tokens = self.get_stream_tokens(state)
         return self.tokenizer.decode(tokens, skip_special_tokens=True)
+
+    def snapshot(self) -> Tuple[List[Tuple[int, int]], Dict[int, List[int]]]:
+        """Snapshot internal stream history and buffers for atomic rollback."""
+        return (list(self._history), {k: list(v) for k, v in self._buffers.items()})
+
+    def restore(self, snap: Tuple[List[Tuple[int, int]], Dict[int, List[int]]]) -> None:
+        """Restore internal stream history and buffers."""
+        hist, bufs = snap
+        self._history = list(hist)
+        self._buffers = {k: list(v) for k, v in bufs.items()}
 
     def clear(self) -> None:
         """Clear all stream buffers."""

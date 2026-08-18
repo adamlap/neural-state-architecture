@@ -6,27 +6,26 @@ NSAGenerator: Production-Grade Speculative Generation Engine for NSA 2.0.
 Implements:
 1. Transactional Speculative Generation: Buffer -> Audit -> Commit -> Route.
    Invariant: Route(x) => Committed(x). Un-committed/rejected tokens NEVER reach external sinks.
-2. Complete Execution State Rollback: S_t = (X_t, K_t, V_t, sigma_h, sigma_s, q_t, R_t).
+2. Complete Atomic Execution State Rollback: S_t = (X_t, K_t, V_t, sigma_t, q_t, C_t, R_t).
+   Invariant: Rollback(S_{t+k}) = S_t across ALL subsystems.
 3. Deterministic Security Execution Automaton (Q, Sigma_h, Sigma_s, C, delta).
-4. Privilege Escalation Prevention ("Semantic content may not manufacture hard authority").
+4. Privilege Escalation Prevention with Cryptographic Capability Verification.
 5. Multi-Layer Residual Checkpoint Probing & Early Exit.
 6. Native Parameter-Level Recovery (AdapterSwitchRecovery).
 """
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Tuple, Union
-
+from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
-from torch import nn
+import torch.nn as nn
 
 from nsa.algebra import StateLabel
-
-from .automaton import Capability, SecurityAutomaton, SecurityExecutionState
-from .recovery import AdapterSwitchRecovery, HaltRecovery, RecoveryPolicy, SemanticPivotRecovery
-from .router import StreamRouter
-from .speculative import AuditResult, SpeculativeStateAuditor
+from .speculative import SpeculativeStateAuditor, AuditResult
 from .tokens import StateControlTokens
+from .router import StreamRouter
+from .recovery import RecoveryPolicy, SemanticPivotRecovery, AdapterSwitchRecovery, HaltRecovery
+from .automaton import SecurityAutomaton, SecurityExecutionState, Capability, CompleteExecutionState
 
 
 class NSAGenerator:
@@ -54,38 +53,74 @@ class NSAGenerator:
         self.automaton = automaton or SecurityAutomaton()
         self.verbose = verbose
 
-    def _truncate_kv_cache(self, past_key_values: Any, drop_len: int) -> Any:
-        """Truncate `drop_len` tokens from the end of the KV-cache."""
-        if past_key_values is None or drop_len <= 0:
-            return past_key_values
+    def _clone_past_key_values(self, past_key_values: Any) -> Any:
+        """Deep copy / snapshot of past_key_values structure."""
+        if past_key_values is None:
+            return None
 
-        # Modern HuggingFace Cache class (crop method)
-        if hasattr(past_key_values, "crop"):
-            current_len = past_key_values.get_seq_length()
-            past_key_values.crop(max(0, current_len - drop_len))
-            return past_key_values
-
-        # DynamicCache manual slicing
+        # DynamicCache or Cache object with clone/copy
         if hasattr(past_key_values, "key_cache") and hasattr(past_key_values, "value_cache"):
-            for layer_idx in range(len(past_key_values.key_cache)):
-                past_key_values.key_cache[layer_idx] = past_key_values.key_cache[layer_idx][:, :, :-drop_len, :]
-                past_key_values.value_cache[layer_idx] = past_key_values.value_cache[layer_idx][:, :, :-drop_len, :]
-            return past_key_values
+            import copy
+            return copy.deepcopy(past_key_values)
 
-        # Legacy tuple of tuples: ((k0, v0), (k1, v1), ...)
         if isinstance(past_key_values, (tuple, list)):
-            new_cache = []
+            cloned = []
             for layer_past in past_key_values:
                 if isinstance(layer_past, (tuple, list)) and len(layer_past) == 2:
                     k, v = layer_past
-                    new_k = k[:, :, :-drop_len, :]
-                    new_v = v[:, :, :-drop_len, :]
-                    new_cache.append((new_k, new_v))
+                    cloned.append((k.clone(), v.clone()))
                 else:
-                    new_cache.append(layer_past)
-            return tuple(new_cache)
+                    cloned.append(layer_past)
+            return tuple(cloned)
 
         return past_key_values
+
+    def _save_complete_execution_state(
+        self,
+        generated_ids: torch.Tensor,
+        past_key_values: Any,
+    ) -> CompleteExecutionState:
+        """Atomically snapshot S_t = (X_t, K_t, V_t, sigma_t, q_t, C_t, R_t)."""
+        aut_snap = self.automaton.snapshot()
+        inj_snap = self.mask_injector.state_levels.clone() if self.mask_injector is not None else None
+
+        r_hist, r_bufs = ([], {})
+        if self.stream_router is not None:
+            r_hist, r_bufs = self.stream_router.snapshot()
+
+        return CompleteExecutionState(
+            token_ids=generated_ids.clone(),
+            past_key_values=self._clone_past_key_values(past_key_values),
+            state_levels=inj_snap,
+            automaton_snapshot=aut_snap,
+            router_history=r_hist,
+            router_buffers=r_bufs,
+        )
+
+    def _restore_complete_execution_state(
+        self,
+        snapshot: CompleteExecutionState,
+    ) -> Tuple[torch.Tensor, Any, int]:
+        """Atomically revert the entire execution environment to snapshot S_t."""
+        # 1. Revert generated IDs
+        restored_ids = snapshot.token_ids.clone()
+
+        # 2. Revert past key-values
+        restored_kv = self._clone_past_key_values(snapshot.past_key_values)
+
+        # 3. Revert automaton state & capabilities
+        self.automaton.restore(snapshot.automaton_snapshot)
+
+        # 4. Revert mask injector state levels & mask
+        if self.mask_injector is not None and snapshot.state_levels is not None:
+            self.mask_injector.restore((snapshot.state_levels, snapshot.state_levels.shape[1] - 1))
+
+        # 5. Revert stream router buffers & history
+        if self.stream_router is not None:
+            self.stream_router.restore((snapshot.router_history, snapshot.router_buffers))
+
+        restored_state_val = self.automaton.current_state.to_state_label().value
+        return restored_ids, restored_kv, restored_state_val
 
     def generate(
         self,
@@ -103,11 +138,6 @@ class NSAGenerator:
         past_key_values = None
         generated_ids = input_ids.clone()
 
-        # Transaction buffers for speculative chunking
-        speculative_buffer: List[Tuple[torch.Tensor, int]] = []
-        chunk_hidden_states: List[torch.Tensor] = []
-        chunk_tokens: List[torch.Tensor] = []
-
         if isinstance(initial_state_idx, SecurityExecutionState):
             initial_exec_state = initial_state_idx
             curr_state_val = initial_state_idx.to_state_label().value
@@ -122,6 +152,14 @@ class NSAGenerator:
         current_state = torch.tensor([curr_state_val] * batch_size, device=device)
 
         next_input_ids: Optional[torch.Tensor] = None
+
+        # Transaction buffers for speculative chunking
+        speculative_buffer: List[Tuple[torch.Tensor, int]] = []
+        chunk_hidden_states: List[torch.Tensor] = []
+        chunk_tokens: List[torch.Tensor] = []
+
+        # Checkpoint snapshot S_t
+        chunk_start_snapshot = self._save_complete_execution_state(generated_ids, past_key_values)
 
         for _step in range(max_new_tokens):
             if next_input_ids is not None:
@@ -180,7 +218,6 @@ class NSAGenerator:
                 if len(extracted_layers) == 1:
                     token_hidden = extracted_layers[0]  # [B, 1, H]
                 else:
-                    # Stack along layer dimension: [B, 1, num_layers, H]
                     token_hidden = torch.stack(extracted_layers, dim=2)
                 chunk_hidden_states.append(token_hidden)
 
@@ -206,38 +243,30 @@ class NSAGenerator:
                     speculative_buffer.clear()
                     chunk_tokens.clear()
                     chunk_hidden_states.clear()
+                    # Save new base checkpoint snapshot S_t
+                    chunk_start_snapshot = self._save_complete_execution_state(generated_ids, past_key_values)
                 else:
-                    # TRANSACTION ROLLBACK: Discard invalid tokens before they reach sinks
+                    # TRANSACTION ROLLBACK: Atomically restore S_t across ALL subsystems
                     violation_idx = audit_res.violation_token_idx or 0
                     violation_layer = audit_res.violation_layer
 
                     if self.verbose:
                         print(
-                            f"\n[AUDITOR] 🚨 LATTICE VIOLATION DETECTED! Rolling back KV-cache... (Chunk token: {violation_idx})"
+                            f"\n[AUDITOR] 🚨 LATTICE VIOLATION DETECTED! Performing atomic rollback... (Chunk token: {violation_idx})"
                         )
                         if violation_layer is not None and violation_layer != -1:
                             print(
                                 f"[AUDITOR] 🔍 Early Exit: Detected violation forming at intermediate layer {violation_layer}!"
                             )
 
-                    # Only route valid tokens prior to the violation
-                    if self.stream_router is not None and violation_idx > 0:
-                        for tok, st_val in speculative_buffer[:violation_idx]:
-                            self.stream_router.route_token(tok, st_val)
+                    # Atomically restore entire execution environment to chunk start snapshot
+                    generated_ids, past_key_values, restored_st = self._restore_complete_execution_state(
+                        chunk_start_snapshot
+                    )
+                    current_state = torch.tensor([restored_st] * batch_size, device=device)
 
-                    # Discard the rest of the speculative buffer
+                    # Discard speculative buffers
                     speculative_buffer.clear()
-
-                    # Rollback KV-cache & tokens
-                    drop_len = len(chunk_tokens) - max(0, violation_idx)
-                    past_key_values = self._truncate_kv_cache(past_key_values, drop_len)
-                    generated_ids = generated_ids[:, :-drop_len]
-
-                    # Rollback mask injector state levels
-                    if self.mask_injector is not None and self.mask_injector.state_levels.shape[1] > drop_len:
-                        self.mask_injector.state_levels = self.mask_injector.state_levels[:, :-drop_len]
-
-                    # Clear chunk buffers
                     chunk_tokens.clear()
                     chunk_hidden_states.clear()
 
@@ -270,6 +299,7 @@ class NSAGenerator:
                 speculative_buffer.clear()
                 chunk_tokens.clear()
                 chunk_hidden_states.clear()
+                chunk_start_snapshot = self._save_complete_execution_state(generated_ids, past_key_values)
 
             if is_eos:
                 break

@@ -14,13 +14,12 @@ Supports:
 
 from __future__ import annotations
 
-from typing import Generator, List, Optional
-
+from typing import Dict, Generator, List, Optional, Tuple, Union
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch import nn
 
-from nsa.algebra import build_level_attention_mask
+from nsa.algebra import build_level_attention_mask, StateLabel
 
 
 class NSAMaskInjector:
@@ -54,7 +53,7 @@ class NSAMaskInjector:
         self.gate_mode = gate_mode
         self.alpha = alpha
         self.temperature = temperature
-        self.nsa_mask: Optional[torch.Tensor] = None  # pre-computed [B, 1, T, T]
+        self.nsa_mask: Optional[torch.Tensor] = None   # pre-computed [B, 1, T, T]
         self._hooks: List[torch.utils.hooks.RemovableHandle] = []
 
     def update_state(self, new_level: int):
@@ -72,6 +71,23 @@ class NSAMaskInjector:
 
         # Update decode row index to point to the newest token
         self.decode_row_idx = self.state_levels.shape[1] - 1
+
+    def snapshot(self) -> Tuple[torch.Tensor, int]:
+        """Snapshot injector state levels and decode index for atomic transactional rollback."""
+        return (self.state_levels.clone(), self.decode_row_idx)
+
+    def restore(self, snap: Tuple[torch.Tensor, int]) -> None:
+        """Restore injector state levels and decode index, recomputing the attention mask."""
+        st_levels, idx = snap
+        self.state_levels = st_levels.clone()
+        self.decode_row_idx = idx
+        device = self.state_levels.device
+        self.nsa_mask = build_level_attention_mask(
+            self.state_levels,
+            gate_mode=self.gate_mode,
+            alpha=self.alpha,
+            temperature=self.temperature,
+        ).to(device)
 
     # ------------------------------------------------------------------ #
     # Hook that merges the NSA mask into the attention_mask kwarg
@@ -108,11 +124,7 @@ class NSAMaskInjector:
                 if hasattr(past_kv, "get_seq_length"):
                     k_len = past_kv.get_seq_length() + q_len
                 elif isinstance(past_kv, (tuple, list)) and len(past_kv) > 0:
-                    k_len = (
-                        past_kv[0][0].shape[-2]
-                        if isinstance(past_kv[0], (tuple, list))
-                        else past_kv[0].shape[-2]
-                    )
+                    k_len = past_kv[0][0].shape[-2] if isinstance(past_kv[0], (tuple, list)) else past_kv[0].shape[-2]
                     k_len += q_len
                 else:
                     k_len = q_len
@@ -146,9 +158,7 @@ class NSAMaskInjector:
 
         return hook
 
-    def _slice_nsa(
-        self, q_len: int, k_len: int, prompt_len: int, device: torch.device, dtype: torch.dtype
-    ) -> Optional[torch.Tensor]:
+    def _slice_nsa(self, q_len: int, k_len: int, prompt_len: int, device: torch.device, dtype: torch.dtype) -> Optional[torch.Tensor]:
         """Return the NSA mask component shaped ``[1, 1, q_len, k_len]``."""
         if self.nsa_mask is None:
             return None
@@ -157,15 +167,13 @@ class NSAMaskInjector:
             if k_len == prompt_len:
                 return self.nsa_mask.to(device=device, dtype=dtype)
             elif k_len > prompt_len:
-                return F.pad(self.nsa_mask, (0, k_len - prompt_len, 0, k_len - prompt_len)).to(
-                    device=device, dtype=dtype
-                )
+                return F.pad(self.nsa_mask, (0, k_len - prompt_len, 0, k_len - prompt_len)).to(device=device, dtype=dtype)
             else:
                 return self.nsa_mask[:, :, :k_len, :k_len].to(device=device, dtype=dtype)
         elif q_len == 1:
             # KV-cache decode step: selected query row based on decode_row_idx
             row_idx = min(self.decode_row_idx, self.nsa_mask.shape[2] - 1)
-            nsa_row = self.nsa_mask[:, :, row_idx : row_idx + 1, :].to(device=device, dtype=dtype)
+            nsa_row = self.nsa_mask[:, :, row_idx:row_idx+1, :].to(device=device, dtype=dtype)
             if k_len > prompt_len:
                 pad = torch.zeros(1, 1, 1, k_len - prompt_len, device=device, dtype=dtype)
                 return torch.cat([nsa_row, pad], dim=-1)
@@ -210,7 +218,7 @@ class NSAMaskInjector:
     # ------------------------------------------------------------------ #
     # Context manager entry / exit
     # ------------------------------------------------------------------ #
-    def __enter__(self) -> NSAMaskInjector:
+    def __enter__(self) -> "NSAMaskInjector":
         # Pre-compute NSA additive mask [B, 1, T, T]
         device = next(self.model.parameters()).device
         self.nsa_mask = build_level_attention_mask(

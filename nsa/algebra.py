@@ -347,28 +347,47 @@ INTEGRITY_LATTICE = StateLattice[IntegrityLabel]()
 
 @dataclass(frozen=True)
 class HardStateVector:
-    """Hard trusted policy state: Sigma_h = Sigma_C x Sigma_I x Sigma_A x Sigma_L."""
+    """Hard trusted policy state: Sigma_h = Sigma_C x Sigma_I x Sigma_A x Sigma_L.
+
+    Sigma_A is formalized as the boolean lattice of authorization capability sets:
+        Sigma_A = (2^Permissions, subseteq, union, intersection)
+    """
 
     confidentiality: ConfidentialityLabel = ConfidentialityLabel.PUBLIC
     integrity: IntegrityLabel = IntegrityLabel.TRUSTED
-    authorization: Optional[str] = None
+    authorizations: FrozenSet[str] = field(default_factory=frozenset)
     license_tier: int = 0
 
+    @property
+    def authorization(self) -> Optional[str]:
+        """Backward-compatibility helper returning single primary authorization if present."""
+        return next(iter(self.authorizations)) if self.authorizations else None
+
+    def has_permission(self, permission: str) -> bool:
+        """Predicate checking if a specific permission is present in Sigma_A."""
+        return permission in self.authorizations
+
     def join(self, other: HardStateVector) -> HardStateVector:
-        """Component-wise hard lattice join: (⊔_C, ⊔_I, ⊔_A, ⊔_L)."""
+        """Component-wise hard lattice join: (⊔_C, ⊔_I, ⊔_A, ⊔_L).
+
+        Sigma_A join is set union (accumulation of required permissions/authority).
+        """
         return HardStateVector(
             confidentiality=self.confidentiality.join(other.confidentiality),
             integrity=self.integrity.join(other.integrity),
-            authorization=self.authorization or other.authorization,
+            authorizations=self.authorizations | other.authorizations,
             license_tier=max(self.license_tier, other.license_tier),
         )
 
     def meet(self, other: HardStateVector) -> HardStateVector:
-        """Component-wise hard lattice meet: (⊓_C, ⊓_I, ⊓_A, ⊓_L)."""
+        """Component-wise hard lattice meet: (⊓_C, ⊓_I, ⊓_A, ⊓_L).
+
+        Sigma_A meet is set intersection (shared/common authority).
+        """
         return HardStateVector(
             confidentiality=self.confidentiality.meet(other.confidentiality),
             integrity=self.integrity.meet(other.integrity),
-            authorization=self.authorization if self.authorization == other.authorization else None,
+            authorizations=self.authorizations & other.authorizations,
             license_tier=min(self.license_tier, other.license_tier),
         )
 
@@ -410,13 +429,14 @@ class ProductStateVector:
     """Product state vector for Typed Neural Computation (TNC).
 
     Formulates the state space as a Product Lattice:
-        Σ = Σ_confidentiality × Σ_integrity × Σ_confidence × Σ_provenance × Σ_license
+        Σ = Σ_confidentiality × Σ_integrity × Σ_authorization × Σ_license × Σ_confidence × Σ_provenance
 
     Each component carries its own distinct algebraic join (⊔) and meet (⊓) operators.
     """
 
     confidentiality: ConfidentialityLabel = ConfidentialityLabel.PUBLIC
     integrity: IntegrityLabel = IntegrityLabel.TRUSTED
+    authorizations: FrozenSet[str] = field(default_factory=frozenset)
     confidence: float = 1.0
     provenance: FrozenSet[str] = field(default_factory=frozenset)
     license_tier: int = 0
@@ -427,20 +447,22 @@ class ProductStateVector:
         return self.confidentiality
 
     def join_product(self, other: ProductStateVector) -> ProductStateVector:
-        """Product lattice join: (⊔_c, ⊔_i, ⊔_c, ⊔_p, ⊔_l)."""
+        """Product lattice join: (⊔_c, ⊔_i, ⊔_a, ⊔_c, ⊔_p, ⊔_l)."""
         return ProductStateVector(
             confidentiality=self.confidentiality.join(other.confidentiality),
             integrity=self.integrity.join(other.integrity),
+            authorizations=self.authorizations | other.authorizations,
             confidence=min(self.confidence, other.confidence),
             provenance=self.provenance | other.provenance,
             license_tier=max(self.license_tier, other.license_tier),
         )
 
     def meet_product(self, other: ProductStateVector) -> ProductStateVector:
-        """Product lattice meet: (⊓_c, ⊓_i, ⊓_c, ⊓_p, ⊓_l)."""
+        """Product lattice meet: (⊓_c, ⊓_i, ⊓_a, ⊓_c, ⊓_p, ⊓_l)."""
         return ProductStateVector(
             confidentiality=self.confidentiality.meet(other.confidentiality),
             integrity=self.integrity.meet(other.integrity),
+            authorizations=self.authorizations & other.authorizations,
             confidence=max(self.confidence, other.confidence),
             provenance=self.provenance & other.provenance,
             license_tier=min(self.license_tier, other.license_tier),

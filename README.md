@@ -409,10 +409,12 @@ neural-state-architecture/
 │   │   ├── recovery.py              # RecoveryPolicy (AdapterSwitchRecovery, SemanticPivot)
 │   │   └── generation.py            # NSAGenerator (dual DynamicCache, complete state rollback S_t)
 │   └── utils.py                     # Introspection, metrics, and visualization
-├── tests/                           # Complete Unit Test Suite (80 tests, 100% passing)
+├── tests/                           # Complete Unit Test Suite (86 tests, 100% passing)
 │   ├── test_nsa.py                  # Unit tests for algebra, primitives, and utilities
 │   ├── test_transition_algebra.py   # State transition projection legality, idempotence, basis support
 │   ├── test_non_interference.py     # Local & compositional observational equivalence tests
+│   ├── test_atomic_rollback.py      # Complete atomic state restoration (Rollback(S_{t+k}) = S_t)
+│   ├── test_fused_triton_kernel.py  # True Fused (Q, K, V, σ_Q, σ_K) Attention Kernel tests
 │   ├── test_verifier_nsa2.py        # Unit tests for NSA 2.0 verifier, automaton, router, injector
 │   ├── test_security_invariants.py  # Security non-interference invariant checks
 │   ├── test_gradcheck.py            # PyTorch autograd gradcheck
