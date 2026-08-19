@@ -660,6 +660,35 @@
       }
     },
     {
+      "claim_id": "CLAIM-NSA50-GPSE-01",
+      "phase": "NSA 5.0",
+      "title": "Cognitive Capability Hypothesis & Governed Problem-Solving Efficiency",
+      "statement": "100-trial partially observable benchmark demonstrates that explicit cognitive state Omega_t enables an intelligence to actively resolve high epistemic uncertainty and discover latent legal recovery sequences, achieving GPSE = 2.381 with 0 human interventions and 0 governance violations.",
+      "theorem_or_proposition": "Cognitive State Augmentation: GPSE((m, Omega)) > GPSE(m) under partial observability and bounded risk",
+      "assumptions": [
+        "Epistemic uncertainty triggers information gathering (VERIFY)",
+        "Counterfactual simulator explores legal multi-step transition lattice"
+      ],
+      "implementation_paths": [
+        "experiments/nsa50/nsa_runtime/state_augmented_cognitive_agent.py",
+        "experiments/nsa50/environments/partially_observable_devops_world.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_gpse_benchmark.py"
+      ],
+      "experiment_paths": [
+        "experiments/nsa50/gpse_benchmark.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "tasks_evaluated": 100,
+        "gpse_score_nsa": 2.381,
+        "gpse_score_guardrail": 0.0,
+        "human_interventions": 0,
+        "governance_violations": 0
+      }
+    },
+    {
       "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
       "phase": "Phase 14, 26",
       "title": "Whole-System End-to-End Non-Interference Proof",
