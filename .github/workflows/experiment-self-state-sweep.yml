@@ -80,6 +80,28 @@ jobs:
           python experiments/self_state/summarize_sweep.py \
             results/self-state-sweep-*.json \
             --output results/self-state-sweep-summary.json
+      - name: Validate statistical evidence
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          result = json.loads(Path("results/self-state-sweep-summary.json").read_text(encoding="utf-8"))
+          assert result["all_finite"] is True
+          assert result["bootstrap"]["method"] == "percentile bootstrap of the sample mean"
+          assert result["bootstrap"]["samples"] > 0
+          for key in ("recovery_advantage_ci95", "auc_advantage_ci95"):
+              interval = result[key]
+              assert len(interval) == 2
+              assert interval[0] <= interval[1]
+              assert all(math.isfinite(value) for value in interval)
+          for row in result["by_perturbation"]:
+              for key in ("recovery_advantage_ci95", "auc_advantage_ci95"):
+                  interval = row[key]
+                  assert len(interval) == 2
+                  assert interval[0] <= interval[1]
+                  assert all(math.isfinite(value) for value in interval)
+          print("Validated bootstrap uncertainty intervals")
+          PY
       - name: Publish aggregate evidence
         if: always()
         run: |
