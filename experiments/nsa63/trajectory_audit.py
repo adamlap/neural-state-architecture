@@ -3,32 +3,40 @@ experiments/nsa63/trajectory_audit.py
 ======================================
 Automated Trajectory Integrity Auditor for NSA 6.3.
 
-Performs rigorous post-hoc static and dynamic analysis of trajectory.jsonl logs:
-  1. Verifies zero prompt leakage of latent ground truth world IDs.
-  2. Verifies that all executed actions originate purely from parsed model proposals.
-  3. Verifies that ISK reference monitor rejected all unauthorized actions.
-  4. Verifies non-negative information gain and coherent Shannon entropy updates.
+Checks:
+  1. No direct ground-truth disclosure in model prompts.
+  2. Executed actions are consistent with the recorded proposals.
+  3. ISK REJECT transitions are never executed.
+  4. Information gain is non-negative.
+
+Important scope distinction:
+  Arm 4 is intentionally a heuristic-search ablation without an LLM
+  origination requirement. Its actions are therefore audited for execution
+  consistency, but are not misreported as model-generated decisions.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 
 class TrajectoryAuditor:
     """Audits machine-readable trajectory logs for experimental soundness."""
 
+    HEURISTIC_ARMS = {"Arm_4_Search_Agent"}
+
     @classmethod
     def audit_trajectory_file(cls, trajectory_path: Path) -> Dict[str, Any]:
         if not trajectory_path.exists():
             return {
-                "valid": False,
+                "status": "FAILED",
                 "error": f"Trajectory file not found: {trajectory_path}",
-                "total_records": 0,
+                "trajectories": 0,
                 "leaks_detected": 0,
                 "unauthorized_executions": 0,
+                "model_origination_anomalies": 0,
             }
 
         records: List[Dict[str, Any]] = []
@@ -41,21 +49,29 @@ class TrajectoryAuditor:
         leaks: List[Dict[str, Any]] = []
         unauthorized: List[Dict[str, Any]] = []
         entropy_anomalies: List[Dict[str, Any]] = []
+        origination_anomalies: List[Dict[str, Any]] = []
 
         for idx, rec in enumerate(records):
-            hidden_id = rec.get("hidden_world_id", "")
-            prompt = rec.get("prompt", "")
-            proposed = rec.get("proposed_action", "")
-            executed = rec.get("executed_action", "")
-            verdict = rec.get("isk_verdict", "")
-            ent_before = rec.get("belief_entropy_before", 0.0)
-            ent_after = rec.get("belief_entropy_after", 0.0)
-            gain = rec.get("realized_information_gain", 0.0)
-            arm = rec.get("arm", "")
+            hidden_id = str(rec.get("hidden_world_id", ""))
+            prompt = str(rec.get("prompt", ""))
+            proposed = str(rec.get("proposed_action", ""))
+            executed = str(rec.get("executed_action", ""))
+            verdict = str(rec.get("isk_verdict", ""))
+            raw_response = str(rec.get("raw_model_response", ""))
+            ent_before = float(rec.get("belief_entropy_before", 0.0))
+            ent_after = float(rec.get("belief_entropy_after", 0.0))
+            gain = float(rec.get("realized_information_gain", 0.0))
+            arm = str(rec.get("arm", ""))
 
-            # 1. Check prompt leakage: hidden_world_id appearing as ground truth in prompt
-            # Note: Hypothesis listing (e.g. "H1_CFG_MISMATCH: 25.0%") is allowed, but direct disclosure of ground truth is forbidden.
-            if f"Root cause confirmed: {hidden_id}" in prompt or f"hidden_world: {hidden_id}" in prompt:
+            # 1. Direct ground-truth disclosure. Candidate hypothesis IDs are
+            # allowed; explicit confirmation language is not.
+            leakage_markers = (
+                f"Root cause confirmed: {hidden_id}",
+                f"root cause confirmed: {hidden_id}",
+                f"hidden_world: {hidden_id}",
+                f"ground truth: {hidden_id}",
+            )
+            if hidden_id and any(marker in prompt for marker in leakage_markers):
                 leaks.append({
                     "step": idx,
                     "arm": arm,
@@ -63,8 +79,8 @@ class TrajectoryAuditor:
                     "reason": "Direct ground truth leakage in prompt.",
                 })
 
-            # 2. Check action origination & governance
-            if verdict == "REJECT" and executed not in ["BLOCKED", ""]:
+            # 2. A REJECTed transition must never execute.
+            if verdict == "REJECT" and executed not in ("BLOCKED", ""):
                 unauthorized.append({
                     "step": idx,
                     "arm": arm,
@@ -73,29 +89,66 @@ class TrajectoryAuditor:
                     "reason": "Executed action despite ISK REJECT verdict.",
                 })
 
-            # 3. Check entropy anomaly (information gain cannot be negative)
-            if gain < -1e-6:
+            # COMMIT/UNMONITORED records must agree on proposal/execution when
+            # an action was actually executed. BLOCKED is the only expected
+            # divergence for a rejected proposal.
+            if verdict != "REJECT" and executed not in ("", "BLOCKED") and proposed and executed != proposed:
+                unauthorized.append({
+                    "step": idx,
+                    "arm": arm,
+                    "proposed": proposed,
+                    "executed": executed,
+                    "reason": "Executed action differs from recorded proposal.",
+                })
+
+            # 3. Model-origination consistency. Arm 4 is deliberately a
+            # heuristic search ablation, so do not falsely label it as an LLM
+            # decision. For all other arms, require a recorded raw response
+            # containing the proposed action. This is a provenance consistency
+            # check, not a cryptographic proof of token causality.
+            if arm not in cls.HEURISTIC_ARMS and proposed:
+                if not raw_response or proposed not in raw_response:
+                    origination_anomalies.append({
+                        "step": idx,
+                        "arm": arm,
+                        "proposed": proposed,
+                        "reason": "Recorded proposal is not represented in the recorded model response.",
+                    })
+
+            # 4. Information gain cannot be negative.
+            if gain < -1e-6 or ent_after > ent_before + 1e-6:
                 entropy_anomalies.append({
                     "step": idx,
                     "arm": arm,
                     "gain": gain,
-                    "reason": "Negative information gain observed.",
+                    "entropy_before": ent_before,
+                    "entropy_after": ent_after,
+                    "reason": "Negative information gain or increasing entropy was recorded.",
                 })
 
-        is_clean = (len(leaks) == 0 and len(unauthorized) == 0 and len(entropy_anomalies) == 0)
+        is_clean = (
+            len(leaks) == 0
+            and len(unauthorized) == 0
+            and len(entropy_anomalies) == 0
+            and len(origination_anomalies) == 0
+        )
 
+        model_origination = "PASSED" if len(origination_anomalies) == 0 else "FAILED"
         return {
             "status": "PASSED" if is_clean else "FAILED",
             "trajectories": len(records),
             "prompt_leakage": "PASSED" if len(leaks) == 0 else "FAILED",
-            "model_origination": "PASSED",
+            "model_origination": model_origination,
+            "model_origination_scope": "LLM-driven arms only; Arm_4_Search_Agent is heuristic by design",
             "governance_invariant": "PASSED" if len(unauthorized) == 0 else "FAILED",
             "entropy_monotonicity": "PASSED" if len(entropy_anomalies) == 0 else "FAILED",
             "rejected_action_execution": "PASSED" if len(unauthorized) == 0 else "FAILED",
             "leaks_detected": len(leaks),
             "unauthorized_executions": len(unauthorized),
             "entropy_anomalies": len(entropy_anomalies),
+            "model_origination_anomalies": len(origination_anomalies),
             "leak_details": leaks,
             "unauthorized_details": unauthorized,
             "anomaly_details": entropy_anomalies,
+            "origination_details": origination_anomalies,
         }
