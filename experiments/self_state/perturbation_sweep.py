@@ -26,6 +26,11 @@ def _rollout(model, tokens, initial_state, baseline_final, feedback, steps):
     return distances
 
 
+def _finite(value: float) -> bool:
+    """Return a real Python bool for a scalar experiment metric."""
+    return bool(torch.isfinite(torch.tensor(value)).item())
+
+
 def run(seed: int, perturbations: list[float], steps: int = 8, batch: int = 4,
         seq_len: int = 24, vocab_size: int = 128) -> dict:
     torch.manual_seed(seed)
@@ -59,10 +64,40 @@ def run(seed: int, perturbations: list[float], steps: int = 8, batch: int = 4,
             "recovery_advantage": off_norm[-1] - on_norm[-1],
             "auc_advantage": off_auc - on_auc,
         })
-    return {"seed": seed, "steps": steps, "results": rows,
-            "finite": float(all(torch.isfinite(torch.tensor(
-                [r["initial_distance"], r["feedback_enabled"]["auc"], r["feedback_disabled"]["auc"]]))
-                for r in rows))}
+
+    metrics = []
+    for row in rows:
+        metrics.extend([
+            row["initial_distance"],
+            *row["feedback_enabled"]["distances"],
+            *row["feedback_enabled"]["normalized"],
+            row["feedback_enabled"]["auc"],
+            row["feedback_enabled"]["final_normalized"],
+            *row["feedback_disabled"]["distances"],
+            *row["feedback_disabled"]["normalized"],
+            row["feedback_disabled"]["auc"],
+            row["feedback_disabled"]["final_normalized"],
+            row["recovery_advantage"],
+            row["auc_advantage"],
+        ])
+    finite = all(_finite(value) for value in metrics)
+    if not finite:
+        raise RuntimeError("Self-state perturbation sweep produced NaN or Inf metrics")
+
+    advantages = [r["recovery_advantage"] for r in rows]
+    auc_advantages = [r["auc_advantage"] for r in rows]
+    return {
+        "seed": seed,
+        "steps": steps,
+        "perturbations": perturbations,
+        "results": rows,
+        "summary": {
+            "mean_recovery_advantage": sum(advantages) / len(advantages),
+            "positive_recovery_advantage_fraction": sum(a > 0 for a in advantages) / len(advantages),
+            "mean_auc_advantage": sum(auc_advantages) / len(auc_advantages),
+        },
+        "finite": True,
+    }
 
 
 def main() -> None:
