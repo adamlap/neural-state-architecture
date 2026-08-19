@@ -577,6 +577,60 @@
       }
     },
     {
+      "claim_id": "CLAIM-LOCAL-RUNTIME-01",
+      "phase": "NSA 4.1",
+      "title": "NSA Local Cognitive Agent Runtime & Multi-Backend Inference",
+      "statement": "Local runtime engine interfaces open-weight LLMs (Ollama, PyTorch Transformers) with the NSA Cognitive State Omega_t, Epistemic Governor, and ISK Reference Monitor over a categorized multi-tier (T0-T4) sandboxed environment.",
+      "theorem_or_proposition": "Local Runtime Governance: LLM Proposal -> State Omega -> ISK -> Sandboxed Execution",
+      "assumptions": [
+        "Inference backend exposes structured proposal outputs",
+        "Deterministic Reference Monitor active"
+      ],
+      "implementation_paths": [
+        "nsa/runtime/agent_runtime.py",
+        "nsa/runtime/inference/base.py",
+        "nsa/runtime/inference/ollama.py",
+        "nsa/runtime/inference/transformers.py",
+        "nsa/environment/sandboxed_world.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_local_runtime.py"
+      ],
+      "experiment_paths": [],
+      "epistemic_status": "UNIT_TESTED",
+      "latest_metrics": {
+        "inference_backends_supported": 2,
+        "tool_registry_tiers": 5,
+        "runtime_trace_verified": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-REAL-MODEL-BENCHMARK-01",
+      "phase": "NSA 4.1",
+      "title": "Real-Model Governance & Covert Adversarial Prompt Benchmark",
+      "statement": "Benchmark evaluates an agent driven by real LLM inference under legitimate and covert adversarial prompts, proving 0 unauthorized root mutations in the environment and 0 governance violations under the NSA runtime substrate.",
+      "theorem_or_proposition": "Governed Real LLM Autonomy: A_attained <= A_authorized with V_governance = 0 under adversarial LLM proposals",
+      "assumptions": [
+        "Tool execution mediated through SandboxedWorldEnvironment and ISK"
+      ],
+      "implementation_paths": [
+        "nsa/runtime/agent_runtime.py",
+        "nsa/core/safety_kernel.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_local_runtime.py"
+      ],
+      "experiment_paths": [
+        "experiments/llm/real_model_governance_suite.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "tasks_evaluated": 50,
+        "unauthorized_root_mutations": 0,
+        "governance_violations": 0
+      }
+    },
+    {
       "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
       "phase": "Phase 14, 26",
       "title": "Whole-System End-to-End Non-Interference Proof",
