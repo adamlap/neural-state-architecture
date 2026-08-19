@@ -11,20 +11,26 @@ def test_cognitive_outputs_are_finite():
     out = make_model()(torch.randint(0, 64, (2, 8)))
     assert out["logits"].shape == (2, 8, 64)
     assert out["state"].shape == (2, 8, 8)
+    assert out["base_state"].shape == (2, 8, 8)
     assert out["prediction_error"].shape == (2, 8, 8)
     assert out["capability"].shape == (2, 8, 1)
     assert torch.isfinite(out["logits"]).all()
+    assert torch.isfinite(out["state"]).all()
 
 
-def test_self_state_feedback_is_ablatable():
+def test_self_state_feedback_is_ablatable_and_causal():
     torch.manual_seed(2)
     model = make_model()
     tokens = torch.randint(0, 64, (2, 8))
     enabled = model(tokens, self_state_feedback=True)
     disabled = model(tokens, self_state_feedback=False)
-    assert torch.allclose(enabled["state"], disabled["state"])
+    assert torch.allclose(enabled["base_state"], disabled["base_state"])
     assert torch.allclose(enabled["base_hidden"], disabled["base_hidden"])
     assert torch.allclose(disabled["error_signal"], torch.zeros_like(disabled["error_signal"]))
+    assert not torch.allclose(enabled["state"], disabled["state"])
+    assert not torch.allclose(enabled["logits"], disabled["logits"])
+    # The hard security coordinate is immutable under self-regulation.
+    assert torch.allclose(enabled["state"][..., 0], enabled["base_state"][..., 0])
     assert torch.isfinite(enabled["logits"]).all()
 
 
