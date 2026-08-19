@@ -1,11 +1,12 @@
 """Heterogeneous algebra primitives for canonical NSA state.
 
-Phase 12 starts by making the algebra explicit at the domain boundary. Each
-state coordinate owns its own join/meet semantics; the product algebra then
-combines coordinates without pretending that every domain is numeric.
+Phase 12 makes state algebra explicit at the domain boundary. Each coordinate
+owns its own join/meet semantics; the product combines coordinates without
+reducing heterogeneous state to a scalar score.
 
-This module is deliberately independent of model weights or hidden activations.
-It is a deterministic mathematical substrate for future NSA adapters.
+This module is deterministic state infrastructure. It does not modify model
+weights or hidden activations and therefore is not, by itself, intrinsic neural
+security.
 """
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ from dataclasses import dataclass
 from enum import Enum
 from math import isfinite
 from typing import FrozenSet, Generic, Protocol, TypeVar
-
 
 T = TypeVar("T")
 
@@ -55,14 +55,33 @@ class CapabilityDomain:
             raise TypeError("capability domain requires FrozenSet[str]")
 
 
+class ConstraintSetDomain:
+    """Constraint lattice ordered by set inclusion.
+
+    A join accumulates required constraints and a meet retains only constraints
+    common to both states. This intentionally treats constraints as opaque
+    identifiers; semantic implication belongs to a later constraint solver.
+    """
+
+    def join(self, left: FrozenSet[str], right: FrozenSet[str]) -> FrozenSet[str]:
+        return left | right
+
+    def meet(self, left: FrozenSet[str], right: FrozenSet[str]) -> FrozenSet[str]:
+        return left & right
+
+    def validate(self, value: FrozenSet[str]) -> None:
+        if not isinstance(value, frozenset) or not all(isinstance(v, str) for v in value):
+            raise TypeError("constraint domain requires FrozenSet[str]")
+
+
 class NumericRangeDomain:
-    """Closed numeric interval lattice ordered by increasing severity."""
+    """Closed numeric interval [minimum, maximum] with max/min lattice ops."""
 
     def __init__(self, minimum: float = 0.0, maximum: float = 1.0) -> None:
         if not isfinite(minimum) or not isfinite(maximum) or minimum > maximum:
             raise ValueError("invalid numeric range")
-        self.minimum = minimum
-        self.maximum = maximum
+        self.minimum = float(minimum)
+        self.maximum = float(maximum)
 
     def validate(self, value: float) -> None:
         if not isinstance(value, (int, float)) or isinstance(value, bool):
@@ -79,6 +98,88 @@ class NumericRangeDomain:
         self.validate(left)
         self.validate(right)
         return min(float(left), float(right))
+
+
+@dataclass(frozen=True)
+class ProbabilityInterval:
+    """Closed probability interval; ``lower > upper`` represents bottom/empty."""
+
+    lower: float
+    upper: float
+
+    @property
+    def is_empty(self) -> bool:
+        return self.lower > self.upper
+
+
+class ProbabilityIntervalDomain:
+    """Probability-set lattice ordered by set inclusion.
+
+    Join is the smallest closed probability interval containing both operands.
+    Meet is their intersection, with an explicit empty element for disjoint
+    intervals. This avoids pretending that arbitrary probability distributions
+    form a closed pointwise lattice under normalization.
+    """
+
+    def validate(self, value: ProbabilityInterval) -> None:
+        if not isinstance(value, ProbabilityInterval):
+            raise TypeError("probability domain requires ProbabilityInterval")
+        if not (0.0 <= value.lower <= 1.0 and 0.0 <= value.upper <= 1.0):
+            raise ValueError("probability bounds must lie in [0, 1]")
+        if value.is_empty:
+            raise ValueError("empty probability interval must be represented by ProbabilityInterval(1, 0)")
+
+    def join(self, left: ProbabilityInterval, right: ProbabilityInterval) -> ProbabilityInterval:
+        self.validate(left)
+        self.validate(right)
+        return ProbabilityInterval(min(left.lower, right.lower), max(left.upper, right.upper))
+
+    def meet(self, left: ProbabilityInterval, right: ProbabilityInterval) -> ProbabilityInterval:
+        self.validate(left)
+        self.validate(right)
+        lower = max(left.lower, right.lower)
+        upper = min(left.upper, right.upper)
+        if lower > upper:
+            return ProbabilityInterval(1.0, 0.0)
+        return ProbabilityInterval(lower, upper)
+
+
+@dataclass(frozen=True)
+class TemporalWindow:
+    """Closed temporal window expressed in monotonic numeric ticks."""
+
+    start: float
+    end: float
+
+    @property
+    def is_empty(self) -> bool:
+        return self.start > self.end
+
+
+class TemporalWindowDomain:
+    """Interval lattice over monotonic time windows, including empty meet."""
+
+    def validate(self, value: TemporalWindow) -> None:
+        if not isinstance(value, TemporalWindow):
+            raise TypeError("temporal domain requires TemporalWindow")
+        if not isfinite(value.start) or not isfinite(value.end):
+            raise ValueError("temporal bounds must be finite")
+        if value.is_empty:
+            raise ValueError("empty temporal window must be represented explicitly by a future bottom type")
+
+    def join(self, left: TemporalWindow, right: TemporalWindow) -> TemporalWindow:
+        self.validate(left)
+        self.validate(right)
+        return TemporalWindow(min(left.start, right.start), max(left.end, right.end))
+
+    def meet(self, left: TemporalWindow, right: TemporalWindow) -> TemporalWindow:
+        self.validate(left)
+        self.validate(right)
+        lower = max(left.start, right.start)
+        upper = min(left.end, right.end)
+        if lower > upper:
+            raise ValueError("temporal windows are disjoint; explicit bottom is required")
+        return TemporalWindow(lower, upper)
 
 
 class EnumDomain(Generic[T]):
@@ -133,13 +234,18 @@ class HeterogeneousState(Generic[T]):
 
     @staticmethod
     def _domain_signature(domain: AlgebraDomain[T]) -> tuple[object, ...]:
-        """Return semantic domain configuration rather than object identity."""
         if isinstance(domain, BooleanDomain):
             return (BooleanDomain,)
         if isinstance(domain, CapabilityDomain):
             return (CapabilityDomain,)
+        if isinstance(domain, ConstraintSetDomain):
+            return (ConstraintSetDomain,)
         if isinstance(domain, NumericRangeDomain):
             return (NumericRangeDomain, domain.minimum, domain.maximum)
+        if isinstance(domain, ProbabilityIntervalDomain):
+            return (ProbabilityIntervalDomain,)
+        if isinstance(domain, TemporalWindowDomain):
+            return (TemporalWindowDomain,)
         if isinstance(domain, EnumDomain):
             return (EnumDomain, domain.enum_type)
         return (type(domain), repr(domain))
