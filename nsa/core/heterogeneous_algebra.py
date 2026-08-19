@@ -196,7 +196,7 @@ class EnumDomain(Generic[T]):
         return left if left.value <= right.value else right
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class HeterogeneousState(Generic[T]):
     """Typed product element whose coordinates use independent domains."""
 
@@ -208,6 +208,17 @@ class HeterogeneousState(Generic[T]):
             raise ValueError("values and domains must have identical arity")
         for value, domain in zip(self.values, self.domains):
             domain.validate(value)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, HeterogeneousState):
+            return False
+        if self.values != other.values:
+            return False
+        try:
+            self._compatible(other)
+            return True
+        except ValueError:
+            return False
 
     def join(self, other: "HeterogeneousState[T]") -> "HeterogeneousState[T]":
         self._compatible(other)

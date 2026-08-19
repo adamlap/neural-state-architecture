@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
+from nsa.runtime.inference.base import LLMGenerationOutput
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 from nsa.server.proxy import NSAHTTPHandler, NSAProxyRuntime
 
@@ -23,6 +24,11 @@ def nsa_test_server():
     # isolate this suite from requiring an Ollama daemon on the CI runner.
     with patch.object(OllamaInferenceBackend, "_resolve_connection", lambda self: None):
         runtime = NSAProxyRuntime(backend_type="ollama", model="qwen2.5:3b")
+        runtime.backend.generate = lambda **kwargs: LLMGenerationOutput(
+            text="Test NSA Response: Cluster state nominal.",
+            tokens=[1],
+            confidence_estimate=0.95,
+        )
         runtime.backend.generate_text = lambda prompt, system_prompt=None, max_tokens=1024, temperature=0.7: "Test NSA Response: Cluster state nominal."
         NSAHTTPHandler.runtime = runtime
 
