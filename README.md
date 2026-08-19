@@ -5,7 +5,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-239%20Passing-brightgreen.svg)]()
-[![Evidence](https://img.shields.io/badge/Evidence-31%2F31%20Verified-blue.svg)](evidence/manifest.json)
+[![Evidence](https://img.shields.io/badge/Evidence-32%2F32%20Verified-blue.svg)](evidence/manifest.json)
 
 ## The idea
 
@@ -69,8 +69,8 @@ The result is interesting because it separates **capability** from **governance*
 
 The repository currently reports:
 
-- **239/239 automated tests passing**.
-- **31/31 evidence claims verified** by the repository evidence machinery.
+- **243/243 automated tests passing**.
+- **32/32 evidence claims verified** by the repository evidence machinery.
 - NSA 6.3 includes bootstrap confidence intervals and effect-size calculations.
 - Trajectory auditing checks prompt leakage, model-originated actions, governance enforcement, and entropy/information-gain consistency.
 
