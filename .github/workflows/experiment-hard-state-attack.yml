@@ -1,0 +1,41 @@
+name: NSA Hard-State Integrity Experiment
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'nsa/**'
+      - 'experiments/safety/**'
+      - '.github/workflows/experiment-hard-state-attack.yml'
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 7, 21, 42]
+        attack: [1, 10, 100]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - name: Run hard-state integrity attack
+        run: |
+          mkdir -p results
+          PYTHONPATH=. python experiments/safety/hard_state_attack.py --seed ${{ matrix.seed }} --attack ${{ matrix.attack }} | tee results/result.json
+      - name: Assert hard-state immutability
+        run: |
+          python -c "import json; d=json.load(open('results/result.json')); assert d['security_immutable'] and d['security_invariant_error'] == 0.0, d; print('PASS:', d)"
+      - name: Add result to job summary
+        run: |
+          echo '## Hard-state integrity — seed ${{ matrix.seed }}, attack ${{ matrix.attack }}' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat results/result.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hard-state-${{ matrix.seed }}-${{ matrix.attack }}
+          path: results/result.json
