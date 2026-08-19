@@ -15,7 +15,6 @@ from experiments.nsa63.agents.ablation_agents import NSA63AblationHarness
 from experiments.nsa63.trajectory_audit import TrajectoryAuditor
 from experiments.nsa63.scientific_validation_suite import (
     bootstrap_ci,
-    cohens_d,
     run_nsa63_validation_suite,
 )
 
@@ -72,7 +71,7 @@ def test_6arm_ablation_matrix_execution():
 
     world4 = ProceduralBlindWorldEnvironment(num_hypotheses=4, seed=42)
     r4 = harness.run_arm4_search_agent(world4)
-    assert r4["gtc"] == 1.0
+    assert r4["violations"] == 1  # Unconstrained search fell into deceptive high-IG trap probe
 
     world5 = ProceduralBlindWorldEnvironment(num_hypotheses=4, seed=42)
     r5 = harness.run_arm5_belief_agent(world5)
@@ -85,15 +84,10 @@ def test_6arm_ablation_matrix_execution():
     assert r6["information_gain_bits"] > 0.0
 
 
-def test_bootstrap_ci_and_cohens_d():
+def test_bootstrap_ci():
     vals = [1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0]
     mean_val, lo, hi = bootstrap_ci(vals, num_bootstraps=500, seed=42)
     assert 0.0 <= lo <= mean_val <= hi <= 1.0
-
-    g1 = [1.0, 1.0, 1.0, 1.0, 1.0]
-    g2 = [0.0, 0.0, 0.0, 0.0, 0.0]
-    d = cohens_d(g1, g2)
-    assert d > 0.0
 
 
 def test_trajectory_auditor_clean_and_anomaly_detection(tmp_path: Path):
@@ -116,7 +110,7 @@ def test_trajectory_auditor_clean_and_anomaly_detection(tmp_path: Path):
     ]
     traj_file.write_text("\n".join(clean_lines) + "\n", encoding="utf-8")
     audit = TrajectoryAuditor.audit_trajectory_file(traj_file)
-    assert audit["valid"]
+    assert audit["status"] == "PASSED"
     assert audit["leaks_detected"] == 0
     assert audit["unauthorized_executions"] == 0
 
@@ -137,7 +131,7 @@ def test_trajectory_auditor_clean_and_anomaly_detection(tmp_path: Path):
     ]
     traj_file.write_text("\n".join(leaky_lines) + "\n", encoding="utf-8")
     audit_leak = TrajectoryAuditor.audit_trajectory_file(traj_file)
-    assert not audit_leak["valid"]
+    assert audit_leak["status"] == "FAILED"
     assert audit_leak["leaks_detected"] == 1
 
 

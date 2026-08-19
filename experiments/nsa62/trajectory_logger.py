@@ -53,10 +53,12 @@ class TrajectoryLogger:
 
     def log_step(self, step: TrajectoryStep) -> None:
         """Appends a step record to trajectory.jsonl."""
+        self.trajectory_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.trajectory_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(asdict(step)) + "\n")
 
     def save_aggregate(self, summary: Dict[str, Any]) -> None:
         """Writes aggregate summary and metadata to aggregate.json."""
+        self.aggregate_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.aggregate_file, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)

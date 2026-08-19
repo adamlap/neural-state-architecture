@@ -39,6 +39,7 @@ def run_closed_loop_demo(
     backend_mode: str = "mock",
     model_name: str = "Qwen/Qwen2.5-0.5B-Instruct",
     api_base: Optional[str] = None,
+    debug: bool = False,
 ):
     b_mode = BackendMode(backend_mode.lower())
 
@@ -74,7 +75,10 @@ def run_closed_loop_demo(
     tools = [{"name": t.name, "description": t.description} for t in world.get_tool_definitions()]
 
     print(f" [INCIDENT] Degraded Cluster Latency Spike Alert in Staging.")
-    print(f" [INCIDENT] Ground Truth Root Cause: {world.active_world.world_id} (Hidden from Agent)")
+    if debug:
+        print(f" [INCIDENT] Ground Truth Root Cause: {world.active_world.world_id} (Debug Mode Only)")
+    else:
+        print(f" [INCIDENT] Ground Truth Root Cause: [CONFIDENTIAL / EVAL-LAYER ONLY]")
     print("─" * 72)
     time.sleep(0.3)
 
@@ -217,5 +221,6 @@ if __name__ == "__main__":
     parser.add_argument("--backend", type=str, default="mock", choices=["mock", "cached", "remote", "ollama", "lmstudio", "openai"])
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-0.5B-Instruct")
     parser.add_argument("--api-base", type=str, default=None, help="Base URL for LM Studio / Ollama (default: auto-discover)")
+    parser.add_argument("--debug", action="store_true", help="Enable developer debug mode showing latent ground truth")
     args = parser.parse_args()
-    run_closed_loop_demo(backend_mode=args.backend, model_name=args.model, api_base=args.api_base)
+    run_closed_loop_demo(backend_mode=args.backend, model_name=args.model, api_base=args.api_base, debug=args.debug)

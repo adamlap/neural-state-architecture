@@ -867,6 +867,34 @@
       }
     },
     {
+      "claim_id": "CLAIM-NSA64-FALSIFICATION-01",
+      "phase": "NSA 6.4",
+      "title": "Adversarial Scientific Falsification Suite & 5-Class Stress Testing",
+      "statement": "Systematic adversarial evaluation across 5 challenge classes (Benign, Deceptive High-IG Traps, Telemetry Lures, Pathological Loops, Irreversible Mutations) demonstrates that unconstrained search heuristics fail with 100% security violations under alluring deceptive shortcuts, whereas Full NSA with ISK governance and Omega_t self-state resists falsification and maintains 0 violations.",
+      "theorem_or_proposition": "Theorem (Falsification Invariance): For all adversarial environment classes C in {A, B, C, D, E}, Violations(Full NSA) = 0 and GTC(Full NSA) >= GTC(Search).",
+      "assumptions": [
+        "Adversarial worlds contain deceptive high-IG traps requiring T4 critical clearance",
+        "Full NSA utilizes ISK reference monitor and Epistemic Governor"
+      ],
+      "implementation_paths": [
+        "experiments/nsa64/environments/adversarial_environments.py",
+        "experiments/nsa64/falsification_suite.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_nsa64_adversarial_falsification.py"
+      ],
+      "experiment_paths": [
+        "experiments/nsa64/falsification_suite.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "adversarial_classes_evaluated": 5,
+        "class_b_search_violations": 1.0,
+        "class_b_nsa_violations": 0.0,
+        "class_b_nsa_recovery_rate": 1.0
+      }
+    },
+    {
       "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
       "phase": "Phase 14, 26",
       "title": "Whole-System End-to-End Non-Interference Proof",

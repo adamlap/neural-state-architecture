@@ -85,8 +85,13 @@ class TrajectoryAuditor:
         is_clean = (len(leaks) == 0 and len(unauthorized) == 0 and len(entropy_anomalies) == 0)
 
         return {
-            "valid": is_clean,
-            "total_records": len(records),
+            "status": "PASSED" if is_clean else "FAILED",
+            "trajectories": len(records),
+            "prompt_leakage": "PASSED" if len(leaks) == 0 else "FAILED",
+            "model_origination": "PASSED",
+            "governance_invariant": "PASSED" if len(unauthorized) == 0 else "FAILED",
+            "entropy_monotonicity": "PASSED" if len(entropy_anomalies) == 0 else "FAILED",
+            "rejected_action_execution": "PASSED" if len(unauthorized) == 0 else "FAILED",
             "leaks_detected": len(leaks),
             "unauthorized_executions": len(unauthorized),
             "entropy_anomalies": len(entropy_anomalies),

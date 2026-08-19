@@ -40,10 +40,26 @@ class OllamaInferenceBackend(InferenceBackend):
             self.mode = BackendMode.OLLAMA
         self.base_url = (base_url or os.environ.get("OLLAMA_HOST", "http://localhost:11434")).rstrip("/")
         self.timeout_sec = timeout_sec
+        if self.mode != BackendMode.MOCK:
+            self._resolve_connection()
 
-    def _resolve_url(self) -> str:
-        if self.mode == BackendMode.MOCK:
-            return self.base_url
+    OLLAMA_MODEL_ALIASES = {
+        "Qwen/Qwen2.5-0.5B-Instruct": "qwen2.5:0.5b",
+        "Qwen/Qwen2.5-1.5B-Instruct": "qwen2.5:1.5b",
+        "Qwen/Qwen2.5-3B-Instruct": "qwen2.5:3b",
+        "Qwen/Qwen2.5-7B-Instruct": "qwen2.5:7b",
+        "Qwen/Qwen2.5-14B-Instruct": "qwen2.5:14b",
+        "Qwen/Qwen2.5-32B-Instruct": "qwen2.5:32b",
+        "meta-llama/Llama-3.1-8B-Instruct": "llama3.1:8b",
+        "meta-llama/Llama-3.1-70B-Instruct": "llama3.1:70b",
+    }
+
+    def _resolve_connection(self) -> None:
+        """Probes localhost and Windows host gateway to connect to Ollama and resolve model name."""
+        # Normalize HuggingFace names to Ollama tags
+        if self.model_name in self.OLLAMA_MODEL_ALIASES:
+            self.model_name = self.OLLAMA_MODEL_ALIASES[self.model_name]
+
         candidates = [self.base_url]
         if "localhost" in self.base_url or "127.0.0.1" in self.base_url:
             try:
@@ -56,28 +72,65 @@ class OllamaInferenceBackend(InferenceBackend):
             except Exception:
                 pass
 
+        connected = False
+        last_err = None
+        available_models: List[str] = []
         for url in candidates:
             try:
                 req = urllib.request.Request(f"{url}/api/tags", method="GET")
                 with urllib.request.urlopen(req, timeout=2.0) as resp:
                     if resp.status == 200:
-                        return url
-            except Exception:
-                pass
-        return self.base_url
+                        self.base_url = url
+                        connected = True
+                        data = json.loads(resp.read().decode("utf-8"))
+                        available_models = [m.get("name", "") for m in data.get("models", [])]
+                        break
+            except Exception as e:
+                last_err = e
+
+        if not connected:
+            raise ConnectionError(
+                f"\n{'='*72}\n"
+                f"[OLLAMA CONNECTION ERROR] Could not connect to Ollama at {candidates}.\n"
+                f"{'='*72}\n"
+                f"How to resolve:\n"
+                f"  1. If running LM Studio on Windows (Recommended):\n"
+                f"     • Open LM Studio -> 'Developer / Local Server' tab (port 1234).\n"
+                f"     • Click 'Start Server' (model loaded).\n"
+                f"     • Run: make demo-lmstudio\n\n"
+                f"  2. If running Ollama on Windows outside WSL:\n"
+                f"     • By default Windows Ollama only listens on 127.0.0.1 (blocking WSL).\n"
+                f"     • Set Windows Environment Variable: OLLAMA_HOST=0.0.0.0\n"
+                f"     • Restart Ollama in Windows, then run: make demo-live-ollama\n\n"
+                f"  3. If running Ollama inside WSL:\n"
+                f"     • Open a separate WSL terminal and run: ollama serve\n"
+                f"     • Run: make demo-live-ollama\n"
+                f"{'='*72}\n"
+            )
+
+        # Match model in Ollama tags
+        if available_models and self.model_name not in available_models:
+            # Try fuzzy matching (e.g. qwen2.5:3b matching qwen2.5:3b-instruct or prefix)
+            matched = False
+            for m in available_models:
+                if m.startswith(self.model_name) or self.model_name.startswith(m.split(":")[0]):
+                    self.model_name = m
+                    matched = True
+                    break
+            if not matched and (self.model_name == "default" or not self.model_name):
+                # Pick first non-embedding model
+                text_models = [m for m in available_models if "embed" not in m]
+                if text_models:
+                    self.model_name = text_models[0]
 
     def check_health(self) -> bool:
         """Verifies if the Ollama daemon is reachable."""
         if self.mode == BackendMode.MOCK:
             return True
         try:
-            url = self._resolve_url()
-            req = urllib.request.Request(f"{url}/api/tags", method="GET")
+            req = urllib.request.Request(f"{self.base_url}/api/tags", method="GET")
             with urllib.request.urlopen(req, timeout=3.0) as resp:
-                if resp.status == 200:
-                    self.base_url = url
-                    return True
-                return False
+                return resp.status == 200
         except Exception:
             return False
 
