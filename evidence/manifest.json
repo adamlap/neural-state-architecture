@@ -310,10 +310,10 @@
     },
     {
       "claim_id": "CLAIM-PHASE33-FLAGSHIP-01",
-      "phase": "Phase 33",
-      "title": "Phase 33 Flagship Tri-Experiment on Grounded Self-State Reasoning",
-      "statement": "Tri-experiment demonstrates: (1) ECE calibration improvement under matched compute, (2) intrinsic fault detection tau_detect prior to semantic failure tau_failure, and (3) epistemically-governed and legally-constrained counterfactual action selection.",
-      "theorem_or_proposition": "Hypothesis: Safety Metadata -> Computationally Useful Self-State",
+      "phase": "Phase 33, 33.1",
+      "title": "Phase 33.1 Flagship 5-Arm Ablation, Latent Drift & Adversarial Suite",
+      "statement": "Phase 33.1 establishes under matched compute: (1) 5-arm ablation demonstrating Grounded Epistemic state strictly outperforms ungrounded and baseline models in ECE/Brier reduction, (2) blind gradual latent drift detection (t_latent < t_detect < t_failure) with early warning margin, and (3) adversarial epistemic attack resistance.",
+      "theorem_or_proposition": "Hypothesis: Grounded Self-State improves useful intelligence and governability under Tri-Partite Non-Substitutability",
       "assumptions": [
         "Matched compute and parameter budgets between baseline and cognitive models",
         "Grounding operator active during inference"
@@ -324,18 +324,68 @@
         "nsa/self_model.py"
       ],
       "unit_test_paths": [
+        "tests/test_phase33_1_ablation.py",
         "tests/test_phase33_flagship.py",
-        "tests/test_epistemic.py",
-        "tests/test_conditioned_self_model.py"
+        "tests/test_epistemic.py"
       ],
       "experiment_paths": [
-        "experiments/reasoning/flagship_phase33_suite.py"
+        "experiments/reasoning/flagship_phase33_1_suite.py"
       ],
       "epistemic_status": "EMPIRICALLY_VALIDATED",
       "latest_metrics": {
-        "calibration_improved": true,
-        "early_fault_detection_steps": 1.0,
-        "grounded_action_success": true
+        "ece_reduction_vs_baseline": 0.002709,
+        "brier_reduction_vs_baseline": 0.003983,
+        "early_latent_drift_detection_steps": 14.5,
+        "adversarial_attacks_blocked": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-OMEGA-STATE-01",
+      "phase": "NSA 3.0",
+      "title": "NSA 3.0 Unified Cognitive State Vector Omega_t",
+      "statement": "Unified 7-tuple cognitive state Omega_t = (m_t, sigma_t, epsilon_t, sigma_h, pi_t, tau_t, g_t) composes semantic representations, operational self-monitoring, grounded epistemic justification, authority, provenance, temporal horizons, and teleological intent into a single state substrate.",
+      "theorem_or_proposition": "Unified Cognitive Dynamics: Omega_{t+1} = F_theta(Omega_t, x_t, a_t) in S_permitted",
+      "assumptions": [
+        "Tri-Partite Non-Substitutability holds across sigma_t, epsilon_t, sigma_h",
+        "Append-only provenance tracking active"
+      ],
+      "implementation_paths": [
+        "nsa/core/omega.py",
+        "nsa/epistemic.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_omega_state.py"
+      ],
+      "experiment_paths": [],
+      "epistemic_status": "UNIT_TESTED",
+      "latest_metrics": {
+        "unified_tuple_fields": 7,
+        "composability_verified": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-EPISTEMIC-GOVERNOR-01",
+      "phase": "NSA 3.0",
+      "title": "Epistemic Governor 5-Way Action Decision Operator",
+      "statement": "Epistemic governor executes G(Omega_t, a) -> {ALLOW, VERIFY, DEFER, ESCALATE, DENY}, triggering compute-spending verification when evidence is weak and deferring action when self-state error is elevated.",
+      "theorem_or_proposition": "Governed Action Selection: a* = argmax U(a | E_justified, sigma_t) subject to A_allowed(sigma_h)",
+      "assumptions": [
+        "Justification and error thresholds parameterized",
+        "Dual-authority validator active"
+      ],
+      "implementation_paths": [
+        "nsa/governor/epistemic_governor.py",
+        "nsa/core/omega.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_omega_state.py"
+      ],
+      "experiment_paths": [],
+      "epistemic_status": "UNIT_TESTED",
+      "latest_metrics": {
+        "all_5_verdicts_verified": true,
+        "verify_loop_triggered_on_weak_evidence": true,
+        "defer_loop_triggered_on_perturbation": true
       }
     },
     {
