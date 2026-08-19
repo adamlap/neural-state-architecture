@@ -26,6 +26,7 @@ from nsa.core.state import (
     StateKind,
     StateTransition,
 )
+from nsa.core.transition_cone import TransitionCone, TransitionDirection
 
 __all__ = [
     "BooleanDomain",
@@ -38,6 +39,8 @@ __all__ = [
     "ProbabilityIntervalDomain",
     "TemporalWindow",
     "TemporalWindowDomain",
+    "TransitionCone",
+    "TransitionDirection",
     "CanonicalState",
     "GoalState",
     "HardState",
