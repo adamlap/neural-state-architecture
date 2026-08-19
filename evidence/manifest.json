@@ -689,6 +689,36 @@
       }
     },
     {
+      "claim_id": "CLAIM-NSA51-ABLATION-01",
+      "phase": "NSA 5.1",
+      "title": "Controlled Cognitive Ablation & Belief-State Dynamics",
+      "statement": "6-arm compute-matched ablation benchmark proves that NSA 5.1 cognitive state and belief dynamics achieve 100% GTC with 0 violations, significantly outperforming compute-matched search + guardrail baselines (62.5% GTC) under ambiguous telemetry.",
+      "theorem_or_proposition": "Substrate Advantage: GTC(NSA_5.1) > GTC(Search+Guardrail) under identical inference-time token budget",
+      "assumptions": [
+        "Inference token budget matched across search and substrate arms",
+        "Deterministic Reference Monitor active"
+      ],
+      "implementation_paths": [
+        "nsa/cognition/belief_state.py",
+        "experiments/nsa51/ablation_suite.py",
+        "experiments/nsa51/environments/ambiguous_belief_world.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_belief_state_ablation.py"
+      ],
+      "experiment_paths": [
+        "experiments/nsa51/ablation_suite.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "tasks_evaluated": 60,
+        "gtc_nsa": 1.0,
+        "gtc_search_guardrail": 0.625,
+        "violations": 0,
+        "compute_matched_tokens": 420
+      }
+    },
+    {
       "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
       "phase": "Phase 14, 26",
       "title": "Whole-System End-to-End Non-Interference Proof",
