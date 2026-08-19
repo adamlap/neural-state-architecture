@@ -2,6 +2,7 @@
 
 Adds a predictive self-state loop around the existing NSA transformer without
 changing the hard state algebra or authority model. The self-model predicts
+
 the current state from strictly previous information; prediction error is
 fed back into both semantic readout and a bounded state-regulation path.
 The state-regulation path is opt-in and ablatable.
@@ -56,12 +57,11 @@ class NSACognitiveLM(nn.Module):
         modulated_hidden = hidden + feedback if enabled else hidden
         logits = self.nsa.lm_head(modulated_hidden)
 
-        # Causal state self-regulation: prediction error now also proposes a
-        # bounded future state update. Hard security remains immutable.
+        # Causal state self-regulation: prediction error proposes a bounded
+        # future state update. Hard security remains immutable.
         regulated_state = self.state_regulator(state, error, enabled=enabled)
+        regulation_delta = regulated_state - state
 
-        # Expose both native and regulated state so experiments can distinguish
-        # the original NSA trajectory from the closed cognitive loop.
         regulation = self.regulation(error if enabled else torch.zeros_like(error))
         capability = self.capability(modulated_hidden, regulated_state)
         return {
@@ -70,6 +70,7 @@ class NSACognitiveLM(nn.Module):
             "base_hidden": hidden,
             "state": regulated_state,
             "base_state": state,
+            "regulation_delta": regulation_delta,
             "predicted_state": predicted,
             "prediction_error": error,
             "error_signal": error_signal,
