@@ -1,0 +1,73 @@
+name: NSA Trained Self-State Regulation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'nsa/**'
+      - 'experiments/self_state/**'
+      - 'tests/test_trained_self_state.py'
+      - '.github/workflows/experiment-trained-self-state.yml'
+  push:
+    paths:
+      - 'nsa/**'
+      - 'experiments/self_state/**'
+      - 'tests/test_trained_self_state.py'
+      - '.github/workflows/experiment-trained-self-state.yml'
+
+jobs:
+  trained-regulation:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 7, 21, 42]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - name: Run trained self-state regulation experiment
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p results
+          PYTHONPATH=. python experiments/self_state/trained_regulation.py \
+            --seed ${{ matrix.seed }} \
+            --epochs 100 \
+            | tee results/trained-self-state-${{ matrix.seed }}.json
+      - name: Validate result
+        env:
+          RESULT: results/trained-self-state-${{ matrix.seed }}.json
+        run: |
+          python - <<'PY'
+          import json, os
+          result = json.load(open(os.environ['RESULT'], encoding='utf-8'))
+          assert result['finite'] is True
+          assert result['training_loss'] >= 0.0
+          assert len(result['results']) == len(result['perturbations'])
+          assert all('recovery_advantage' in row for row in result['results'])
+          assert all('auc_advantage' in row for row in result['results'])
+          print('Validated', os.environ['RESULT'])
+          PY
+      - name: Publish result summary
+        run: |
+          echo '## Trained self-state regulation — seed ${{ matrix.seed }}' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat results/trained-self-state-${{ matrix.seed }}.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trained-self-state-seed-${{ matrix.seed }}
+          path: results/trained-self-state-${{ matrix.seed }}.json
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - run: pytest -q tests/test_trained_self_state.py
