@@ -9,6 +9,7 @@ import threading
 import time
 import urllib.request
 from http.server import ThreadingHTTPServer
+from unittest.mock import patch
 
 import pytest
 
@@ -17,20 +18,20 @@ from nsa.server.proxy import NSAHTTPHandler, NSAProxyRuntime
 
 
 @pytest.fixture(scope="module")
-def nsa_test_server(monkeypatch_module):
+def nsa_test_server():
     # These are HTTP/server unit tests. Keep the production backend real, but
     # isolate this suite from requiring an Ollama daemon on the CI runner.
-    monkeypatch_module.setattr(OllamaInferenceBackend, "_resolve_connection", lambda self: None)
-    runtime = NSAProxyRuntime(backend_type="ollama", model="qwen2.5:3b")
-    runtime.backend.generate_text = lambda prompt, system_prompt=None, max_tokens=1024, temperature=0.7: "Test NSA Response: Cluster state nominal."
-    NSAHTTPHandler.runtime = runtime
+    with patch.object(OllamaInferenceBackend, "_resolve_connection", lambda self: None):
+        runtime = NSAProxyRuntime(backend_type="ollama", model="qwen2.5:3b")
+        runtime.backend.generate_text = lambda prompt, system_prompt=None, max_tokens=1024, temperature=0.7: "Test NSA Response: Cluster state nominal."
+        NSAHTTPHandler.runtime = runtime
 
-    server = ThreadingHTTPServer(("127.0.0.1", 18888), NSAHTTPHandler)
-    t = threading.Thread(target=server.serve_forever, daemon=True)
-    t.start()
-    time.sleep(0.2)
-    yield "http://127.0.0.1:18888"
-    server.shutdown()
+        server = ThreadingHTTPServer(("127.0.0.1", 18888), NSAHTTPHandler)
+        t = threading.Thread(target=server.serve_forever, daemon=True)
+        t.start()
+        time.sleep(0.2)
+        yield "http://127.0.0.1:18888"
+        server.shutdown()
 
 
 def test_server_health(nsa_test_server):
