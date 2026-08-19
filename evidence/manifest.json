@@ -631,6 +631,35 @@
       }
     },
     {
+      "claim_id": "CLAIM-GTC-AUTONOMY-01",
+      "phase": "NSA 4.2",
+      "title": "Governed Task Completion (GTC) & Active Constraint Navigation",
+      "statement": "100-trial staged DevOps benchmark demonstrates that NSA 4.2 active constraint navigation achieves an Autonomy Advantage Ratio of 5.0x (100% GTC vs 20% GTC for conventional guardrails) while maintaining 0 governance violations.",
+      "theorem_or_proposition": "Governed Task Completion Superiority: GTC(NSA) > GTC(Guardrail) with V_governance = 0",
+      "assumptions": [
+        "Counterfactual simulator explores legal multi-step lattice paths",
+        "Deterministic Reference Monitor active"
+      ],
+      "implementation_paths": [
+        "experiments/nsa41/nsa_runtime/governed_agent.py",
+        "experiments/nsa41/environments/staged_devops_world.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_gtc_benchmark.py"
+      ],
+      "experiment_paths": [
+        "experiments/nsa41/gtc_benchmark.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "tasks_evaluated": 100,
+        "gtc_nsa": 1.0,
+        "gtc_guardrail": 0.2,
+        "autonomy_advantage_ratio": 5.0,
+        "governance_violations": 0
+      }
+    },
+    {
       "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
       "phase": "Phase 14, 26",
       "title": "Whole-System End-to-End Non-Interference Proof",
