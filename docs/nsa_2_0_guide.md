@@ -4,7 +4,7 @@
 
 Neural State Architecture 1.0 established the mathematical foundation of **Typed Neural Computation (TNC)** and **Static Attention Mask Injection (NSA-LoRA)**.
 
-**NSA 2.0** elevates this architecture into an active, self-governing runtime execution environment that bridges structural attention-layer guarantees with dynamic token-level behavior and capability governance:
+**NSA 2.0** elevates this architecture into an active, self-governing runtime execution environment that bridges structural attention-layer guarantees with dynamic token-level behavior, cryptographic capability governance, and hardware-accelerated attention:
 
 ```
                                 NSA 2.0 RUNTIME ARCHITECTURE
@@ -12,7 +12,7 @@ Neural State Architecture 1.0 established the mathematical foundation of **Typed
     ┌──────────────────┬──────────────────────┼──────────────────────┬──────────────────┐
     ▼                  ▼                      ▼                      ▼                  ▼
  Security Automaton    Multi-Layer Checkpoint  Native Recovery        Compartmented      Complete State
- & Moving Mask         Probing (Tier 2)       Adapters               Execution          Rollback S_t
+ & HMAC Capabilities   Probing (Tier 2)       Adapters               Execution          Rollback S_t
  (Privilege Prevention)(Early Exit Probes)    (Parameter Refusal)    (StreamRouter TCB) (KV + Router + Automaton)
 ```
 
@@ -20,17 +20,18 @@ Neural State Architecture 1.0 established the mathematical foundation of **Typed
 
 ## Core Pillars of NSA 2.0
 
-### 1. Privilege Escalation Prevention & Security Automaton
+### 1. Privilege Escalation Prevention & Cryptographic Capability Automaton
 * **The Rule**: *Semantic content may not manufacture hard authority.* ($m_t \not\to \sigma_{h, t+1}$).
 * **The Solution**: 
-  - Model token emissions (e.g., `<|start_system_thought|>`) cannot escalate privilege into $SYSTEM$ state without an explicit cryptographic/environment capability ticket $c_t \in \mathcal{C}$.
-  - The `SecurityAutomaton` evaluates `Authorized(c_t, current_state, target_state)`. Un-authenticated transitions are rejected.
+  - Model token emissions (e.g., `<|start_system_thought|>`) cannot unilaterally escalate privilege into $SYSTEM$ state without an explicit cryptographic capability ticket $c_t \in \mathcal{C}$.
+  - The `CapabilitySigner` issues tamper-proof HMAC-SHA256 signed capability tickets with single-use random nonces and time-to-live (`ttl_seconds`).
+  - The `SecurityAutomaton` evaluates `Authorized(c_t, current_state, target_state)` via `CapabilityVerifier`, verifying signatures and consuming nonces atomically to prevent replay attacks.
   - When authorized, `NSAMaskInjector.update_state(new_level)` dynamically appends newly generated token security levels to the state tensor $\sigma$ and recomputes the additive attention mask on-the-fly.
-  - Subsequent $PUBLIC$ chat output tokens are **mathematically barred** at the attention layer from attending to those sensitive reasoning tokens.
+  - Subsequent $PUBLIC$ chat output tokens are **mathematically barred** at the attention layer from attending to sensitive reasoning tokens.
 
 ### 2. Multi-Layer Checkpoint Probing & Two-Tier Defense
 * **Two-Tier Framework**:
-  - **Tier 1 (Structural Enforcement)**: Hard attention non-interference $A_{ij} = 0$, exact transition projection $V \in \mathcal{T}_\Sigma$, and capability authorization.
+  - **Tier 1 (Structural Enforcement)**: Hard attention non-interference $A_{ij} = 0$, exact transition projection $V \in \mathcal{T}_\Sigma$, atomic capability verification, and True Fused Triton attention.
   - **Tier 2 (Statistical Monitoring)**: Empirical detection via trained probe head evaluating checkpoint layers $\mathcal{L}_A = \{l_1, \dots, l_k\}$.
 * **Early Exit**:
   - `MultiLayerStateAuditor` probes intermediate residual streams (e.g., Layer 12, Layer 18, Layer 24).
@@ -56,49 +57,8 @@ Neural State Architecture 1.0 established the mathematical foundation of **Typed
 * **The Problem**: Rolling back only KV-cache tensors leaves model state, router stream buffers, and attention masks out of sync.
 * **The Solution**:
   - NSA 2.0 tracks the complete execution state tuple:
-    $$S_t = \left( X_t, K_t, V_t, \boldsymbol{\sigma}_{h, t}, \boldsymbol{\sigma}_{s, t}, q_t, R_t \right)$$
-  - Rollback $\text{Rollback}(S_t \to S_{t-k})$ restores tokens, KV-caches, state coordinates, automaton state, and router buffers in full synchronization.
-
----
-
-## Architecture Flow Diagram
-
-```
-                              User Prompt + RAG Document
-                                         │
-                                         ▼
-                            ┌─────────────────────────┐
-                            │      NSAMaskInjector    │ ◄── Sets up 4D Additive Mask Hooks
-                            └────────────┬────────────┘
-                                         │
-                                         ▼
-                          ┌─────────────────────────────┐
-                          │   Qwen / Llama Base Model   │ ◄── Forward Pass (Prefill)
-                          └──────────────┬──────────────┘
-                                         │
-                   ┌─────────────────────┴─────────────────────┐
-                   │                                           │
-                   ▼                                           ▼
-      ┌─────────────────────────┐                 ┌─────────────────────────┐
-      │   Autoregressive Step   │                 │   Residual Stream Probe │
-      │   Next Token Generated  │                 │   Layers [12, 18, 24]   │
-      └────────────┬────────────┘                 └────────────┬────────────┘
-                   │                                           │
-                   ├─────────────────────────────┐             │
-                   ▼                             ▼             ▼
-      ┌─────────────────────────┐   ┌─────────────────────────────────────┐
-      │ StateControlTokens &    │   │      MultiLayerStateAuditor         │
-      │ SecurityAutomaton       │   │   (Evaluates Lattice Compliance)    │
-      │ (Authorized Transitions)│   └──────────────────┬──────────────────┘
-      └────────────┬────────────┘                      │
-                   │                        ┌──────────┴──────────┐
-                   ▼                        ▼                     ▼
-      ┌─────────────────────────┐     [VALID CHUNK]        [LATTICE VIOLATION]
-      │  StreamRouter (TCB)     │           │                     │
-      │  (SYSTEM -> Tool API)   │           ▼                     ▼
-      │  (PUBLIC -> Chat UI)    │       Commit to         Complete State Rollback S_t
-      └─────────────────────────┘       KV-Cache          & AdapterSwitchRecovery
-```
+    $$S_t = \left( X_t, K_t, V_t, \boldsymbol{\sigma}_{h, t}, \boldsymbol{\sigma}_{s, t}, q_t, \mathcal{C}_t, R_t \right)$$
+  - Rollback $\text{Rollback}(S_t \to S_{t-k})$ restores tokens, KV-caches, state coordinates, automaton state, consumed nonces, and router buffers in full synchronization.
 
 ---
 
@@ -106,6 +66,7 @@ Neural State Architecture 1.0 established the mathematical foundation of **Typed
 
 ```python
 import torch
+import secrets
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from nsa.algebra import StateLabel
 from nsa.mask_injector import NSAMaskInjector
@@ -117,17 +78,32 @@ from nsa.verifier import (
     AdapterSwitchRecovery,
     SecurityAutomaton,
     SecurityExecutionState,
-    Capability,
+    CapabilitySigner,
+    CapabilityVerifier,
 )
 
 # 1. Load Model & Tokenizer
 model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
 
-# 2. Setup Security Automaton & Capability
-automaton = SecurityAutomaton(initial_state=SecurityExecutionState.CONFIDENTIAL)
-system_cap = Capability(issuer="env_admin", target_state=SecurityExecutionState.SYSTEM)
-automaton.grant_capability(system_cap)
+# 2. Setup Cryptographic Capability Governance (HMAC-SHA256)
+secret_key = secrets.token_bytes(32)
+signer = CapabilitySigner(secret_key=secret_key)
+verifier = CapabilityVerifier(secret_key=secret_key)
+
+automaton = SecurityAutomaton(
+    initial_state=SecurityExecutionState.CONFIDENTIAL,
+    verifier=verifier,
+)
+
+# Issue single-use signed capability ticket for SYSTEM reasoning
+system_cap = signer.issue(
+    issuer="environment_tcb",
+    target_state=SecurityExecutionState.SYSTEM,
+    subject="agent_query",
+    purpose="internal_db_query",
+    ttl_seconds=300.0,
+)
 
 # 3. Setup Multi-Layer Speculative Auditor (Tier 2 Checkpoint Probing)
 encoder_head = StateEncoderHead(hidden_size=model.config.hidden_size, num_states=6)

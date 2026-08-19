@@ -124,6 +124,63 @@ eval-perf: ## Run Fused GPU Attention throughput benchmark
 		PYTHONPATH=. $(PYTHON) eval/performance_bench.py; \
 	fi
 
+exp-self-state: ## Run Self-State perturbation sweep & statistical summary
+	@echo "Running NSA Self-State Perturbation Sweep..."
+	@mkdir -p results
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python experiments/self_state/perturbation_sweep.py --seed 42 | tee results/self-state-sweep.json; \
+		$(UV) run python experiments/self_state/summarize_sweep.py results/self-state-sweep.json; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/self_state/perturbation_sweep.py --seed 42 | tee results/self-state-sweep.json; \
+		PYTHONPATH=. $(PYTHON) experiments/self_state/summarize_sweep.py results/self-state-sweep.json; \
+	fi
+
+exp-hard-state: ## Run Adversarial Hard-State Integrity experiment
+	@echo "Running NSA Hard-State Attack Experiment..."
+	@mkdir -p results
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python experiments/safety/hard_state_attack.py --seed 42 --attack 10.0; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/safety/hard_state_attack.py --seed 42 --attack 10.0; \
+	fi
+
+exp-local-contraction: ## Run Local Self-State Contraction experiment
+	@echo "Running NSA Local Contraction Analysis..."
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python experiments/self_state/local_contraction.py --seed 42; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/self_state/local_contraction.py --seed 42; \
+	fi
+
+exp-regulator-gain: ## Run Self-State Regulator Gain Sweep
+	@echo "Running NSA Regulator Gain Sweep..."
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python experiments/self_state/regulator_gain_sweep.py --seed 42; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/self_state/regulator_gain_sweep.py --seed 42; \
+	fi
+
+exp-trained-reg: ## Run Trained Self-State Regulation experiment
+	@echo "Running NSA Trained Regulation Experiment..."
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python experiments/self_state/trained_regulation.py --seed 42; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/self_state/trained_regulation.py --seed 42; \
+	fi
+
+exp-predictor-target: ## Run Predictor Target-Quality Evaluation
+	@echo "Running NSA Predictor Target-Quality Evaluation..."
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python experiments/self_state/predictor_target_quality.py --seed 42; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/self_state/predictor_target_quality.py --seed 42; \
+	fi
+
+exp-all: exp-hard-state exp-self-state exp-local-contraction exp-regulator-gain exp-trained-reg exp-predictor-target ## Run all NSA experiment suites in sequence
+	@echo "=========================================================="
+	@echo "  ALL NSA EXPERIMENT SUITES COMPLETED SUCCESSFULLY"
+	@echo "=========================================================="
+
 lint: ## Check code for syntax errors and style issues
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		$(UV) run ruff check nsa/ demo/ eval/ tests/ 2>/dev/null || $(UV) run python -m compileall nsa demo eval tests; \

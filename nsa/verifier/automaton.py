@@ -10,10 +10,10 @@ the fundamental architectural invariant:
 
 from __future__ import annotations
 
-import hashlib
 import hmac
-import secrets
+import hashlib
 import time
+import secrets
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -68,7 +68,7 @@ class Capability:
         self,
         requested_state: SecurityExecutionState,
         current_time: Optional[float] = None,
-        verifier: Optional[CapabilityVerifier] = None,
+        verifier: Optional["CapabilityVerifier"] = None,
     ) -> bool:
         """Validate expiry, target state, and optional cryptographic signature."""
         if self.expires_at is not None:
@@ -100,11 +100,12 @@ class CapabilitySigner:
         purpose: str = "system_reasoning",
         ttl_seconds: Optional[float] = 300.0,
         max_downgrade: Optional[SecurityExecutionState] = None,
+        nonce: Optional[str] = None,
     ) -> Capability:
         """Issue a cryptographically signed capability ticket."""
         now = time.time()
         expires_at = now + ttl_seconds if ttl_seconds is not None else None
-        nonce = secrets.token_hex(8)
+        nonce_val = nonce or secrets.token_hex(8)
 
         cap_unsigned = Capability(
             issuer=issuer,
@@ -113,7 +114,7 @@ class CapabilitySigner:
             scope=scope,
             purpose=purpose,
             expires_at=expires_at,
-            nonce=nonce,
+            nonce=nonce_val,
             max_downgrade=max_downgrade,
             signature=None,
         )
@@ -127,7 +128,7 @@ class CapabilitySigner:
             scope=scope,
             purpose=purpose,
             expires_at=expires_at,
-            nonce=nonce,
+            nonce=nonce_val,
             max_downgrade=max_downgrade,
             signature=sig,
         )

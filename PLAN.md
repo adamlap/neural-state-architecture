@@ -394,15 +394,15 @@ Extend state safety to real-world effects.
 
 ### Tasks
 
-- [ ] Typed tool requests.
-- [ ] Capability checks.
-- [ ] State propagation across tool boundaries.
-- [ ] Action risk classification.
-- [ ] Human approval gates.
-- [ ] Reversible/irreversible action distinction.
-- [ ] Resource limits.
-- [ ] Transaction boundaries.
-- [ ] Output sink policy.
+- [x] Typed tool requests.
+- [x] Capability checks.
+- [x] State propagation across tool boundaries.
+- [x] Action risk classification.
+- [x] Human approval gates.
+- [x] Reversible/irreversible action distinction.
+- [x] Resource limits.
+- [x] Transaction boundaries.
+- [x] Output sink policy.
 
 ### Success criterion
 
@@ -420,16 +420,16 @@ Turn NSA into a trusted execution environment for autonomous agents.
 
 ### Tasks
 
-- [ ] Execution state object.
-- [ ] State-aware scheduling.
-- [ ] Tool routing.
-- [ ] Memory routing.
-- [ ] Capability lifecycle.
-- [ ] Checkpointing.
-- [ ] Rollback.
-- [ ] Resource budgets.
-- [ ] Failure containment.
-- [ ] Output-boundary TCB.
+- [x] Execution state object.
+- [x] State-aware scheduling.
+- [x] Tool routing.
+- [x] Memory routing.
+- [x] Capability lifecycle.
+- [x] Checkpointing.
+- [x] Rollback.
+- [x] Resource budgets.
+- [x] Failure containment.
+- [x] Output-boundary TCB.
 
 ### Success criterion
 
@@ -447,14 +447,14 @@ Preserve security, provenance and authority when intelligent systems communicate
 
 ### Tasks
 
-- [ ] Agent identity.
-- [ ] Cross-agent state transfer.
-- [ ] Capability delegation.
-- [ ] State translation.
-- [ ] Trust negotiation.
-- [ ] Information-flow contracts.
-- [ ] Shared-memory governance.
-- [ ] Distributed audit logs.
+- [x] Agent identity.
+- [x] Cross-agent state transfer.
+- [x] Capability delegation.
+- [x] State translation.
+- [x] Trust negotiation.
+- [x] Information-flow contracts.
+- [x] Shared-memory governance.
+- [x] Distributed audit logs.
 
 ### Success criterion
 
@@ -474,12 +474,12 @@ Expand the existing value layer into a modular alignment substrate.
 
 - [x] Separate hard constraints from values.
 - [x] Initial value state and preference loss.
-- [ ] Utility representations.
-- [ ] Value uncertainty.
-- [ ] Preference learning interfaces.
-- [ ] Conflict detection.
-- [ ] Deliberative value revision.
-- [ ] Value-state auditability.
+- [x] Utility representations.
+- [x] Value uncertainty.
+- [x] Preference learning interfaces.
+- [x] Conflict detection.
+- [x] Deliberative value revision.
+- [x] Value-state auditability.
 
 ### Principle
 
@@ -505,13 +505,13 @@ $$
 
 ### Tasks
 
-- [ ] Multiple normative models.
-- [ ] Moral uncertainty representation.
-- [ ] Value conflict.
-- [ ] Deliberation.
-- [ ] Human preference incorporation.
-- [ ] Hard-constraint precedence.
-- [ ] Uncertainty-aware action selection.
+- [x] Multiple normative models.
+- [x] Moral uncertainty representation.
+- [x] Value conflict.
+- [x] Deliberation.
+- [x] Human preference incorporation.
+- [x] Hard-constraint precedence.
+- [x] Uncertainty-aware action selection.
 
 ---
 

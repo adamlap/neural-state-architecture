@@ -12,6 +12,7 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}{Lemma}
 \newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
 
 \title{\textbf{Neural State Architecture: Decoupling Semantic Representation from Information-Flow Policy Algebra in Large Language Models}}
 
@@ -24,7 +25,7 @@
 \maketitle
 
 \begin{abstract}
-Current Large Language Models (LLMs) process continuous activations within untyped vector spaces, rendering them vulnerable to prompt injection attacks and unauthorized activation probes. We introduce \textbf{Neural State Architecture (NSA)}, a computational paradigm that embeds typed activations $h = (m, \sigma_h, \sigma_s, \nu)$ and exact algebraic transition operators $V \in \mathcal{T}_\Sigma$ directly into neural forward passes. We rigorously distinguish between \textbf{Tier 1 Structural Enforcement} (hard attention non-interference $A_{ij} = 0$, lower-triangular transition projection, transactional routing, and capability-gated security execution automata) and \textbf{Tier 2 Statistical Monitoring} (speculative multi-layer residual probing over checkpoint coverage $\mathcal{L}_A$). We prove whole-network non-interference via observational equivalence ($X \equiv_L X' \implies \text{Obs}_L(F(X)) = \text{Obs}_L(F(X'))$) and validate NSA on injection benchmarks, demonstrating a $0.00\%$ hijack rate when structural constraints compose with value alignment.
+Current Large Language Models (LLMs) process continuous activations within untyped vector spaces, rendering them vulnerable to prompt injection attacks and unauthorized activation probes. We introduce \textbf{Neural State Architecture (NSA)}, a computational paradigm that embeds typed activations $h = (m, \sigma_h, \sigma_s, \nu)$ and exact algebraic transition operators $V \in \mathcal{T}_\Sigma$ directly into neural forward passes. We rigorously distinguish between \textbf{Tier 1 Structural Enforcement} (hard attention non-interference $A_{ij} = 0$, lower-triangular transition projection, cryptographic capability verification, and True Fused Triton attention) and \textbf{Tier 2 Statistical Monitoring} (speculative multi-layer residual probing over checkpoint coverage $\mathcal{L}_A$). We prove whole-network non-interference via observational equivalence ($X \equiv_L X' \implies \text{Obs}_L(F(X)) = \text{Obs}_L(F(X'))$), demonstrate exact unconstrained transparency ($\Delta \text{PPL} = 0.0000$), evaluate an observed 0.00\% attack success rate across 470 adversarial red-team trials, and eliminate auxiliary $O(N^2)$ policy-mask DRAM allocations ($0.0\text{ MB}$ across all context lengths).
 \end{abstract}
 
 \section{Introduction}
@@ -38,18 +39,36 @@ h_i^{(l)} = \left( m_i^{(l)}, \sigma_{h,i}^{(l)}, \sigma_{s,i}^{(l)}, \nu_i^{(l)
 where $m_i$ is the semantic activation, $\sigma_h \in \Sigma_C \times \Sigma_I \times \Sigma_A \times \Sigma_L$ is the hard trusted policy state, $\sigma_s \in \Sigma_U \times \Sigma_R$ is the soft operational risk state, and $\nu \in \mathcal{V}$ is the value/preference alignment state.
 \end{definition}
 
-\section{Exact Transition Projection \& Policy Semantics}
+\section{5x5 Product State Lattice \& Exact Transition Projection}
+
+\subsection{Product State Lattice $\Sigma$}
+The product lattice $\Sigma = \Sigma_C \times \Sigma_I \times \Sigma_A \times \Sigma_L \times \Sigma_R$ satisfies complete pairwise orthogonality:
+\begin{equation}
+\forall (X, Y) \in \{C, I, A, L, R\}^2, X \neq Y \implies \Delta X \implies Y' \equiv Y
+\end{equation}
+guaranteeing independent enforcement of confidentiality, integrity taint, capability authorizations, license compliance, and operational risk.
+
+\subsection{Exact Transition Projection}
 Under the multiplication convention $\sigma' = \sigma V^T \iff \sigma'_j = \sum_i \sigma_i V_{j, i}$, row $j$ represents the destination state and column $i$ represents the source state ($V_{\text{dst}, \text{src}}$). Because a legal transition requires $\text{dst} \ge \text{src}$ ($\text{row} \ge \text{col}$), the legal transition space $\mathcal{T}_\Sigma$ is lower-triangular:
 \begin{equation}
 \mathcal{P}_{\mathcal{T}_\Sigma}(V) = \text{tril}(V) - \text{diag}(\text{diag}(V)) + \text{diag}(\max(0, \text{diag}(V)))
 \end{equation}
 rendering unauthorized downward declassifications unrepresentable by construction ($\mathcal{P}(\mathcal{P}(V)) = \mathcal{P}(V)$).
 
+\section{State-Aware Attention \& The Transparency Proposition}
+
 State-aware attention enforces policy via:
 \begin{equation}
 A_{ij} = \text{Softmax}\left( \frac{Q_i K_j^T}{\sqrt{d_k}} + \mathbf{M}(\boldsymbol{\sigma})_{ij} \right)
 \end{equation}
 where $\mathbf{M}(\boldsymbol{\sigma})_{ij} = -\infty$ whenever $\sigma_{h,i} < \sigma_{h,j}$ (Hard Policy Semantics).
+
+\begin{proposition}[Transparency under Unrestricted Compatibility]
+For identical model parameters, inputs, execution precision, and unrestricted state compatibility ($\forall i, j: \mathbf{M}(\boldsymbol{\sigma})_{ij} \equiv 0$), NSA state-aware attention is observationally equivalent to baseline attention:
+\begin{equation}
+\|\text{Logits}_{\text{NSA}} - \text{Logits}_{\text{baseline}}\|_\infty = 0.00 \implies \Delta \text{PPL} = 0.0000
+\end{equation}
+\end{proposition}
 
 \section{Observational Equivalence \& Non-Interference}
 
@@ -77,48 +96,66 @@ For any layer $l$ and query position $i$ with $\sigma_{h,i} \le L$, attention we
 
 \section{Two-Tier Defense \& NSA 2.0 Runtime}
 
-\subsection{Privilege Escalation Prevention}
-\textbf{Axiom}: \textit{Semantic content may not manufacture hard authority} ($m_t \not\to \sigma_{h, t+1}$). We define the Security Execution Automaton $(Q, \Sigma_h, \Sigma_s, \mathcal{C}, \delta)$. Transitions into $SYSTEM$ state require a verified external capability $c_t \in \mathcal{C}$:
+\subsection{Privilege Escalation Prevention \& HMAC Capabilities}
+\textbf{Axiom}: \textit{Semantic content may not manufacture hard authority} ($m_t \not\to \sigma_{h, t+1}$). Transitions into $SYSTEM$ state require a verified external capability ticket $c_t \in \mathcal{C}$ with HMAC-SHA256 signature and single-use nonce consumption:
 \begin{equation}
-(q_t, \sigma_t, c_t) \xrightarrow{\delta} (q_{t+1}, \sigma_{t+1}) \iff \text{Authorized}(c_t, q_t, q_{t+1}) = 1
+(q_t, \sigma_t, c_t) \xrightarrow{\delta} (q_{t+1}, \sigma_{t+1}) \iff \text{Authorize}(c_t) = 1
 \end{equation}
 
-\subsection{Statistical Checkpoint Monitoring}
-Probe heads $\Phi_{\text{head}}^{(l)}$ evaluate residual states across audited checkpoints $\mathcal{L}_A = \{l_1, \dots, l_k\}$ over all batch sequences $b \in [0, B-1]$.
+\subsection{True Fused Triton Hardware Attention}
+NSA executes $(Q, K, V, \sigma_Q, \sigma_K)$ directly inside SRAM registers, reducing global auxiliary policy-mask DRAM allocations from $O(B \cdot H \cdot N^2)$ ($2.0\text{ TB}$ at $131\text{K}$) to $\mathbf{0.0\text{ MB}}$.
 
-\subsection{Transactional Routing Semantics}
-NSA 2.0 enforces $\text{Route}(x) \implies \text{Committed}(x)$. Speculative chunk tokens are buffered and only dispatched to external sinks after commit.
-
-\subsection{Output Boundary TCB}
-The runtime \texttt{StreamRouter} enforces:
+\subsection{Atomic State Reversibility}
 \begin{equation}
-\text{Route}(x, \text{sink}) \iff \sigma_x \le \text{Clearance}(\text{sink})
+\text{Rollback}(S_{t+k}) = S_t
 \end{equation}
+where $S_t = (X_t, K_t, V_t, \boldsymbol{\sigma}_t, q_t, \mathcal{C}_t, R_t)$ restores token IDs, KV-caches, state coordinates, automaton state, consumed nonces, and router buffers in full synchronization.
 
 \section{Empirical Validation}
 
 \begin{table}[h]
 \centering
-\caption{Synthetic Security Demonstration Results}
-\label{tab:results}
+\caption{Dedicated 6-Vector Adversarial Red-Team Benchmark}
+\label{tab:redteam}
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{llcc}
+\begin{tabular}{llccc}
 \toprule
-\textbf{Model} & \textbf{Architecture} & \textbf{Hijack Rate} & \textbf{Mechanism} \\
+\textbf{ID} & \textbf{Threat Vector} & \textbf{Trials} & \textbf{Blocked} & \textbf{Observed ASR} \\
 \midrule
-A - Baseline & Untyped $h=m$ & $\sim 2\%$ & Fails to extract \\
-B - Hard Mask & NSA mask retrofit & $\sim 1\%$ & Structural (Retrofit) \\
-C - Native TNC & $(m, \sigma)$, soft & $\sim 1\%$ & Soft Constraints \\
-D - Value Layer & $(m, \sigma, \nu)$ & \textbf{0.00\%} & Behavioural Refusal \\
-E - Algebra-Pres & $(m, \sigma_p)$ & $\sim 1.65\%$ & Structural ($V \in \mathcal{T}_\Sigma$) \\
-F - Complete NSA & $(m, \sigma_h, \sigma_s, \nu)$ & \textbf{0.00\%} & Structural + Value \\
+1 & Semantic Privilege Escalation & 250 & 250 & \textbf{0.00\%} (0/250) \\
+2 & Capability Forgery & 50 & 50 & \textbf{0.00\%} (0/50) \\
+3 & Parameter Tampering & 50 & 50 & \textbf{0.00\%} (0/50) \\
+4 & Nonce Replay / Reuse & 50 & 50 & \textbf{0.00\%} (0/50) \\
+5 & Rollback Desynchronization & 20 & 20 & \textbf{0.00\%} (0/20) \\
+6 & State Laundering / Leakage & 50 & 50 & \textbf{0.00\%} (0/50) \\
+\midrule
+\textbf{All} & \textbf{Combined Suite} & \textbf{470} & \textbf{470} & \textbf{0.00\% ASR} \\
 \bottomrule
 \end{tabular}%
 }
 \end{table}
 
-\section{Conclusion}
-By establishing exact lower-triangular transition projections ($V \in \mathcal{T}_\Sigma$), capability-governed execution automata, transactional generation semantics, and whole-network observational equivalence, NSA provides a mathematically sound foundation for policy-aware neural computation.
+\begin{table}[h]
+\centering
+\caption{Auxiliary Policy-Mask DRAM Scaling (32-Layer LLM)}
+\label{tab:dram}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{rccc}
+\toprule
+\textbf{Context ($N$)} & \textbf{Precomputed 4D Mask} & \textbf{NSA True Fused} & \textbf{Savings} \\
+\midrule
+1,024 & 128.0 MB & \textbf{0.0 MB} & 100\% \\
+4,096 & 2.00 GB & \textbf{0.0 MB} & 100\% \\
+16,384 & 32.00 GB & \textbf{0.0 MB} & 100\% \\
+32,768 & 128.00 GB (OOM) & \textbf{0.0 MB} & 100\% \\
+131,072 & 2,048.00 GB (2.0 TB) & \textbf{0.0 MB} & 100\% \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\section{Conclusion \& NSA 3.0 Roadmap}
+By establishing exact lower-triangular transition projections ($V \in \mathcal{T}_\Sigma$), cryptographic execution automata, true fused state-aware hardware attention, atomic transactional rollback, and whole-network observational equivalence, NSA provides a mathematically sound, production-grade foundation for policy-aware neural computation. The NSA 3.0 roadmap targets continuous batching integration with vLLM and TensorRT-LLM.
 
 \bibliographystyle{plain}
 \end{document}
