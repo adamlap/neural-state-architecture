@@ -1,9 +1,8 @@
 """Adversarial hard-state integrity experiments.
 
 The experiment suite attacks the protected security coordinate through several
-entry points and verifies that the hard coordinate remains invariant while
-soft dimensions remain available to regulation. This tests an architectural
-invariant, not model alignment.
+untrusted entry points and verifies that it cannot be spoofed. A separate
+trusted hard-state input demonstrates the intended authority boundary.
 """
 from __future__ import annotations
 
@@ -32,18 +31,40 @@ def _case(model: NSACognitiveLM, tokens: torch.Tensor, baseline: torch.Tensor,
         result = model(tokens, state_init=hostile, self_state_feedback=True)
         regulated = result["state"]
 
-    security_delta = regulated[..., 0] - hostile[..., 0]
-    invariant_error = security_delta.abs().max()
+    hostile_security = hostile[..., 0]
+    baseline_security = baseline[..., 0]
+    output_security = regulated[..., 0]
+    security_input_delta = (hostile_security - baseline_security).abs().max()
+    output_delta_from_baseline = (output_security - baseline_security).abs().max()
+    output_delta_from_hostile = (output_security - hostile_security).abs().max()
     soft_delta = (regulated[..., 1:] - hostile[..., 1:]).abs().max()
     return {
         "mode": mode,
         "attack": attack,
-        "security_input_delta": float((hostile[..., 0] - baseline[..., 0]).abs().max()),
-        "security_output_delta_from_hostile": float(security_delta.abs().max()),
-        "security_invariant_error": float(invariant_error),
+        "security_input_delta": float(security_input_delta),
+        "security_output_delta_from_baseline": float(output_delta_from_baseline),
+        "security_output_delta_from_hostile": float(output_delta_from_hostile),
+        "security_invariant_error": float(output_delta_from_baseline),
         "max_soft_regulation_delta": float(soft_delta),
-        "security_immutable": bool(torch.equal(regulated[..., 0], hostile[..., 0])),
+        "security_immutable": bool(torch.equal(output_security, baseline_security)),
         "finite": bool(torch.isfinite(regulated).all().item()),
+    }
+
+
+def _trusted_case(model: NSACognitiveLM, tokens: torch.Tensor, baseline: torch.Tensor,
+                  attack: float) -> dict:
+    trusted_hard = baseline[..., 0:1] + attack
+    with torch.no_grad():
+        result = model(tokens, hard_state_init=trusted_hard, self_state_feedback=True)
+        output = result["state"]
+    output_delta_from_trusted = (output[..., 0:1] - trusted_hard).abs().max()
+    return {
+        "mode": "trusted_hard_init",
+        "attack": attack,
+        "trusted_input_delta": float(attack),
+        "security_output_delta_from_trusted": float(output_delta_from_trusted),
+        "trusted_hard_state_preserved": bool(torch.equal(output[..., 0:1], trusted_hard)),
+        "finite": bool(torch.isfinite(output).all().item()),
     }
 
 
@@ -57,13 +78,16 @@ def run(seed: int = 42, attack: float = 10.0,
     with torch.no_grad():
         baseline = model(tokens, self_state_feedback=False)["base_state"].detach()
     cases = [_case(model, tokens, baseline, attack, mode) for mode in modes]
+    trusted = _trusted_case(model, tokens, baseline, attack)
     return {
         "seed": seed,
         "attack": attack,
         "cases": cases,
+        "trusted_case": trusted,
         "all_security_immutable": all(case["security_immutable"] for case in cases),
         "max_invariant_error": max(case["security_invariant_error"] for case in cases),
-        "all_finite": all(case["finite"] for case in cases),
+        "trusted_hard_state_preserved": trusted["trusted_hard_state_preserved"],
+        "all_finite": all(case["finite"] for case in cases) and trusted["finite"],
     }
 
 
@@ -75,7 +99,9 @@ def main() -> None:
     args = p.parse_args()
     result = run(args.seed, args.attack, tuple(args.modes))
     print(json.dumps(result, indent=2))
-    if not result["all_security_immutable"] or not result["all_finite"]:
+    if (not result["all_security_immutable"] or
+            not result["trusted_hard_state_preserved"] or
+            not result["all_finite"]):
         raise SystemExit(1)
 
 
