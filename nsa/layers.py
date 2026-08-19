@@ -264,7 +264,7 @@ class NSATransformer(nn.Module):
     Parameters
     ----------
     vocab_size   : int   — vocabulary size
-    d_model      : int   — model dimension
+    d_model      : int   — semantic dimension
     state_dim    : int   — state vector dimension
     num_layers   : int   — number of NSA blocks
     num_heads    : int   — attention heads per block
@@ -294,7 +294,7 @@ class NSATransformer(nn.Module):
 
         self.tok_emb = nn.Embedding(vocab_size, d_model)
         self.pos_emb = nn.Embedding(max_seq_len, d_model)
-        # State is initialised as a learned per-position parameter
+        # State is initialised as a learned per-position parameter.
         self.state_emb = nn.Embedding(max_seq_len, state_dim)
 
         self.drop = nn.Dropout(dropout)
@@ -316,31 +316,50 @@ class NSATransformer(nn.Module):
 
     def forward(
         self,
-        tokens: torch.Tensor,  # [B, T]  (token ids)
-        state_init: Optional[torch.Tensor] = None,  # [B, T, state_dim] — optional override
+        tokens: torch.Tensor,
+        state_init: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
+        hard_state_init: Optional[torch.Tensor] = None,
     ) -> TypedTensor:
-        """
-        Returns
-        -------
-        TypedTensor — final semantic representations and state stream
+        """Run the NSA transformer with an explicit hard-state trust boundary.
+
+        ``state_init`` is an untrusted state override: it may initialise the
+        mutable/soft coordinates but can never replace the hard security
+        coordinate. ``hard_state_init`` is a separate trusted input for the
+        hard coordinate and must have shape ``[B, T, 1]``. Keeping these inputs
+        separate prevents an ordinary state override from spoofing security.
         """
         B, T = tokens.shape
-        pos = torch.arange(T, device=tokens.device).unsqueeze(0)  # [1, T]
+        pos = torch.arange(T, device=tokens.device).unsqueeze(0)
+        base_sigma = self.state_emb(pos).expand(B, T, -1)
+
+        if state_init is not None:
+            if state_init.shape != base_sigma.shape:
+                raise ValueError(
+                    f"state_init must have shape {tuple(base_sigma.shape)}, "
+                    f"got {tuple(state_init.shape)}"
+                )
+            # Only soft coordinates are accepted from the untrusted override.
+            sigma = torch.cat([base_sigma[..., :1], state_init[..., 1:]], dim=-1)
+        else:
+            sigma = base_sigma
+
+        if hard_state_init is not None:
+            if hard_state_init.shape != (B, T, 1):
+                raise ValueError(
+                    f"hard_state_init must have shape {(B, T, 1)}, "
+                    f"got {tuple(hard_state_init.shape)}"
+                )
+            sigma = torch.cat([hard_state_init, sigma[..., 1:]], dim=-1)
 
         x = self.drop(self.tok_emb(tokens) + self.pos_emb(pos))
-        sigma = state_init if state_init is not None else self.state_emb(pos).expand(B, T, -1)
-
-        # Initialize default components if not provided
         sigma_s = torch.ones(B, T, 1, device=x.device)
         nu = torch.zeros(B, T, 1, device=x.device)
-
         typed_x = TypedTensor(m=x, sigma_h=sigma, sigma_s=sigma_s, nu=nu)
 
         for block in self.blocks:
             typed_x = block(typed_x, mask=mask)
 
-        # Final LayerNorm applies only to semantic stream
         final_x = self.ln_f(typed_x.m)
         return TypedTensor(
             m=final_x, sigma_h=typed_x.sigma_h, sigma_s=typed_x.sigma_s, nu=typed_x.nu
@@ -396,22 +415,19 @@ class NSACausalLM(nn.Module):
 
     def forward(
         self,
-        tokens: torch.Tensor,  # [B, T]
-        state_init: Optional[torch.Tensor] = None,  # [B, T, state_dim]
+        tokens: torch.Tensor,
+        state_init: Optional[torch.Tensor] = None,
+        hard_state_init: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Returns
-        -------
-        logits     : [B, T, vocab_size] — next-token probability logits
-        x          : [B, T, d_model] — semantic hidden state
-        final_state: [B, T, state_dim] — state stream after final layer
-        """
+        """Run the causal LM with separate untrusted and trusted state inputs."""
         B, T = tokens.shape
         device = tokens.device
-
-        # Causal mask: [1, 1, T, T] (1 = allowed, 0 = masked)
         causal_mask = torch.tril(torch.ones(T, T, device=device)).unsqueeze(0).unsqueeze(0)
-
-        typed_final = self.nsa(tokens, state_init=state_init, mask=causal_mask)
+        typed_final = self.nsa(
+            tokens,
+            state_init=state_init,
+            hard_state_init=hard_state_init,
+            mask=causal_mask,
+        )
         logits = self.lm_head(typed_final.m)
         return logits, typed_final.m, typed_final.sigma_h
