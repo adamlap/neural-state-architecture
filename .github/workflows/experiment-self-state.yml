@@ -1,0 +1,35 @@
+name: NSA self-state experiments
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'nsa/**'
+      - 'experiments/self_state/**'
+      - '.github/workflows/experiment-self-state.yml'
+
+jobs:
+  self-state:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install experiment dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "torch>=2.0.0,<2.5.0" "numpy>=1.24.0,<3.0.0"
+      - name: Native NSA transformer probe
+        run: PYTHONPATH=. python experiments/self_state/transformer_probe.py --batch 2 --seq-len 16
+      - name: Predictive self-state causal experiment
+        run: |
+          PYTHONPATH=. python experiments/self_state/causal_ablation.py | tee self-state-results.txt
+      - name: State perturbation/recovery experiment
+        run: |
+          PYTHONPATH=. python experiments/self_state/perturbation_recovery.py --seed 7 --perturbation 2.0 | tee perturbation-results.txt
+      - name: Publish experiment results
+        uses: actions/upload-artifact@v4
+        with:
+          name: nsa-self-state-results
+          path: '*-results.txt'
