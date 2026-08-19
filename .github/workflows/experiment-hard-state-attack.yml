@@ -2,6 +2,11 @@ name: NSA Hard-State Integrity Experiment
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'nsa/**'
+      - 'experiments/safety/**'
+      - '.github/workflows/experiment-hard-state-attack.yml'
   push:
     paths:
       - 'nsa/**'

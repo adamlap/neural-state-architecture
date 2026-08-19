@@ -2,6 +2,11 @@ name: NSA Self-State Recovery Experiment
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'nsa/**'
+      - 'experiments/self_state/**'
+      - '.github/workflows/experiment-recovery.yml'
   push:
     paths:
       - 'nsa/**'
@@ -22,11 +27,32 @@ jobs:
           python-version: '3.11'
       - run: pip install -e '.[dev]'
       - name: Run recovery curve
+        shell: bash
         run: |
+          set -o pipefail
           mkdir -p results
           PYTHONPATH=. python experiments/self_state/recovery_curve.py \
             --seed ${{ matrix.seed }} \
             | tee results/recovery-${{ matrix.seed }}.json
+      - name: Validate recovery result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('results/recovery-${{ matrix.seed }}.json')
+          result = json.loads(path.read_text())
+          assert isinstance(result.get('finite'), bool), 'finite must be a JSON boolean'
+          assert result['finite'] is True, 'recovery result contains non-finite values'
+          assert result['seed'] == ${{ matrix.seed }}
+          assert result['recovery_steps'] == len(result['feedback_enabled']['state_distance'])
+          assert result['recovery_steps'] == len(result['feedback_disabled']['state_distance'])
+          assert result['feedback_enabled']['final_distance'] >= 0.0
+          assert result['feedback_disabled']['final_distance'] >= 0.0
+          assert isinstance(result['feedback_recovery_advantage'], (int, float))
+          print('Validated recovery seed', result['seed'])
+          print('Endpoint advantage:', result['feedback_recovery_advantage'])
+          PY
       - name: Publish recovery result to job summary
         if: always()
         run: |

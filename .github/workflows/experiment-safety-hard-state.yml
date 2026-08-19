@@ -2,6 +2,11 @@ name: NSA Hard-State Adversarial Matrix
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'nsa/**'
+      - 'experiments/safety/**'
+      - '.github/workflows/experiment-safety-hard-state.yml'
   push:
     paths:
       - 'nsa/**'
@@ -39,6 +44,7 @@ jobs:
           data = json.load(open(path))
           assert data['all_finite'] is True
           assert data['all_security_immutable'] is True
+          assert data['trusted_hard_state_preserved'] is True
           assert data['max_invariant_error'] == 0.0
           print(f"PASS seed={data['seed']} attack={data['attack']} max_invariant_error={data['max_invariant_error']}")
           PY
@@ -46,6 +52,7 @@ jobs:
         run: |
           echo '## Hard-state attack — seed ${{ matrix.seed }}, attack ${{ matrix.attack }}' >> "$GITHUB_STEP_SUMMARY"
           echo '- **Security immutable:** PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- **Trusted hard state preserved:** PASS' >> "$GITHUB_STEP_SUMMARY"
           echo '- **Invariant error:** 0.0' >> "$GITHUB_STEP_SUMMARY"
           echo '- **Finite:** PASS' >> "$GITHUB_STEP_SUMMARY"
           echo '```json' >> "$GITHUB_STEP_SUMMARY"

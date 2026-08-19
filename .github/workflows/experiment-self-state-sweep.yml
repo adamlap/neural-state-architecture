@@ -2,6 +2,11 @@ name: NSA Self-State Perturbation Sweep
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'nsa/**'
+      - 'experiments/self_state/**'
+      - '.github/workflows/experiment-self-state-sweep.yml'
   push:
     paths:
       - 'nsa/**'
