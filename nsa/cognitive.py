@@ -38,8 +38,13 @@ class NSACognitiveLM(nn.Module):
         tokens: torch.Tensor,
         state_init: Optional[torch.Tensor] = None,
         self_state_feedback: Optional[bool] = None,
+        hard_state_init: Optional[torch.Tensor] = None,
     ) -> dict[str, torch.Tensor]:
-        logits, hidden, state = self.nsa(tokens, state_init=state_init)
+        logits, hidden, state = self.nsa(
+            tokens,
+            state_init=state_init,
+            hard_state_init=hard_state_init,
+        )
         enabled = self.self_state_feedback if self_state_feedback is None else self_state_feedback
 
         # Predict state_t using only information available before position t.
