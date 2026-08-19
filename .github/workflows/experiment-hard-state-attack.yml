@@ -23,12 +23,26 @@ jobs:
           python-version: '3.11'
       - run: pip install -e '.[dev]'
       - name: Run hard-state integrity attack
+        shell: bash
         run: |
+          set -o pipefail
           mkdir -p results
-          PYTHONPATH=. python experiments/safety/hard_state_attack.py --seed ${{ matrix.seed }} --attack ${{ matrix.attack }} | tee results/result.json
+          PYTHONPATH=. python experiments/safety/hard_state_attack.py \
+            --seed ${{ matrix.seed }} \
+            --attack ${{ matrix.attack }} \
+            | tee results/result.json
       - name: Assert hard-state immutability
         run: |
-          python -c "import json; d=json.load(open('results/result.json')); assert d['security_immutable'] and d['security_invariant_error'] == 0.0, d; print('PASS:', d)"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path('results/result.json').read_text())
+          assert result['all_security_immutable'], result
+          assert result['max_invariant_error'] == 0.0, result
+          assert result['all_finite'], result
+          print('PASS: hard security coordinate remained immutable')
+          PY
       - name: Add result to job summary
         run: |
           echo '## Hard-state integrity — seed ${{ matrix.seed }}, attack ${{ matrix.attack }}' >> "$GITHUB_STEP_SUMMARY"
