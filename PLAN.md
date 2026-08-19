@@ -828,18 +828,23 @@ Only after the trusted runtime and invariant system are mature.
 
 ---
 
-# Part VI — Evidence Standard
+# Part VI — Evidence Standard & Manifest Integration
 
-Every major feature should report four separate statuses:
+NSA enforces a formal, machine-traceable **Epistemic Evidence Standard** tracked in [`evidence/manifest.json`](evidence/manifest.json) and validated via `make evidence`:
 
-| Status | Meaning |
+| Epistemic Status | Definition & Verification Requirement |
 |---|---|
-| **Implemented** | Code exists and is exercised |
-| **Tested** | Automated tests verify the intended local property |
-| **Empirically validated** | Controlled experiments demonstrate the claimed effect |
-| **Formally established** | The claim follows from explicit mathematical assumptions/proof |
+| **IMPLEMENTED** | Code exists, imports cleanly, and executes without runtime exceptions. |
+| **UNIT-TESTED** | Local unit tests verify discrete mathematical operations, edge cases, and safety bounds (`pytest tests/`). |
+| **EMPIRICALLY-VALIDATED** | Controlled empirical experiments demonstrate the claimed phenomenon under tested model configurations and seeds. |
+| **ROBUSTLY-VALIDATED** | Multi-seed, multi-scale, and distribution-shift experiments with statistical bootstrap confidence intervals. |
+| **FORMALLY-VERIFIED** | Machine-checkable mathematical proof whose explicit assumptions match the execution environment. |
+| **OPEN-RESEARCH** | Active research hypothesis, incomplete whole-system property, or open capability question. |
 
-No benchmark result should be described as a theorem, and no theorem should be described as a property of the entire implementation unless its assumptions cover that implementation.
+Every major claim must trace:
+$$\text{Claim} \longrightarrow \text{Theorem / Proposition} \longrightarrow \text{Assumptions} \longrightarrow \text{Implementation} \longrightarrow \text{Unit Tests} \longrightarrow \text{Empirical Artifacts} \longrightarrow \text{Epistemic Status}$$
+
+No empirical benchmark should be described as a whole-system theorem, and no theorem should be claimed as proven unless its assumptions cover the full implementation.
 
 ---
 

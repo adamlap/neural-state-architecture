@@ -1,0 +1,187 @@
+{
+  "total_claims": 10,
+  "status_breakdown": {
+    "ROBUSTLY_VALIDATED": 3,
+    "EMPIRICALLY_VALIDATED": 4,
+    "UNIT_TESTED": 1,
+    "OPEN_RESEARCH": 2
+  },
+  "all_artifacts_valid": true,
+  "claim_audit_results": [
+    {
+      "claim_id": "CLAIM-FOUNDATION-01",
+      "phase": "Phase 1-4",
+      "title": "Mathematical Transparency on Unconstrained Text",
+      "epistemic_status": "ROBUSTLY_VALIDATED",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "max_logit_diff": 0.0,
+        "delta_ppl": 0.0,
+        "tested_batch_sizes": [
+          1,
+          4,
+          8
+        ]
+      }
+    },
+    {
+      "claim_id": "CLAIM-FUSED-01",
+      "phase": "Phase 5-8",
+      "title": "Fused State-Aware GPU Attention with Zero Auxiliary Mask Memory",
+      "epistemic_status": "ROBUSTLY_VALIDATED",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "auxiliary_mask_dram_mb": 0.0,
+        "max_sdpa_error_inf": 1.1920928955078125e-07,
+        "max_context_tested": 32768
+      }
+    },
+    {
+      "claim_id": "CLAIM-HARD-STATE-01",
+      "phase": "Phase 11",
+      "title": "Untrusted Hard-State Coordinate Immutability",
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "max_invariant_error": 0.0,
+        "untrusted_spoofing_blocked": true,
+        "trusted_boundary_preserved": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-ALGEBRA-01",
+      "phase": "Phase 12-13",
+      "title": "5x5 Product State Lattice Composability & Transition Cones",
+      "epistemic_status": "ROBUSTLY_VALIDATED",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "pairwise_orthogonal_pairs_verified": 25,
+        "projection_idempotence_holds": true,
+        "forbidden_transitions_zero": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-REDTEAM-01",
+      "phase": "Phase 15, 27",
+      "title": "0.00% Observed ASR on 6-Vector Red-Team Benchmark",
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "total_trials": 470,
+        "total_blocked": 470,
+        "observed_asr": 0.0,
+        "vectors_tested": 6
+      }
+    },
+    {
+      "claim_id": "CLAIM-SELF-STATE-01",
+      "phase": "Phase 18",
+      "title": "Local Self-State Contraction & Target Quality Geometry",
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "mean_prediction_contraction": 0.031,
+        "positive_contraction_fraction": 1.0,
+        "directional_cosine_at_8x": 0.9766,
+        "directional_cosine_at_4x": 0.9056,
+        "static_target_ratio_mean": 4.4
+      }
+    },
+    {
+      "claim_id": "CLAIM-CONDITIONED-SIM-01",
+      "phase": "Phase 18-19",
+      "title": "Conditioned Predictive Self-Model & Counterfactual Simulation",
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "mean_conditioned_target_ratio": 1.16,
+        "all_counterfactuals_legal": true,
+        "illegal_candidates_pruned": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-GOVERNANCE-01",
+      "phase": "Phase 20-24",
+      "title": "Tool Governance, Cognitive Runtime, Multi-Agent & Normative Precedence",
+      "epistemic_status": "UNIT_TESTED",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "actions_tests_passed": 4,
+        "runtime_tests_passed": 3,
+        "multi_agent_tests_passed": 2,
+        "normative_tests_passed": 2,
+        "hard_precedence_enforced": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
+      "phase": "Phase 14, 26",
+      "title": "Whole-System End-to-End Non-Interference Proof",
+      "epistemic_status": "OPEN_RESEARCH",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "status_note": "Local invariant and attention-level non-interference established; whole-system formal model checking remains open."
+      }
+    },
+    {
+      "claim_id": "CLAIM-METACOGNITION-GAINS-01",
+      "phase": "Phase 18, 33",
+      "title": "Metacognitive Reasoning and Capability Gains under Explicit Self-State",
+      "epistemic_status": "OPEN_RESEARCH",
+      "all_files_present": true,
+      "missing_files": {
+        "implementation": [],
+        "unit_tests": [],
+        "experiments": []
+      },
+      "latest_metrics": {
+        "status_note": "Synthetic evidence loop runnable; full-scale LLM capability gains remain open research hypothesis."
+      }
+    }
+  ]
+}

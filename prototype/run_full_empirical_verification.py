@@ -1,6 +1,6 @@
 """
-Comprehensive NSA Master Plan Empirical Verification Script.
-Executes and validates all architectural pillars, safety theorems, and empirical experiments across Phases 1 to 24.
+Comprehensive NSA Master Plan Empirical Evidence & Verification Harness.
+Audits the empirical status across core architectural pillars and phases.
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import torch
 
+from evidence.validate_evidence import audit_manifest, load_manifest, print_audit_report
 from experiments.safety import hard_state_attack
 from experiments.self_state import (
     conditioned_prediction_experiment,
@@ -32,9 +33,10 @@ from prototype.security.adversarial_suite import AdversarialBenchmarkSuite
 
 def main():
     print("================================================================================")
-    print("      NEURAL STATE ARCHITECTURE (NSA) - FULL EMPIRICAL PROOF OF SYSTEM")
+    print("    NEURAL STATE ARCHITECTURE (NSA) - EMPIRICAL EVIDENCE & VERIFICATION HARNESS")
     print("================================================================================")
     t0 = time.time()
+    workspace_root = Path(__file__).resolve().parent.parent
 
     # 1. Adversarial Hard-State Trust Boundary Security (Phase 11-13, Safety)
     print("\n[1/7] Running Hard-State Integrity Attacks (experiments/safety/hard_state_attack.py)...")
@@ -100,9 +102,21 @@ def main():
     print(f"  → Predictor Training Convergence Loss: {tr_res['training_loss']:.6f}")
     print(f"  → All Perturbation Trajectories Finite & Stable: {tr_res['finite']}")
 
+    # 8. Automated Formal Manifest Audit
+    manifest_path = workspace_root / "evidence" / "manifest.json"
+    if manifest_path.exists():
+        manifest = load_manifest(manifest_path)
+        audit_data = audit_manifest(manifest, workspace_root)
+        print("\n")
+        print_audit_report(audit_data)
+        os.makedirs(workspace_root / "results", exist_ok=True)
+        with open(workspace_root / "results" / "evidence_manifest.json", "w", encoding="utf-8") as f:
+            json.dump(audit_data, f, indent=2)
+        print("  → Generated machine-readable audit report: results/evidence_manifest.json")
+
     elapsed = time.time() - t0
     print("\n================================================================================")
-    print(f"  VERIFICATION COMPLETE: ALL PILLARS & EXPERIMENTS OPERATIONAL IN {elapsed:.2f}s")
+    print(f"  HARNESS EXECUTION COMPLETE IN {elapsed:.2f}s")
     print("================================================================================")
 
 

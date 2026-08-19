@@ -23,12 +23,16 @@ NSA embeds policy enforcement **directly into the model's forward pass**. Under 
 > [!WARNING]
 > **Scope of guarantees.** Hard attention non-interference is **not** full-model non-interference. Residual streams, FFNs, soft gating, mislabeled ingress, and decode-time label errors can still leak. Defaults for security evaluation use `gate_mode="hard"` + discrete levels on \(\sigma[\ldots,0]\). Soft mode is a differentiable relaxation, not a proof.
 
-**Adoption targets & Established Milestones**:
+**Current Scientific & Epistemic Status**:
 
-1. **Model Quality & Transparency**: Verified zero degradation on unrestricted text ($\|\text{Logits}_{\text{NSA}} - \text{Logits}_{\text{baseline}}\|_\infty = 0.00 \implies \Delta \text{PPL} = 0.0000$).
-2. **True Fused Attention Kernel**: Direct $(Q, K, V, \sigma_Q, \sigma_K)$ kernel in `nsa/triton_kernel.py` eliminating auxiliary $O(N^2)$ DRAM policy-mask allocation ($0\text{ MB}$ across all context lengths).
-3. **Cryptographic Capability Governance**: Capability tickets signed via HMAC-SHA256 with single-use nonce consumption.
-4. **Dedicated Red-Teaming**: Observed ASR of 0.00% across 470 attack trials in 6 threat vectors.
+* **NSA Foundation**: Robustly validated ($0.00$ logit error, $\Delta \text{PPL} = 0.0000$, $0\text{ MB}$ DRAM auxiliary mask allocation).
+* **NSA Security Substrate**: Strong empirical evidence ($0.00\%$ observed ASR across 470 trials in 6 threat vectors; immutable hard-state boundary $\Delta \sigma_h = 0$).
+* **NSA Self-State Architecture**: Promising empirical evidence (local state contraction $+0.0310$, $+0.9766$ directional alignment under perturbation).
+* **NSA Metacognition & Capability Gains**: Active open research hypothesis (investigating whether explicit state awareness improves reasoning under matched compute budgets).
+* **Whole-System Formal Verification**: Open research phase (local invariant proofs established; whole-system model checking in progress).
+
+> [!TIP]
+> 📊 **Machine-Traceable Evidence Manifest**: Audit the complete claim-by-claim epistemic evidence matrix anytime via `make evidence` (tracked in [**`evidence/manifest.json`**](evidence/manifest.json)).
 
 ---
 

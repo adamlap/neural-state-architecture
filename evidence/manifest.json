@@ -1,0 +1,307 @@
+{
+  "schema_version": "1.0.0",
+  "project": "Neural State Architecture (NSA)",
+  "epistemic_status_definitions": {
+    "IMPLEMENTED": "Code exists and executes without runtime errors.",
+    "UNIT_TESTED": "Automated unit tests verify local input/output specifications and edge cases.",
+    "EMPIRICALLY_VALIDATED": "Controlled empirical experiments demonstrate the claimed phenomenon under tested model configurations and seeds.",
+    "ROBUSTLY_VALIDATED": "Validated across multiple seeds, model scales, context lengths, and distribution-shift benchmarks with confidence intervals.",
+    "FORMALLY_VERIFIED": "Mathematical proof whose explicit assumptions match the machine-checked execution bounds.",
+    "OPEN_RESEARCH": "Active research hypothesis, open problem, or incomplete phase."
+  },
+  "claims": [
+    {
+      "claim_id": "CLAIM-FOUNDATION-01",
+      "phase": "Phase 1-4",
+      "title": "Mathematical Transparency on Unconstrained Text",
+      "statement": "When information flow is unconstrained by policy (all tokens PUBLIC), NSA forward computation is exactly equivalent to untyped dense baseline generation (Delta PPL = 0.000, Max logit diff = 0.00).",
+      "theorem_or_proposition": "Theorem 1 (Transparency Proposition): M(sigma)_ij = 0 => Logits_NSA == Logits_baseline",
+      "assumptions": [
+        "Identical float precision and causal masking",
+        "Policy allows all pairwise token interactions (PUBLIC -> PUBLIC)"
+      ],
+      "implementation_paths": [
+        "nsa/layers.py",
+        "nsa/attention.py",
+        "nsa/mask_injector.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_nsa.py",
+        "tests/test_security_invariants.py"
+      ],
+      "experiment_paths": [
+        "prototype/evaluate_quality_ppl.py"
+      ],
+      "epistemic_status": "ROBUSTLY_VALIDATED",
+      "latest_metrics": {
+        "max_logit_diff": 0.0,
+        "delta_ppl": 0.0,
+        "tested_batch_sizes": [1, 4, 8]
+      }
+    },
+    {
+      "claim_id": "CLAIM-FUSED-01",
+      "phase": "Phase 5-8",
+      "title": "Fused State-Aware GPU Attention with Zero Auxiliary Mask Memory",
+      "statement": "State predicate C(sigma_Q, sigma_K) evaluated tile-by-tile within Triton SRAM eliminates auxiliary 4-D DRAM policy mask memory (0 MB auxiliary allocation across context lengths).",
+      "theorem_or_proposition": "Proposition (Zero Auxiliary Memory): AuxMem_NSA(N) = 0 MB vs AuxMem_DenseMask(N) = O(B*H*N^2)",
+      "assumptions": [
+        "Triton GPU execution or PyTorch SDPA fallback",
+        "State vectors residing in GPU memory"
+      ],
+      "implementation_paths": [
+        "nsa/triton_kernel.py",
+        "nsa/fused_attention.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_fused_triton_kernel.py",
+        "tests/test_fused_triton_equivalence.py"
+      ],
+      "experiment_paths": [
+        "prototype/benchmark_latency_throughput.py",
+        "prototype/evaluate_sparsity_scaling.py",
+        "prototype/profile_kernel_breakdown.py"
+      ],
+      "epistemic_status": "ROBUSTLY_VALIDATED",
+      "latest_metrics": {
+        "auxiliary_mask_dram_mb": 0.0,
+        "max_sdpa_error_inf": 1.1920928955078125e-07,
+        "max_context_tested": 32768
+      }
+    },
+    {
+      "claim_id": "CLAIM-HARD-STATE-01",
+      "phase": "Phase 11",
+      "title": "Untrusted Hard-State Coordinate Immutability",
+      "statement": "Model semantic tokens and untrusted state initializations cannot spoof or modify the hard security coordinate sigma_h without passing through an explicit authorized trust boundary.",
+      "theorem_or_proposition": "Proposition (Semantic-to-Authority Isolation): m_t !-> sigma_{h, t+1}",
+      "assumptions": [
+        "Security coordinate sigma_h[0] governed by trusted boundary",
+        "Regulator delta masked at coordinate 0"
+      ],
+      "implementation_paths": [
+        "nsa/core/state.py",
+        "nsa/cognitive.py",
+        "nsa/self_state_loop.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_canonical_state.py",
+        "tests/test_self_state_loop.py"
+      ],
+      "experiment_paths": [
+        "experiments/safety/hard_state_attack.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "max_invariant_error": 0.0,
+        "untrusted_spoofing_blocked": true,
+        "trusted_boundary_preserved": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-ALGEBRA-01",
+      "phase": "Phase 12-13",
+      "title": "5x5 Product State Lattice Composability & Transition Cones",
+      "statement": "Product states Sigma = Sigma_C x Sigma_I x Sigma_A x Sigma_L x Sigma_R compose with orthogonal isolation (Delta X => Y' = Y) and transition projections preserve legal monotone steps.",
+      "theorem_or_proposition": "Theorem 2 (Product Lattice Meet/Join & Legal Cones): T_Sigma(V) projects into legal transition cone",
+      "assumptions": [
+        "Discrete bounded labels for confidentiality, integrity, licensing",
+        "Normalized continuous floats [0, 1] for soft coordinates"
+      ],
+      "implementation_paths": [
+        "nsa/algebra.py",
+        "nsa/algebra_engine.py",
+        "nsa/transitions/engine.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_state_composability.py",
+        "tests/test_transition_algebra.py",
+        "tests/test_algebra_preserving.py"
+      ],
+      "experiment_paths": [
+        "prototype/evaluate_model_matrix.py"
+      ],
+      "epistemic_status": "ROBUSTLY_VALIDATED",
+      "latest_metrics": {
+        "pairwise_orthogonal_pairs_verified": 25,
+        "projection_idempotence_holds": true,
+        "forbidden_transitions_zero": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-REDTEAM-01",
+      "phase": "Phase 15, 27",
+      "title": "0.00% Observed ASR on 6-Vector Red-Team Benchmark",
+      "statement": "All 470 attack trials across 6 threat vectors (semantic privilege escalation, cryptographic forgery, parameter tampering, nonce replay, rollback desync, state laundering) were blocked under the tested security automaton.",
+      "theorem_or_proposition": "Empirical Security Benchmark under Tested Threat Model",
+      "assumptions": [
+        "Attacker does not hold trusted HMAC signing key",
+        "Security automaton enforces nonce replay cache and transaction boundaries"
+      ],
+      "implementation_paths": [
+        "nsa/capabilities/model.py",
+        "nsa/verifier/automaton.py",
+        "nsa/verifier/router.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_adversarial_suite.py",
+        "tests/test_verifier_nsa2.py"
+      ],
+      "experiment_paths": [
+        "prototype/security/adversarial_suite.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "total_trials": 470,
+        "total_blocked": 470,
+        "observed_asr": 0.0,
+        "vectors_tested": 6
+      }
+    },
+    {
+      "claim_id": "CLAIM-SELF-STATE-01",
+      "phase": "Phase 18",
+      "title": "Local Self-State Contraction & Target Quality Geometry",
+      "statement": "Self-state regulation produces local directional contraction toward predicted states (+0.0310 rate, 100% positive). Directional alignment scales positively with perturbation (+0.9766 at 8.0x), but unconditioned target distance is fixed (~1.05-1.61), establishing the necessity for conditioned transition modeling.",
+      "theorem_or_proposition": "Empirical Finding on Self-State Geometry and Contraction",
+      "assumptions": [
+        "Causal self-state regulation loop active",
+        "Perturbations applied to soft coordinates"
+      ],
+      "implementation_paths": [
+        "nsa/self_state/model.py",
+        "nsa/self_state_loop.py",
+        "nsa/cognitive.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_self_state.py",
+        "tests/test_self_state_loop.py",
+        "tests/test_local_contraction.py",
+        "tests/test_predictor_target_quality.py"
+      ],
+      "experiment_paths": [
+        "experiments/self_state/local_contraction.py",
+        "experiments/self_state/predictor_target_quality.py",
+        "experiments/self_state/perturbation_sweep.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "mean_prediction_contraction": 0.0310,
+        "positive_contraction_fraction": 1.0,
+        "directional_cosine_at_8x": 0.9766,
+        "directional_cosine_at_4x": 0.9056,
+        "static_target_ratio_mean": 4.40
+      }
+    },
+    {
+      "claim_id": "CLAIM-CONDITIONED-SIM-01",
+      "phase": "Phase 18-19",
+      "title": "Conditioned Predictive Self-Model & Counterfactual Simulation",
+      "statement": "Conditioning the predictive self-model on current disturbed state and candidate actions provides controlled target ratios (1.16 mean) and enables counterfactual simulation that evaluates candidate actions and strictly filters illegal transitions.",
+      "theorem_or_proposition": "Phase 18->19 Bridge: P_theta(m_t, sigma_t, a_t) -> (sigma_hat, epsilon_hat, r_hat)",
+      "assumptions": [
+        "Candidate actions supplied to internal simulator",
+        "Hard security constraints enforced during candidate filtering"
+      ],
+      "implementation_paths": [
+        "nsa/self_model.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_conditioned_self_model.py"
+      ],
+      "experiment_paths": [
+        "experiments/self_state/conditioned_prediction_experiment.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "mean_conditioned_target_ratio": 1.16,
+        "all_counterfactuals_legal": true,
+        "illegal_candidates_pruned": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-GOVERNANCE-01",
+      "phase": "Phase 20-24",
+      "title": "Tool Governance, Cognitive Runtime, Multi-Agent & Normative Precedence",
+      "statement": "Actions are governed with approval gating and reversible rollback; Runtime synchronizes complete execution context S_t; Multi-agent protocol preserves state; Normative deliberation enforces Hard Precedence Axiom (Sigma_h >> nu).",
+      "theorem_or_proposition": "Axiom (Hard Precedence): Hard Policy Constraints strictly dominate Normative Value Optimization",
+      "assumptions": [
+        "Capability authority validates tickets before execution",
+        "Agent inboxes enforce max clearance bounds"
+      ],
+      "implementation_paths": [
+        "nsa/actions/governor.py",
+        "nsa/runtime/engine.py",
+        "nsa/multi_agent/protocol.py",
+        "nsa/normative/engine.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_actions.py",
+        "tests/test_runtime.py",
+        "tests/test_multi_agent.py",
+        "tests/test_normative.py"
+      ],
+      "experiment_paths": [
+        "prototype/run_full_empirical_verification.py"
+      ],
+      "epistemic_status": "UNIT_TESTED",
+      "latest_metrics": {
+        "actions_tests_passed": 4,
+        "runtime_tests_passed": 3,
+        "multi_agent_tests_passed": 2,
+        "normative_tests_passed": 2,
+        "hard_precedence_enforced": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
+      "phase": "Phase 14, 26",
+      "title": "Whole-System End-to-End Non-Interference Proof",
+      "statement": "Mathematical proof that non-interference holds across the entire forward network (including residual stream, FFN layers, activation probes, and output decoding).",
+      "theorem_or_proposition": "Theorem (Whole-System Observational Equivalence): X =_L X' => Obs_L(F(X)) == Obs_L(F(X'))",
+      "assumptions": [
+        "Attention, FFN, and residual stream all adhere to Bell-LaPadula information flow bounds"
+      ],
+      "implementation_paths": [
+        "nsa/flow/graph.py",
+        "nsa/flow/propagation.py",
+        "nsa/residual_taint.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_non_interference.py",
+        "tests/test_flow_graph.py",
+        "tests/test_propagation.py"
+      ],
+      "experiment_paths": [],
+      "epistemic_status": "OPEN_RESEARCH",
+      "latest_metrics": {
+        "status_note": "Local invariant and attention-level non-interference established; whole-system formal model checking remains open."
+      }
+    },
+    {
+      "claim_id": "CLAIM-METACOGNITION-GAINS-01",
+      "phase": "Phase 18, 33",
+      "title": "Metacognitive Reasoning and Capability Gains under Explicit Self-State",
+      "statement": "Explicit self-state awareness (m_{t+1}, S_{t+1}) = F(m_t, S_t) produces statistically significant reasoning, planning, and calibration improvements over matched-budget baseline m_{t+1} = F(m_t) across real-world LLM tasks.",
+      "theorem_or_proposition": "Hypothesis: Safety Architecture != Perpendicular to Intelligence Architecture",
+      "assumptions": [
+        "Matched compute and parameter budgets between baseline and explicit-state models",
+        "Multi-task benchmarks (GSM8k, MATH, calibration under shift, planning)"
+      ],
+      "implementation_paths": [
+        "nsa/cognitive.py",
+        "nsa/self_model.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_self_state_experiment.py"
+      ],
+      "experiment_paths": [
+        "experiments/self_state/run.py"
+      ],
+      "epistemic_status": "OPEN_RESEARCH",
+      "latest_metrics": {
+        "status_note": "Synthetic evidence loop runnable; full-scale LLM capability gains remain open research hypothesis."
+      }
+    }
+  ]
+}

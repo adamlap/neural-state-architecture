@@ -2,7 +2,7 @@
 # Makefile for Neural State Architecture (NSA) - Powered by uv
 # ==============================================================================
 
-.PHONY: help install install-dev install-uv venv test showcase demo eval-security eval-perf lint format clean showcase-web
+.PHONY: help install install-dev install-uv venv test showcase demo eval-security eval-perf lint format clean showcase-web evidence exp-all exp-self-state exp-hard-state exp-local-contraction exp-regulator-gain exp-trained-reg exp-predictor-target
 
 # Locate uv executable (PATH, ~/.local/bin/uv, or ~/.cargo/bin/uv)
 UV := $(shell command -v uv 2>/dev/null || (test -f ~/.local/bin/uv && echo ~/.local/bin/uv) || (test -f ~/.cargo/bin/uv && echo ~/.cargo/bin/uv) || echo "uv")
@@ -180,6 +180,13 @@ exp-all: exp-hard-state exp-self-state exp-local-contraction exp-regulator-gain 
 	@echo "=========================================================="
 	@echo "  ALL NSA EXPERIMENT SUITES COMPLETED SUCCESSFULLY"
 	@echo "=========================================================="
+
+evidence: ## Audit and validate formal epistemic claims against manifest
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python evidence/validate_evidence.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) evidence/validate_evidence.py; \
+	fi
 
 lint: ## Check code for syntax errors and style issues
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
