@@ -1,11 +1,12 @@
 """Heterogeneous algebra primitives for canonical NSA state.
 
-Phase 12 starts by making the algebra explicit at the domain boundary. Each
-state coordinate owns its own join/meet semantics; the product algebra then
-combines coordinates without pretending that every domain is numeric.
+Phase 12 makes state algebra explicit at the domain boundary. Each coordinate
+owns its own join/meet semantics; the product combines coordinates without
+reducing heterogeneous state to a scalar score.
 
-This module is deliberately independent of model weights or hidden activations.
-It is a deterministic mathematical substrate for future NSA adapters.
+This module is deterministic state infrastructure. It does not modify model
+weights or hidden activations and therefore is not, by itself, intrinsic neural
+security.
 """
 
 from __future__ import annotations
@@ -15,21 +16,16 @@ from enum import Enum
 from math import isfinite
 from typing import FrozenSet, Generic, Protocol, TypeVar
 
-
 T = TypeVar("T")
 
 
 class AlgebraDomain(Protocol[T]):
-    """A bounded join/meet algebra for one typed state coordinate."""
-
     def join(self, left: T, right: T) -> T: ...
     def meet(self, left: T, right: T) -> T: ...
     def validate(self, value: T) -> None: ...
 
 
 class BooleanDomain:
-    """Boolean lattice: False <= True."""
-
     def join(self, left: bool, right: bool) -> bool:
         return left or right
 
@@ -55,14 +51,28 @@ class CapabilityDomain:
             raise TypeError("capability domain requires FrozenSet[str]")
 
 
+class ConstraintSetDomain:
+    """Constraint lattice ordered by set inclusion."""
+
+    def join(self, left: FrozenSet[str], right: FrozenSet[str]) -> FrozenSet[str]:
+        return left | right
+
+    def meet(self, left: FrozenSet[str], right: FrozenSet[str]) -> FrozenSet[str]:
+        return left & right
+
+    def validate(self, value: FrozenSet[str]) -> None:
+        if not isinstance(value, frozenset) or not all(isinstance(v, str) for v in value):
+            raise TypeError("constraint domain requires FrozenSet[str]")
+
+
 class NumericRangeDomain:
-    """Closed numeric interval lattice ordered by increasing severity."""
+    """Closed scalar interval with max/min lattice operations."""
 
     def __init__(self, minimum: float = 0.0, maximum: float = 1.0) -> None:
         if not isfinite(minimum) or not isfinite(maximum) or minimum > maximum:
             raise ValueError("invalid numeric range")
-        self.minimum = minimum
-        self.maximum = maximum
+        self.minimum = float(minimum)
+        self.maximum = float(maximum)
 
     def validate(self, value: float) -> None:
         if not isinstance(value, (int, float)) or isinstance(value, bool):
@@ -79,6 +89,88 @@ class NumericRangeDomain:
         self.validate(left)
         self.validate(right)
         return min(float(left), float(right))
+
+
+@dataclass(frozen=True)
+class ProbabilityInterval:
+    """Closed probability interval; lower > upper is the explicit bottom element."""
+
+    lower: float
+    upper: float
+
+    @property
+    def is_empty(self) -> bool:
+        return self.lower > self.upper
+
+
+class ProbabilityIntervalDomain:
+    """Lattice of closed probability sets ordered by inclusion."""
+
+    def validate(self, value: ProbabilityInterval) -> None:
+        if not isinstance(value, ProbabilityInterval):
+            raise TypeError("probability domain requires ProbabilityInterval")
+        if not (0.0 <= value.lower <= 1.0 and 0.0 <= value.upper <= 1.0) and not value.is_empty:
+            raise ValueError("probability bounds must lie in [0, 1]")
+        if value.is_empty and not (value.lower == 1.0 and value.upper == 0.0):
+            raise ValueError("empty probability interval must be ProbabilityInterval(1, 0)")
+
+    def join(self, left: ProbabilityInterval, right: ProbabilityInterval) -> ProbabilityInterval:
+        self.validate(left)
+        self.validate(right)
+        if left.is_empty:
+            return right
+        if right.is_empty:
+            return left
+        return ProbabilityInterval(min(left.lower, right.lower), max(left.upper, right.upper))
+
+    def meet(self, left: ProbabilityInterval, right: ProbabilityInterval) -> ProbabilityInterval:
+        self.validate(left)
+        self.validate(right)
+        if left.is_empty or right.is_empty:
+            return ProbabilityInterval(1.0, 0.0)
+        lower = max(left.lower, right.lower)
+        upper = min(left.upper, right.upper)
+        return ProbabilityInterval(lower, upper) if lower <= upper else ProbabilityInterval(1.0, 0.0)
+
+
+@dataclass(frozen=True)
+class TemporalWindow:
+    """Closed temporal window in monotonic numeric ticks; reversed is bottom."""
+
+    start: float
+    end: float
+
+    @property
+    def is_empty(self) -> bool:
+        return self.start > self.end
+
+
+class TemporalWindowDomain:
+    """Interval lattice over monotonic time windows, including explicit bottom."""
+
+    def validate(self, value: TemporalWindow) -> None:
+        if not isinstance(value, TemporalWindow):
+            raise TypeError("temporal domain requires TemporalWindow")
+        if not isfinite(value.start) or not isfinite(value.end):
+            raise ValueError("temporal bounds must be finite")
+
+    def join(self, left: TemporalWindow, right: TemporalWindow) -> TemporalWindow:
+        self.validate(left)
+        self.validate(right)
+        if left.is_empty:
+            return right
+        if right.is_empty:
+            return left
+        return TemporalWindow(min(left.start, right.start), max(left.end, right.end))
+
+    def meet(self, left: TemporalWindow, right: TemporalWindow) -> TemporalWindow:
+        self.validate(left)
+        self.validate(right)
+        if left.is_empty or right.is_empty:
+            return TemporalWindow(1.0, 0.0)
+        lower = max(left.start, right.start)
+        upper = min(left.end, right.end)
+        return TemporalWindow(lower, upper) if lower <= upper else TemporalWindow(1.0, 0.0)
 
 
 class EnumDomain(Generic[T]):
@@ -133,13 +225,18 @@ class HeterogeneousState(Generic[T]):
 
     @staticmethod
     def _domain_signature(domain: AlgebraDomain[T]) -> tuple[object, ...]:
-        """Return semantic domain configuration rather than object identity."""
         if isinstance(domain, BooleanDomain):
             return (BooleanDomain,)
         if isinstance(domain, CapabilityDomain):
             return (CapabilityDomain,)
+        if isinstance(domain, ConstraintSetDomain):
+            return (ConstraintSetDomain,)
         if isinstance(domain, NumericRangeDomain):
             return (NumericRangeDomain, domain.minimum, domain.maximum)
+        if isinstance(domain, ProbabilityIntervalDomain):
+            return (ProbabilityIntervalDomain,)
+        if isinstance(domain, TemporalWindowDomain):
+            return (TemporalWindowDomain,)
         if isinstance(domain, EnumDomain):
             return (EnumDomain, domain.enum_type)
         return (type(domain), repr(domain))
