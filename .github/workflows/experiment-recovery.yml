@@ -26,8 +26,16 @@ jobs:
           mkdir -p results
           PYTHONPATH=. python experiments/self_state/recovery_curve.py \
             --seed ${{ matrix.seed }} \
-            > results/recovery-${{ matrix.seed }}.json
+            | tee results/recovery-${{ matrix.seed }}.json
+      - name: Publish recovery result to job summary
+        if: always()
+        run: |
+          echo "## Self-State Recovery — seed ${{ matrix.seed }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat results/recovery-${{ matrix.seed }}.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
       - name: Upload recovery result
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: recovery-seed-${{ matrix.seed }}
