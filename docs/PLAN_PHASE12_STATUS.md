@@ -9,29 +9,22 @@ Updated 2026-08-19.
 - Capability-set domain.
 - Bounded numeric domain.
 - Ordered finite-enum domain.
-- Coordinate-wise join/meet.
-- Product partial order via `x ⊔ y = y`.
-- Semantic domain compatibility checks.
-- Incompatible product rejection.
-- Algebra validation tests.
 - Constraint-set domain.
 - Probability-interval lattice with explicit bottom element.
 - Temporal-window lattice with explicit bottom element.
+- Coordinate-wise join/meet and product partial order via `x ⊔ y = y`.
+- Semantic domain compatibility checks and incompatible-product rejection.
 - Mixed products containing the new domains.
 - Explicit public exports from `nsa.core`.
-- Domain-specific tests covering join, meet, bottom, validation and mixed products.
+- Domain-specific unit tests.
+- Property-based verification of commutativity, associativity, idempotence and absorption across the supported lattice domains and product composition.
+- Coordinate-wise legal transition cones with increase/decrease/unchanged directions.
+- Exact product projection onto legal transition cones.
+- Projection legality and fixed-point tests.
 
-## Completed in this branch
+## Remaining Phase 12 work
 
-- Coordinate-wise legal transition cones.
-- Increase/decrease/unchanged transition directions.
-- Exact product projection using the source join/meet boundary.
-- Projection fixed-point and legality tests.
-
-## Still required for Phase 12
-
-- Broader property-based algebra testing.
-- Formal proofs/verification of the heterogeneous laws.
+- Formal proofs/verification of the heterogeneous laws beyond executable property testing.
 - A principled representation for richer probabilistic distributions rather than only probability intervals.
 - Temporal semantics tied to runtime clocks/events rather than numeric ticks.
 - Constraint implication/solver semantics rather than opaque constraint identifiers.
