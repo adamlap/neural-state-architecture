@@ -46,6 +46,7 @@ jobs:
           assert result["finite"] is True
           assert len(result["results"]) == len(result["perturbations"])
           assert all("recovery_advantage" in row for row in result["results"])
+          assert all("auc_advantage" in row for row in result["results"])
           print("Validated", path)
           PY
       - name: Add result to job summary
@@ -58,3 +59,35 @@ jobs:
         with:
           name: self-state-sweep-seed-${{ matrix.seed }}
           path: results/self-state-sweep-${{ matrix.seed }}.json
+
+  aggregate:
+    name: Aggregate self-state sweep evidence
+    needs: sweep
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: self-state-sweep-seed-*
+          path: results
+          merge-multiple: true
+      - name: Validate artifact count
+        run: |
+          test "$(find results -name 'self-state-sweep-*.json' | wc -l)" -eq 4
+      - name: Aggregate sweep evidence
+        run: |
+          python experiments/self_state/summarize_sweep.py \
+            results/self-state-sweep-*.json \
+            --output results/self-state-sweep-summary.json
+      - name: Publish aggregate evidence
+        if: always()
+        run: |
+          echo '## Self-state perturbation sweep — aggregate evidence' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat results/self-state-sweep-summary.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: self-state-sweep-aggregate
+          path: results/self-state-sweep-summary.json
