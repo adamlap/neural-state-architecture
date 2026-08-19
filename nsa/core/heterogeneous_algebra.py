@@ -1,6 +1,6 @@
 """Heterogeneous algebra primitives for canonical NSA state.
 
-Phase 12 starts by making the algebra explicit at the domain boundary.  Each
+Phase 12 starts by making the algebra explicit at the domain boundary. Each
 state coordinate owns its own join/meet semantics; the product algebra then
 combines coordinates without pretending that every domain is numeric.
 
@@ -23,9 +23,7 @@ class AlgebraDomain(Protocol[T]):
     """A bounded join/meet algebra for one typed state coordinate."""
 
     def join(self, left: T, right: T) -> T: ...
-
     def meet(self, left: T, right: T) -> T: ...
-
     def validate(self, value: T) -> None: ...
 
 
@@ -58,11 +56,7 @@ class CapabilityDomain:
 
 
 class NumericRangeDomain:
-    """Closed numeric interval lattice with configurable ordering.
-
-    For risk/uncertainty, the natural ordering is increasing severity.  Join is
-    therefore max and meet is min.  Values are kept bounded to [minimum, maximum].
-    """
+    """Closed numeric interval lattice ordered by increasing severity."""
 
     def __init__(self, minimum: float = 0.0, maximum: float = 1.0) -> None:
         if not isfinite(minimum) or not isfinite(maximum) or minimum > maximum:
@@ -137,11 +131,28 @@ class HeterogeneousState(Generic[T]):
             self.domains,
         )
 
+    @staticmethod
+    def _domain_signature(domain: AlgebraDomain[T]) -> tuple[object, ...]:
+        """Return semantic domain configuration rather than object identity."""
+        if isinstance(domain, BooleanDomain):
+            return (BooleanDomain,)
+        if isinstance(domain, CapabilityDomain):
+            return (CapabilityDomain,)
+        if isinstance(domain, NumericRangeDomain):
+            return (NumericRangeDomain, domain.minimum, domain.maximum)
+        if isinstance(domain, EnumDomain):
+            return (EnumDomain, domain.enum_type)
+        return (type(domain), repr(domain))
+
     def _compatible(self, other: "HeterogeneousState[T]") -> None:
-        if len(self.values) != len(other.values) or self.domains != other.domains:
+        if len(self.values) != len(other.values):
+            raise ValueError("states belong to incompatible product algebras")
+        left_signature = tuple(self._domain_signature(domain) for domain in self.domains)
+        right_signature = tuple(self._domain_signature(domain) for domain in other.domains)
+        if left_signature != right_signature:
             raise ValueError("states belong to incompatible product algebras")
 
     def leq(self, other: "HeterogeneousState[T]") -> bool:
-        """Coordinate-wise partial-order test induced by join: x <= y iff x ⊔ y = y."""
+        """Coordinate-wise partial order: x <= y iff x ⊔ y = y."""
         self._compatible(other)
         return self.join(other).values == other.values
