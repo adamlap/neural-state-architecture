@@ -42,7 +42,7 @@ jobs:
           import json, glob
           path = glob.glob('results/*.json')[0]
           data = json.load(open(path))
-          assert data['all_finite'] is True
+          assert data['finite'] is True
           assert data['all_security_immutable'] is True
           assert data['trusted_hard_state_preserved'] is True
           assert data['max_invariant_error'] == 0.0
