@@ -3,7 +3,8 @@
 Adds a predictive self-state loop around the existing NSA transformer without
 changing the hard state algebra or authority model. The self-model predicts
 the current state from strictly previous information; prediction error is
-then fed back into the semantic readout. The loop is opt-in and ablatable.
+fed back into both semantic readout and a bounded state-regulation path.
+The state-regulation path is opt-in and ablatable.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from torch import nn
 
 from nsa.layers import NSACausalLM
 from nsa.self_model import CapabilityMonitor, PredictiveSelfState, SelfRegulationController
+from nsa.self_state_loop import SelfStateRegulator
 
 
 class NSACognitiveLM(nn.Module):
@@ -27,6 +29,7 @@ class NSACognitiveLM(nn.Module):
         state_dim = self.nsa.state_dim
         self.self_model = PredictiveSelfState(d_model, state_dim)
         self.regulation = SelfRegulationController()
+        self.state_regulator = SelfStateRegulator(state_dim)
         self.capability = CapabilityMonitor(d_model, state_dim)
         self.error_gate = nn.Sequential(nn.Linear(state_dim, d_model), nn.Tanh())
 
@@ -48,17 +51,25 @@ class NSACognitiveLM(nn.Module):
         if not enabled:
             error_signal = torch.zeros_like(error_signal)
 
+        # Semantic self-awareness: prediction error modulates the readout.
         feedback = self.error_gate(error_signal)
         modulated_hidden = hidden + feedback if enabled else hidden
         logits = self.nsa.lm_head(modulated_hidden)
 
+        # Causal state self-regulation: prediction error now also proposes a
+        # bounded future state update. Hard security remains immutable.
+        regulated_state = self.state_regulator(state, error, enabled=enabled)
+
+        # Expose both native and regulated state so experiments can distinguish
+        # the original NSA trajectory from the closed cognitive loop.
         regulation = self.regulation(error if enabled else torch.zeros_like(error))
-        capability = self.capability(hidden, state)
+        capability = self.capability(modulated_hidden, regulated_state)
         return {
             "logits": logits,
             "hidden": modulated_hidden,
             "base_hidden": hidden,
-            "state": state,
+            "state": regulated_state,
+            "base_state": state,
             "predicted_state": predicted,
             "prediction_error": error,
             "error_signal": error_signal,
