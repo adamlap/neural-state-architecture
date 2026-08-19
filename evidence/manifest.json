@@ -389,6 +389,57 @@
       }
     },
     {
+      "claim_id": "CLAIM-SAFETY-KERNEL-01",
+      "phase": "NSA 3.0",
+      "title": "Immutable Safety Kernel (ISK) Deterministic Invariant Suite",
+      "statement": "Deterministic non-neural transition kernel enforces 5 core invariants (Authority monotonicity, Non-substitutability, Merkle provenance integrity, Cognitive health stability, Governed verification risk bounding) outputting COMMIT, REJECT, or ROLLBACK.",
+      "theorem_or_proposition": "Transition Invariance: K(Omega_t, a) -> {COMMIT, REJECT, ROLLBACK} preserves I(Omega_{t+1}) = true",
+      "assumptions": [
+        "Kernel is deterministic and non-neural",
+        "Rollback snapshot points preserved"
+      ],
+      "implementation_paths": [
+        "nsa/core/safety_kernel.py",
+        "nsa/core/omega.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_safety_kernel.py"
+      ],
+      "experiment_paths": [],
+      "epistemic_status": "UNIT_TESTED",
+      "latest_metrics": {
+        "invariants_enforced_count": 5,
+        "rollback_on_fatal_disturbance": true,
+        "governed_verification_risk_bounded": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-COGNITIVE-SUBSTRATE-01",
+      "phase": "NSA 3.0",
+      "title": "Six-Layer End-to-End Constrained Cognitive Dynamics Substrate",
+      "statement": "Six-layer cognitive dynamics runtime orchestrates Neural State, Epistemic Justification, Counterfactual Simulation, Deliberative Governance, Immutable Safety Kernel, and Verified Execution.",
+      "theorem_or_proposition": "Six-Layer Cognitive Dynamics Architecture: Layer 1-6 End-to-End Orchestration",
+      "assumptions": [
+        "All 6 layers composed without authority leakage",
+        "Append-only provenance tracking active"
+      ],
+      "implementation_paths": [
+        "nsa/runtime/cognitive_substrate.py",
+        "nsa/core/safety_kernel.py",
+        "nsa/governor/epistemic_governor.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_safety_kernel.py",
+        "tests/test_omega_state.py"
+      ],
+      "experiment_paths": [],
+      "epistemic_status": "UNIT_TESTED",
+      "latest_metrics": {
+        "layers_orchestrated": 6,
+        "end_to_end_step_verified": true
+      }
+    },
+    {
       "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
       "phase": "Phase 14, 26",
       "title": "Whole-System End-to-End Non-Interference Proof",
