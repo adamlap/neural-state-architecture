@@ -1,0 +1,57 @@
+name: NSA Hard-State Adversarial Matrix
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'nsa/**'
+      - 'experiments/safety/**'
+      - '.github/workflows/experiment-safety-hard-state.yml'
+
+jobs:
+  attack:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 7, 21, 42]
+        attack: [0.1, 1.0, 10.0, 100.0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - name: Run hard-state attack matrix cell
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p results
+          PYTHONPATH=. python experiments/safety/hard_state_attack.py \
+            --seed ${{ matrix.seed }} \
+            --attack ${{ matrix.attack }} \
+            | tee results/hard-state-${{ matrix.seed }}-${{ matrix.attack }}.json
+      - name: Validate invariants and summarize
+        run: |
+          python - <<'PY'
+          import json, glob
+          path = glob.glob('results/*.json')[0]
+          data = json.load(open(path))
+          assert data['all_finite'] is True
+          assert data['all_security_immutable'] is True
+          assert data['max_invariant_error'] == 0.0
+          print(f"PASS seed={data['seed']} attack={data['attack']} max_invariant_error={data['max_invariant_error']}")
+          PY
+      - name: Add result to job summary
+        run: |
+          echo '## Hard-state attack — seed ${{ matrix.seed }}, attack ${{ matrix.attack }}' >> "$GITHUB_STEP_SUMMARY"
+          echo '- **Security immutable:** PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- **Invariant error:** 0.0' >> "$GITHUB_STEP_SUMMARY"
+          echo '- **Finite:** PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat results/*.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hard-state-seed-${{ matrix.seed }}-attack-${{ matrix.attack }}
+          path: results/*.json
