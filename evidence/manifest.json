@@ -282,14 +282,41 @@
       }
     },
     {
-      "claim_id": "CLAIM-REASONING-CALIBRATION-01",
-      "phase": "Phase 18, 33",
-      "title": "Uncertainty Calibration & Error Detection under Self-State Awareness",
-      "statement": "Explicit self-state awareness (m_t, sigma_t, epsilon_t) produces measurable improvements in Expected Calibration Error (ECE) and monotonic disturbance error signaling compared to untyped baseline under matched parameter budgets.",
-      "theorem_or_proposition": "Hypothesis: Explicit Cognitive State enhances uncertainty calibration & error detection",
+      "claim_id": "CLAIM-DUAL-AUTHORITY-01",
+      "phase": "Phase 26, 33",
+      "title": "Dual-Authority Orthogonality & Grounding Operator",
+      "statement": "Operational authority (sigma_h) and epistemic authority (epsilon_grounded) are strictly orthogonal: clearance does not create truth (sigma_h !-> Truth), and confidence cannot grant security permission (epsilon_grounded !-> sigma_h). Grounding operator G(epsilon_internal, E_external) enforces external anti-hallucination bounds.",
+      "theorem_or_proposition": "Axiom (Dual-Authority Orthogonality): sigma_h _|_ epsilon_grounded",
       "assumptions": [
-        "Matched compute and parameter budgets between baseline and explicit-state models",
-        "Epistemic uncertainty head actively modulates output logits"
+        "Operational clearance checks independent of confidence heads",
+        "Grounding operator bounds internal confidence by external evidence"
+      ],
+      "implementation_paths": [
+        "nsa/epistemic.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_phase33_flagship.py",
+        "tests/test_epistemic.py"
+      ],
+      "experiment_paths": [
+        "experiments/reasoning/flagship_phase33_suite.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "anti_hallucination_bound_holds": true,
+        "orthogonality_verified": true,
+        "grounded_decisions_legal": true
+      }
+    },
+    {
+      "claim_id": "CLAIM-PHASE33-FLAGSHIP-01",
+      "phase": "Phase 33",
+      "title": "Phase 33 Flagship Tri-Experiment on Grounded Self-State Reasoning",
+      "statement": "Tri-experiment demonstrates: (1) ECE calibration improvement under matched compute, (2) intrinsic fault detection tau_detect prior to semantic failure tau_failure, and (3) epistemically-governed and legally-constrained counterfactual action selection.",
+      "theorem_or_proposition": "Hypothesis: Safety Metadata -> Computationally Useful Self-State",
+      "assumptions": [
+        "Matched compute and parameter budgets between baseline and cognitive models",
+        "Grounding operator active during inference"
       ],
       "implementation_paths": [
         "nsa/cognitive.py",
@@ -297,17 +324,18 @@
         "nsa/self_model.py"
       ],
       "unit_test_paths": [
+        "tests/test_phase33_flagship.py",
         "tests/test_epistemic.py",
         "tests/test_conditioned_self_model.py"
       ],
       "experiment_paths": [
-        "experiments/reasoning/calibration_and_planning.py"
+        "experiments/reasoning/flagship_phase33_suite.py"
       ],
       "epistemic_status": "EMPIRICALLY_VALIDATED",
       "latest_metrics": {
-        "calibration_improvement": 0.05,
-        "monotonic_error_scaling": true,
-        "counterfactual_planning_legal": true
+        "calibration_improved": true,
+        "early_fault_detection_steps": 1.0,
+        "grounded_action_success": true
       }
     },
     {
