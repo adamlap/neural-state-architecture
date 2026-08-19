@@ -1,0 +1,32 @@
+name: NSA Experiment Aggregate
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["NSA Self-State Recovery Experiment"]
+    types: [completed]
+
+jobs:
+  aggregate:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - name: Locate recovery artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: recovery-seed-*
+          merge-multiple: true
+          path: results/recovery
+      - name: Aggregate recovery results
+        run: |
+          PYTHONPATH=. python -m experiments.common.aggregate results/recovery --output results/recovery-aggregate.json
+      - name: Upload aggregate results
+        uses: actions/upload-artifact@v4
+        with:
+          name: nsa-recovery-aggregate
+          path: results/recovery-aggregate.json
