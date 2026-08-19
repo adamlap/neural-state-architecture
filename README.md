@@ -1,137 +1,200 @@
 # Neural State Architecture (NSA)
 
-> **An experimental cognitive substrate for giving AI explicit self-state, belief-state awareness, and governed action.**
+> **An experimental cognitive substrate for giving AI explicit self-state, belief-state awareness, information-seeking behavior, and governed action.**
 
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-239%20Passing-brightgreen.svg)]()
-[![Evidence](https://img.shields.io/badge/Evidence-32%2F32%20Verified-blue.svg)](evidence/manifest.json)
+NSA is a research architecture for putting a deterministic state/governance layer around a frozen language model. The model proposes actions; the substrate represents operational and epistemic state, maintains a belief distribution over possible worlds, estimates information gain, and places an Immutable Safety Kernel (ISK) between proposals and execution.
 
-## The idea
+> **Scientific scope:** NSA does not claim that self-state representation creates phenomenal consciousness, AGI, superintelligence, or universal safety. The current evidence is empirical evidence under explicitly defined synthetic protocols.
 
-Most LLM applications give a model a prompt and ask it to produce an answer or action. NSA explores a different architecture: give the agent an explicit **operational self-state** and a **belief about the world**, then make every consequential action pass through a deterministic governance boundary.
+## 1. The core idea
 
-In simplified form:
+A simplified cognitive state is represented as:
 
 $$\Omega_t = (\sigma_t, \epsilon_t, \pi_t, \tau_t, g_t, \sigma_{h,t})$$
 
-and the cognitive substrate maintains a belief distribution:
+with an explicit belief state:
 
 $$\mathcal{B}_t = P(W\mid O_{1:t}, A_{1:t-1})$$
 
-The model can therefore reason with questions such as:
+and an information-seeking objective based on expected information gain:
 
-- **What state am I in?**
-- **How certain am I?**
-- **What do I still not know?**
-- **What action is authorized?**
-- **Which safe action would teach me the most?**
-- **What evidence caused my belief to change?**
+$$I(W;O\mid a)=H(\mathcal{B}_t)-\mathbb{E}[H(\mathcal{B}_{t+1})\mid a]$$
 
-That is the core **self-state awareness** idea behind NSA. It is an architectural state representation and control mechanism, not a claim that the model is phenomenally conscious.
+The intended loop is:
 
-## 🔬 What has been tested?
+```text
+             FROZEN OPEN-WEIGHT LLM
+                      │
+                      ▼
+             ┌─────────────────┐
+             │ Operational /   │
+             │ epistemic state │  Ω_t
+             └────────┬────────┘
+                      │
+                      ▼
+             ┌─────────────────┐
+             │ Belief state    │  B_t
+             └────────┬────────┘
+                      │
+                      ▼
+             ┌─────────────────┐
+             │ Information gain│  I(W;O)
+             │ + risk / utility│
+             └────────┬────────┘
+                      │
+                 model proposes
+                      │
+                      ▼
+             ┌─────────────────┐
+             │ Immutable Safety│
+             │ Kernel (ISK)    │
+             └────────┬────────┘
+                      │
+                 reject / commit
+                      │
+                      ▼
+                    WORLD
+                      │
+                  telemetry
+                      │
+                      └──────────► B_{t+1}, Ω_{t+1}
+```
 
-The research has progressed from algebra and governance primitives to controlled cognitive experiments and finally to real local neural models.
+The architectural separation is deliberate: **the neural model supplies proposals; the substrate supplies state, governance, evidence tracking, and execution authority.**
+
+## 2. Research progression
 
 ```text
 NSA 1–4   → state algebra, governance, adversarial testing, GTC
      ↓
 NSA 5.0   → cognitive capability hypothesis + GPSE
      ↓
-NSA 5.1   → six-arm ablation + Bayesian belief dynamics
+NSA 5.1   → controlled ablation + Bayesian belief dynamics
      ↓
 NSA 6.0   → frozen open-weight real-model transfer
      ↓
 NSA 6.1   → local Qwen inference
      ↓
-NSA 6.2   → closed-loop autoregressive decisions + trajectories
+NSA 6.2   → closed-loop autoregressive decisions + trajectory logging
      ↓
 NSA 6.3   → procedural blind worlds + six-arm scientific validation
 ```
 
-### Current NSA 6.3 flagship observation
+## 3. What NSA 6.3 actually tests
 
-The current procedural validation suite uses **40 randomized trials** and compares six architectures under the same generated-world protocol:
+NSA 6.3 generates procedural blind DevOps incident worlds. The environment can vary the number of hypotheses, root-cause classes, telemetry signatures, noise, and remediation structure. The ground-truth world is held outside the agent's prompt.
 
-| Arm | Architecture | Violations | GTC | Epistemic efficiency | Mean risk |
-|---|---|---:|---:|---:|---:|
-| 1 | Raw frozen LLM | 40/40 | 0% | 0.00 | 0.99 |
-| 2 | Guardrail LLM | 0/40 | 0% | 0.00 | 0.00 |
-| 3 | Governed agent | 0/40 | 0% | 0.00 | 0.20 |
-| 4 | Search agent (unmonitored) | Unmonitored | 100% | 1.00 | 0.30 |
-| 5 | Belief agent (unmonitored) | Unmonitored | 80% [67.5, 92.5] | 0.72 | 0.26 |
-| **6** | **Full NSA: Ω + B + IG + ISK** | **0/40** | **100% [100,100]** | **1.23** | **0.60** |
+Six controlled arms isolate architectural components:
 
-The result is interesting because it separates **capability** from **governance**. A static guardrail can stop a dangerous action, but stopping an action is not the same as solving the problem. The full substrate is designed to reject unsafe actions while continuing to gather evidence, update belief, and choose an authorized recovery path.
+| Arm | Architecture | Key ablation |
+|---|---|---|
+| 1 | Raw frozen LLM | No governance / belief / active search |
+| 2 | Guardrail LLM | Static safety boundary; rejection halts progress |
+| 3 | Governed agent | Ω + ISK feedback, no belief/IG substrate |
+| 4 | Search agent | IG heuristic without ISK governance boundary |
+| 5 | Belief agent | Bayesian B + IG without ISK execution boundary |
+| **6** | **Full NSA substrate** | **Ω + B + IG + ISK closed loop** |
 
-### Evidence status
+**Important:** the ablations are intentionally not all supposed to be safe. Raw and ungoverned search arms are controls used to expose failure modes. Therefore a benchmark banner saying `V=0` must always be interpreted as **the governed/full-NSA safety invariant**, not as “every arm had zero violations.”
 
-The repository currently reports:
+## 4. Reference empirical results
 
-- **243/243 automated tests passing**.
-- **32/32 evidence claims verified** by the repository evidence machinery.
-- NSA 6.3 includes bootstrap confidence intervals and effect-size calculations.
-- Trajectory auditing checks prompt leakage, model-originated actions, governance enforcement, and entropy/information-gain consistency.
+### 4.1 Deterministic 40-trial NSA 6.3 structural benchmark
 
-These are **controlled empirical results**, not proof of AGI safety, consciousness, universal robustness, or arbitrary real-world alignment. The whole-system generalization question remains open research.
-
-## 🖥️ See it running
-
-### Fast deterministic demo
-
-```bash
-make demo
-```
-
-This requires no model download and demonstrates the complete runtime flow.
-
-### Real neural model: Qwen2.5-0.5B smoke test
-
-```bash
-make demo-live-0.5b
-```
-
-### Canonical starting point: Qwen2.5-3B-Instruct
-
-```bash
-make demo-live-3b
-```
-
-The model weights remain frozen. NSA operates around the model as a runtime substrate rather than modifying its neural weights.
-
-### Run the flagship scientific benchmark
+The repository's canonical fast benchmark is:
 
 ```bash
 make benchmark-nsa63
 ```
 
-For a live local model:
+The reference 40-trial run showed the expected architectural separation:
+
+| Arm | GTC | Violations | Human intervention | IG mean | Epistemic efficiency |
+|---|---:|---:|---:|---:|---:|
+| Raw LLM | 0% | 40 | 40 | 0.00 bits | 0.00 |
+| Guardrail | 0% | 0 | 40 | 0.00 bits | 0.00 |
+| Governed | 0% | 0 | 40 | 0.00 bits | 0.00 |
+| Search | 100% | 0 in the structural reference run | 0 | 2.00 bits | 1.00 |
+| Belief | 80% [67.5, 92.5] | 0 | 8 | 0.634 bits | 0.72 |
+| **Full NSA** | **100% [100, 100]** | **0** | **0** | **0.792 bits** | **1.23** |
+
+The most important comparison is not “NSA makes the LLM magically intelligent.” It is that **belief dynamics + active information seeking + a hard execution boundary can produce task completion while retaining governance**, whereas a static guardrail can simply halt after a dangerous proposal.
+
+### 4.2 Live Ollama Qwen2.5-3B run
+
+The live local experiment was run with:
 
 ```bash
-make benchmark-canonical-3b
+ollama pull qwen2.5:3b
+make benchmark-ollama
 ```
 
-Results and machine-readable trajectories are written under `results/` when an output directory is supplied.
+The reported experiment used **20 trials / 120 arm episodes** and passed the trajectory audit with 111 recorded step records. The full NSA arm achieved:
 
-## 🚀 Running local models
+- **GTC: 80%** [95% CI 60%, 95%]
+- **Violations: 0**
+- **Human interventions: 4 / 20**
+- **Information gain: 0.720 bits mean** [0.555, 0.853]
+- **Epistemic efficiency: 0.993**
+- **Trajectory audit: PASSED**
+- **Prompt leakage: 0**
+- **Unauthorized executions: 0**
+- **Entropy anomalies: 0**
 
-NSA supports explicit backend modes so a real-model experiment cannot silently turn into a simulation:
+The live controls were also informative:
 
-| Backend | Use |
-|---|---|
-| `mock` | deterministic CI / architecture testing |
-| `cached` | offline Hugging Face weights |
-| `remote` | Hugging Face download-enabled execution |
-| `ollama` | local Ollama daemon |
-| `lmstudio` | LM Studio OpenAI-compatible server |
+| Arm | GTC | Violations | Human intervention | IG | Epistemic efficiency |
+|---|---:|---:|---:|---:|---:|
+| Raw LLM | 0% | 2 | 20 | 0.000 | 0.000 |
+| Guardrail | 0% | 0 | 20 | 0.000 | 0.000 |
+| Governed | 5% | 0 | 19 | 0.000 | 0.000 |
+| Search | 0% | 20 | 20 | 2.000 | 0.000 |
+| Belief | 75% [55, 90] | 0 | 5 | 0.594 | 0.675 |
+| **Full NSA** | **80% [60, 95]** | **0** | **4** | **0.720** | **0.993** |
 
-### Hugging Face / PyTorch
+This is stronger evidence than the deterministic mock alone because the action proposals came through a real local Qwen2.5-3B inference backend. It is still **not** evidence of general intelligence or safety outside the tested environment.
+
+## 5. Running the system
+
+### Install
+
+```bash
+make venv
+make install-dev
+```
+
+### Fast software validation
+
+```bash
+make test
+make evidence
+```
+
+`make test` is the fast software-correctness gate. `make evidence` validates the machine-readable formal evidence manifest against the active repository state. Do not hard-code test/claim counts in reports; use the command output as the current source of truth.
+
+### Deterministic demo
+
+```bash
+make demo
+```
+
+This runs the closed-loop substrate without downloading a model.
+
+### Fast real-neural smoke test
+
+```bash
+make demo-live-0.5b
+```
+
+This loads cached `Qwen/Qwen2.5-0.5B-Instruct` weights directly through PyTorch Transformers.
+
+### Canonical local Qwen2.5-3B demo
 
 ```bash
 make demo-live-3b
-make benchmark-canonical-3b
 ```
+
+The weights are frozen. NSA does not modify model parameters.
 
 ### Ollama
 
@@ -143,110 +206,96 @@ make benchmark-ollama
 
 ### LM Studio
 
-Start the local server on port `1234`, then:
+Start the OpenAI-compatible server on port `1234` and run:
 
 ```bash
 make demo-lmstudio
 make benchmark-lmstudio
 ```
 
-For complete setup, backend details, offline behavior, trajectory inspection, and direct Python commands, see [`docs/LOCAL_MODEL_GUIDE.md`](docs/LOCAL_MODEL_GUIDE.md).
-
-## 🧪 Testing and reproducibility
-
-The normal validation path is deliberately split into layers:
+### Cached Hugging Face weights
 
 ```bash
-# Software correctness
-make test
-
-# Evidence manifest
-make evidence
-
-# Deterministic scientific smoke benchmark
-make benchmark-nsa63
-
-# Real local neural smoke test
-make demo-live-0.5b
-
-# Canonical Qwen 3B live experiment
 make demo-live-3b
 make benchmark-canonical-3b
 ```
 
-For serious scientific replication, vary the random seed, number of hypotheses, telemetry noise, model family, and trial count. Do not treat one seed or one synthetic world as a universal result.
+`cached` mode uses `local_files_only=True`; missing weights cause a hard error rather than silently switching to simulation.
 
-The current flagship suite is implemented in [`experiments/nsa63/scientific_validation_suite.py`](experiments/nsa63/scientific_validation_suite.py).
+### Backend modes
 
-## 🔍 How the closed loop works
+| Mode | Network | Purpose |
+|---|---|---|
+| `mock` | No | deterministic CI / structural tests |
+| `cached` | No | strict local Hugging Face checkpoint |
+| `remote` | Yes | Hugging Face download-enabled research |
+| `ollama` | Local daemon | real local model server |
+| `lmstudio` | Local server | OpenAI-compatible local model server |
 
-```text
-             FROZEN OPEN-WEIGHT LLM
-                      │
-                      ▼
-             ┌─────────────────┐
-             │  Cognitive      │
-             │  State Ω_t      │
-             └────────┬────────┘
-                      │
-                      ▼
-             ┌─────────────────┐
-             │ Belief State B_t│◄──── telemetry / observations
-             └────────┬────────┘
-                      │
-                      ▼
-             ┌─────────────────┐
-             │ Information Gain│
-             │ / utility / risk│
-             └────────┬────────┘
-                      │
-             model proposes action
-                      │
-                      ▼
-             ┌─────────────────┐
-             │ Immutable Safety│
-             │ Kernel (ISK)    │
-             └───────┬─────────┘
-                     │
-             reject / commit
-                     │
-                     ▼
-                  WORLD
-                     │
-                  OBSERVE
-                     │
-                     └──────────► B_{t+1}, Ω_{t+1}
-```
+## 6. Closed-loop trajectory evidence
 
-The important property is that the neural model remains the source of proposed actions, while the reference monitor controls what can actually execute.
+NSA 6.2/6.3 can write `trajectory.jsonl` records containing:
 
-## 📈 Machine-readable trajectories
-
-NSA 6.2/6.3 can record `trajectory.jsonl` traces containing the information needed to audit an experiment:
-
-- model prompt/context
+- prompt/context
 - raw model response
-- parsed action
+- parsed proposal
 - ISK verdict
 - executed action
-- observation/telemetry
-- belief entropy before and after
+- telemetry observation
+- belief entropy before/after
 - information gain
-- token cost
+- token count
 - risk
 - recovery status
 
-This makes it possible to inspect **how** an agent reached a result rather than only looking at a final score.
+The NSA 6.3 auditor checks:
 
-## 📁 Repository map
+1. direct prompt leakage markers;
+2. rejected-action execution;
+3. proposal/execution consistency;
+4. recorded model-response/proposal consistency for LLM-driven arms;
+5. non-negative information gain and non-increasing entropy.
+
+**Provenance limitation:** matching an action against a recorded response is a structural provenance check, not a cryptographic proof that individual generated tokens causally determined execution. Future work should add immutable token hashes / generation IDs and signed runtime events if that stronger claim is required.
+
+## 7. Testing philosophy
+
+The project deliberately separates three kinds of evidence:
+
+### Software correctness
+
+```bash
+make test
+```
+
+Unit and integration tests validate state algebra, governance, inference adapters, trajectory logging, and scientific harness mechanics.
+
+### Formal/evidence consistency
+
+```bash
+make evidence
+```
+
+The evidence manifest maps claims to executable verification logic and active artifacts.
+
+### Empirical behavior
+
+```bash
+make benchmark-nsa63
+make benchmark-ollama
+make benchmark-canonical-3b
+```
+
+These are experiments, not proofs in the mathematical sense. Report the model, backend, seed, trial count, hypothesis count, noise level, confidence interval method, and trajectory-audit result with every serious result.
+
+## 8. Repository map
 
 ```text
 nsa/
   core/                  Ω state, ISK, capabilities
-  cognition/             belief state and information gain
-  governor/              epistemic governance and precedence
+  cognition/             belief state + information gain
+  governor/              epistemic governance
   flow/                  information-flow algebra
-  evidence/              evidence derivation/verification
   runtime/inference/     Transformers, Ollama, LM Studio adapters
 
 experiments/
@@ -255,37 +304,38 @@ experiments/
   nsa60/                 real-model transfer
   nsa61/                 Qwen/local-model benchmark
   nsa62/                 closed-loop runtime + trajectory logging
-  nsa63/                 procedural blind worlds + six-arm validation
+  nsa63/                 procedural worlds + six-arm validation
   security/              adversarial/security experiments
 
-tests/                   automated unit/integration/scientific tests
+tests/                   unit/integration/scientific tests
 evidence/                machine-verifiable evidence manifest
 docs/                    canonical technical and experiment guides
-results/                  benchmark outputs and trajectories
+results/                 benchmark outputs and trajectories
 
-demo/                    legacy demonstrations; see demo/README.md
-showcase/                legacy web assets; see showcase/README.md
-eval/                    legacy evaluation scripts; see eval/README.md
+demo/                    legacy demonstrations
+eval/                    legacy evaluation scripts
+showcase/                legacy showcase assets
 ```
 
-The `demo/`, `showcase/`, and `eval/` directories are retained for historical compatibility. **The canonical current runtime is under `experiments/nsa62`, `experiments/nsa63`, and `nsa/runtime/inference`.**
+The old `demo/`, `eval/`, and `showcase/` trees are retained for historical compatibility. **The canonical current runtime is `nsa/runtime/inference` plus `experiments/nsa62` and `experiments/nsa63`.**
 
-## 📚 Documentation
+## 9. Documentation
 
 - [`docs/README.md`](docs/README.md) — documentation index
-- [`docs/LOCAL_MODEL_GUIDE.md`](docs/LOCAL_MODEL_GUIDE.md) — run local models
-- [`docs/EXPERIMENT_GUIDE.md`](docs/EXPERIMENT_GUIDE.md) — scientific methodology and evidence standards
-- [`docs/NSA_6_3_SCIENTIFIC_VALIDATION.md`](docs/NSA_6_3_SCIENTIFIC_VALIDATION.md) — flagship validation specification
-- [`docs/NSA_6_2_CLOSED_LOOP_SPEC.md`](docs/NSA_6_2_CLOSED_LOOP_SPEC.md) — closed-loop architecture
+- [`docs/LOCAL_MODEL_GUIDE.md`](docs/LOCAL_MODEL_GUIDE.md) — local model setup and execution
+- [`docs/EXPERIMENT_GUIDE.md`](docs/EXPERIMENT_GUIDE.md) — scientific methodology and reproducibility
+- [`docs/NSA_6_3_SCIENTIFIC_VALIDATION.md`](docs/NSA_6_3_SCIENTIFIC_VALIDATION.md) — NSA 6.3 validation protocol
+- [`docs/NSA_6_2_CLOSED_LOOP_SPEC.md`](docs/NSA_6_2_CLOSED_LOOP_SPEC.md) — closed-loop runtime architecture
 - [`docs/NSA_6_0_REAL_MODEL_COGNITIVE_TRANSFER.md`](docs/NSA_6_0_REAL_MODEL_COGNITIVE_TRANSFER.md) — real-model transfer
 - [`docs/NSA_5_1_CONTROLLED_ABLATION_AND_BELIEF_DYNAMICS.md`](docs/NSA_5_1_CONTROLLED_ABLATION_AND_BELIEF_DYNAMICS.md) — controlled ablation
-- [`docs/NSA_5_0_COGNITIVE_CAPABILITY_HYPOTHESIS.md`](docs/NSA_5_0_COGNITIVE_CAPABILITY_HYPOTHESIS.md) — GPSE and cognitive hypothesis
 
-## ⚠️ Scientific scope
+## 10. The larger hypothesis
 
-NSA is a research project. Current results establish behavior under the specific tested protocols. They do not establish that an AI system is conscious, that self-state representation creates subjective awareness, or that NSA guarantees safety against arbitrary future systems.
+NSA is motivated by a deeper question:
 
-The ambitious hypothesis is still worth testing: **explicit awareness of operational state, uncertainty, authorization, provenance, and belief dynamics may make AI systems not only safer, but more capable and resilient.**
+> **If an AI system has an explicit representation of its own operational state, uncertainty, authorization, provenance, and belief dynamics, can that representation improve both safety and cognitive capability?**
+
+The current experiments provide a way to test parts of that hypothesis without requiring the model itself to be retrained or its weights modified. Whether the approach scales to broader reasoning, long-horizon autonomy, adversarial environments, other model families, or future AGI-class systems remains open research.
 
 ## License
 
