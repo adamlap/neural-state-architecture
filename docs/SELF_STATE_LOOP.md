@@ -20,10 +20,10 @@ that missing path.
 │                              ├────────► semantic readout modulation
 │                              │
 │                              ▼
-│                     bounded state proposal
+│                    corrective + learned residual
 │                              │
 │                              ▼
-│                     legal state update
+│                     bounded state update
 │                              │
 └──────────────────────────────┴──► σ'_t
 ```
@@ -38,13 +38,16 @@ The intended mathematical loop is:
 e_t=\sigma_t-\hat{\sigma}_t
 \]
 
-\[
-\Delta\sigma_t=R_\theta(e_t)
-\]
+The regulator now has an explicit corrective component:
 
 \[
-\sigma'_t=\sigma_t+\Delta\sigma_t
+\Delta\sigma_t = \delta_{max}\tanh(-k\tanh(e_t)+r_\theta(e_t))
 \]
+
+where `k >= 0` is the correction gain and `r_theta` is a zero-initialized,
+trainable residual. Thus the untrained architecture has a defined corrective
+direction rather than an arbitrary random perturbation, while training can learn
+additional state-dependent regulation.
 
 The regulator is bounded:
 
@@ -74,9 +77,11 @@ The base state and base hidden representation are exposed so experiments can dis
 - semantic self-awareness;
 - causal state regulation.
 
+`regulation_delta` is also exposed so the actual intervention can be measured directly.
+
 ## Recovery benchmark
 
-`experiments/self_state/recovery_curve.py` now performs a recurrent rollout. A disturbed
+`experiments/self_state/recovery_curve.py` performs a recurrent rollout. A disturbed
 state is repeatedly passed back into the model, allowing the state trajectory to evolve
 across multiple inference steps.
 
@@ -98,16 +103,35 @@ Interpretation:
 - `A_recovery ≈ 0`: no measurable recovery benefit.
 - `A_recovery < 0`: feedback worsened recovery.
 
+The perturbation sweep additionally reports normalized residual distance and
+area-under-the-distance-curve (AUC). A positive recovery advantage does not
+necessarily imply a positive AUC advantage: early correction and later drift
+must be distinguished rather than collapsed into a single claim.
+
 No result should be described as evidence of intelligence or consciousness without
 controlled training and statistical replication.
 
+## Current empirical status
+
+The initial seed-42 sweep showed a positive final-recovery advantage for 6/7
+perturbation magnitudes, but a negative mean AUC advantage. In particular, the
+feedback trajectory often corrected strongly in the first recurrent step and then
+drifted upward. This is evidence that the original random regulator was not yet a
+reliable recovery controller; it is not evidence of a solved self-stabilization
+problem.
+
+The regulator has therefore been changed from a random proposal to an explicit
+bounded contraction term plus a zero-initialized trainable residual. The next sweep
+should test whether this architectural change improves both final recovery and
+trajectory-level AUC across seeds.
+
 ## Research direction
 
-The next stages are:
-
-- train the regulator rather than relying on random initialization;
-- run multi-seed recovery curves;
-- sweep perturbation magnitude and affected state dimensions;
-- test hard-state attacks separately from soft-state disturbances;
-- measure whether self-state regulation improves capability while preserving invariants;
-- eventually evaluate long-horizon recurrent planning and counterfactual self-modeling.
+1. Run the corrected regulator across multiple seeds and perturbation magnitudes.
+2. Measure final recovery, AUC, settling time, peak residual, and regulation magnitude.
+3. Sweep correction gain and maximum delta to identify stable regions.
+4. Train the residual regulator and compare against the deterministic contraction baseline.
+5. Sweep affected state dimensions rather than perturbing every soft coordinate equally.
+6. Test hard-state attacks separately from soft-state disturbances.
+7. Measure whether self-state regulation improves capability while preserving invariants.
+8. Eventually evaluate long-horizon recurrent planning and counterfactual self-modeling.
