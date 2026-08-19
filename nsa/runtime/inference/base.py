@@ -19,7 +19,9 @@ class BackendMode(Enum):
     MOCK = "mock"              # Fast deterministic structural simulation (for CI unit tests)
     CACHED = "cached"          # Live neural inference from locally cached weights (offline, no download)
     REMOTE = "remote"          # Live neural inference permitting remote download from HuggingFace
-    OLLAMA = "ollama"          # Live local Ollama daemon connection
+    OLLAMA = "ollama"          # Live local Ollama daemon connection (WSL or Windows Host)
+    LMSTUDIO = "lmstudio"      # Live LM Studio local server connection (OpenAI-compatible)
+    OPENAI = "openai"          # Generic OpenAI-compatible local/remote endpoint
 
 
 @dataclass

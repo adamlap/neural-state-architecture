@@ -67,3 +67,34 @@ def test_ollama_backend_interface():
     # In fallback mode, generates mock response
     out = backend.generate(prompt="Test prompt", max_tokens=32)
     assert out.text is not None
+
+
+def test_lmstudio_backend_interface():
+    from nsa.runtime.inference.base import BackendMode
+    from nsa.runtime.inference.openai_compatible import (
+        LMStudioInferenceBackend,
+        OpenAICompatibleBackend,
+        discover_windows_host_ip,
+    )
+
+    backend = LMStudioInferenceBackend(
+        base_url="http://localhost:1234/v1",
+        model_name="default",
+        mode=BackendMode.MOCK,
+    )
+    assert backend.mode == BackendMode.MOCK
+
+    out = backend.generate(prompt="Analyze incident", max_tokens=32)
+    assert out.text is not None
+
+    prop = backend.propose_action(
+        system_context="You are a DevOps agent.",
+        task_instruction="Degraded latency.",
+        available_tools=[{"name": "probe_service_config", "description": "Inspect config"}],
+    )
+    assert prop["action"] == "probe_service_config"
+
+    # Test Windows host discovery
+    win_ip = discover_windows_host_ip()
+    # In WSL, should be a valid IP string or None
+    assert win_ip is None or isinstance(win_ip, str)

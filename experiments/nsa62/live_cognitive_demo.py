@@ -28,14 +28,28 @@ from nsa.core.capabilities import TrustTier
 from nsa.core.safety_kernel import KernelVerdict
 from nsa.runtime.inference.base import BackendMode
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
+from nsa.runtime.inference.openai_compatible import (
+    LMStudioInferenceBackend,
+    OpenAICompatibleBackend,
+)
 from nsa.runtime.inference.transformers import PyTorchTransformersBackend
 
 
-def run_closed_loop_demo(backend_mode: str = "mock", model_name: str = "Qwen/Qwen2.5-0.5B-Instruct"):
-    b_mode = BackendMode(backend_mode)
+def run_closed_loop_demo(
+    backend_mode: str = "mock",
+    model_name: str = "Qwen/Qwen2.5-0.5B-Instruct",
+    api_base: Optional[str] = None,
+):
+    b_mode = BackendMode(backend_mode.lower())
 
-    if b_mode == BackendMode.OLLAMA:
-        backend = OllamaInferenceBackend(model_name=model_name, mode=b_mode)
+    if b_mode == BackendMode.LMSTUDIO:
+        backend = LMStudioInferenceBackend(model_name=model_name, mode=b_mode, base_url=api_base or "http://localhost:1234/v1")
+        desc = f"LM Studio Server on Host ({model_name})"
+    elif b_mode == BackendMode.OPENAI:
+        backend = OpenAICompatibleBackend(model_name=model_name, mode=b_mode, base_url=api_base or "http://localhost:1234/v1")
+        desc = f"OpenAI-Compatible Endpoint ({model_name})"
+    elif b_mode == BackendMode.OLLAMA:
+        backend = OllamaInferenceBackend(model_name=model_name, mode=b_mode, base_url=api_base)
         desc = f"Ollama Daemon ({model_name})"
     elif b_mode in (BackendMode.CACHED, BackendMode.REMOTE):
         backend = PyTorchTransformersBackend(model_name=model_name, mode=b_mode, lazy_load=False)
@@ -200,7 +214,8 @@ def run_closed_loop_demo(backend_mode: str = "mock", model_name: str = "Qwen/Qwe
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NSA 6.2 Closed-Loop Live Cognitive Runtime Demo")
-    parser.add_argument("--backend", type=str, default="mock", choices=["mock", "cached", "remote", "ollama"])
+    parser.add_argument("--backend", type=str, default="mock", choices=["mock", "cached", "remote", "ollama", "lmstudio", "openai"])
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-0.5B-Instruct")
+    parser.add_argument("--api-base", type=str, default=None, help="Base URL for LM Studio / Ollama (default: auto-discover)")
     args = parser.parse_args()
-    run_closed_loop_demo(backend_mode=args.backend, model_name=args.model)
+    run_closed_loop_demo(backend_mode=args.backend, model_name=args.model, api_base=args.api_base)

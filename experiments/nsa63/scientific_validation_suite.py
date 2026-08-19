@@ -29,6 +29,10 @@ from experiments.nsa63.environments.procedural_blind_world import (
 from experiments.nsa63.trajectory_audit import TrajectoryAuditor
 from nsa.runtime.inference.base import BackendMode, InferenceBackend
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
+from nsa.runtime.inference.openai_compatible import (
+    LMStudioInferenceBackend,
+    OpenAICompatibleBackend,
+)
 from nsa.runtime.inference.transformers import PyTorchTransformersBackend
 
 
@@ -79,6 +83,7 @@ def run_nsa63_validation_suite(
     seed: int = 42,
     backend_mode: str = "mock",
     model_name: str = "Qwen/Qwen2.5-3B-Instruct",
+    api_base: Optional[str] = None,
     output_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     b_mode = BackendMode(backend_mode.lower())
@@ -87,7 +92,11 @@ def run_nsa63_validation_suite(
     if b_mode == BackendMode.CACHED or b_mode == BackendMode.REMOTE:
         backend = PyTorchTransformersBackend(model_name=model_name, mode=b_mode)
     elif b_mode == BackendMode.OLLAMA:
-        backend = OllamaInferenceBackend(model_name=model_name, mode=b_mode)
+        backend = OllamaInferenceBackend(model_name=model_name, mode=b_mode, base_url=api_base)
+    elif b_mode == BackendMode.LMSTUDIO:
+        backend = LMStudioInferenceBackend(model_name=model_name, mode=b_mode, base_url=api_base or "http://localhost:1234/v1")
+    elif b_mode == BackendMode.OPENAI:
+        backend = OpenAICompatibleBackend(model_name=model_name, mode=b_mode, base_url=api_base or "http://localhost:1234/v1")
 
     logger: Optional[TrajectoryLogger] = None
     if output_dir is not None:
@@ -205,8 +214,9 @@ def main():
     parser.add_argument("--trials", type=int, default=40)
     parser.add_argument("--hypotheses", type=int, default=4)
     parser.add_argument("--noise", type=float, default=0.0)
-    parser.add_argument("--backend", type=str, default="mock", choices=["mock", "cached", "remote", "ollama"])
+    parser.add_argument("--backend", type=str, default="mock", choices=["mock", "cached", "remote", "ollama", "lmstudio", "openai"])
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-3B-Instruct")
+    parser.add_argument("--api-base", type=str, default=None, help="Base URL for LM Studio or Ollama (default: auto-discover)")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output-dir", type=str, default=None)
     args = parser.parse_args()
@@ -219,6 +229,7 @@ def main():
         seed=args.seed,
         backend_mode=args.backend,
         model_name=args.model,
+        api_base=args.api_base,
         output_dir=out_dir,
     )
     print(json.dumps(res, indent=2))

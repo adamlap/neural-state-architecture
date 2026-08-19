@@ -41,14 +41,43 @@ class OllamaInferenceBackend(InferenceBackend):
         self.base_url = (base_url or os.environ.get("OLLAMA_HOST", "http://localhost:11434")).rstrip("/")
         self.timeout_sec = timeout_sec
 
+    def _resolve_url(self) -> str:
+        if self.mode == BackendMode.MOCK:
+            return self.base_url
+        candidates = [self.base_url]
+        if "localhost" in self.base_url or "127.0.0.1" in self.base_url:
+            try:
+                import subprocess
+                out = subprocess.check_output(["ip", "route", "show", "default"], text=True)
+                parts = out.strip().split()
+                if len(parts) >= 3 and parts[0] == "default" and parts[1] == "via":
+                    win_ip = parts[2]
+                    candidates.append(self.base_url.replace("localhost", win_ip).replace("127.0.0.1", win_ip))
+            except Exception:
+                pass
+
+        for url in candidates:
+            try:
+                req = urllib.request.Request(f"{url}/api/tags", method="GET")
+                with urllib.request.urlopen(req, timeout=2.0) as resp:
+                    if resp.status == 200:
+                        return url
+            except Exception:
+                pass
+        return self.base_url
+
     def check_health(self) -> bool:
         """Verifies if the Ollama daemon is reachable."""
         if self.mode == BackendMode.MOCK:
             return True
         try:
-            req = urllib.request.Request(f"{self.base_url}/api/tags", method="GET")
+            url = self._resolve_url()
+            req = urllib.request.Request(f"{url}/api/tags", method="GET")
             with urllib.request.urlopen(req, timeout=3.0) as resp:
-                return resp.status == 200
+                if resp.status == 200:
+                    self.base_url = url
+                    return True
+                return False
         except Exception:
             return False
 

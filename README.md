@@ -4,7 +4,7 @@
 
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Unit Tests](https://img.shields.io/badge/Tests-239%2B%20Passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/Tests-240%2B%20Passing-brightgreen.svg)]()
 [![Evidence Manifest](https://img.shields.io/badge/Claims-31%2F31%20Verified-blue.svg)](evidence/manifest.json)
 
 > [!NOTE]
@@ -86,7 +86,7 @@ Run our live interactive terminal dashboard mediating a frozen `Qwen2.5-3B-Instr
 ## ⚡ Quick Start & Canonical API
 
 ```bash
-# 1. Run complete automated test suite (239+ tests in ~7s)
+# 1. Run complete automated test suite (240+ tests in ~7s)
 make test
 
 # 2. Audit formal machine-traceable evidence manifest (31 claims)
@@ -96,10 +96,68 @@ make evidence
 make demo
 
 # 4. Launch live closed-loop neural demo with cached local Qwen weights
-make demo-live
+make demo-live-0.5b      # Fast CPU smoke demo (Qwen2.5-0.5B)
+make demo-live-3b        # Canonical 3B live demo (Qwen2.5-3B)
 
-# 5. Run closed-loop cognitive benchmark with trajectory logging
-make benchmark-live
+# 5. Run NSA 6.3 6-arm procedural ablation benchmark
+make benchmark-nsa63     # Fast procedural ablation validation
+```
+
+---
+
+## 🚀 Running Neural Models & Backends
+
+NSA provides a unified inference layer ([nsa/runtime/inference/](nsa/runtime/inference/)) supporting multiple execution backends, from fast local CPU simulation to GPU-accelerated local servers on the Windows host.
+
+### 1. LM Studio on Windows Host (`--backend lmstudio`)
+To evaluate larger models (e.g. **Qwen 2.5 7B, 14B, 32B** or **Llama 3.1 8B/70B**) using host hardware outside WSL:
+1. Open **LM Studio** on Windows, load your chosen model (e.g., `Qwen/Qwen2.5-7B-Instruct-GGUF`).
+2. Go to the **Developer / Local Server** tab (port `1234`) and click **Start Server**.
+3. Run the live demo or scientific validation benchmark from WSL (the NSA adapter automatically resolves the Windows host gateway IP):
+   ```bash
+   # Live interactive demo
+   make demo-lmstudio
+
+   # Full NSA 6.3 6-arm ablation benchmark
+   make benchmark-lmstudio
+   ```
+   *Custom parameters:*
+   ```bash
+   PYTHONPATH=. python experiments/nsa63/scientific_validation_suite.py \
+       --backend lmstudio \
+       --api-base http://localhost:1234/v1 \
+       --trials 20 \
+       --output-dir results/nsa63/lmstudio
+   ```
+
+### 2. Ollama on Windows or WSL (`--backend ollama`)
+To run models using Ollama:
+1. Ensure Ollama is running (`ollama serve` or Ollama for Windows).
+2. Pull the model: `ollama pull qwen2.5:3b` or `ollama pull qwen2.5:7b`.
+3. Launch demo or benchmark:
+   ```bash
+   make demo-live-ollama
+   make benchmark-ollama
+   ```
+
+### 3. Local Offline HuggingFace Weights (`--backend cached`)
+To run directly within Python using cached PyTorch Transformers weights (`~/.cache/huggingface/hub/`):
+```bash
+# Fast smoke demo (0.5B)
+make demo-live-0.5b
+
+# Canonical 3B demo
+make demo-live-3b
+
+# Benchmark
+make benchmark-smoke
+```
+
+### 4. Fast Deterministic Simulator (`--backend mock`)
+For CI pipelines, unit testing, and fast architectural validation (<8s):
+```bash
+make demo
+make benchmark-nsa63
 ```
 
 ---
@@ -114,8 +172,9 @@ neural-state-architecture/
 │   ├── governor/               # Epistemic Governor & Precedence Engine
 │   ├── flow/                   # Information Flow Lattice & Propagation Graphs
 │   ├── evidence/               # Dynamic Evidence & Epistemic Derivation Engine
-│   └── runtime/inference/      # LLM Adapters (Transformers, Ollama, Action Parser)
+│   └── runtime/inference/      # LLM Adapters (Transformers, Ollama, LM Studio / OpenAI)
 ├── experiments/
+│   ├── nsa63/                  # NSA 6.3 Procedural Blind Worlds & 6-Arm Ablation Suite
 │   ├── nsa62/                  # NSA 6.2 Closed-Loop Runtime, Benchmark & Trajectory Logger
 │   ├── nsa61/                  # Hardened Blind World Environment (D0-D8)
 │   ├── nsa51/                  # 6-Arm Controlled Cognitive Ablation Suite
@@ -124,7 +183,8 @@ neural-state-architecture/
 │   └── security/               # 3-Axis Governed Scaling & Strategic Adversary Suite
 ├── evidence/                   # Machine-Traceable Evidence Manifest & Verification
 ├── results/                    # Persisted Benchmark Results & trajectory.jsonl Traces
-├── tests/                      # 230+ Unit, Integration & Regression Tests
+├── scripts/                    # Automation Scripts (sync_metadata.py)
+├── tests/                      # 240+ Unit, Integration & Scientific Tests
 └── Makefile                    # Canonical Experiment & Demonstration Interface
 ```
 

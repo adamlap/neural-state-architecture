@@ -28,7 +28,7 @@ install: ## Install runtime requirements
 install-dev: install ## Install runtime and development dependencies
 	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) pip install pytest black ruff mypy; else $(PYTHON) -m pip install pytest black ruff mypy; fi
 
-test: ## Run unit and integration test suite (239+ tests)
+test: ## Run unit and integration test suite (240+ tests)
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		$(UV) run python -m pytest -v tests/; \
 	else \
@@ -79,6 +79,13 @@ demo-live-ollama: ## Launch live demonstration connected to local Ollama (qwen2.
 		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend ollama --model qwen2.5:3b; \
 	fi
 
+demo-lmstudio: ## Launch live closed-loop demo connected to LM Studio on Windows Host (port 1234)
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend lmstudio --model default; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend lmstudio --model default; \
+	fi
+
 benchmark: benchmark-nsa62 benchmark-ablation benchmark-gpse benchmark-gtc benchmark-security ## Run complete benchmark suite
 
 benchmark-nsa63: ## Run NSA 6.3 procedural randomized validation & 6-arm ablation suite
@@ -86,6 +93,20 @@ benchmark-nsa63: ## Run NSA 6.3 procedural randomized validation & 6-arm ablatio
 		PYTHONPATH=. $(UV) run python experiments/nsa63/scientific_validation_suite.py --backend mock --trials 40; \
 	else \
 		PYTHONPATH=. $(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend mock --trials 40; \
+	fi
+
+benchmark-lmstudio: ## Run NSA 6.3 ablation benchmark via LM Studio on Windows Host
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/nsa63/scientific_validation_suite.py --backend lmstudio --trials 20 --output-dir results/nsa63/lmstudio; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend lmstudio --trials 20 --output-dir results/nsa63/lmstudio; \
+	fi
+
+benchmark-ollama: ## Run NSA 6.3 ablation benchmark via Ollama (WSL or Windows Host)
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/nsa63/scientific_validation_suite.py --backend ollama --trials 20 --output-dir results/nsa63/ollama; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend ollama --trials 20 --output-dir results/nsa63/ollama; \
 	fi
 
 benchmark-nsa63-ablation: benchmark-nsa63 ## Alias for NSA 6.3 ablation benchmark
