@@ -61,6 +61,10 @@ def run(seed: int = 7, batch: int = 4, seq_len: int = 24, vocab_size: int = 128,
     enabled_final = enabled_recovery[-1]
     disabled_final = disabled_recovery[-1]
     advantage = disabled_final - enabled_final
+    finite_values = enabled_recovery + disabled_recovery + enabled_d + disabled_d + enabled_mse + disabled_mse + enabled_caution + disabled_caution
+    finite = all(bool(torch.isfinite(torch.tensor(x)).item()) for x in finite_values)
+    if not finite:
+        raise RuntimeError("Recovery experiment produced NaN or Inf metrics")
     return {
         "seed": seed,
         "perturbation": perturbation,
@@ -83,7 +87,7 @@ def run(seed: int = 7, batch: int = 4, seq_len: int = 24, vocab_size: int = 128,
             "recovery_step": next((i for i, d in enumerate(disabled_recovery) if d <= epsilon), None),
         },
         "feedback_recovery_advantage": advantage,
-        "finite": float(all(torch.isfinite(torch.tensor(x)) for x in enabled_recovery + disabled_recovery)),
+        "finite": True,
     }
 
 
