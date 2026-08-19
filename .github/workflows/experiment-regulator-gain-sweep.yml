@@ -1,0 +1,66 @@
+name: NSA Self-State Regulator Gain Sweep
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'nsa/**'
+      - 'experiments/self_state/**'
+      - '.github/workflows/experiment-regulator-gain-sweep.yml'
+  push:
+    paths:
+      - 'nsa/**'
+      - 'experiments/self_state/**'
+      - '.github/workflows/experiment-regulator-gain-sweep.yml'
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 7, 21, 42]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - name: Run regulator gain sweep
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p results
+          PYTHONPATH=. python experiments/self_state/regulator_gain_sweep.py \
+            --seed ${{ matrix.seed }} \
+            | tee results/regulator-gain-${{ matrix.seed }}.json
+      - name: Validate regulator sweep
+        env:
+          RESULT: results/regulator-gain-${{ matrix.seed }}.json
+        run: |
+          python - <<'PY'
+          import json, os
+          with open(os.environ['RESULT'], encoding='utf-8') as f:
+              result = json.load(f)
+          assert result['finite'] is True
+          assert result['summary']['all_security_immutable'] is True
+          assert len(result['results']) == len(result['gains']) * len(result['max_deltas']) * len(result['perturbations'])
+          assert all('auc_advantage' in row for row in result['results'])
+          assert all('recovery_advantage' in row for row in result['results'])
+          print('Validated', os.environ['RESULT'])
+          PY
+      - name: Publish result summary
+        run: |
+          echo '## Regulator gain sweep — seed ${{ matrix.seed }}' >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          with open('results/regulator-gain-${{ matrix.seed }}.json', encoding='utf-8') as f:
+              r = json.load(f)
+          print('```json')
+          print(json.dumps(r['summary'], indent=2))
+          print('```')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: regulator-gain-seed-${{ matrix.seed }}
+          path: results/regulator-gain-${{ matrix.seed }}.json
