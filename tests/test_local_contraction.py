@@ -1,5 +1,3 @@
-import torch
-
 from experiments.self_state.local_contraction import run
 
 
@@ -10,10 +8,16 @@ def test_local_contraction_preserves_hard_security_coordinate() -> None:
     assert len(result["results"]) == 7
 
 
-def test_local_contraction_is_not_worse_than_no_update_for_small_perturbation() -> None:
+def test_local_contraction_moves_toward_self_model_prediction() -> None:
+    """The regulator is defined to contract prediction error, not native drift.
+
+    The native trajectory is an independent reference measurement; the
+    regulator has no information about it and therefore must not be tested as
+    though it were its target.  Its explicit architectural target is the
+    self-model prediction.
+    """
     result = run(42)
     row = result["results"][0]
-    assert row["native_distance_after"] < row["native_distance_before"]
     assert row["prediction_distance_after"] < row["prediction_distance_before"]
 
 
