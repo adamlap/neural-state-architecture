@@ -66,15 +66,14 @@ def test_temporal_window_lattice_laws(a, b, c):
 
 
 @given(st.booleans(), floats01, capabilities, st.booleans(), floats01, capabilities)
-def test_heterogeneous_product_join_is_associative_and_commutative(
-    flag_a, risk_a, caps_a, flag_b, risk_b, caps_b
-):
-    # A product lattice inherits these laws coordinate-wise.
+def test_heterogeneous_product_laws(flag_a, risk_a, caps_a, flag_b, risk_b, caps_b):
     domains = (BooleanDomain(), NumericRangeDomain(), CapabilityDomain())
     a = HeterogeneousState((flag_a, risk_a, caps_a), domains)
     b = HeterogeneousState((flag_b, risk_b, caps_b), domains)
     c = HeterogeneousState((False, 0.5, frozenset()), domains)
-    assert a.join(b) == b.join(a)
-    assert a.join(b).join(c) == a.join(b.join(c))
-    assert a.meet(b) == b.meet(a)
-    assert a.meet(b).meet(c) == a.meet(b.meet(c))
+    assert a.join(b).values == b.join(a).values
+    assert a.join(b).join(c).values == a.join(b.join(c)).values
+    assert a.meet(b).values == b.meet(a).values
+    assert a.meet(b).meet(c).values == a.meet(b.meet(c)).values
+    assert a.join(a).values == a.values
+    assert a.meet(a).values == a.values
