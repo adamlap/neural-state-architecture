@@ -57,3 +57,16 @@ class InferenceBackend(abc.ABC):
     ) -> Dict[str, Any]:
         """Ask LLM to select an action proposal and provide reasoning."""
         pass
+
+    def generate_text(
+        self,
+        prompt: str,
+        max_tokens: int = 512,
+        temperature: float = 0.7,
+        system_prompt: Optional[str] = None,
+    ) -> str:
+        """High-level text generation helper that returns a plain string."""
+        full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+        out = self.generate(prompt=full_prompt, max_tokens=max_tokens, temperature=temperature)
+        return out.text if hasattr(out, "text") else str(out)
+

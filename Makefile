@@ -213,3 +213,37 @@ legacy-showcase: ## Launch legacy showcase; use demo-live targets for current ru
 clean: ## Clean Python build artifacts and temporary files
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+serve-ollama: ## Launch OpenAI & Ollama compatible API server for OpenWebUI backed by Ollama
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python -m nsa.server.proxy --backend ollama --model qwen2.5:3b --port 8000; \
+	else \
+		PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend ollama --model qwen2.5:3b --port 8000; \
+	fi
+
+serve-lmstudio: ## Launch OpenAI & Ollama compatible API server for OpenWebUI backed by LM Studio
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python -m nsa.server.proxy --backend lmstudio --model qwen2.5:3b --port 8000; \
+	else \
+		PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend lmstudio --model qwen2.5:3b --port 8000; \
+	fi
+
+chat-ollama: ## Interactive CLI terminal chat with live NSA cognitive state & Ollama
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/nsa62/interactive_chat.py --backend ollama --model qwen2.5:3b; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/nsa62/interactive_chat.py --backend ollama --model qwen2.5:3b; \
+	fi
+
+chat-lmstudio: ## Interactive CLI terminal chat with live NSA cognitive state & LM Studio
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/nsa62/interactive_chat.py --backend lmstudio --model qwen2.5:3b; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/nsa62/interactive_chat.py --backend lmstudio --model qwen2.5:3b; \
+	fi
+
+export-modelfile: ## Export native Ollama Modelfile with embedded NSA cognitive invariants
+	@echo "Exporting Modelfile.nsa..."
+	@cp Modelfile.nsa ./Modelfile 2>/dev/null || true
+	@echo "Exported Modelfile. Run 'ollama create nsa-qwen -f Modelfile.nsa' in Windows/WSL."
+

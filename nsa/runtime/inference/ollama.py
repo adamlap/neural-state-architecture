@@ -140,6 +140,7 @@ class OllamaInferenceBackend(InferenceBackend):
         max_tokens: int = 256,
         temperature: float = 0.7,
         extract_hidden: bool = False,
+        json_format: bool = False,
     ) -> LLMGenerationOutput:
         if self.mode == BackendMode.MOCK:
             act = "probe_service_config"
@@ -165,7 +166,7 @@ class OllamaInferenceBackend(InferenceBackend):
                 "thought": f"Ollama mock reasoning for {self.model_name}",
                 "action": act,
                 "params": {},
-                "confidence": 0.88,
+                "confidence": 0.90,
             })
             return LLMGenerationOutput(
                 text=mock_text,
@@ -178,12 +179,13 @@ class OllamaInferenceBackend(InferenceBackend):
             "model": self.model_name,
             "prompt": prompt,
             "stream": False,
-            "format": "json",
             "options": {
                 "num_predict": max_tokens,
                 "temperature": temperature,
             },
         }
+        if json_format:
+            payload["format"] = "json"
 
         try:
             req = urllib.request.Request(
