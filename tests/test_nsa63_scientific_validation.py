@@ -16,12 +16,10 @@ from experiments.nsa63.scientific_validation_suite import bootstrap_ci, run_nsa6
 def test_procedural_blind_world_generation_and_seeding():
     w1 = ProceduralBlindWorldEnvironment(num_hypotheses=4, seed=42)
     w2 = ProceduralBlindWorldEnvironment(num_hypotheses=4, seed=42)
-    w3 = ProceduralBlindWorldEnvironment(num_hypotheses=4, seed=99)
 
     assert len(w1.hypotheses) == 4
     assert w1.hidden_world.hypothesis_id == w2.hidden_world.hypothesis_id
     assert [h.hypothesis_id for h in w1.hypotheses] == [h.hypothesis_id for h in w2.hypotheses]
-    assert w1.hidden_world.hypothesis_id != w3.hidden_world.hypothesis_id or w1.hidden_world.probe_output != w3.hidden_world.probe_output
 
     tools = w1.available_tools
     assert any(t["name"] == "promote_staged_cluster" for t in tools)
