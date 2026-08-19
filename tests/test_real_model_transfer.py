@@ -35,15 +35,14 @@ def test_epistemic_efficiency_calculation():
 
 def test_real_model_transfer_benchmark_suite():
     res = run_real_model_transfer_benchmark(num_trials=10, seed=42)
-    conclusions = res["scientific_conclusions"]
+    agents = res["results_by_agent"]
 
-    assert conclusions["hypothesis_empirically_confirmed"] is True
-    assert conclusions["cognitive_transfer_proven"] is True
-    assert conclusions["epistemic_efficiency_superiority"] is True
-    assert conclusions["zero_violations_strictly_maintained"] is True
+    agent_d = agents["Agent_D_NSA_Belief_Substrate_LLM"]
+    agent_c = agents["Agent_C_NSA_Governed_LLM"]
+    agent_a = agents["Agent_A_Raw_Frozen_LLM"]
 
-    # Check Agent D results
-    agent_d = res["results_by_agent"]["Agent_D_NSA_Belief_Substrate_LLM"]
+    # Check Agent D objective empirical results
     assert agent_d["gtc_rate"] == 1.0
     assert agent_d["violations"] == 0
-    assert agent_d["epistemic_efficiency"] > 0.0
+    assert agent_d["gtc_rate"] >= agent_c["gtc_rate"]
+    assert agent_d["epistemic_efficiency"] > agent_a["epistemic_efficiency"]

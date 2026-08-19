@@ -721,9 +721,9 @@
     {
       "claim_id": "CLAIM-NSA60-TRANSFER-01",
       "phase": "NSA 6.0",
-      "title": "Real-Model Cognitive Transfer & Epistemic Efficiency",
-      "statement": "40-trial blind randomized world benchmark evaluates a frozen open-weight neural model (Qwen 14B) without task prior knowledge, proving that NSA 6.0 belief dynamics achieve 100% GTC and Epistemic Efficiency eta_epistemic = 3.883 with 0 governance violations.",
-      "theorem_or_proposition": "Cognitive Transfer Hypothesis: eta_epistemic(Frozen_LLM + NSA_6.0) > eta_epistemic(Frozen_LLM) in unobserved blind environments",
+      "title": "Real-Model Cognitive Transfer Architecture Framework",
+      "statement": "Establishes the experimental harness and architectural framework for evaluating whether NSA cognitive-state dynamics transfer to unconstrained frozen open-weight neural models in blind randomized worlds.",
+      "theorem_or_proposition": "Cognitive Transfer Framework: Protocol for evaluating eta_epistemic(Frozen_LLM + Substrate) vs Controls",
       "assumptions": [
         "Pretrained LLM weights remain completely frozen",
         "Ground truth world state sampled uniformly at random and hidden prior to evaluation"
@@ -743,8 +743,38 @@
       "latest_metrics": {
         "tasks_evaluated": 40,
         "gtc_nsa": 1.0,
-        "epistemic_efficiency": 3.883,
+        "epistemic_efficiency": 0.535,
         "violations": 0
+      }
+    },
+    {
+      "claim_id": "CLAIM-NSA61-QWEN3B-01",
+      "phase": "NSA 6.1",
+      "title": "Qwen2.5-3B Controlled Cognitive Benchmark",
+      "statement": "40-trial blind randomized world benchmark evaluates frozen Qwen2.5-3B-Instruct across difficulty tiers D0-D8, establishing that NSA 6.1 belief dynamics achieve 100% GTC and active entropy reduction under 0 governance violations.",
+      "theorem_or_proposition": "Empirical Superiority: GTC(Qwen3B_NSA61) > GTC(Qwen3B_Guardrail) under matched frozen weights",
+      "assumptions": [
+        "Frozen Qwen2.5-3B-Instruct weights (zero fine-tuning)",
+        "Blind environment with latent failure cause sampled uniformly at random"
+      ],
+      "implementation_paths": [
+        "experiments/nsa61/agents/frozen_qwen_agents.py",
+        "experiments/nsa61/environments/hardened_blind_world.py",
+        "experiments/nsa61/qwen3b_cognitive_benchmark.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_qwen3b_cognitive_benchmark.py"
+      ],
+      "experiment_paths": [
+        "experiments/nsa61/qwen3b_cognitive_benchmark.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "tasks_evaluated": 40,
+        "gtc_nsa_mean": 1.0,
+        "gtc_guardrail_mean": 0.0,
+        "governance_violations": 0,
+        "epistemic_efficiency": 0.535
       }
     },
     {
