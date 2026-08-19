@@ -1,16 +1,25 @@
 """
 nsa/runtime/inference/base.py
 =============================
-Abstract Base Interface for NSA Local LLM Inference Backends.
+Abstract Base Interface and Execution Modes for NSA Inference Backends.
 """
 
 from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Any, Dict, List, Optional
 
 import torch
+
+
+class BackendMode(Enum):
+    """Execution mode for local model inference."""
+    MOCK = "mock"              # Fast deterministic structural simulation (for CI unit tests)
+    CACHED = "cached"          # Live neural inference from locally cached weights (offline, no download)
+    REMOTE = "remote"          # Live neural inference permitting remote download from HuggingFace
+    OLLAMA = "ollama"          # Live local Ollama daemon connection
 
 
 @dataclass
@@ -24,7 +33,7 @@ class LLMGenerationOutput:
 
 
 class InferenceBackend(abc.ABC):
-    """Abstract interface for local inference engines (Ollama, llama.cpp, PyTorch)."""
+    """Abstract interface for local inference engines (Ollama, PyTorch Transformers)."""
 
     @abc.abstractmethod
     def generate(

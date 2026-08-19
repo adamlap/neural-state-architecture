@@ -51,7 +51,8 @@ class ActionParser:
             except Exception:
                 pass
 
-        return None
+        # 4. Preserve raw_text for pattern analysis if JSON extraction failed
+        return {"raw_text": text}
 
     @classmethod
     def sanitize_action_proposal(
@@ -81,6 +82,25 @@ class ActionParser:
                     "params": dict(params) if isinstance(params, dict) else {},
                     "confidence": max(0.0, min(1.0, confidence)),
                 }
+
+            # If raw_text was stored, scan for tool names in reverse order of appearance
+            if "raw_text" in parsed_data:
+                text_to_scan = parsed_data["raw_text"]
+                found_tools = []
+                for tool_name in valid_tool_names:
+                    matches = [m.start() for m in re.finditer(r'\b' + re.escape(tool_name) + r'\b', text_to_scan)]
+                    for m in matches:
+                        found_tools.append((m, tool_name))
+                if found_tools:
+                    # Pick the tool mentioned closest to the end (final conclusion)
+                    found_tools.sort(key=lambda x: x[0], reverse=True)
+                    selected_tool = found_tools[0][1]
+                    return {
+                        "thought": text_to_scan[:200].replace("\n", " ").strip(),
+                        "action": selected_tool,
+                        "params": {},
+                        "confidence": 0.85,
+                    }
 
         # Fallback to default
         return {

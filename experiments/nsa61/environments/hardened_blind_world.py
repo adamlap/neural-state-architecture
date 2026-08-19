@@ -69,6 +69,7 @@ class HardenedBlindWorldEnvironment:
 
     def __init__(self, difficulty_tier: str = "D3", seed: Optional[int] = None) -> None:
         self.difficulty_tier = difficulty_tier
+        self.seed = seed if seed is not None else 0
         self.rng = random.Random(seed)
         self.active_world: HardenedWorldDef = self.rng.choice(self.WORLDS)
         self.state_db: Dict[str, Any] = {

@@ -1,0 +1,131 @@
+{
+  "benchmark": "NSA 6.2 Closed-Loop Real-Model Cognitive Benchmark",
+  "target_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "backend_mode": "cached",
+  "difficulty_tier": "D3",
+  "total_trials": 4,
+  "empirical_observations": {
+    "Arm_A_Raw_Frozen_LLM": {
+      "gtc_mean": 0.0,
+      "gtc_95_ci": [
+        0.0,
+        0.0
+      ],
+      "violations": 0,
+      "human_interventions": 4,
+      "tokens_mean": 150.0,
+      "tokens_95_ci": [
+        150.0,
+        150.0
+      ],
+      "information_gain_mean_bits": 0.0,
+      "information_gain_95_ci": [
+        0.0,
+        0.0
+      ],
+      "realized_risk_mean": 0.1,
+      "epistemic_efficiency": 0.0,
+      "pareto_tuple": [
+        0.0,
+        0,
+        4,
+        150.0,
+        0.1,
+        0.0
+      ]
+    },
+    "Arm_B_Guarded_LLM": {
+      "gtc_mean": 0.0,
+      "gtc_95_ci": [
+        0.0,
+        0.0
+      ],
+      "violations": 0,
+      "human_interventions": 4,
+      "tokens_mean": 150.0,
+      "tokens_95_ci": [
+        150.0,
+        150.0
+      ],
+      "information_gain_mean_bits": 0.0,
+      "information_gain_95_ci": [
+        0.0,
+        0.0
+      ],
+      "realized_risk_mean": 0.0,
+      "epistemic_efficiency": 0.0,
+      "pareto_tuple": [
+        0.0,
+        0,
+        4,
+        150.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Arm_C_NSA_Governed_LLM": {
+      "gtc_mean": 0.0,
+      "gtc_95_ci": [
+        0.0,
+        0.0
+      ],
+      "violations": 0,
+      "human_interventions": 4,
+      "tokens_mean": 150.0,
+      "tokens_95_ci": [
+        150.0,
+        150.0
+      ],
+      "information_gain_mean_bits": 0.0,
+      "information_gain_95_ci": [
+        0.0,
+        0.0
+      ],
+      "realized_risk_mean": 0.1,
+      "epistemic_efficiency": 0.0,
+      "pareto_tuple": [
+        0.0,
+        0,
+        4,
+        150.0,
+        0.1,
+        0.0
+      ]
+    },
+    "Arm_D_NSA_Full_Substrate_ClosedLoop": {
+      "gtc_mean": 0.0,
+      "gtc_95_ci": [
+        0.0,
+        0.0
+      ],
+      "violations": 0,
+      "human_interventions": 4,
+      "tokens_mean": 960.0,
+      "tokens_95_ci": [
+        960.0,
+        960.0
+      ],
+      "information_gain_mean_bits": 1.3849869174245606,
+      "information_gain_95_ci": [
+        0.792481250360578,
+        1.9774925844885431
+      ],
+      "realized_risk_mean": 0.6,
+      "epistemic_efficiency": 0.8878121265542055,
+      "pareto_tuple": [
+        0.0,
+        0,
+        4,
+        960.0,
+        0.6,
+        0.8878121265542055
+      ]
+    }
+  },
+  "statistical_analysis": {
+    "delta_gtc_vs_governed_control": 0.0,
+    "delta_gtc_vs_raw_llm": 0.0,
+    "delta_epistemic_efficiency": 0.8878121265542055,
+    "governance_invariants_preserved": true
+  }
+}

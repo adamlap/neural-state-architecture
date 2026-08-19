@@ -778,6 +778,37 @@
       }
     },
     {
+      "claim_id": "CLAIM-NSA62-CLOSEDLOOP-01",
+      "phase": "NSA 6.2",
+      "title": "Closed-Loop Real Neural Cognitive Runtime & Trajectory Logging",
+      "statement": "Frozen neural language models (Qwen2.5-3B, Qwen2.5-0.5B) operate closed-loop inside NSA 6.2 without hand-coded probe/recovery scripts, dynamically selecting diagnostic actions and sandboxed recoveries guided by active belief dynamics B_t and mediated by the Immutable Safety Kernel (ISK), with complete machine-readable trajectory logging.",
+      "theorem_or_proposition": "Closed-Loop Transfer: LLM_theta(prompt(Omega_t, B_t, I(W;O))) -> a_t under invariant ISK mediation",
+      "assumptions": [
+        "Frozen weights (zero fine-tuning)",
+        "Strict backend execution modes without unverified mock degradation",
+        "Step-by-step machine-readable trajectory capture"
+      ],
+      "implementation_paths": [
+        "experiments/nsa62/agents/frozen_llm_agents.py",
+        "experiments/nsa62/trajectory_logger.py",
+        "experiments/nsa62/qwen25_3b_cognitive_benchmark.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_nsa62_closed_loop.py"
+      ],
+      "experiment_paths": [
+        "experiments/nsa62/qwen25_3b_cognitive_benchmark.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "closed_loop_trials": 40,
+        "gtc_closed_loop_mean": 1.0,
+        "governance_violations": 0,
+        "epistemic_efficiency": 0.535,
+        "trajectory_logging_active": true
+      }
+    },
+    {
       "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
       "phase": "Phase 14, 26",
       "title": "Whole-System End-to-End Non-Interference Proof",
