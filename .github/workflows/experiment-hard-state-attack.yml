@@ -40,8 +40,9 @@ jobs:
           result = json.loads(Path('results/result.json').read_text())
           assert result['all_security_immutable'], result
           assert result['max_invariant_error'] == 0.0, result
+          assert result['trusted_hard_state_preserved'], result
           assert result['all_finite'], result
-          print('PASS: hard security coordinate remained immutable')
+          print('PASS: untrusted hard-state spoofing blocked; trusted hard state preserved')
           PY
       - name: Add result to job summary
         run: |
