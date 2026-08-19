@@ -60,6 +60,7 @@ class ActionParser:
         parsed_data: Optional[Dict[str, Any]],
         available_tools: List[Dict[str, Any]],
         default_fallback: str = "probe_service_config",
+        strict_live: bool = False,
     ) -> Dict[str, Any]:
         valid_tool_names = {t["name"] for t in available_tools}
 
@@ -71,6 +72,16 @@ class ActionParser:
             else:
                 action_name = parsed_data.get("action", parsed_data.get("tool", ""))
                 params = parsed_data.get("params", parsed_data.get("arguments", {}))
+
+            if action_name not in valid_tool_names and isinstance(params, dict):
+                nested_tool = params.get("tool", params.get("name", params.get("action", "")))
+                if nested_tool in valid_tool_names:
+                    action_name = nested_tool
+                else:
+                    for k in params:
+                        if k in valid_tool_names:
+                            action_name = k
+                            break
 
             thought = parsed_data.get("thought", parsed_data.get("reasoning", "LLM reasoning step"))
             confidence = float(parsed_data.get("confidence", parsed_data.get("epistemic_confidence", 0.80)))
@@ -102,7 +113,14 @@ class ActionParser:
                         "confidence": 0.85,
                     }
 
-        # Fallback to default
+        if strict_live:
+            raw_preview = str(parsed_data.get("raw_text", parsed_data)) if isinstance(parsed_data, dict) else str(parsed_data)
+            raise ValueError(
+                f"[STRICT LIVE INFERENCE FAILURE] Model did not propose a valid tool from {valid_tool_names}. "
+                f"Raw output: {raw_preview}"
+            )
+
+        # Fallback to default (mock simulation only)
         return {
             "thought": "Fallback heuristic proposal based on available tools.",
             "action": default_fallback if default_fallback in valid_tool_names else list(valid_tool_names)[0],

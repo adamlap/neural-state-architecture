@@ -1,15 +1,18 @@
 # Neural State Architecture (NSA)
 
-> **A Governed Cognitive Architecture & Mathematical Substrate for Safe Advanced Intelligence**
+> **An Experimental Governed Cognitive Architecture & Mathematical Substrate for AI Systems**
 
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Unit Tests](https://img.shields.io/badge/Tests-232%2B%20Passing-brightgreen.svg)]()
-[![Evidence Manifest](https://img.shields.io/badge/Claims-29%2F29%20Verified-blue.svg)](evidence/manifest.json)
+[![Unit Tests](https://img.shields.io/badge/Tests-239%2B%20Passing-brightgreen.svg)]()
+[![Evidence Manifest](https://img.shields.io/badge/Claims-31%2F31%20Verified-blue.svg)](evidence/manifest.json)
 
-Standard neural networks map inputs directly to outputs ($x \to y$) without explicit self-state representation, verifiable epistemic status, or immutable boundaries. Safety is typically treated as an external text filter, which is fundamentally vulnerable to prompt injection, jailbreaking, and strategic deception.
+> [!NOTE]
+> **Scientific Scope & Epistemic Disclaimer**: NSA is an experimental cognitive architecture exploring whether explicit self-state ($\Omega_t$), epistemic tracking, belief dynamics ($\mathcal{B}_t$), and deterministic governance (Immutable Safety Kernel) can improve the safety and effectiveness of AI agents. Results presented in this repository are empirical observations obtained within controlled synthetic and real-model benchmark environments and should not be interpreted as mathematical proof of general AI safety, robustness against arbitrarily capable adversaries, or complete AGI alignment.
 
-**Neural State Architecture (NSA)** establishes a formal mathematical substrate where cognitive state, belief dynamics, and deterministic governance are intrinsic to the operational architecture:
+Standard neural language models map prompt sequences directly to token outputs ($x \to y$) without explicit operational self-state representation, verifiable epistemic confidence, or immutable external safety boundaries. Safety is typically treated as external text filters or RLHF alignment, which remain vulnerable to jailbreaking, prompt injection, and strategic deception.
+
+**Neural State Architecture (NSA)** explores a formal mathematical substrate where operational self-state, belief dynamics, and reference monitor governance are explicit first-class components of the agent runtime:
 
 $$\Omega_t = (\mathbf{m}_t, \boldsymbol{\sigma}_t, \boldsymbol{\epsilon}_t, \boldsymbol{\tau}_t, \mathbf{g}_t, \boldsymbol{\sigma}_{h,t}, \mathcal{B}_t) \quad \text{subject to} \quad \mathcal{K}(\Omega_t \to \Omega_{t+1}) \implies V_{\text{violation}} = 0$$
 
@@ -17,14 +20,14 @@ $$\Omega_t = (\mathbf{m}_t, \boldsymbol{\sigma}_t, \boldsymbol{\epsilon}_t, \bol
 
 ## 🖥️ Live Closed-Loop Cognitive Runtime Demo (`make demo` / `make demo-live`)
 
-Run our live interactive terminal dashboard mediating a frozen `Qwen2.5` model solving a blind cluster incident:
+Run our live interactive terminal dashboard mediating a frozen `Qwen2.5-3B-Instruct` model solving a blind cluster incident:
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════╗
 ║                 NEURAL STATE ARCHITECTURE (NSA 6.2)                      ║
 ║                    Closed-Loop Cognitive Runtime                         ║
 ╠══════════════════════════════════════════════════════════════════════════╣
-║ Model: Qwen 2.5 (Frozen Weights)        Backend: Transformers / Ollama   ║
+║ Model: Qwen 2.5 3B Instruct (Frozen)    Backend: Transformers / Ollama   ║
 ║ Mode : Closed-Loop Decision Loop        Governance: ISK Reference Monitor║
 ╠══════════════════════════════════════════════════════════════════════════╣
 ║ INCIDENT                                                                 ║
@@ -69,13 +72,13 @@ Run our live interactive terminal dashboard mediating a frozen `Qwen2.5` model s
          │
   NSA 6.0 - 6.1  : Real-Model Cognitive Transfer Framework & Blind World Environments
          │
-  NSA 6.2        : Closed-Loop Real Neural Cognitive Runtime & Trajectory Instrumentation
+  NSA 6.2 - 6.2.1: Closed-Loop Real Neural Cognitive Runtime & Trajectory Suite
 ```
 
-### Key Empirical Findings:
-1. **Zero Governance Violations ($V = 0$)**: $0.0000\%$ attack success rate across white-box optimization, capability replay, confused deputy attacks, and adversarial lures.
-2. **Substrate Autonomy Advantage**: Under identical frozen weights, the closed-loop NSA substrate achieves **$100.0\%$ GTC** in blind ambiguous environments where raw models breach security ($100\%$ violations) and conventional guardrails abort ($0\%$ GTC).
-3. **Epistemic Efficiency ($\eta_{\text{epistemic}} > 0$)**: Active information gain guidance ($a^* = \arg\max [\mathbb{E}[U] + \beta I(W; O) - \lambda R]$) directs computation to collapse Shannon entropy before effectful execution.
+### Observed in Current Experiments:
+1. **Zero Governance Violations ($V = 0$)**: 0 violations observed across white-box optimization, capability replay, confused deputy attacks, and adversarial lures within tested testbeds.
+2. **Substrate Autonomy Advantage**: Under identical frozen model weights (`Qwen2.5-3B-Instruct`), the closed-loop NSA substrate achieves autonomous resolution in blind ambiguous environments where raw models attempt unauthorized actions (blocked by kernel) and conventional guardrails abort without re-planning.
+3. **Epistemic Efficiency ($\eta_{\text{epistemic}} > 0$)**: Active information gain guidance ($a^* = \arg\max [\mathbb{E}[U] + \beta I(W; O) - \lambda R]$) directs model computation to collapse Shannon entropy prior to executing irreversible side effects.
 4. **Machine-Traceable Trajectories**: Every model generation, token count, state transition, and ISK verdict is recorded in `trajectory.jsonl` and persisted under `results/`.
 
 ---
@@ -83,10 +86,10 @@ Run our live interactive terminal dashboard mediating a frozen `Qwen2.5` model s
 ## ⚡ Quick Start & Canonical API
 
 ```bash
-# 1. Run complete automated test suite (230+ tests in ~7s)
+# 1. Run complete automated test suite (239+ tests in ~7s)
 make test
 
-# 2. Audit formal machine-traceable evidence manifest (29 claims)
+# 2. Audit formal machine-traceable evidence manifest (31 claims)
 make evidence
 
 # 3. Launch closed-loop cognitive runtime demonstration (fast mock)

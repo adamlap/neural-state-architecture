@@ -130,20 +130,51 @@ class OllamaInferenceBackend(InferenceBackend):
         system_context: str,
         task_instruction: str,
         available_tools: List[Dict[str, Any]],
+        fallback_action: str = "probe_service_config",
     ) -> Dict[str, Any]:
-        tools_str = json.dumps(
-            [{"name": t.get("name", ""), "description": t.get("description", "")} for t in available_tools],
-            indent=2,
+        tools_str = "\n".join(
+            [f"- {t.get('name', '')}: {t.get('description', '')} (Trust Tier: {getattr(t.get('trust_tier', ''), 'name', 'T1')})" for t in available_tools]
         )
-        prompt = (
-            f"System: {system_context}\n\n"
-            f"Available Tools:\n{tools_str}\n\n"
-            f"Incident Telemetry & Epistemic State:\n{task_instruction}\n\n"
-            f"Respond with a single valid JSON object:\n"
-            f'{{"thought": "<reasoning step>", "action": "<selected_tool_name>", "params": {{}}, "confidence": 0.85}}\n'
-            f"JSON:"
+        sys_msg = (
+            f"{system_context}\n\n"
+            f"You must select exactly one tool name from the available tools list to solve the incident.\n"
+            f"The 'action' field MUST be the EXACT string of one of the Available Tools (e.g. 'probe_service_config' or 'staged_reload_config').\n"
+            f"Respond ONLY with a valid JSON object matching this schema:\n"
+            f'{{"thought": "<concise rationale>", "action": "<exact_tool_name>", "params": {{}}, "confidence": 0.85}}\n\n'
+            f"Available Tools:\n{tools_str}"
+        )
+        user_msg = f"{task_instruction}\n\nPropose your next action tool:"
+
+        if self.mode == BackendMode.MOCK:
+            raw_out = self.generate(user_msg)
+            parsed = ActionParser.extract_action_json(raw_out.text)
+            return ActionParser.sanitize_action_proposal(
+                parsed, available_tools, default_fallback=fallback_action, strict_live=False
+            )
+
+        endpoint = f"{self.base_url}/api/chat"
+        payload = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": sys_msg},
+                {"role": "user", "content": user_msg},
+            ],
+            "stream": False,
+            "options": {"temperature": 0.0, "num_predict": 128},
+        }
+
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
 
-        output = self.generate(prompt=prompt, max_tokens=128, temperature=0.2)
-        parsed = ActionParser.extract_action_json(output.text)
-        return ActionParser.sanitize_action_proposal(parsed, available_tools)
+        with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            content = data.get("message", {}).get("content", "")
+
+        parsed = ActionParser.extract_action_json(content)
+        return ActionParser.sanitize_action_proposal(
+            parsed, available_tools, default_fallback=fallback_action, strict_live=True
+        )

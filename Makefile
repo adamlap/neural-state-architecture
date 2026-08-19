@@ -28,7 +28,7 @@ install: ## Install runtime requirements
 install-dev: install ## Install runtime and development dependencies
 	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) pip install pytest black ruff mypy; else $(PYTHON) -m pip install pytest black ruff mypy; fi
 
-test: ## Run unit and integration test suite (230+ tests)
+test: ## Run unit and integration test suite (239+ tests)
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		$(UV) run python -m pytest -v tests/; \
 	else \
@@ -42,6 +42,13 @@ evidence: ## Validate and verify the machine-traceable formal evidence manifest
 		PYTHONPATH=. $(PYTHON) evidence/validate_evidence.py; \
 	fi
 
+sync-metadata: ## Automatically synchronize test and claim counts across docs and Makefile
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run python scripts/sync_metadata.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) scripts/sync_metadata.py; \
+	fi
+
 demo: ## Launch closed-loop cognitive runtime demonstration (fast mock)
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend mock; \
@@ -49,12 +56,21 @@ demo: ## Launch closed-loop cognitive runtime demonstration (fast mock)
 		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend mock; \
 	fi
 
-demo-live: ## Launch live closed-loop demonstration with local cached Qwen weights
+demo-live-0.5b: ## Launch fast smoke demonstration with local cached Qwen2.5-0.5B-Instruct
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend cached --model Qwen/Qwen2.5-0.5B-Instruct; \
 	else \
 		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend cached --model Qwen/Qwen2.5-0.5B-Instruct; \
 	fi
+
+demo-live-3b: ## Launch canonical live closed-loop demo with cached Qwen2.5-3B-Instruct
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend cached --model Qwen/Qwen2.5-3B-Instruct; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend cached --model Qwen/Qwen2.5-3B-Instruct; \
+	fi
+
+demo-live: demo-live-3b ## Alias for canonical 3B live demonstration
 
 demo-live-ollama: ## Launch live demonstration connected to local Ollama (qwen2.5:3b)
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
@@ -65,6 +81,15 @@ demo-live-ollama: ## Launch live demonstration connected to local Ollama (qwen2.
 
 benchmark: benchmark-nsa62 benchmark-ablation benchmark-gpse benchmark-gtc benchmark-security ## Run complete benchmark suite
 
+benchmark-nsa63: ## Run NSA 6.3 procedural randomized validation & 6-arm ablation suite
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/nsa63/scientific_validation_suite.py --backend mock --trials 40; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend mock --trials 40; \
+	fi
+
+benchmark-nsa63-ablation: benchmark-nsa63 ## Alias for NSA 6.3 ablation benchmark
+
 benchmark-nsa62: ## Run NSA 6.2 closed-loop cognitive benchmark (fast mock)
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		PYTHONPATH=. $(UV) run python experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend mock; \
@@ -72,12 +97,21 @@ benchmark-nsa62: ## Run NSA 6.2 closed-loop cognitive benchmark (fast mock)
 		PYTHONPATH=. $(PYTHON) experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend mock; \
 	fi
 
-benchmark-live: ## Run live NSA 6.2 closed-loop benchmark with cached Qwen weights & trajectory logs
+benchmark-smoke: ## Run 4-trial fast smoke benchmark on cached Qwen2.5-0.5B
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		PYTHONPATH=. $(UV) run python experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend cached --model Qwen/Qwen2.5-0.5B-Instruct --trials 4 --output-dir results/nsa62/qwen2.5-0.5b; \
 	else \
 		PYTHONPATH=. $(PYTHON) experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend cached --model Qwen/Qwen2.5-0.5B-Instruct --trials 4 --output-dir results/nsa62/qwen2.5-0.5b; \
 	fi
+
+benchmark-canonical-3b: ## Run canonical live benchmark on cached Qwen2.5-3B-Instruct
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend cached --model Qwen/Qwen2.5-3B-Instruct --trials 20 --output-dir results/nsa62/qwen2.5-3b; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend cached --model Qwen/Qwen2.5-3B-Instruct --trials 20 --output-dir results/nsa62/qwen2.5-3b; \
+	fi
+
+benchmark-live: benchmark-smoke ## Default live benchmark runner
 
 benchmark-nsa60: ## Run NSA 6.0 real-model cognitive transfer benchmark
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \

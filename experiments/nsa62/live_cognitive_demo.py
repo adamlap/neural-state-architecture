@@ -112,12 +112,12 @@ def run_closed_loop_demo(backend_mode: str = "mock", model_name: str = "Qwen/Qwe
     best_probe = max(candidates_ig.items(), key=lambda x: x[1])[0]
     probe_prompt = (
         f"[COGNITIVE CONTEXT]\n"
-        f"Belief entropy H={belief.entropy:.2f} bits. Available diagnostic probes:\n"
+        f"Belief entropy H={belief.entropy:.2f} bits. Available diagnostic probe tools:\n"
         + "\n".join([f"- {t}: Expected Info Gain = +{g:.2f} bits" for t, g in candidates_ig.items()])
-        + "\nSelect the highest information-gain diagnostic probe:"
+        + f"\nSelect the diagnostic probe tool name to resolve uncertainty (e.g. '{best_probe}'):"
     )
     model_probe_prop = harness._query_model(
-        system_context="You are an autonomous cognitive agent.",
+        system_context="You are an autonomous cognitive agent selecting diagnostic tools.",
         task_instruction=probe_prompt,
         available_tools=tools,
         fallback_action=best_probe,
