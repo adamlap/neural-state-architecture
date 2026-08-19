@@ -1,8 +1,8 @@
 """Canonical typed activation contract for NSA.
 
-This module is the Phase 11 convergence layer.  It does not pretend that a
+This module is the Phase 11 convergence layer. It does not pretend that a
 Python object is a security boundary: hard state remains trusted only when its
-mutation is performed by the trusted runtime/kernel.  The purpose here is to
+mutation is performed by the trusted runtime/kernel. The purpose here is to
 make state ownership, permissions, composition and serialization explicit so
 future neural and runtime adapters share one representation.
 """
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping
 
 import torch
 
@@ -68,9 +68,9 @@ class HardStateMutationError(PermissionError):
 class CanonicalTypedActivation:
     """Versioned view of the canonical NSA activation/state protocol.
 
-    ``state`` is deliberately retained as the existing Omega representation so
-    current code remains compatible.  The protocol adds explicit ownership and
-    mutation semantics around it rather than introducing a second state type.
+    ``state`` is retained as the existing Omega representation so current code
+    remains compatible. The protocol adds explicit ownership and mutation
+    semantics around it rather than introducing a second state type.
     """
 
     state: UnifiedCognitiveState
@@ -100,12 +100,7 @@ class CanonicalTypedActivation:
         return {"schema_version": self.schema_version, "field": field, "value": value}
 
     def runtime_commit(self, field: str, value: Any) -> "CanonicalTypedActivation":
-        """Commit a runtime-authorized state update.
-
-        Hard fields are intentionally accepted only through this explicit
-        runtime path.  The method creates a new activation instead of mutating
-        the existing object in place.
-        """
+        """Commit a runtime-authorized state update as a new immutable view."""
         spec = self.spec(field)
         if not spec.runtime_writable:
             raise HardStateMutationError(f"Runtime cannot write {field}")
@@ -114,16 +109,43 @@ class CanonicalTypedActivation:
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the contract using JSON-compatible primitives."""
+        epistemic = self.state.epistemic_state
         return {
             "schema_version": self.schema_version,
             "state": {
                 "semantic_state": _tensor(self.state.semantic_state),
                 "operational_self_state": _tensor(self.state.operational_self_state),
-                "epistemic_state": vars(self.state.epistemic_state),
+                "epistemic_state": {
+                    "known_mass": epistemic.known_mass,
+                    "uncertainty": epistemic.uncertainty,
+                    "derivation_depth": epistemic.derivation_depth,
+                    "empirical_support": epistemic.empirical_support,
+                    "verification_score": epistemic.verification_score,
+                    "source_authenticity": epistemic.source_authenticity,
+                    "confidence": epistemic.confidence,
+                    "tier": epistemic.tier.value,
+                },
                 "authority_state": _tensor(self.state.authority_state),
-                "provenance_state": vars(self.state.provenance_state),
-                "temporal_state": vars(self.state.temporal_state),
-                "goal_state": vars(self.state.goal_state),
+                "provenance_state": {
+                    "record_id": self.state.provenance_state.record_id,
+                    "source_uri": self.state.provenance_state.source_uri,
+                    "hash_signature": self.state.provenance_state.hash_signature,
+                    "trust_level": self.state.provenance_state.trust_level,
+                    "parent_records": list(self.state.provenance_state.parent_records),
+                },
+                "temporal_state": {
+                    "step_index": self.state.temporal_state.step_index,
+                    "max_horizon_steps": self.state.temporal_state.max_horizon_steps,
+                    "elapsed_time_sec": self.state.temporal_state.elapsed_time_sec,
+                    "checkpoint_snapshot_id": self.state.temporal_state.checkpoint_snapshot_id,
+                    "timeout_sec": self.state.temporal_state.timeout_sec,
+                },
+                "goal_state": {
+                    "primary_goal_id": self.state.goal_state.primary_goal_id,
+                    "utility_expected": self.state.goal_state.utility_expected,
+                    "moral_uncertainty": self.state.goal_state.moral_uncertainty,
+                    "hard_precedence_active": self.state.goal_state.hard_precedence_active,
+                },
             },
         }
 
@@ -134,8 +156,7 @@ def _tensor(value: torch.Tensor) -> list[Any]:
 
 def _replace_field(state: UnifiedCognitiveState, field: str, value: Any) -> UnifiedCognitiveState:
     """Return a new Omega state with one validated component replaced."""
-    allowed = set(CANONICAL_FIELDS)
-    if field not in allowed:
+    if field not in CANONICAL_FIELDS:
         raise KeyError(field)
     values = {
         "semantic_state": state.semantic_state,
@@ -148,3 +169,14 @@ def _replace_field(state: UnifiedCognitiveState, field: str, value: Any) -> Unif
     }
     values[field] = value
     return UnifiedCognitiveState(**values)
+
+
+__all__ = [
+    "CANONICAL_FIELDS",
+    "CANONICAL_SCHEMA_VERSION",
+    "CanonicalTypedActivation",
+    "HardStateMutationError",
+    "StateDomain",
+    "StateFieldSpec",
+    "StatePermission",
+]
