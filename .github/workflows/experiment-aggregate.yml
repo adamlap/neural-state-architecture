@@ -6,6 +6,10 @@ on:
     workflows: ["NSA Self-State Recovery Experiment"]
     types: [completed]
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   aggregate:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
@@ -16,12 +20,26 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -e '.[dev]'
-      - name: Locate recovery artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: recovery-seed-*
-          merge-multiple: true
-          path: results/recovery
+      - name: Download artifacts from triggering recovery run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          mkdir -p results/recovery
+          gh api --paginate \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | startswith("recovery-seed-")) | [.id, .name] | @tsv' \
+            > /tmp/artifacts.tsv
+          while IFS=$'\t' read -r id name; do
+            [ -z "$id" ] && continue
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" \
+              > "/tmp/${name}.zip"
+            unzip -o "/tmp/${name}.zip" -d results/recovery >/dev/null
+          done < /tmp/artifacts.tsv
+          test -n "$(find results/recovery -name '*.json' -print -quit)"
       - name: Aggregate recovery results
         run: |
           PYTHONPATH=. python -m experiments.common.aggregate results/recovery --output results/recovery-aggregate.json
