@@ -20,16 +20,12 @@ T = TypeVar("T")
 
 
 class AlgebraDomain(Protocol[T]):
-    """A bounded join/meet algebra for one typed state coordinate."""
-
     def join(self, left: T, right: T) -> T: ...
     def meet(self, left: T, right: T) -> T: ...
     def validate(self, value: T) -> None: ...
 
 
 class BooleanDomain:
-    """Boolean lattice: False <= True."""
-
     def join(self, left: bool, right: bool) -> bool:
         return left or right
 
@@ -56,12 +52,7 @@ class CapabilityDomain:
 
 
 class ConstraintSetDomain:
-    """Constraint lattice ordered by set inclusion.
-
-    A join accumulates required constraints and a meet retains only constraints
-    common to both states. This intentionally treats constraints as opaque
-    identifiers; semantic implication belongs to a later constraint solver.
-    """
+    """Constraint lattice ordered by set inclusion."""
 
     def join(self, left: FrozenSet[str], right: FrozenSet[str]) -> FrozenSet[str]:
         return left | right
@@ -75,7 +66,7 @@ class ConstraintSetDomain:
 
 
 class NumericRangeDomain:
-    """Closed numeric interval [minimum, maximum] with max/min lattice ops."""
+    """Closed scalar interval with max/min lattice operations."""
 
     def __init__(self, minimum: float = 0.0, maximum: float = 1.0) -> None:
         if not isfinite(minimum) or not isfinite(maximum) or minimum > maximum:
@@ -102,7 +93,7 @@ class NumericRangeDomain:
 
 @dataclass(frozen=True)
 class ProbabilityInterval:
-    """Closed probability interval; ``lower > upper`` represents bottom/empty."""
+    """Closed probability interval; lower > upper is the explicit bottom element."""
 
     lower: float
     upper: float
@@ -113,40 +104,38 @@ class ProbabilityInterval:
 
 
 class ProbabilityIntervalDomain:
-    """Probability-set lattice ordered by set inclusion.
-
-    Join is the smallest closed probability interval containing both operands.
-    Meet is their intersection, with an explicit empty element for disjoint
-    intervals. This avoids pretending that arbitrary probability distributions
-    form a closed pointwise lattice under normalization.
-    """
+    """Lattice of closed probability sets ordered by inclusion."""
 
     def validate(self, value: ProbabilityInterval) -> None:
         if not isinstance(value, ProbabilityInterval):
             raise TypeError("probability domain requires ProbabilityInterval")
-        if not (0.0 <= value.lower <= 1.0 and 0.0 <= value.upper <= 1.0):
+        if not (0.0 <= value.lower <= 1.0 and 0.0 <= value.upper <= 1.0) and not value.is_empty:
             raise ValueError("probability bounds must lie in [0, 1]")
-        if value.is_empty:
-            raise ValueError("empty probability interval must be represented by ProbabilityInterval(1, 0)")
+        if value.is_empty and not (value.lower == 1.0 and value.upper == 0.0):
+            raise ValueError("empty probability interval must be ProbabilityInterval(1, 0)")
 
     def join(self, left: ProbabilityInterval, right: ProbabilityInterval) -> ProbabilityInterval:
         self.validate(left)
         self.validate(right)
+        if left.is_empty:
+            return right
+        if right.is_empty:
+            return left
         return ProbabilityInterval(min(left.lower, right.lower), max(left.upper, right.upper))
 
     def meet(self, left: ProbabilityInterval, right: ProbabilityInterval) -> ProbabilityInterval:
         self.validate(left)
         self.validate(right)
+        if left.is_empty or right.is_empty:
+            return ProbabilityInterval(1.0, 0.0)
         lower = max(left.lower, right.lower)
         upper = min(left.upper, right.upper)
-        if lower > upper:
-            return ProbabilityInterval(1.0, 0.0)
-        return ProbabilityInterval(lower, upper)
+        return ProbabilityInterval(lower, upper) if lower <= upper else ProbabilityInterval(1.0, 0.0)
 
 
 @dataclass(frozen=True)
 class TemporalWindow:
-    """Closed temporal window expressed in monotonic numeric ticks."""
+    """Closed temporal window in monotonic numeric ticks; reversed is bottom."""
 
     start: float
     end: float
@@ -157,29 +146,31 @@ class TemporalWindow:
 
 
 class TemporalWindowDomain:
-    """Interval lattice over monotonic time windows, including empty meet."""
+    """Interval lattice over monotonic time windows, including explicit bottom."""
 
     def validate(self, value: TemporalWindow) -> None:
         if not isinstance(value, TemporalWindow):
             raise TypeError("temporal domain requires TemporalWindow")
         if not isfinite(value.start) or not isfinite(value.end):
             raise ValueError("temporal bounds must be finite")
-        if value.is_empty:
-            raise ValueError("empty temporal window must be represented explicitly by a future bottom type")
 
     def join(self, left: TemporalWindow, right: TemporalWindow) -> TemporalWindow:
         self.validate(left)
         self.validate(right)
+        if left.is_empty:
+            return right
+        if right.is_empty:
+            return left
         return TemporalWindow(min(left.start, right.start), max(left.end, right.end))
 
     def meet(self, left: TemporalWindow, right: TemporalWindow) -> TemporalWindow:
         self.validate(left)
         self.validate(right)
+        if left.is_empty or right.is_empty:
+            return TemporalWindow(1.0, 0.0)
         lower = max(left.start, right.start)
         upper = min(left.end, right.end)
-        if lower > upper:
-            raise ValueError("temporal windows are disjoint; explicit bottom is required")
-        return TemporalWindow(lower, upper)
+        return TemporalWindow(lower, upper) if lower <= upper else TemporalWindow(1.0, 0.0)
 
 
 class EnumDomain(Generic[T]):
