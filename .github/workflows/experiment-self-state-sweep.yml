@@ -1,0 +1,39 @@
+name: NSA Self-State Perturbation Sweep
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'nsa/**'
+      - 'experiments/self_state/**'
+      - '.github/workflows/experiment-self-state-sweep.yml'
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 7, 21, 42]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - name: Run normalized perturbation sweep
+        run: |
+          mkdir -p results
+          PYTHONPATH=. python experiments/self_state/perturbation_sweep.py \
+            --seed ${{ matrix.seed }} \
+            | tee results/self-state-sweep-${{ matrix.seed }}.json
+      - name: Add result to job summary
+        run: |
+          echo '## Self-state sweep — seed ${{ matrix.seed }}' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat results/self-state-sweep-${{ matrix.seed }}.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: self-state-sweep-seed-${{ matrix.seed }}
+          path: results/self-state-sweep-${{ matrix.seed }}.json
