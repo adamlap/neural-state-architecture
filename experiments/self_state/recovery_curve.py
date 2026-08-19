@@ -17,13 +17,13 @@ def run(seed: int = 7, batch: int = 4, seq_len: int = 24, vocab_size: int = 128,
     model.eval()
     tokens = torch.randint(0, vocab_size, (batch, seq_len))
     with torch.no_grad():
-        _, _, normal_state, _ = model(tokens, self_state_feedback=True)
-        baseline = normal_state[:, -1]
+        normal = model(tokens, self_state_feedback=True)
+        baseline = normal["state"][:, -1]
         distances = []
         errors = []
         for step in range(recovery_steps + 1):
             scale = perturbation * max(0.0, 1.0 - step / max(1, recovery_steps))
-            init = torch.zeros_like(normal_state)
+            init = torch.zeros_like(normal["state"])
             init[:, seq_len // 2 :, :] = scale
             out = model(tokens, state_init=init, self_state_feedback=True)
             final_state = out["state"][:, -1]
