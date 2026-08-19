@@ -51,13 +51,11 @@ class PyTorchTransformersBackend(InferenceBackend):
         self.lazy_load = lazy_load
         self.d_model = d_model
 
-        # Device determination
         if device == "auto":
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self.device = torch.device(device)
 
-        # Precision selection
         if torch_dtype is None:
             if self.device.type == "cuda":
                 self.torch_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
@@ -85,7 +83,7 @@ class PyTorchTransformersBackend(InferenceBackend):
         try:
             from transformers import AutoModelForCausalLM, AutoTokenizer
 
-            local_only = (self.mode == BackendMode.CACHED)
+            local_only = self.mode == BackendMode.CACHED
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
                 trust_remote_code=True,
@@ -102,6 +100,18 @@ class PyTorchTransformersBackend(InferenceBackend):
                 self.model = self.model.to(self.device)
 
             self.model.eval()
+
+            # The NSA action-selection path is deterministic. Some model
+            # generation configs ship with sampling parameters even when
+            # do_sample=False, which causes noisy Transformers warnings.
+            # Normalize the config here so live demos/benchmarks are clean.
+            generation_config = getattr(self.model, "generation_config", None)
+            if generation_config is not None:
+                generation_config.do_sample = False
+                generation_config.temperature = None
+                generation_config.top_p = None
+                generation_config.top_k = None
+
             self._is_loaded = True
             return True
         except Exception as e:
@@ -138,20 +148,19 @@ class PyTorchTransformersBackend(InferenceBackend):
 
         assert self.model is not None and self.tokenizer is not None
 
-        # Autoregressive generation through genuine neural weights
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         with torch.no_grad():
+            do_sample = temperature > 0.0
             gen_kwargs = {
                 "max_new_tokens": max_tokens,
-                "do_sample": temperature > 0.0,
-                "temperature": max(0.01, temperature) if temperature > 0.0 else None,
+                "do_sample": do_sample,
                 "output_hidden_states": extract_hidden,
                 "return_dict_in_generate": True,
             }
-            outputs = self.model.generate(
-                **inputs,
-                **{k: v for k, v in gen_kwargs.items() if v is not None}
-            )
+            if do_sample:
+                gen_kwargs["temperature"] = max(0.01, temperature)
+
+            outputs = self.model.generate(**inputs, **gen_kwargs)
 
         gen_tokens = outputs.sequences[0][inputs.input_ids.shape[1] :]
         text = self.tokenizer.decode(gen_tokens, skip_special_tokens=True)
@@ -191,7 +200,6 @@ class PyTorchTransformersBackend(InferenceBackend):
                 parsed, available_tools, default_fallback=fallback_action, strict_live=False
             )
 
-        # In live mode (CACHED or REMOTE), format with ChatML template
         if not self._is_loaded:
             self.load_model()
 
@@ -210,7 +218,6 @@ class PyTorchTransformersBackend(InferenceBackend):
         raw_out = self.generate(formatted_prompt, max_tokens=128, temperature=0.0)
         parsed = ActionParser.extract_action_json(raw_out.text)
 
-        # In live mode, strict_live=True raises ValueError if unparseable / invalid tool
         return ActionParser.sanitize_action_proposal(
             parsed, available_tools, default_fallback=fallback_action, strict_live=True
         )
