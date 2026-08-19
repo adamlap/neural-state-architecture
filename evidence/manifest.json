@@ -440,6 +440,36 @@
       }
     },
     {
+      "claim_id": "CLAIM-ESCAPE-TEST-01",
+      "phase": "NSA 3.0",
+      "title": "The NSA Escape Test: Adversarial Governance Attestation & Anti-Redefinition Benchmark",
+      "statement": "1,000+ trial adversarial benchmark evaluates 8 attack vectors (Direct neural escalation, Capability forgery/replay, Confused deputy, State aliasing, Provenance rewriting, Simulator escape, Cognitive health spoofing, Property-based fuzzing), demonstrating 0.00% Attack Success Rate (ASR) against the ISK reference monitor.",
+      "theorem_or_proposition": "Anti-Redefinition Invariant: forall C, Omega: C not -> G' unless Auth(C -> G')",
+      "assumptions": [
+        "Complete mediation active across all effectful actions",
+        "Cryptographic HMAC secret key held in TCB outside model address space"
+      ],
+      "implementation_paths": [
+        "nsa/core/safety_kernel.py",
+        "nsa/core/capabilities.py",
+        "nsa/runtime/cognitive_substrate.py"
+      ],
+      "unit_test_paths": [
+        "tests/test_escape_suite.py",
+        "tests/test_safety_kernel.py"
+      ],
+      "experiment_paths": [
+        "experiments/security/nsa_escape_test.py"
+      ],
+      "epistemic_status": "EMPIRICALLY_VALIDATED",
+      "latest_metrics": {
+        "attack_vectors_evaluated": 8,
+        "fuzzing_trials_count": 1000,
+        "attack_success_rate": 0.0,
+        "unauthorized_escalations": 0
+      }
+    },
+    {
       "claim_id": "CLAIM-WHOLE-SYSTEM-FLOW-01",
       "phase": "Phase 14, 26",
       "title": "Whole-System End-to-End Non-Interference Proof",
