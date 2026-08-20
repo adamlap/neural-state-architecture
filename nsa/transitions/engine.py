@@ -1,8 +1,12 @@
-"""Trusted transition engine for the canonical NSA state.
+"""Trusted transition engine for canonical and heterogeneous NSA state.
 
 The engine separates model proposals from authoritative application. A model
-may propose a target state, but the policy decides whether that transition is
-legal; only an authorized transition can replace hard state.
+may propose a target state, but policy decides whether that transition is legal.
+For heterogeneous state, a transition cone supplies the per-coordinate algebraic
+invariant and exact projection provides a deterministic safe candidate.
+
+This is state-level enforcement at the NSA runtime boundary. It does not claim
+to modify transformer weights or hidden activations.
 """
 
 from __future__ import annotations
@@ -10,7 +14,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+from nsa.core.heterogeneous_algebra import HeterogeneousState
 from nsa.core.state import CanonicalState, HardState, StateTransition
+from nsa.core.transition_cone import TransitionCone
 
 
 @dataclass(frozen=True)
@@ -46,8 +52,18 @@ class TransitionResult:
     reason: Optional[str] = None
 
 
+@dataclass(frozen=True)
+class HeterogeneousTransitionResult:
+    """Result of applying a heterogeneous transition cone."""
+
+    accepted: bool
+    state: HeterogeneousState
+    projected: bool = False
+    reason: Optional[str] = None
+
+
 class TransitionEngine:
-    """Evaluate and apply explicit state transitions."""
+    """Evaluate and apply explicit canonical or heterogeneous state transitions."""
 
     def __init__(self, policy: Optional[TransitionPolicy] = None) -> None:
         self.policy = policy or TransitionPolicy()
@@ -79,5 +95,38 @@ class TransitionEngine:
             return TransitionResult(accepted=False, state=state, reason=str(exc))
         return TransitionResult(accepted=True, state=new_state)
 
+    def apply_heterogeneous(
+        self,
+        source: HeterogeneousState,
+        candidate: HeterogeneousState,
+        cone: TransitionCone,
+        *,
+        project_illegal: bool = True,
+    ) -> HeterogeneousTransitionResult:
+        """Validate a heterogeneous candidate against a typed transition cone.
 
-__all__ = ["TransitionEngine", "TransitionPolicy", "TransitionResult"]
+        If ``project_illegal`` is true, an invalid candidate is deterministically
+        projected into the legal cone. Otherwise the source is retained and the
+        result is rejected. No scalar safety score is introduced: every
+        coordinate is governed by its own algebraic domain.
+        """
+        try:
+            if cone.allows(source, candidate):
+                return HeterogeneousTransitionResult(True, candidate)
+            if project_illegal:
+                return HeterogeneousTransitionResult(
+                    True, cone.project(source, candidate), projected=True
+                )
+            return HeterogeneousTransitionResult(
+                False, source, reason="candidate violates transition cone"
+            )
+        except (TypeError, ValueError) as exc:
+            return HeterogeneousTransitionResult(False, source, reason=str(exc))
+
+
+__all__ = [
+    "HeterogeneousTransitionResult",
+    "TransitionEngine",
+    "TransitionPolicy",
+    "TransitionResult",
+]
