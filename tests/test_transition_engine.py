@@ -1,5 +1,3 @@
-from frozenset import frozenset
-
 from nsa.core.heterogeneous_algebra import (
     BooleanDomain,
     HeterogeneousState,
