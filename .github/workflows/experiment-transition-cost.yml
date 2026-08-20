@@ -1,0 +1,67 @@
+name: NSA Transition Cost Benchmark
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'nsa/transitions/**'
+      - 'nsa/core/heterogeneous_algebra.py'
+      - 'nsa/core/transition_cone.py'
+      - 'experiments/transitions/**'
+      - 'tests/test_capability_cost.py'
+      - '.github/workflows/experiment-transition-cost.yml'
+  push:
+    paths:
+      - 'nsa/transitions/**'
+      - 'nsa/core/heterogeneous_algebra.py'
+      - 'nsa/core/transition_cone.py'
+      - 'experiments/transitions/**'
+      - 'tests/test_capability_cost.py'
+      - '.github/workflows/experiment-transition-cost.yml'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 7, 21, 42]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - name: Run transition-level benchmark
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p results
+          PYTHONPATH=. python experiments/transitions/capability_cost.py \
+            --seed ${{ matrix.seed }} \
+            | tee results/transition-cost-${{ matrix.seed }}.json
+      - name: Validate benchmark result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('results/transition-cost-${{ matrix.seed }}.json')
+          data = json.loads(path.read_text())
+          assert data['finite'] is True
+          assert 0.0 <= data['projected_fraction'] <= 1.0
+          assert 0.0 <= data['exact_legal_fraction'] <= 1.0
+          assert data['constrained_ns_per_transition'] >= 0.0
+          assert data['unconstrained_ns_per_transition'] >= 0.0
+          assert data['max_numeric_distortion'] >= data['mean_numeric_distortion']
+          print(data)
+          PY
+      - name: Run focused tests
+        run: pytest -q tests/test_capability_cost.py
+      - name: Add result to job summary
+        run: |
+          echo '## Transition-level cost — seed ${{ matrix.seed }}' >> "$GITHUB_STEP_SUMMARY"
+          cat results/transition-cost-${{ matrix.seed }}.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transition-cost-seed-${{ matrix.seed }}
+          path: results/transition-cost-${{ matrix.seed }}.json
