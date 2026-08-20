@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from nsa.self_model import PredictiveSelfModel
+from nsa.predictive_self_model import PredictiveSelfModel
 from nsa.self_state.model import SelfState
 
 
