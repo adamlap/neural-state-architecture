@@ -58,6 +58,7 @@ class ContinuousCognitiveEngine(Generic[S]):
         self._last_tick: Optional[float] = None
         self._last_error: Optional[str] = None
         self._lock = Lock()
+        self._tick_lock = Lock()
         self._stop = Event()
         self._thread: Optional[Thread] = None
 
@@ -85,24 +86,33 @@ class ContinuousCognitiveEngine(Generic[S]):
 
     def tick(self) -> bool:
         """Execute one transition if enabled; return whether a tick occurred."""
-        with self._lock:
-            if not self._enabled:
-                return False
-            current = self._state
-
-        try:
-            next_state = self._step(current)
-        except Exception as exc:  # keep the scheduler alive; expose the error
-            with self._lock:
-                self._last_error = f"{type(exc).__name__}: {exc}"
+        # Manual calls and the background loop must never race a state read /
+        # transition / commit sequence. The lock is intentionally separate
+        # from the observability lock because a real model transition can be
+        # expensive and must not block status readers indefinitely.
+        if not self._tick_lock.acquire(blocking=False):
             return False
+        try:
+            with self._lock:
+                if not self._enabled:
+                    return False
+                current = self._state
 
-        with self._lock:
-            self._state = next_state
-            self._tick_count += 1
-            self._last_tick = monotonic()
-            self._last_error = None
-        return True
+            try:
+                next_state = self._step(current)
+            except Exception as exc:  # keep the scheduler alive; expose error
+                with self._lock:
+                    self._last_error = f"{type(exc).__name__}: {exc}"
+                return False
+
+            with self._lock:
+                self._state = next_state
+                self._tick_count += 1
+                self._last_tick = monotonic()
+                self._last_error = None
+            return True
+        finally:
+            self._tick_lock.release()
 
     def start(self) -> bool:
         """Start the background wall-clock loop when enabled."""
