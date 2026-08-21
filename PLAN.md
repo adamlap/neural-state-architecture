@@ -880,3 +880,93 @@ That hypothesis — and the engineering and mathematics required to test it — 
 8. Long-horizon autonomous systems.
 9. Safety infrastructure for increasingly capable AI.
 10. Long-term research into AGI and superintelligence safety.
+
+---
+
+# Part VII — CCE / Continuous Cognition Research Track
+
+**Status:** ACTIVE — implemented runtime and live evaluation infrastructure exist; scientific claims remain open.
+
+The Continuous Cognitive Engine (CCE) is a parallel research path built around the authoritative NSA runtime. It must remain modular and must not weaken or duplicate hard NSA authority.
+
+### CCE architecture
+
+```text
+REAL / LIVE INPUT
+       |
+       v
++--------------------------+
+| CCE                      |
+| persistent cognitive    |
+| state + scheduler        |
++------------+-------------+
+             |
+             v
+   authoritative NSA transition
+             |
+             v
+        canonical state
+             |
+             +------> REAL Ollama inference
+             |                 |
+             |                 v
+             |          observable proposal
+             |                 |
+             +-----------------+
+                       |
+                       v
+                 NSA governance
+                       |
+                 ALLOW / HOLD / DENY
+```
+
+### Current implementation
+
+- [x] Opt-in wall-clock continuous execution.
+- [x] Explicit disabled/clocked control condition.
+- [x] Deterministic/manual stepping for reproducible experiments.
+- [x] Lifecycle controls and runtime observability.
+- [x] Non-overlapping transition execution.
+- [x] Fail-closed execution on authoritative transition errors.
+- [x] Freeze last valid state on transition failure.
+- [x] CCE restricted to scheduling; it cannot grant capabilities or become hard authority.
+- [x] CCE connected to the authoritative NSA substrate.
+- [x] Real Ollama inference path.
+- [x] Matched baseline-vs-NSA live Ollama benchmark.
+- [x] Clocked-vs-continuous CCE live Ollama benchmark.
+- [x] Core CCE invariant tests in the normal workflow.
+- [x] Dedicated live Ollama/CCE workflow with archived JSON artifacts.
+- [x] Multi-seed predictive self-model evaluation infrastructure.
+
+### Experimental conditions
+
+All claims about continuous cognition should use matched controls:
+
+1. **Baseline:** live Ollama without persistent NSA state.
+2. **Persistent:** live Ollama with persistent canonical state but no autonomous scheduler.
+3. **Clocked CCE:** deterministic or finite-step CCE execution.
+4. **Continuous CCE:** wall-clock CCE execution enabled.
+
+Hold model, prompt/task, sampling configuration, token budget and inference budget constant wherever practical.
+
+### Next evidence required
+
+- [ ] Run the live workflow across multiple independent seeds.
+- [ ] Repeat across at least two model families/sizes where practical.
+- [ ] Aggregate predictor-vs-persistence and clocked-vs-continuous results with effect sizes and uncertainty.
+- [ ] Measure calibration and error-detection utility separately from prediction MSE.
+- [ ] Measure long-duration continuous-state stability and transition latency.
+- [ ] Test whether continuous execution improves planning, memory or task performance under matched compute.
+- [ ] Add counterfactual action-consequence prediction.
+- [ ] Add real asynchronous speech/vision deployment against the canonical runtime.
+- [ ] Treat consciousness as an open research question rather than an implementation claim.
+
+### Workflow policy
+
+Feature work in this track should be developed on a branch and submitted as a PR so the repository's GitHub Actions suite exercises the feature before merge. Deterministic CCE invariants belong in the normal test workflow; real Ollama experiments belong in the dedicated live workflow because they require an actual model runtime and model download.
+
+The live workflow must fail if real Ollama execution is unavailable rather than silently substituting a mock backend. Results must be uploaded as workflow artifacts and interpreted from observed data only.
+
+### Scientific interpretation
+
+Continuous execution, persistent memory, self-referential language or predictive state are not by themselves evidence of phenomenal consciousness. The scientific target is measurable causal/computational change: whether persistent and continuously evolving state improves prediction, calibration, error detection, planning, memory, long-horizon performance or safety under matched controls.
