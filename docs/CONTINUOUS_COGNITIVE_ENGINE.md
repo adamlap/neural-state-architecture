@@ -4,20 +4,28 @@ CCE is the opt-in wall-clock scheduler for NSA's persistent cognitive state.
 
 ## Boundary
 
-CCE is deliberately **not** a second cognitive or safety implementation. It schedules calls into an existing authoritative transition function. In the full NSA runtime this is intended to be the existing `CognitiveDynamicsSubstrate.step` path, which already contains epistemic evaluation, predictive simulation, the deliberative governor, the immutable safety kernel, and state commit/rollback.
-
-Therefore:
+CCE is deliberately **not** a second cognitive or safety implementation. It schedules calls into an existing authoritative transition function. The production binding is `nsa.runtime.cce_adapter.SubstrateTransition`, which delegates each tick to `CognitiveDynamicsSubstrate.step`.
 
 ```text
 wall clock
     |
     v
-   CCE ----> one authoritative NSA transition ----> new state
-    |                         |
-    +-------------------------+---- safety kernel remains authoritative
+   CCE
+    |
+    v
+SubstrateTransition
+    |
+    v
+CognitiveDynamicsSubstrate.step
+    |
+    +--> epistemic grounding
+    +--> predictive self/world simulation
+    +--> deliberative governor
+    +--> immutable safety kernel
+    +--> verified commit / rollback
 ```
 
-The scheduler cannot grant capabilities, mutate hard state directly, or bypass the safety kernel.
+Only `result.new_omega` becomes the next CCE state. The scheduler cannot grant capabilities, mutate hard state directly, or bypass the safety kernel.
 
 ## Modes
 
@@ -26,6 +34,10 @@ The scheduler cannot grant capabilities, mutate hard state directly, or bypass t
 - **Continuous:** enable CCE, call `start()`, and let the wall-clock loop invoke the transition at the configured cadence.
 
 Calling `set_enabled(False)` stops a running loop and freezes the current state.
+
+## Failure semantics
+
+CCE is **fail-closed by default**. If the authoritative transition raises, the last committed state is preserved, the engine records the error, disables future ticks and stops the automatic loop. `fail_closed=False` remains available only for controlled research experiments.
 
 ## Scientific use
 
