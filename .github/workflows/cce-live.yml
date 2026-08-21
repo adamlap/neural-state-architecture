@@ -33,6 +33,14 @@ jobs:
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | sh
 
+      - name: Cache Ollama model store
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama
+          key: ollama-${{ runner.os }}-${{ inputs.model || 'qwen2.5:0.5b' }}
+          restore-keys: |
+            ollama-${{ runner.os }}-
+
       - name: Start Ollama
         run: |
           nohup ollama serve > /tmp/ollama.log 2>&1 &
@@ -42,10 +50,16 @@ jobs:
           done
           curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
 
-      - name: Pull test model
+      - name: Ensure test model is available
         env:
           CCE_MODEL: ${{ inputs.model || 'qwen2.5:0.5b' }}
-        run: ollama pull "$CCE_MODEL"
+        run: |
+          if ollama list | awk 'NR > 1 {print $1}' | grep -Fxq "$CCE_MODEL"; then
+            echo "Ollama cache hit: $CCE_MODEL"
+          else
+            echo "Ollama cache miss: pulling $CCE_MODEL"
+            ollama pull "$CCE_MODEL"
+          fi
 
       - name: Run matched real-Ollama baseline vs NSA benchmark
         env:
