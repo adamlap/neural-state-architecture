@@ -65,7 +65,6 @@ class ContinuousCognitiveEngine:
         event = self.events.get_nowait() if not self.events.empty() else None
         if event is not None:
             self.state.observe(event.payload)
-        # Autonomous dynamics continue even with no event.
         self.state.dynamic.tick(drive=1.0 if event else 0.0, dt=self.config.state_dt)
         event_text = event.payload if event else None
         reasoning = self.reasoner.reason(self.state, event_text)
@@ -73,11 +72,8 @@ class ContinuousCognitiveEngine:
         proposal = self.proposal_generator.propose(self.state, reasoning)
         if proposal is None:
             return None
-
         decision = self.governor.evaluate(
-            proposal,
-            self.governor.source_state(self.state),
-            self.governor.target_state(proposal),
+            proposal, self.governor.source_state(self.state), self.governor.target_state(proposal)
         )
         if decision.allowed:
             if self.actuator is None:
@@ -86,6 +82,7 @@ class ContinuousCognitiveEngine:
         return decision
 
     async def run(self, *, stop: asyncio.Event | None = None) -> None:
+        """Run continuously until cancellation or the optional stop event."""
         self.running = True
         period = 1.0 / max(self.config.tick_hz, 1e-6)
         try:
