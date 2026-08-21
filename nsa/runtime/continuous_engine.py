@@ -11,7 +11,7 @@ behaviour of existing tick-driven callers.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from threading import Event, Lock, Thread
+from threading import Event, Lock, Thread, current_thread
 from time import monotonic
 from typing import Callable, Generic, Optional, TypeVar
 
@@ -122,7 +122,7 @@ class ContinuousCognitiveEngine(Generic[S]):
             thread = self._thread
             was_running = self._running
             self._stop.set()
-        if thread is not None and thread is not Thread.current_thread():
+        if thread is not None and thread is not current_thread():
             thread.join(timeout=timeout)
         with self._lock:
             self._running = False
