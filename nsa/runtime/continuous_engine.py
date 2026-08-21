@@ -1,12 +1,4 @@
-"""Opt-in continuous execution for the NSA cognitive substrate.
-
-The engine deliberately separates *time* from *cognition*: the existing
-``CognitiveDynamicsSubstrate.step`` remains the authority for state
-transitions and safety decisions. CCE only schedules those transitions.
-
-This makes continuous execution testable and reversible without changing the
-behaviour of existing tick-driven callers.
-"""
+"""Opt-in continuous execution for the NSA cognitive substrate."""
 
 from __future__ import annotations
 
@@ -32,11 +24,13 @@ class CCEStatus:
 class ContinuousCognitiveEngine(Generic[S]):
     """Schedule persistent NSA state transitions on a wall-clock loop.
 
-    ``step`` is supplied by the caller and should perform exactly one
-    authoritative NSA cognitive transition. CCE never mutates state itself.
+    CCE owns scheduling only. ``step`` remains the authoritative NSA
+    transition function, so the scheduler cannot grant capabilities, mutate
+    hard state, or bypass the safety kernel.
 
-    Continuous execution is opt-in. ``enabled=False`` means ``start()`` is a
-    no-op and ``tick()`` does not invoke the transition callback.
+    Continuous execution is opt-in and fail-closed by default: a transition
+    exception freezes state and disables further automatic ticks until the
+    caller explicitly re-enables the engine.
     """
 
     def __init__(
@@ -46,6 +40,7 @@ class ContinuousCognitiveEngine(Generic[S]):
         *,
         interval_seconds: float = 0.1,
         enabled: bool = False,
+        fail_closed: bool = True,
     ) -> None:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be > 0")
@@ -53,6 +48,7 @@ class ContinuousCognitiveEngine(Generic[S]):
         self._step = step
         self._interval = float(interval_seconds)
         self._enabled = bool(enabled)
+        self._fail_closed = bool(fail_closed)
         self._running = False
         self._tick_count = 0
         self._last_tick: Optional[float] = None
@@ -86,10 +82,6 @@ class ContinuousCognitiveEngine(Generic[S]):
 
     def tick(self) -> bool:
         """Execute one transition if enabled; return whether a tick occurred."""
-        # Manual calls and the background loop must never race a state read /
-        # transition / commit sequence. The lock is intentionally separate
-        # from the observability lock because a real model transition can be
-        # expensive and must not block status readers indefinitely.
         if not self._tick_lock.acquire(blocking=False):
             return False
         try:
@@ -100,9 +92,12 @@ class ContinuousCognitiveEngine(Generic[S]):
 
             try:
                 next_state = self._step(current)
-            except Exception as exc:  # keep the scheduler alive; expose error
+            except Exception as exc:
                 with self._lock:
                     self._last_error = f"{type(exc).__name__}: {exc}"
+                    if self._fail_closed:
+                        self._enabled = False
+                        self._stop.set()
                 return False
 
             with self._lock:
@@ -148,7 +143,6 @@ class ContinuousCognitiveEngine(Generic[S]):
                     enabled = self._enabled
                 if not enabled:
                     break
-
                 now = monotonic()
                 if now >= deadline:
                     self.tick()
