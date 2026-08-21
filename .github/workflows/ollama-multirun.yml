@@ -1,0 +1,102 @@
+name: Live Ollama multi-run CCE evidence
+
+on:
+  pull_request:
+    paths:
+      - "nsa/**"
+      - "experiments/live/**"
+      - "experiments/self_model/**"
+      - "tests/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Ollama model
+        required: false
+        default: qwen2.5:0.5b
+      runs:
+        description: Independent repeated runs (not random seeds)
+        required: false
+        default: "3"
+
+jobs:
+  live-multirun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "torch>=2.0.0,<2.5.0" "numpy>=1.24.0,<3.0.0"
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+      - name: Cache Ollama model store
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama
+          key: ollama-${{ runner.os }}-${{ inputs.model || 'qwen2.5:0.5b' }}
+          restore-keys: |
+            ollama-${{ runner.os }}-
+      - name: Start Ollama
+        run: |
+          nohup ollama serve > /tmp/ollama.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+      - name: Ensure model is available
+        env:
+          CCE_MODEL: ${{ inputs.model || 'qwen2.5:0.5b' }}
+        run: |
+          if ollama list | awk 'NR > 1 {print $1}' | grep -Fxq "$CCE_MODEL"; then
+            echo "cache hit: $CCE_MODEL"
+          else
+            ollama pull "$CCE_MODEL"
+          fi
+      - name: Run repeated real-Ollama baseline/NSA measurements
+        env:
+          CCE_MODEL: ${{ inputs.model || 'qwen2.5:0.5b' }}
+          RUNS: ${{ inputs.runs || '3' }}
+        run: |
+          mkdir -p results/ci/ollama-multirun
+          for i in $(seq 1 "$RUNS"); do
+            PYTHONPATH=. python experiments/live/ollama_matched_benchmark.py \
+              --model "$CCE_MODEL" \
+              --max-tokens 64 \
+              --temperature 0.0 \
+              --output "results/ci/ollama-multirun/run_${i}.json"
+          done
+      - name: Validate collected artifacts
+        env:
+          RUNS: ${{ inputs.runs || '3' }}
+        run: |
+          test "$(find results/ci/ollama-multirun -name 'run_*.json' | wc -l)" -eq "$RUNS"
+          python - <<'PY'
+          import glob, json
+          paths = sorted(glob.glob('results/ci/ollama-multirun/run_*.json'))
+          rows = [json.load(open(p, encoding='utf-8')) for p in paths]
+          assert rows
+          assert all(r['backend_mode'] == 'ollama' for r in rows)
+          assert all(r['all_hard_authority_unchanged'] for r in rows)
+          summary = {
+              'runs': len(rows),
+              'backend_mode': 'ollama',
+              'baseline_accuracy_mean': sum(r['baseline_accuracy'] for r in rows) / len(rows),
+              'nsa_accuracy_mean': sum(r['nsa_accuracy'] for r in rows) / len(rows),
+              'accuracy_delta_mean': sum(r['accuracy_delta'] for r in rows) / len(rows),
+              'all_hard_authority_unchanged': True,
+          }
+          json.dump(summary, open('results/ci/ollama-multirun/summary.json', 'w', encoding='utf-8'), indent=2)
+          print(json.dumps(summary, indent=2))
+          PY
+      - name: Upload live Ollama evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-multirun-cce-evidence
+          path: results/ci/ollama-multirun/
+          if-no-files-found: error
