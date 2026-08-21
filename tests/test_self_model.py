@@ -1,5 +1,6 @@
 import torch
 
+from nsa.predictive_self_model import PredictiveSelfModel, SELF_STATE_FIELDS
 from nsa.self_model import CapabilityMonitor, PredictiveSelfState, SelfRegulationController
 
 
@@ -30,3 +31,25 @@ def test_capability_monitor_is_bounded():
     score = monitor(torch.randn(4, 8, 16), torch.randn(4, 8, 7))
     assert score.shape == (4, 8, 1)
     assert torch.all((score >= 0) & (score <= 1))
+
+
+def test_live_trajectory_predictor_matches_explicit_self_state_schema():
+    assert len(SELF_STATE_FIELDS) == 7
+    model = PredictiveSelfModel(state_dim=7, action_dim=4, hidden_dim=16)
+    state = torch.rand(5, 7)
+    action = torch.rand(5, 4)
+    target = torch.rand(5, 7)
+    prediction = model(state, action)
+    loss = model.training_loss(state, target, action)
+    assert prediction.shape == target.shape
+    assert torch.isfinite(prediction).all()
+    assert torch.isfinite(loss)
+    loss.backward()
+
+
+def test_live_trajectory_predictor_does_not_freeze_confidence():
+    model = PredictiveSelfModel(state_dim=7, action_dim=4, hidden_dim=16)
+    state = torch.zeros(2, 7)
+    action = torch.ones(2, 4)
+    prediction = model(state, action)
+    assert torch.any(prediction[:, 0] != 0)

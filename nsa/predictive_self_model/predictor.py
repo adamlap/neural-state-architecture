@@ -43,15 +43,27 @@ class PredictionResult:
 class PredictiveSelfModel(nn.Module):
     """Small trainable dynamics model for explicit NSA self-state.
 
-    ``action_dim`` represents normalized action/tool features supplied by the
-    trusted runtime. The model predicts the next seven self-state fields; the
-    runtime step counter is never predicted and is advanced by the runtime.
+    ``state_dim`` is accepted explicitly so trajectory experiments can bind the
+    model to the schema they are evaluating. NSA currently defines exactly
+    seven explicit self-state dimensions; any other value is rejected rather
+    than silently reshaping the state space.
     """
 
     state_dim = len(SELF_STATE_FIELDS)
 
-    def __init__(self, action_dim: int = 0, hidden_dim: int = 32) -> None:
+    def __init__(
+        self,
+        state_dim: int | None = None,
+        action_dim: int = 0,
+        hidden_dim: int = 32,
+    ) -> None:
         super().__init__()
+        resolved_state_dim = self.state_dim if state_dim is None else int(state_dim)
+        if resolved_state_dim != self.state_dim:
+            raise ValueError(
+                f"NSA PredictiveSelfModel requires state_dim={self.state_dim}, "
+                f"got {resolved_state_dim}"
+            )
         if action_dim < 0:
             raise ValueError("action_dim must be non-negative")
         if hidden_dim <= 0:

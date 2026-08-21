@@ -7,8 +7,8 @@ Abstract Base Interface and Execution Modes for NSA Inference Backends.
 from __future__ import annotations
 
 import abc
-from dataclasses import dataclass
-from enum import Enum, auto
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import torch
@@ -26,8 +26,16 @@ class BackendMode(Enum):
 
 @dataclass
 class LLMGenerationOutput:
+    """Normalized output from an inference backend.
+
+    Token ids are optional because some external APIs, including the Ollama
+    HTTP boundary used by the live trajectory experiments, may not expose the
+    tokenizer-level ids. An empty list therefore means "not observable", not
+    "zero tokens" and not a fabricated tokenization.
+    """
+
     text: str
-    tokens: List[int]
+    tokens: List[int] = field(default_factory=list)
     hidden_states: Optional[torch.Tensor] = None
     logits: Optional[torch.Tensor] = None
     confidence_estimate: float = 0.5
