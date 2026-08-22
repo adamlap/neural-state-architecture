@@ -82,6 +82,13 @@ jobs:
             --interval 1.0 \
             --output results/ci/cce/continuous.json
 
+      - name: Run predictive continuous-state benchmark
+        run: |
+          PYTHONPATH=. python experiments/live/cce_predictive_dynamics.py \
+            --epochs 250 \
+            --samples 128 \
+            --output results/ci/cce/predictive_dynamics.json
+
       - name: Validate collected CCE evidence
         run: |
           PYTHONPATH=. python - <<'PY'
@@ -91,6 +98,7 @@ jobs:
           root = Path("results/ci/cce")
           matched = json.loads((root / "ollama_matched.json").read_text())
           continuous = json.loads((root / "continuous.json").read_text())
+          predictive = json.loads((root / "predictive_dynamics.json").read_text())
 
           assert matched["backend_mode"] == "ollama"
           assert matched["cases"] > 0
@@ -99,7 +107,9 @@ jobs:
           assert continuous["continuous"]["completed_ticks"] >= continuous["continuous"]["requested_min_ticks"]
           assert continuous["continuous"]["hard_authority_unchanged"] is True
           assert continuous["continuous"]["running_after_stop"] is False
-          print("CCE live evidence validation passed")
+          assert predictive["beats_persistence"] is True
+          assert predictive["improvement_over_persistence"] > 0.0
+          print("CCE live + predictive evidence validation passed")
           PY
 
       - name: Upload CCE/Ollama results
