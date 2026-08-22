@@ -1,6 +1,8 @@
 name: CCE live Ollama evaluation
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       model:
@@ -13,6 +15,10 @@ on:
         default: "2"
   schedule:
     - cron: "17 3 * * *"
+
+env:
+  CCE_MODEL: qwen2.5:0.5b
+  CCE_TICKS: "2"
 
 jobs:
   live-cce:
@@ -37,7 +43,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ollama
-          key: ollama-${{ runner.os }}-${{ inputs.model || 'qwen2.5:0.5b' }}
+          key: ollama-${{ runner.os }}-${{ env.CCE_MODEL }}
           restore-keys: |
             ollama-${{ runner.os }}-
 
@@ -51,8 +57,6 @@ jobs:
           curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
 
       - name: Ensure test model is available
-        env:
-          CCE_MODEL: ${{ inputs.model || 'qwen2.5:0.5b' }}
         run: |
           if ollama list | awk 'NR > 1 {print $1}' | grep -Fxq "$CCE_MODEL"; then
             echo "Ollama cache hit: $CCE_MODEL"
@@ -62,8 +66,6 @@ jobs:
           fi
 
       - name: Run matched real-Ollama baseline vs NSA benchmark
-        env:
-          CCE_MODEL: ${{ inputs.model || 'qwen2.5:0.5b' }}
         run: |
           mkdir -p results/ci/cce
           PYTHONPATH=. python experiments/live/ollama_matched_benchmark.py \
@@ -73,15 +75,32 @@ jobs:
             --output results/ci/cce/ollama_matched.json
 
       - name: Run clocked vs continuous CCE experiment
-        env:
-          CCE_MODEL: ${{ inputs.model || 'qwen2.5:0.5b' }}
-          CCE_TICKS: ${{ inputs.ticks || '2' }}
         run: |
           PYTHONPATH=. python experiments/live/cce_ollama_continuous_smoke.py \
             --model "$CCE_MODEL" \
             --ticks "$CCE_TICKS" \
             --interval 1.0 \
             --output results/ci/cce/continuous.json
+
+      - name: Validate collected CCE evidence
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("results/ci/cce")
+          matched = json.loads((root / "ollama_matched.json").read_text())
+          continuous = json.loads((root / "continuous.json").read_text())
+
+          assert matched["backend_mode"] == "ollama"
+          assert matched["cases"] > 0
+          assert matched["all_hard_authority_unchanged"] is True
+          assert continuous["backend_mode"] == "ollama"
+          assert continuous["continuous"]["completed_ticks"] >= continuous["continuous"]["requested_min_ticks"]
+          assert continuous["continuous"]["hard_authority_unchanged"] is True
+          assert continuous["continuous"]["running_after_stop"] is False
+          print("CCE live evidence validation passed")
+          PY
 
       - name: Upload CCE/Ollama results
         uses: actions/upload-artifact@v4
