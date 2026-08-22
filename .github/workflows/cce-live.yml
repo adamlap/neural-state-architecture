@@ -37,7 +37,17 @@ jobs:
           python -m pip install "torch>=2.0.0,<2.5.0" "numpy>=1.24.0,<3.0.0"
 
       - name: Install Ollama
-        run: curl -fsSL https://ollama.com/install.sh | sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://ollama.com/install.sh | sh; then
+              exit 0
+            fi
+            echo "Ollama installer attempt ${attempt} failed; retrying..."
+            sleep $((attempt * 2))
+          done
+          echo "Ollama installation failed after retries" >&2
+          exit 1
 
       - name: Cache Ollama model store
         uses: actions/cache@v4
@@ -49,21 +59,29 @@ jobs:
 
       - name: Start Ollama
         run: |
+          set -euo pipefail
           nohup ollama serve > /tmp/ollama.log 2>&1 &
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then
+              echo "Ollama server ready after ${i}s"
+              exit 0
+            fi
             sleep 1
           done
-          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          echo "Ollama server failed to start"
+          cat /tmp/ollama.log || true
+          exit 1
 
       - name: Ensure test model is available
         run: |
+          set -euo pipefail
           if ollama list | awk 'NR > 1 {print $1}' | grep -Fxq "$CCE_MODEL"; then
             echo "Ollama cache hit: $CCE_MODEL"
           else
             echo "Ollama cache miss: pulling $CCE_MODEL"
             ollama pull "$CCE_MODEL"
           fi
+          ollama list
 
       - name: Run matched real-Ollama baseline vs NSA benchmark
         run: |
