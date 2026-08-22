@@ -1,0 +1,43 @@
+name: CCE Predictive Multiseed Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  predictive-multiseed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Run multiseed held-out predictor validation
+        run: |
+          mkdir -p results/ci/cce
+          PYTHONPATH=. python experiments/live/cce_predictive_multiseed.py \
+            --epochs 160 \
+            --seeds 7 19 42 73 101 \
+            --output results/ci/cce/predictive_multiseed.json
+      - name: Validate predictive evidence
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("results/ci/cce/predictive_multiseed.json").read_text())
+          assert result["all_seeds_all_tasks_beat_persistence"] is True
+          assert result["successful_seeds"] == result["required_successful_seeds"]
+          assert result["mean_seed_improvement"] > 0.0
+          print("CCE multiseed predictive validation passed")
+          PY
+      - name: Run focused tests
+        run: pytest -q tests/test_cce_predictive_multiseed.py
+      - name: Upload predictive evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cce-predictive-multiseed
+          path: results/ci/cce/predictive_multiseed.json
