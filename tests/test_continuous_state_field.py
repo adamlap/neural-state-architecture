@@ -25,10 +25,15 @@ def test_async_input_is_delivered_to_field() -> None:
 
     field = ContinuousStateField(torch.zeros(1), dynamics, enabled=True)
     field.inject("speech:event")
-    field.step_now(1.0)
-    field.step_now(1.1)
 
-    assert seen == [None, "speech:event"]
+    # The first call establishes the wall-clock origin and intentionally does
+    # not evaluate the field. The queued event must remain pending until the
+    # first real integration step.
+    assert field.step_now(1.0) is False
+    assert field.status().pending_inputs == 1
+    assert field.step_now(1.1) is True
+
+    assert seen == ["speech:event"]
     assert field.status().pending_inputs == 0
 
 
