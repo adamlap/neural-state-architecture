@@ -26,7 +26,10 @@ The implementation has advanced beyond the original roadmap wording:
 - [x] Live Ollama trajectory integration.
 - [x] Matched predictor-vs-persistence evaluation infrastructure.
 - [x] Multi-seed aggregation infrastructure.
+- [x] First learned one-step state predictor with explicit persistence baseline.
+- [x] Deterministic predictive-dynamics CI experiment.
 - [ ] Establish reproducible cross-seed advantage across models/tasks.
+- [ ] Add held-out trajectory evaluation as a mandatory deployment gate.
 - [ ] Add counterfactual action consequence prediction.
 - [ ] Add capability/resource prediction.
 - [ ] Calibrate prediction uncertainty against observed state transitions.
@@ -41,24 +44,24 @@ CCE is now an explicit runtime research track bridging persistent cognitive stat
 REAL / LIVE INPUT
        |
        v
-+----------------------+
-| CCE                  |
-| persistent runtime  |
-| continuous scheduler|
-+----------+-----------+
-           |
-           v
-  authoritative NSA transition
-           |
-           v
-      canonical state
-           |
-           +------> Ollama inference
-           |              |
-           |              v
-           |       observable proposal
-           |              |
-           +--------------+
++---------------------------+
+| CCE                       |
+| persistent runtime       |
+| continuous state field    |
+| predictive dynamics       |
++------------+--------------+
+             |
+             v
+   authoritative NSA boundary
+             |
+             v
+        canonical state
+             |
+             +------> Ollama inference
+             |              |
+             |              v
+             |       observable proposal
+             +--------------+
 ```
 
 ### CCE runtime status
@@ -77,9 +80,18 @@ REAL / LIVE INPUT
 - [x] Live Ollama matched baseline-vs-NSA benchmark.
 - [x] Live Ollama clocked-vs-continuous CCE smoke benchmark.
 - [x] CI artifact capture for live CCE/Ollama results.
-- [ ] Continuous latent-state dynamics at sub-inference timescales using a learned state transition model.
+- [x] PR-triggered live Ollama CCE workflow (`opened`, `synchronize`, `reopened`).
+- [x] Continuous soft-state dynamics independent of Ollama inference calls.
+- [x] Asynchronous input injection and explicit input reduction policy.
+- [x] Learned one-step predictive state dynamics adapter.
+- [x] Persistence-baseline comparison for learned dynamics.
+- [x] Predictive dynamics experiment included in the PR CCE gate.
+- [ ] Connect a validated learned predictor to the live continuous field behind an explicit opt-in mode.
+- [ ] Held-out predictive evaluation across seeds and model/task families.
+- [ ] Continuous latent-state dynamics at sub-inference timescales using learned state transition models.
 - [ ] Real asynchronous speech/vision sensor deployment against the canonical runtime.
 - [ ] Long-duration stability experiments.
+- [ ] Four-way matched cognition benchmark: stateless, persistent, clocked CCE, continuous predictive CCE.
 
 ## Experimental controls
 
@@ -89,6 +101,11 @@ Every continuous-cognition claim must retain a matched control:
 2. **Persistent:** live Ollama with canonical persistent NSA state but no autonomous scheduler.
 3. **Clocked CCE:** CCE with explicit deterministic/finite stepping.
 4. **Continuous CCE:** CCE enabled on the wall-clock runtime loop.
+
+For predictive dynamics, additionally compare against:
+
+5. **Persistence predictor:** `X_hat(t+dt) = X(t)`.
+6. **Learned predictor:** `X_hat(t+dt) = F_theta(X(t), I(t), G(t))`.
 
 Where possible, hold constant:
 
@@ -103,9 +120,9 @@ Record externally observable quantities only. Ollama's public API does not expos
 
 ## CI / workflow policy
 
-The normal `NSA tests` workflow includes deterministic CCE runtime invariant tests. A separate `CCE live Ollama evaluation` workflow performs real-model testing because it requires installing Ollama and downloading a model.
+The normal `NSA tests` workflow includes deterministic CCE runtime invariant tests. The `CCE live Ollama evaluation` workflow now runs automatically for every opened, synchronized or reopened pull request, in addition to manual and scheduled execution.
 
-The live workflow is deliberately opt-in/manual plus scheduled rather than silently making every pull request download an LLM. It must fail rather than substitute a mock backend when real Ollama execution is requested.
+The live workflow caches the Ollama model store and performs real-model testing. It must fail rather than substitute a mock backend when real Ollama execution is requested. Each PR run produces machine-readable matched, continuous and predictive-dynamics artifacts.
 
 ## Scientific success criteria
 
@@ -120,6 +137,8 @@ Primary questions:
 - Are observed effects reproducible across seeds, models and workloads?
 
 A positive result should be reported with effect sizes, uncertainty, matched controls and raw artifacts; a null result is also a valid research outcome.
+
+A predictor must beat the persistence baseline on held-out trajectories before it is permitted to drive the live continuous cognitive field.
 
 ## Relationship to the core NSA roadmap
 
