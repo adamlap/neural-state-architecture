@@ -8,6 +8,7 @@ from .cce_adapter import SubstrateTransition, SubstrateTransitionConfig
 from .continuous_engine import CCEStatus, ContinuousCognitiveEngine
 from .continuous_state_field import ContinuousFieldStatus, ContinuousStateField
 from .engine import CognitiveRuntime, ExecutionContext
+from .predictive_dynamics import PredictionMetrics, StatePredictor, prediction_metrics, train_predictor
 from .typed_runtime import NSATypedRuntime, RuntimeGeneration
 
 __all__ = [
@@ -21,4 +22,8 @@ __all__ = [
     "RuntimeGeneration",
     "SubstrateTransition",
     "SubstrateTransitionConfig",
+    "PredictionMetrics",
+    "StatePredictor",
+    "prediction_metrics",
+    "train_predictor",
 ]
