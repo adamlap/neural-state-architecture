@@ -4,9 +4,10 @@ The same model, prompts, token budget and sampling settings are used for both
 conditions. The NSA condition adds only the canonical typed-state runtime
 boundary. Results are emitted as JSON so CI/local runs can archive them.
 
-This benchmark deliberately avoids claiming that textual state reports prove
-metacognition. It measures externally observable task accuracy plus runtime
-state invariants; richer calibration/error-detection metrics are a follow-up.
+The benchmark reports both strict normalized accuracy and a punctuation-tolerant
+accuracy. This avoids treating harmless formatting such as ``Yes.`` vs ``yes``
+as a cognitive failure while retaining the strict metric for regression tests.
+It still does not claim that textual outputs prove metacognition or consciousness.
 
 IMPORTANT: this is a real-model benchmark only. It always constructs the
 Ollama backend in ``mode=ollama`` and therefore fails closed if Ollama/model
@@ -18,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import string
 import time
 from pathlib import Path
 from typing import Dict, List
@@ -40,8 +42,17 @@ def normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower())
 
 
+def normalize_loose(text: str) -> str:
+    """Normalize case/whitespace and harmless surrounding punctuation."""
+    return normalize(text).translate(str.maketrans("", "", string.punctuation))
+
+
 def score(text: str, expected: str) -> bool:
     return normalize(text) == normalize(expected)
+
+
+def score_loose(text: str, expected: str) -> bool:
+    return normalize_loose(text) == normalize_loose(expected)
 
 
 def _authority_is_unchanged(runtime: NSATypedRuntime) -> bool:
@@ -80,11 +91,13 @@ def run(model: str, max_tokens: int, temperature: float) -> Dict[str, object]:
                 "baseline": {
                     "text": baseline.text,
                     "correct": score(baseline.text, case["answer"]),
+                    "normalized_correct": score_loose(baseline.text, case["answer"]),
                     "latency_ms": baseline_ms,
                 },
                 "nsa": {
                     "text": wrapped.output.text,
                     "correct": score(wrapped.output.text, case["answer"]),
+                    "normalized_correct": score_loose(wrapped.output.text, case["answer"]),
                     "latency_ms": nsa_ms,
                     "state_step": wrapped.state.state.temporal_state.step_index,
                     "provenance": wrapped.state.state.provenance_state.record_id,
@@ -95,6 +108,8 @@ def run(model: str, max_tokens: int, temperature: float) -> Dict[str, object]:
 
     baseline_accuracy = sum(bool(r["baseline"]["correct"]) for r in rows) / len(rows)
     nsa_accuracy = sum(bool(r["nsa"]["correct"]) for r in rows) / len(rows)
+    baseline_normalized_accuracy = sum(bool(r["baseline"]["normalized_correct"]) for r in rows) / len(rows)
+    nsa_normalized_accuracy = sum(bool(r["nsa"]["normalized_correct"]) for r in rows) / len(rows)
     return {
         "model": nsa_backend.model_name,
         "backend_mode": "ollama",
@@ -104,6 +119,9 @@ def run(model: str, max_tokens: int, temperature: float) -> Dict[str, object]:
         "baseline_accuracy": baseline_accuracy,
         "nsa_accuracy": nsa_accuracy,
         "accuracy_delta": nsa_accuracy - baseline_accuracy,
+        "baseline_normalized_accuracy": baseline_normalized_accuracy,
+        "nsa_normalized_accuracy": nsa_normalized_accuracy,
+        "normalized_accuracy_delta": nsa_normalized_accuracy - baseline_normalized_accuracy,
         "all_hard_authority_unchanged": all(bool(r["nsa"]["hard_authority_unchanged"]) for r in rows),
         "results": rows,
     }
