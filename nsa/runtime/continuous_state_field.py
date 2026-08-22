@@ -2,7 +2,7 @@
 
 This module is deliberately separate from ``ContinuousCognitiveEngine``.
 CCE schedules authoritative transitions; this field evolves a *soft cognitive
-state* between those transitions using real elapsed time.  The dynamics are
+state* between those transitions using real elapsed time. The dynamics are
 injected by the caller, so the runtime contains no fabricated cognitive rule.
 
 For a state x and external input u the supplied field computes
@@ -10,10 +10,10 @@ For a state x and external input u the supplied field computes
     dx/dt = F(x, u)
 
 and the runtime performs explicit numerical integration using the measured
-wall-clock delta.  Inputs are asynchronous perturbations and may be injected
+wall-clock delta. Inputs are asynchronous perturbations and may be injected
 without starting an LLM inference call.
 
-Hard NSA authority is never part of this mutable state container.  A caller
+Hard NSA authority is never part of this mutable state container. A caller
 that wants to commit authoritative state must go through the existing NSA
 transition/substrate boundary.
 """
@@ -26,10 +26,14 @@ from typing import Callable, Generic, Optional, TypeVar
 
 import torch
 
-StateT = TypeVar("StateT", bound=torch.Tensor)
 InputT = TypeVar("InputT")
-
 Field = Callable[[torch.Tensor, Optional[InputT]], torch.Tensor]
+InputReducer = Callable[[list[InputT]], Optional[InputT]]
+
+
+def _last_input(inputs: list[InputT]) -> Optional[InputT]:
+    """Default policy: deliver the newest pending event to the field."""
+    return inputs[-1] if inputs else None
 
 
 @dataclass(frozen=True)
@@ -47,10 +51,13 @@ class ContinuousStateField(Generic[InputT]):
     """A real-time numerical integrator for an injected cognitive state field.
 
     ``step_now()`` advances from the previous monotonic timestamp to the
-    current timestamp.  ``start()`` repeatedly performs the same operation
-    at an implementation cadence, but the integration itself always uses the
-    measured elapsed time rather than assuming that cadence is the cognitive
-    clock.
+    current timestamp. ``start()`` repeatedly performs the same operation at
+    an implementation cadence, but integration always uses measured elapsed
+    time rather than assuming that cadence is the cognitive clock.
+
+    ``input_reducer`` makes asynchronous event handling explicit. The default
+    is last-event-wins, while callers that must preserve every event can supply
+    a reducer that combines the pending events into one field input.
     """
 
     def __init__(
@@ -61,6 +68,7 @@ class ContinuousStateField(Generic[InputT]):
         integration_cadence_seconds: float = 0.01,
         enabled: bool = False,
         fail_closed: bool = True,
+        input_reducer: Optional[InputReducer[InputT]] = None,
     ) -> None:
         if state.ndim == 0:
             raise ValueError("state must have at least one dimension")
@@ -71,6 +79,7 @@ class ContinuousStateField(Generic[InputT]):
         self._cadence = float(integration_cadence_seconds)
         self._enabled = bool(enabled)
         self._fail_closed = bool(fail_closed)
+        self._input_reducer = input_reducer or _last_input
         self._running = False
         self._integration_count = 0
         self._elapsed = 0.0
@@ -126,9 +135,8 @@ class ContinuousStateField(Generic[InputT]):
             inputs = self._pending_inputs
             self._pending_inputs = []
 
-        # Multiple events in one elapsed interval are delivered together.
-        external = inputs[-1] if inputs else None
         try:
+            external = self._input_reducer(inputs)
             derivative = self._field(state, external)
             if derivative.shape != state.shape:
                 raise ValueError(
