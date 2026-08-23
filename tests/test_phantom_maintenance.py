@@ -12,15 +12,15 @@ class DummyBackend:
 
 def test_maintenance_advances_persistent_state_without_model_call():
     runtime = NSATypedRuntime(DummyBackend(), goal_id="maintenance-test")
-    before = runtime.inspect()
+    before_step = runtime.activation.state.temporal_state.step_index
     authority = runtime.activation.state.authority_state.detach().clone()
 
     result = maintain(runtime, elapsed_seconds=0.5)
 
-    after = runtime.inspect()
+    after_step = runtime.activation.state.temporal_state.step_index
     assert result.changed is True
     assert result.step_after == result.step_before + 1
-    assert after["temporal_state"]["step_index"] == before["temporal_state"]["step_index"] + 1
+    assert after_step == before_step + 1
     assert torch.equal(authority, runtime.activation.state.authority_state)
     assert result.hard_authority_unchanged is True
 
