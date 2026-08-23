@@ -1,8 +1,6 @@
-name: CCE Predictive Multiseed Validation
+name: "[manual] CCE Predictive Multiseed Validation"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
@@ -19,10 +17,7 @@ jobs:
       - name: Run multiseed held-out predictor validation
         run: |
           mkdir -p results/ci/cce
-          PYTHONPATH=. python experiments/live/cce_predictive_multiseed.py \
-            --epochs 160 \
-            --seeds 7 19 42 73 101 \
-            --output results/ci/cce/predictive_multiseed.json
+          PYTHONPATH=. python experiments/live/cce_predictive_multiseed.py --epochs 160 --seeds 7 19 42 73 101 --output results/ci/cce/predictive_multiseed.json
       - name: Validate predictive evidence
         run: |
           PYTHONPATH=. python - <<'PY'
