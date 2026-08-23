@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import FrozenSet, Mapping, Tuple
+from typing import FrozenSet, Mapping, Optional, Tuple
 
 
 class Decision(str, Enum):

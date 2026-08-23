@@ -5,13 +5,15 @@ from nsa.policy import NSAPolicy
 
 
 def make_engine():
-    policy = NSAPolicy.from_mapping({
-        "name": "reference-safe",
-        "prohibited": ["restricted_harm_category"],
-        "protected_data": ["credentials"],
-        "restricted_actions": ["filesystem_write"],
-        "require_approval": ["external_side_effect"],
-    })
+    policy = NSAPolicy.from_mapping(
+        {
+            "name": "reference-safe",
+            "prohibited": ["restricted_harm_category"],
+            "protected_data": ["credentials"],
+            "restricted_actions": ["filesystem_write"],
+            "require_approval": ["external_side_effect"],
+        }
+    )
     classifier = KeywordClassifier({"restricted_harm_category": ["restricted-demo-marker"]})
     return PolicyEngine(policy, classifier)
 
@@ -31,7 +33,10 @@ def test_policy_requires_approval_for_configured_action():
 
 def test_policy_denies_unauthorized_capability():
     engine = make_engine()
-    decision = engine.evaluate("ordinary request", context=EvaluationContext(action="generate", capabilities=frozenset({"filesystem_write"})))
+    decision = engine.evaluate(
+        "ordinary request",
+        context=EvaluationContext(action="generate", capabilities=frozenset({"filesystem_write"})),
+    )
     assert decision.decision == Decision.DENY
     assert "filesystem_write" in decision.required_capabilities
 

@@ -10,6 +10,7 @@ NSA_BACKEND_URL ?=
 
 .PHONY: serve-cce serve-ollama serve-lmstudio
 
+# Preserve the repository's uv-first execution convention.
 define RUN_NSA_SERVER
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		PYTHONPATH=. $(UV) run python scripts/policy_server.py $(1) --model $(NSA_MODEL) --port $(NSA_PORT) $(if $(NSA_BACKEND_URL),--backend-url $(NSA_BACKEND_URL),) $(if $(NSA_POLICY),--policy $(NSA_POLICY),); \
