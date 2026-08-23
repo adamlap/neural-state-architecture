@@ -1,0 +1,59 @@
+name: CCE perturbation and recovery
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  cce-perturbation-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "torch>=2.0.0,<2.5.0" "numpy>=1.24.0,<3.0.0" pytest
+
+      - name: Run deterministic perturbation/recovery unit test
+        run: |
+          PYTHONPATH=. python -m pytest -q tests/test_cce_long_duration_perturbation_recovery.py
+
+      - name: Run real wall-clock perturbation/recovery experiment
+        run: |
+          mkdir -p results/ci/cce
+          PYTHONPATH=. python experiments/cce_long_duration_perturbation_recovery.py \
+            --dimension 4 \
+            --baseline 0.05 \
+            --perturbation 0.05 \
+            --recovery 0.25 \
+            --output results/ci/cce/perturbation_recovery.json
+
+      - name: Validate machine-readable evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          evidence = json.loads(Path("results/ci/cce/perturbation_recovery.json").read_text())
+          assert evidence["runtime_mode"] == "wall_clock"
+          assert evidence["perturbation_increased_state"] is True
+          assert evidence["recovered_toward_baseline"] is True
+          assert evidence["finite"] is True
+          assert evidence["uncertainty_in_range"] is True
+          assert evidence["hard_authority_access"] is False
+          assert evidence["final_update_count"] >= 3
+          print("CCE perturbation/recovery evidence validation passed")
+          PY
+
+      - name: Upload perturbation/recovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cce-perturbation-recovery-results
+          path: results/ci/cce/perturbation_recovery.json
+          if-no-files-found: error
