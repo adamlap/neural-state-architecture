@@ -1,8 +1,6 @@
-name: CCE Predictive Field Adapter
+name: "[manual] CCE Predictive Field Adapter"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
