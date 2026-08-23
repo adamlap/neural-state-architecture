@@ -1,0 +1,27 @@
+name: CCE governed feedback
+
+on:
+  pull_request:
+    paths:
+      - 'nsa/runtime/cce_governed_feedback.py'
+      - 'nsa/runtime/cce_persistent_state.py'
+      - 'experiments/cce_governed_feedback_runtime.py'
+      - 'tests/test_cce_governed_feedback.py'
+      - '.github/workflows/cce-governed-feedback.yml'
+  workflow_dispatch:
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install torch pytest
+      - run: PYTHONPATH=. pytest -q tests/test_cce_governed_feedback.py
+      - run: mkdir -p results/ci/cce && PYTHONPATH=. python experiments/cce_governed_feedback_runtime.py --output results/ci/cce/governed_feedback.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cce-governed-feedback-results
+          path: results/ci/cce/governed_feedback.json
