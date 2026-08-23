@@ -1,0 +1,97 @@
+name: "[auto] Live CCE continuity integrity"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "nsa/runtime/**"
+      - "experiments/live/cce_continuity_integrity.py"
+      - "tests/test_continuous_runtime_supervisor.py"
+      - ".github/workflows/cce-continuity-live.yml"
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Ollama model"
+        required: true
+        default: "qwen2.5:0.5b"
+      duration:
+        description: "Wall-clock test duration in seconds"
+        required: true
+        default: "6"
+
+concurrency:
+  group: live-cce-continuity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CCE_MODEL: ${{ github.event.inputs.model || 'qwen2.5:0.5b' }}
+  CCE_DURATION: ${{ github.event.inputs.duration || '6' }}
+
+jobs:
+  continuity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "torch>=2.0.0,<2.5.0" "numpy>=1.24.0,<3.0.0" "pytest>=7.0.0" "hypothesis>=6.100.0"
+
+      - name: Install Ollama
+        run: curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama
+        run: |
+          set -euo pipefail
+          nohup ollama serve > /tmp/ollama.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/ollama.log || true
+          exit 1
+
+      - name: Pull live model
+        run: ollama pull "$CCE_MODEL"
+
+      - name: Verify local continuous supervisor invariants
+        run: PYTHONPATH=. python -m pytest -q tests/test_phantom_maintenance.py tests/test_continuous_runtime_supervisor.py
+
+      - name: Verify live model plus continuous soft-state maintenance
+        run: |
+          mkdir -p results/ci/cce-continuity
+          PYTHONPATH=. python experiments/live/cce_continuity_integrity.py \
+            --model "$CCE_MODEL" \
+            --duration "$CCE_DURATION" \
+            --maintenance-interval 0.1 \
+            --model-interval 1.0 \
+            --output results/ci/cce-continuity/integrity.json
+
+      - name: Assert continuity evidence
+        run: |
+          python - <<'PY'
+          import json
+          result = json.load(open("results/ci/cce-continuity/integrity.json"))
+          assert result["backend"] == "ollama"
+          assert result["model_active"] is True
+          assert result["continuous_soft_state_active"] is True
+          assert result["maintenance_ticks"] >= 2
+          assert result["model_ticks"] >= 1
+          assert result["state_step"] >= result["model_ticks"]
+          assert result["hard_authority_unchanged"] is True
+          assert result["last_error"] is None
+          print("Live CCE continuity integrity passed")
+          PY
+
+      - name: Upload continuity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cce-continuity-integrity
+          path: results/ci/cce-continuity/integrity.json
+          if-no-files-found: error

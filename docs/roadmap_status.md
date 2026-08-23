@@ -23,8 +23,33 @@ Implemented:
 - Ollama/CCE policy-aware server launcher.
 - `make serve-ollama POLICY=...` and `make serve-cce POLICY=...` deployment interface.
 - Reference safe and enterprise policies.
+- Live Ollama policy verification workflow with configurable policy file/model.
 
 Important limitation: the reference classifier is not a semantic safety oracle. Production-grade claims require a trained semantic/normative classifier, a defined trusted computing boundary, and independently enforced capability/runtime controls.
+
+## Continuous Runtime / CCE — New Integration Milestone
+**Status: OBSERVABLE CONTINUITY PRIMITIVE / HYPOTHESIS UNDER TEST**
+
+The CCE now has an explicit two-rate continuity direction:
+
+```text
+high-rate explicit soft-state maintenance
+                │
+                ├── persistent temporal/self state
+                │
+                └── no authority mutation
+
+lower-rate live model heartbeat
+                │
+                └── real Ollama inference
+
+                ↓
+       one trusted runtime state
+```
+
+`PhantomMaintenanceLoop` and `ContinuousRuntimeSupervisor` provide a testable engineering primitive for persistent background processing. This is deliberately described as a **phantom-processing hypothesis**, not a claim that it produces consciousness. The live integrity workflow verifies that the explicit state continues evolving, the model is actually invoked, and hard authority remains unchanged.
+
+The next scientific question is whether persistent dynamics improve measurable continuity properties such as predictive accuracy, salience stability, self-state consistency, recovery, memory integration, or action planning compared with clocked/episodic baselines.
 
 ## Phases 1–10 — Original NSA Foundation
 **Status: MATURE FOUNDATION / VALIDATION CONTINUES**
@@ -33,7 +58,7 @@ The repository contains the original lattice, conservation-law, non-interference
 
 ## Phases 11–27 — Typed Cognitive Substrate
 
-The canonical typed state, algebra, transitions, information flow, capability, provenance, memory, self-state, predictive self-model, actions, trusted runtime, value substrate, normative uncertainty, auditing and verification phases remain at the maturity levels described in the existing phase documents. The practical policy control plane now provides the first developer-facing bridge across these primitives.
+The canonical typed state, algebra, transitions, information flow, capability, provenance, memory, self-state, predictive self-model, actions, trusted runtime, value substrate, normative uncertainty, auditing and verification phases remain at the maturity levels described in the existing phase documents. The practical policy control plane and continuous runtime now provide the first developer-facing and continuously executing bridge across these primitives.
 
 ## Current Architecture Maturity
 
@@ -50,6 +75,9 @@ Typed memory                        ███████░░░░░░░�
 Self-state                          ████████████░░░░░░░░  runnable prototype
 Self-model                          █████░░░░░░░░░░░░░░░  first primitive
 Policy control plane                ███████████████░░░░░  reference integration
+Live policy verification             ███████████░░░░░░░░░  first integration gate
+Continuous maintenance               ████████░░░░░░░░░░░░  hypothesis primitive
+Live model heartbeat                 ████████░░░░░░░░░░░░  first integration
 Model adapters                      ████████░░░░░░░░░░░░  generic wrapper
 Trusted runtime                     ███░░░░░░░░░░░░░░░░░  design
 Multi-agent                         ██░░░░░░░░░░░░░░░░░░  design
@@ -59,14 +87,16 @@ Formal verification                 ████░░░░░░░░░░�
 ## Consolidated Immediate Build Sequence
 
 1. **Verify the consolidated mainline** with the fast unit/security suite and policy tests.
-2. **Exercise the practical interface** against Ollama with a reference policy and record request/output decisions.
-3. Connect capabilities directly to flow and transition enforcement.
-4. Connect provenance to claims, memory and confidence updates.
-5. Connect typed memory to the flow graph.
-6. Replace the reference keyword classifier with a benchmarked semantic classifier interface while preserving the policy API.
-7. Introduce an explicit normative/value state (`ν`) and normative uncertainty evaluation.
-8. Build typed tool/action requests and connect them to the trusted runtime.
-9. Add end-to-end formal information-flow and authority properties.
-10. Red-team the complete substrate and measure both safety and capability.
+2. **Exercise the live policy interface** against Ollama with a configurable reference policy and record request/output decisions.
+3. **Verify two-rate CCE continuity**: persistent explicit soft-state maintenance + real model heartbeat + unchanged hard authority.
+4. Compare persistent/continuous processing against clocked/episodic baselines using measurable continuity metrics.
+5. Connect capabilities directly to flow and transition enforcement.
+6. Connect provenance to claims, memory and confidence updates.
+7. Connect typed memory to the flow graph.
+8. Replace the reference keyword classifier with a benchmarked semantic classifier interface while preserving the policy API.
+9. Introduce an explicit normative/value state (`ν`) and normative uncertainty evaluation.
+10. Build typed tool/action requests and connect them to the trusted runtime.
+11. Add end-to-end formal information-flow and authority properties.
+12. Red-team the complete substrate and measure both safety and capability.
 
 The key milestone is not the number of modules. It is reaching the point where **semantic cognition, self-state, normative state, security state, provenance, memory and authority evolve through one coherent transition model while the trusted runtime retains final execution authority**.

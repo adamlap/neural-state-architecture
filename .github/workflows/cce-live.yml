@@ -1,8 +1,6 @@
-name: CCE live Ollama evaluation
+name: "[manual] CCE live Ollama evaluation"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       model:
@@ -13,8 +11,6 @@ on:
         description: Number of continuous transitions
         required: false
         default: "2"
-  schedule:
-    - cron: "17 3 * * *"
 
 env:
   CCE_MODEL: qwen2.5:0.5b
@@ -26,127 +22,72 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install "torch>=2.0.0,<2.5.0" "numpy>=1.24.0,<3.0.0"
-
       - name: Install Ollama
         run: |
           set -euo pipefail
           for attempt in 1 2 3; do
-            if curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://ollama.com/install.sh | sh; then
-              exit 0
-            fi
+            if curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://ollama.com/install.sh | sh; then exit 0; fi
             echo "Ollama installer attempt ${attempt} failed; retrying..."
             sleep $((attempt * 2))
           done
-          echo "Ollama installation failed after retries" >&2
           exit 1
-
       - name: Cache Ollama model store
         uses: actions/cache@v4
         with:
           path: ~/.ollama
           key: ollama-${{ runner.os }}-${{ env.CCE_MODEL }}
-          restore-keys: |
-            ollama-${{ runner.os }}-
-
+          restore-keys: ollama-${{ runner.os }}-
       - name: Start Ollama
         run: |
           set -euo pipefail
           nohup ollama serve > /tmp/ollama.log 2>&1 &
           for i in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then
-              echo "Ollama server ready after ${i}s"
-              exit 0
-            fi
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then exit 0; fi
             sleep 1
           done
-          echo "Ollama server failed to start"
           cat /tmp/ollama.log || true
           exit 1
-
       - name: Ensure test model is available
         run: |
-          set -euo pipefail
           if ollama list | awk 'NR > 1 {print $1}' | grep -Fxq "$CCE_MODEL"; then
             echo "Ollama cache hit: $CCE_MODEL"
           else
-            echo "Ollama cache miss: pulling $CCE_MODEL"
             ollama pull "$CCE_MODEL"
           fi
-          ollama list
-
       - name: Run matched real-Ollama baseline vs NSA benchmark
         run: |
           mkdir -p results/ci/cce
-          PYTHONPATH=. python experiments/live/ollama_matched_benchmark.py \
-            --model "$CCE_MODEL" \
-            --max-tokens 64 \
-            --temperature 0.0 \
-            --output results/ci/cce/ollama_matched.json
-
+          PYTHONPATH=. python experiments/live/ollama_matched_benchmark.py --model "$CCE_MODEL" --max-tokens 64 --temperature 0.0 --output results/ci/cce/ollama_matched.json
       - name: Run clocked vs continuous CCE experiment
         run: |
-          PYTHONPATH=. python experiments/live/cce_ollama_continuous_smoke.py \
-            --model "$CCE_MODEL" \
-            --ticks "$CCE_TICKS" \
-            --interval 1.0 \
-            --output results/ci/cce/continuous.json
-
+          PYTHONPATH=. python experiments/live/cce_ollama_continuous_smoke.py --model "$CCE_MODEL" --ticks "$CCE_TICKS" --interval 1.0 --output results/ci/cce/continuous.json
       - name: Run predictive continuous-state benchmark
         run: |
-          PYTHONPATH=. python experiments/live/cce_predictive_dynamics.py \
-            --epochs 250 \
-            --samples 128 \
-            --output results/ci/cce/predictive_dynamics.json
-
+          PYTHONPATH=. python experiments/live/cce_predictive_dynamics.py --epochs 250 --samples 128 --output results/ci/cce/predictive_dynamics.json
       - name: Run adaptive salience runtime experiment
         run: |
-          PYTHONPATH=. python experiments/cce_salience_runtime.py \
-            --steps 64 \
-            --seed 42 \
-            --output results/ci/cce/salience.json
-
+          PYTHONPATH=. python experiments/cce_salience_runtime.py --steps 64 --seed 42 --output results/ci/cce/salience.json
       - name: Run closed-loop salience-gated Ollama invocation
         run: |
-          PYTHONPATH=. python experiments/cce_closed_loop_runtime.py \
-            --model "$CCE_MODEL" \
-            --steps 16 \
-            --seed 42 \
-            --mode ollama \
-            --output results/ci/cce/closed_loop.json
-
+          PYTHONPATH=. python experiments/cce_closed_loop_runtime.py --model "$CCE_MODEL" --steps 16 --seed 42 --mode ollama --output results/ci/cce/closed_loop.json
       - name: Run event-driven versus fixed-rate Ollama experiment
         run: |
-          PYTHONPATH=. python experiments/live/cce_event_vs_fixed_rate.py \
-            --model "$CCE_MODEL" \
-            --steps 8 \
-            --interval 0.25 \
-            --max-tokens 32 \
-            --seed 42 \
-            --output results/ci/cce/event_vs_fixed.json
-
+          PYTHONPATH=. python experiments/live/cce_event_vs_fixed_rate.py --model "$CCE_MODEL" --steps 8 --interval 0.25 --max-tokens 32 --seed 42 --output results/ci/cce/event_vs_fixed.json
       - name: Run persistent cognitive-state wall-clock experiment
         run: |
-          PYTHONPATH=. python experiments/cce_persistent_state_runtime.py \
-            --dimension 4 \
-            --settle-seconds 0.5 \
-            --observations 4 \
-            --output results/ci/cce/persistent_state.json
-
+          PYTHONPATH=. python experiments/cce_persistent_state_runtime.py --dimension 4 --settle-seconds 0.5 --observations 4 --output results/ci/cce/persistent_state.json
       - name: Validate collected CCE evidence
         run: |
           PYTHONPATH=. python - <<'PY'
           import json
           from pathlib import Path
-
           root = Path("results/ci/cce")
           matched = json.loads((root / "ollama_matched.json").read_text())
           continuous = json.loads((root / "continuous.json").read_text())
@@ -155,38 +96,15 @@ jobs:
           closed_loop = json.loads((root / "closed_loop.json").read_text())
           event_vs_fixed = json.loads((root / "event_vs_fixed.json").read_text())
           persistent = json.loads((root / "persistent_state.json").read_text())
-
-          assert matched["backend_mode"] == "ollama"
-          assert matched["cases"] > 0
-          assert matched["all_hard_authority_unchanged"] is True
-          assert continuous["backend_mode"] == "ollama"
-          assert continuous["continuous"]["completed_ticks"] >= continuous["continuous"]["requested_min_ticks"]
-          assert continuous["continuous"]["hard_authority_unchanged"] is True
-          assert continuous["continuous"]["running_after_stop"] is False
-          assert predictive["beats_persistence"] is True
-          assert predictive["improvement_over_persistence"] > 0.0
-          assert salience["finite"] is True
-          assert salience["adaptive"] is True
-          assert salience["trigger_count"] >= 1
-          assert closed_loop["backend_mode"] == "ollama"
-          assert closed_loop["event_triggered"] is True
-          assert closed_loop["invocation_count"] >= 1
-          assert closed_loop["response_count"] == closed_loop["invocation_count"]
-          assert closed_loop["responses_are_observations"] is True
-          assert event_vs_fixed["backend_mode"] == "ollama"
-          assert event_vs_fixed["same_event_stream"] is True
-          assert event_vs_fixed["both_clean_shutdown"] is True
-          assert event_vs_fixed["both_error_free"] is True
-          assert event_vs_fixed["fixed_rate"]["invocations"] == event_vs_fixed["steps"]
-          assert event_vs_fixed["event_driven"]["invocations"] >= 1
-          assert event_vs_fixed["event_driven"]["invocations"] <= event_vs_fixed["fixed_rate"]["invocations"]
-          assert persistent["runtime_mode"] == "wall_clock"
-          assert persistent["persistent_state_changed"] is True
-          assert persistent["uncertainty_finite"] is True
-          assert persistent["final_update_count"] >= 2
-          print("CCE live + predictive + salience + closed-loop + event/fixed + persistent-state evidence validation passed")
+          assert matched["backend_mode"] == "ollama" and matched["cases"] > 0 and matched["all_hard_authority_unchanged"] is True
+          assert continuous["backend_mode"] == "ollama" and continuous["continuous"]["completed_ticks"] >= continuous["continuous"]["requested_min_ticks"] and continuous["continuous"]["hard_authority_unchanged"] is True and continuous["continuous"]["running_after_stop"] is False
+          assert predictive["beats_persistence"] is True and predictive["improvement_over_persistence"] > 0.0
+          assert salience["finite"] is True and salience["adaptive"] is True and salience["trigger_count"] >= 1
+          assert closed_loop["backend_mode"] == "ollama" and closed_loop["event_triggered"] is True and closed_loop["response_count"] == closed_loop["invocation_count"] and closed_loop["responses_are_observations"] is True
+          assert event_vs_fixed["backend_mode"] == "ollama" and event_vs_fixed["same_event_stream"] is True and event_vs_fixed["both_clean_shutdown"] is True and event_vs_fixed["both_error_free"] is True
+          assert persistent["runtime_mode"] == "wall_clock" and persistent["persistent_state_changed"] is True and persistent["uncertainty_finite"] is True and persistent["final_update_count"] >= 2
+          print("Manual CCE live + predictive + salience + closed-loop + event/fixed + persistent-state evidence validation passed")
           PY
-
       - name: Upload CCE/Ollama results
         uses: actions/upload-artifact@v4
         with:

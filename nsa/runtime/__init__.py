@@ -12,7 +12,9 @@ from .cce_adapter import (
 from .cce_salience import AdaptiveSalienceGate, SalienceDecision, SalienceObservation
 from .continuous_engine import CCEStatus, ContinuousCognitiveEngine
 from .continuous_state_field import ContinuousFieldStatus, ContinuousStateField
+from .continuous_supervisor import ContinuousRuntimeStatus, ContinuousRuntimeSupervisor
 from .engine import CognitiveRuntime, ExecutionContext
+from .phantom_maintenance import MaintenanceResult, PhantomMaintenanceLoop, maintain
 from .predictive_dynamics import PredictionMetrics, StatePredictor, prediction_metrics, train_predictor
 from .typed_runtime import NSATypedRuntime, RuntimeGeneration
 
@@ -22,6 +24,8 @@ __all__ = [
     "ContinuousFieldStatus",
     "ContinuousStateField",
     "ContinuousSubstrateRuntime",
+    "ContinuousRuntimeStatus",
+    "ContinuousRuntimeSupervisor",
     "CognitiveRuntime",
     "ExecutionContext",
     "NSATypedRuntime",
@@ -35,4 +39,7 @@ __all__ = [
     "AdaptiveSalienceGate",
     "SalienceDecision",
     "SalienceObservation",
+    "MaintenanceResult",
+    "PhantomMaintenanceLoop",
+    "maintain",
 ]
