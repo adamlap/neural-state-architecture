@@ -33,6 +33,10 @@ from nsa.core import (
     StateKind,
     StateTransition,
 )
+from nsa.decision import Decision, SecurityDecision
+from nsa.enforcement import EvaluationContext, KeywordClassifier, PolicyEngine, PolicyClassifier
+from nsa.policy import NSAPolicy, PolicyCompiler, PolicyRule
+from nsa.adapters import PolicyViolation, ProtectedModel, protect_model
 from nsa.utils import print_lattice
 
 try:
@@ -104,6 +108,19 @@ __all__ = [
     "GoalState",
     "StateTransition",
     "StateKind",
+    # Policy / enforcement control plane
+    "Decision",
+    "SecurityDecision",
+    "NSAPolicy",
+    "PolicyRule",
+    "PolicyCompiler",
+    "PolicyEngine",
+    "PolicyClassifier",
+    "KeywordClassifier",
+    "EvaluationContext",
+    "PolicyViolation",
+    "ProtectedModel",
+    "protect_model",
     # Algebra
     "StateLabel",
     "StateLattice",
