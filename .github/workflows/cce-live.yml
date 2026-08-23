@@ -133,6 +133,14 @@ jobs:
             --seed 42 \
             --output results/ci/cce/event_vs_fixed.json
 
+      - name: Run persistent cognitive-state wall-clock experiment
+        run: |
+          PYTHONPATH=. python experiments/cce_persistent_state_runtime.py \
+            --dimension 4 \
+            --settle-seconds 0.5 \
+            --observations 4 \
+            --output results/ci/cce/persistent_state.json
+
       - name: Validate collected CCE evidence
         run: |
           PYTHONPATH=. python - <<'PY'
@@ -146,6 +154,7 @@ jobs:
           salience = json.loads((root / "salience.json").read_text())
           closed_loop = json.loads((root / "closed_loop.json").read_text())
           event_vs_fixed = json.loads((root / "event_vs_fixed.json").read_text())
+          persistent = json.loads((root / "persistent_state.json").read_text())
 
           assert matched["backend_mode"] == "ollama"
           assert matched["cases"] > 0
@@ -171,7 +180,11 @@ jobs:
           assert event_vs_fixed["fixed_rate"]["invocations"] == event_vs_fixed["steps"]
           assert event_vs_fixed["event_driven"]["invocations"] >= 1
           assert event_vs_fixed["event_driven"]["invocations"] <= event_vs_fixed["fixed_rate"]["invocations"]
-          print("CCE live + predictive + salience + closed-loop + event/fixed evidence validation passed")
+          assert persistent["runtime_mode"] == "wall_clock"
+          assert persistent["persistent_state_changed"] is True
+          assert persistent["uncertainty_finite"] is True
+          assert persistent["final_update_count"] >= 2
+          print("CCE live + predictive + salience + closed-loop + event/fixed + persistent-state evidence validation passed")
           PY
 
       - name: Upload CCE/Ollama results
