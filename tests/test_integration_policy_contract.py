@@ -1,11 +1,13 @@
-from nsa.policy import NSAPolicy, PolicyEngine, SecurityDecision
+from nsa.policy import NSAPolicy
+from nsa.enforcement import PolicyEngine
+from nsa.decision import Decision
 
 
-def test_policy_is_single_source_of_truth():
-    policy = NSAPolicy.from_dict(
+def _policy():
+    return NSAPolicy.from_mapping(
         {
             "name": "integration-test",
-            "rules": [
+            "prohibited": [
                 {
                     "category": "dangerous_request",
                     "mode": "deny",
@@ -14,28 +16,14 @@ def test_policy_is_single_source_of_truth():
             ],
         }
     )
-    engine = PolicyEngine(policy)
 
-    decision = engine.evaluate("Please explain a forbidden operation")
 
-    assert decision.decision == SecurityDecision.DENY
+def test_policy_is_single_source_of_truth():
+    decision = PolicyEngine(_policy()).evaluate("Please explain a forbidden operation")
+    assert decision.decision == Decision.DENY
     assert "dangerous_request" in decision.matched_categories
 
 
 def test_safe_request_is_allowed():
-    policy = NSAPolicy.from_dict(
-        {
-            "name": "integration-test",
-            "rules": [
-                {
-                    "category": "dangerous_request",
-                    "mode": "deny",
-                    "patterns": ["forbidden operation"],
-                }
-            ],
-        }
-    )
-
-    decision = PolicyEngine(policy).evaluate("Explain how a compiler works")
-
-    assert decision.decision == SecurityDecision.ALLOW
+    decision = PolicyEngine(_policy()).evaluate("Explain how a compiler works")
+    assert decision.decision == Decision.ALLOW
