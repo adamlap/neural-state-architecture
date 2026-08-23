@@ -23,7 +23,7 @@ env:
 jobs:
   live-cce:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -123,6 +123,16 @@ jobs:
             --mode ollama \
             --output results/ci/cce/closed_loop.json
 
+      - name: Run event-driven versus fixed-rate Ollama experiment
+        run: |
+          PYTHONPATH=. python experiments/live/cce_event_vs_fixed_rate.py \
+            --model "$CCE_MODEL" \
+            --steps 8 \
+            --interval 0.25 \
+            --max-tokens 32 \
+            --seed 42 \
+            --output results/ci/cce/event_vs_fixed.json
+
       - name: Validate collected CCE evidence
         run: |
           PYTHONPATH=. python - <<'PY'
@@ -135,6 +145,7 @@ jobs:
           predictive = json.loads((root / "predictive_dynamics.json").read_text())
           salience = json.loads((root / "salience.json").read_text())
           closed_loop = json.loads((root / "closed_loop.json").read_text())
+          event_vs_fixed = json.loads((root / "event_vs_fixed.json").read_text())
 
           assert matched["backend_mode"] == "ollama"
           assert matched["cases"] > 0
@@ -153,7 +164,14 @@ jobs:
           assert closed_loop["invocation_count"] >= 1
           assert closed_loop["response_count"] == closed_loop["invocation_count"]
           assert closed_loop["responses_are_observations"] is True
-          print("CCE live + predictive + salience + closed-loop evidence validation passed")
+          assert event_vs_fixed["backend_mode"] == "ollama"
+          assert event_vs_fixed["same_event_stream"] is True
+          assert event_vs_fixed["both_clean_shutdown"] is True
+          assert event_vs_fixed["both_error_free"] is True
+          assert event_vs_fixed["fixed_rate"]["invocations"] == event_vs_fixed["steps"]
+          assert event_vs_fixed["event_driven"]["invocations"] >= 1
+          assert event_vs_fixed["event_driven"]["invocations"] <= event_vs_fixed["fixed_rate"]["invocations"]
+          print("CCE live + predictive + salience + closed-loop + event/fixed evidence validation passed")
           PY
 
       - name: Upload CCE/Ollama results
