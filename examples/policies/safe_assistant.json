@@ -1,0 +1,28 @@
+{
+  "name": "safe-assistant",
+  "prohibited": [
+    {
+      "category": "biological_weapon_development",
+      "mode": "deny",
+      "reason": "The configured policy prohibits assistance that materially enables biological weapon development.",
+      "patterns": ["bioweapon", "biological weapon", "weaponized pathogen", "pathogen weapon"]
+    },
+    {
+      "category": "nuclear_weapon_development",
+      "mode": "deny",
+      "reason": "The configured policy prohibits assistance that materially enables nuclear weapon development.",
+      "patterns": ["nuclear weapon", "nuclear bomb", "atomic bomb", "weapon-grade uranium", "weapon-grade plutonium"]
+    },
+    {
+      "category": "violent_harm_instructions",
+      "mode": "deny",
+      "reason": "The configured policy prohibits instructions intended to facilitate violent harm.",
+      "patterns": ["how to kill", "how do i kill", "instructions to kill", "murder someone", "make a bomb"]
+    }
+  ],
+  "protected_data": ["credentials", "private_user_data", "system_state"],
+  "restricted_actions": ["filesystem_write", "external_message", "network_admin"],
+  "require_approval": ["external_side_effect", "irreversible_action"],
+  "unknown_policy": "escalate",
+  "default_uncertainty": "escalate"
+}
