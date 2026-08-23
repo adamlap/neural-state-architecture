@@ -204,7 +204,7 @@
         "Hard security constraints enforced during candidate filtering"
       ],
       "implementation_paths": [
-        "nsa/self_model.py"
+        "nsa/self_model/core.py"
       ],
       "unit_test_paths": [
         "tests/test_conditioned_self_model.py"
@@ -321,7 +321,7 @@
       "implementation_paths": [
         "nsa/cognitive.py",
         "nsa/epistemic.py",
-        "nsa/self_model.py"
+        "nsa/self_model/core.py"
       ],
       "unit_test_paths": [
         "tests/test_phase33_1_ablation.py",

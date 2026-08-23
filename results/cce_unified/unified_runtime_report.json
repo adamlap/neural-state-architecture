@@ -1,0 +1,9 @@
+{
+  "status": "SUCCESS",
+  "wall_clock_elapsed_sec": 0.1,
+  "salience_triggered": true,
+  "feedback_norm": 0.042213741689920425,
+  "authorized_action_executed": true,
+  "unauthorized_action_blocked": true,
+  "checkpoint_verified": true
+}

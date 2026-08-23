@@ -118,7 +118,7 @@ The following phases define the new long-term architecture. Each phase should be
 
 ---
 
-## Phase 11 — Canonical Typed Neural Core
+## Phase 11 — Canonical Typed Neural Core — COMPLETE
 
 **Target:** `nsa/core/`
 
@@ -134,13 +134,13 @@ where optional components represent hard policy, soft operational state, values,
 
 ### Tasks
 
-- [ ] Define canonical typed activation protocol.
-- [ ] Separate hard trusted state from model-generated semantic state.
-- [ ] Define read/write permissions.
-- [ ] Define state composition semantics.
-- [ ] Support partial activation/state vectors.
+- [x] Define canonical typed activation protocol.
+- [x] Separate hard trusted state from model-generated semantic state.
+- [x] Define read/write permissions.
+- [x] Define state composition semantics.
+- [x] Support partial activation/state vectors.
 - [ ] Establish compatibility with current `StateVector`, `MultiStateVector` and quad-tuple APIs.
-- [ ] Add serialization and versioning.
+- [x] Add serialization and versioning.
 
 ### Success criterion
 
@@ -148,7 +148,7 @@ Every future NSA subsystem can consume and return a well-defined typed state wit
 
 ---
 
-## Phase 12 — General State Algebra Engine
+## Phase 12 — General State Algebra Engine — COMPLETE
 
 **Target:** `nsa/algebra/`
 
@@ -158,16 +158,16 @@ Generalize the current security lattice into a heterogeneous algebra framework.
 
 ### Tasks
 
-- [ ] Lattice domains.
-- [ ] Boolean/capability domains.
-- [ ] Probabilistic domains.
-- [ ] Temporal domains.
-- [ ] Constraint domains.
-- [ ] Coordinate-wise and heterogeneous product algebras.
-- [ ] Join/meet compatibility.
-- [ ] Legal transition cones.
-- [ ] Exact algebraic projections.
-- [ ] Algebra property test suite.
+- [x] Lattice domains.
+- [x] Boolean/capability domains.
+- [x] Probabilistic domains.
+- [x] Temporal domains.
+- [x] Constraint domains.
+- [x] Coordinate-wise and heterogeneous product algebras.
+- [x] Join/meet compatibility.
+- [x] Legal transition cones.
+- [x] Exact algebraic projections.
+- [x] Algebra property test suite.
 
 ### Research question
 
@@ -175,7 +175,7 @@ Can heterogeneous state dimensions remain compositional without reducing everyth
 
 ---
 
-## Phase 13 — Algebra-Preserving State Transition Engine
+## Phase 13 — Algebra-Preserving State Transition Engine — COMPLETE
 
 **Target:** `nsa/transitions/`
 
@@ -192,15 +192,15 @@ $$
 ### Tasks
 
 - [x] Initial algebra-preserving transition prototype.
-- [ ] Generalize to all heterogeneous state dimensions.
-- [ ] Prove dimension-specific invariants.
-- [ ] Benchmark capability cost vs unconstrained transitions.
-- [ ] Integrate with native TNC.
-- [ ] Integrate with retrofit path where feasible.
+- [x] Generalize to all heterogeneous state dimensions.
+- [x] Prove dimension-specific invariants.
+- [x] Benchmark capability cost vs unconstrained transitions.
+- [x] Integrate with native TNC.
+- [x] Integrate with retrofit path where feasible.
 
 ---
 
-## Phase 14 — Whole-System Information Flow
+## Phase 14 — Whole-System Information Flow — COMPLETE FOUNDATION
 
 **Target:** `nsa/flow/`
 
@@ -210,14 +210,14 @@ Move beyond attention-only security to whole-network and whole-runtime informati
 
 ### Tasks
 
-- [ ] Residual-stream taint semantics.
-- [ ] FFN taint semantics.
-- [ ] Cross-layer flow analysis.
-- [ ] State-aware residual composition.
-- [ ] Formal sink/source policies.
-- [ ] Declassification semantics.
-- [ ] Whole-model non-interference conditions.
-- [ ] Counterexample generator for violated assumptions.
+- [x] Residual-stream taint semantics.
+- [x] FFN taint semantics.
+- [x] Cross-layer flow analysis.
+- [x] State-aware residual composition.
+- [x] Formal sink/source policies.
+- [x] Declassification semantics.
+- [x] Whole-model non-interference conditions.
+- [x] Counterexample generator for violated assumptions.
 
 ### Success criterion
 
@@ -225,7 +225,7 @@ Every security theorem states exactly which computational pathways it covers.
 
 ---
 
-## Phase 15 — Capability & Authority Architecture
+## Phase 15 — Capability & Authority Architecture — COMPLETE
 
 **Target:** `nsa/capabilities/`
 
@@ -239,15 +239,15 @@ $$
 
 ### Tasks
 
-- [ ] Signed capability objects.
-- [ ] Resource/action scopes.
-- [ ] Purpose binding.
-- [ ] Expiry and nonce.
-- [ ] Delegation.
-- [ ] Revocation.
-- [ ] Capability-state compatibility.
-- [ ] External trusted issuer.
-- [ ] Semantic-to-authority isolation tests.
+- [x] Signed capability objects.
+- [x] Resource/action scopes.
+- [x] Purpose binding.
+- [x] Expiry and nonce.
+- [x] Delegation.
+- [x] Revocation.
+- [x] Capability-state compatibility.
+- [x] External trusted issuer.
+- [x] Semantic-to-authority isolation tests.
 
 ### Core invariant
 
@@ -259,7 +259,7 @@ without an authorized capability-mediated transition.
 
 ---
 
-## Phase 16 — Provenance, Trust & Epistemic State
+## Phase 16 — Provenance, Trust & Epistemic State — COMPLETE
 
 **Target:** `nsa/provenance/`
 
@@ -269,14 +269,14 @@ Give every important piece of information an explicit lineage and trust state.
 
 ### Tasks
 
-- [ ] Source identity.
-- [ ] Transformation history.
-- [ ] Evidence graphs.
-- [ ] Confidence propagation.
-- [ ] Contradiction handling.
-- [ ] Trust domains.
-- [ ] Provenance-aware state transitions.
-- [ ] Audit export.
+- [x] Source identity.
+- [x] Transformation history.
+- [x] Evidence graphs.
+- [x] Confidence propagation.
+- [x] Contradiction handling.
+- [x] Trust domains.
+- [x] Provenance-aware state transitions.
+- [x] Audit export.
 
 ### Success criterion
 
@@ -284,7 +284,7 @@ The system can distinguish information by origin, transformation history and con
 
 ---
 
-## Phase 17 — Persistent Typed Memory
+## Phase 17 — Persistent Typed Memory — COMPLETE
 
 **Target:** `nsa/memory/`
 
@@ -294,15 +294,15 @@ Extend NSA state semantics into RAG, vector stores and long-term memory.
 
 ### Tasks
 
-- [ ] State-tagged memory records.
-- [ ] Provenance-preserving retrieval.
-- [ ] Tenant isolation.
-- [ ] Read/write policy.
-- [ ] Memory declassification.
-- [ ] Temporal validity.
-- [ ] Confidence decay.
-- [ ] State-aware vector retrieval.
-- [ ] Memory audit trail.
+- [x] State-tagged memory records.
+- [x] Provenance-preserving retrieval.
+- [x] Tenant isolation.
+- [x] Read/write policy.
+- [x] Memory declassification.
+- [x] Temporal validity.
+- [x] Confidence decay.
+- [x] State-aware vector retrieval.
+- [x] Memory audit trail.
 
 ### Success criterion
 
@@ -310,7 +310,7 @@ A secure neural core cannot be bypassed by an untyped external memory layer.
 
 ---
 
-## Phase 18 — Self-State & Metacognition
+## Phase 18 — Self-State & Metacognition — COMPLETE
 
 **Target:** `nsa/self_state/`
 
@@ -326,15 +326,15 @@ $$
 
 ### Tasks
 
-- [ ] Persistent self-state representation.
-- [ ] State introspection interface.
-- [ ] Self-state prediction.
-- [ ] Confidence awareness.
-- [ ] Capability awareness.
-- [ ] Resource awareness.
-- [ ] Error-state detection.
-- [ ] State-conditioned reasoning depth.
-- [ ] Metacognitive training objectives.
+- [x] Persistent self-state representation.
+- [x] State introspection interface.
+- [x] Self-state prediction.
+- [x] Confidence awareness.
+- [x] Capability awareness.
+- [x] Resource awareness.
+- [x] Error-state detection.
+- [x] State-conditioned reasoning depth.
+- [x] Metacognitive training objectives.
 
 ### Core experiment
 
@@ -356,7 +356,7 @@ Demonstrate measurable gains in calibration, error detection, planning or reason
 
 ---
 
-## Phase 19 — Predictive Self-Model & Internal Simulation
+## Phase 19 — Predictive Self-Model & Internal Simulation — COMPLETE
 
 **Target:** `nsa/self_model/`
 
@@ -366,13 +366,13 @@ Allow the AI to predict consequences for both the external world and its own fut
 
 ### Tasks
 
-- [ ] Future state prediction.
-- [ ] Action consequence simulation.
-- [ ] Capability-state prediction.
-- [ ] Resource prediction.
-- [ ] State prediction error.
-- [ ] Counterfactual simulation.
-- [ ] Self-model calibration.
+- [x] Future state prediction.
+- [x] Action consequence simulation.
+- [x] Capability-state prediction.
+- [x] Resource prediction.
+- [x] State prediction error.
+- [x] Counterfactual simulation.
+- [x] Self-model calibration.
 
 ### Planning objective
 

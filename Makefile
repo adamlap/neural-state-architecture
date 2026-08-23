@@ -214,6 +214,13 @@ clean: ## Clean Python build artifacts and temporary files
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
+serve-cce: ## Launch OpenAI/Ollama API server with live CCE Continuous Cognitive Engine & Sensory Ingress
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python -m nsa.server.proxy --backend ollama --model qwen2.5:3b --port 8000; \
+	else \
+		PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend ollama --model qwen2.5:3b --port 8000; \
+	fi
+
 serve-ollama: ## Launch OpenAI & Ollama compatible API server for OpenWebUI backed by Ollama
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
 		PYTHONPATH=. $(UV) run python -m nsa.server.proxy --backend ollama --model qwen2.5:3b --port 8000; \
@@ -241,6 +248,22 @@ chat-lmstudio: ## Interactive CLI terminal chat with live NSA cognitive state & 
 	else \
 		PYTHONPATH=. $(PYTHON) experiments/nsa62/interactive_chat.py --backend lmstudio --model qwen2.5:3b; \
 	fi
+
+
+demo-cce: ## Run CCE continuous runtime demonstration
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/cce_unified_runtime.py; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/cce_unified_runtime.py; \
+	fi
+
+test-cce: ## Run full Continuous Cognitive Engine test suite
+	@if [ "$(UV_EXISTS)" = "yes" ]; then \
+		$(UV) run pytest tests/test_cce_*.py -v; \
+	else \
+		$(PYTHON) -m pytest tests/test_cce_*.py -v; \
+	fi
+
 
 export-modelfile: ## Export native Ollama Modelfile with embedded NSA cognitive invariants
 	@echo "Exporting Modelfile.nsa..."

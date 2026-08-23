@@ -22,16 +22,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from threading import Event, Lock, Thread, current_thread
 from time import monotonic
-from typing import Callable, Generic, Optional, TypeVar
+from typing import Callable, Generic, List, Optional, TypeVar
 
 import torch
 
 InputT = TypeVar("InputT")
 Field = Callable[[torch.Tensor, Optional[InputT]], torch.Tensor]
-InputReducer = Callable[[list[InputT]], Optional[InputT]]
+InputReducer = Callable[[List[InputT]], Optional[InputT]]
 
 
-def _last_input(inputs: list[InputT]) -> Optional[InputT]:
+def _last_input(inputs: List[InputT]) -> Optional[InputT]:
     """Default policy: deliver the newest pending event to the field."""
     return inputs[-1] if inputs else None
 
@@ -86,7 +86,7 @@ class ContinuousStateField(Generic[InputT]):
         self._last_dt = 0.0
         self._last_error: Optional[str] = None
         self._last_time: Optional[float] = None
-        self._pending_inputs: list[InputT] = []
+        self._pending_inputs: List[InputT] = []
         self._lock = Lock()
         self._stop = Event()
         self._thread: Optional[Thread] = None

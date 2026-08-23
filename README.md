@@ -425,21 +425,32 @@ These are experiments, not proofs in the mathematical sense. Report the model, b
 
 You can chat interactively with the NSA-governed model using your favorite WebUI, Ollama chat, or terminal interface:
 
-### Option A: OpenWebUI & OpenAI-Compatible Clients (`make serve-ollama`)
-Launch the NSA API proxy server:
+### Option A: OpenWebUI & OpenAI-Compatible Clients with CCE Continuous Dynamics (`make serve-cce`)
+Launch the NSA + CCE Continuous Cognitive API proxy server:
 ```bash
-make serve-ollama    # Backed by Ollama (qwen2.5:3b or llama3.1:8b)
+make serve-cce       # Backed by Ollama + Continuous Cognitive Engine (CCE)
 # or
 make serve-lmstudio  # Backed by LM Studio
 ```
-The server listens on `http://0.0.0.0:8000` and provides standard OpenAI `/v1/chat/completions` and Ollama `/api/chat` endpoints with full SSE streaming and live ISK cognitive badge metadata.
+The server listens on `http://0.0.0.0:8000` and provides:
+- Standard OpenAI `/v1/chat/completions` (with user prompts acting as real-time sensory ingress $u(t)$)
+- Ollama native `/api/chat`
+- CCE Sensory API `/api/cce/sensor` (for pushing raw external events/metrics)
+- CCE State API `/api/cce/state` (live continuous state inspection)
 
 **In OpenWebUI:**
 1. Open **Settings > Connections > OpenAI API**.
 2. Set URL: `http://localhost:8000/v1` (or `http://host.docker.internal:8000/v1` if running OpenWebUI in Docker).
 3. Set API Key: `sk-nsa` (any value).
 4. Select Model: `nsa-qwen2.5:3b`.
-5. Start chatting! Every message is processed under NSA Epistemic Governance and the Immutable Safety Kernel.
+5. Start chatting! Every message acts as a sensory perturbation into the continuous cognitive state $X(t)$, with live wall-clock telemetry and ISK security verification in the footer.
+
+**Sending Background Sensor Events via API:**
+```bash
+curl -X POST http://localhost:8000/api/cce/sensor \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Temperature spike: 88C on node-4", "source": "thermal_sensor", "importance": 0.85}'
+```
 
 ### Option B: Interactive Terminal Chat (`make chat-ollama`)
 For immediate command-line chat with real-time $\Omega$ Cognitive HUD and ISK verification:

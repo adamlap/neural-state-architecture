@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "schema_version": "1.0.0",
+    "checkpoint_id": "unified_cce_state",
+    "timestamp_utc": 1787515184.6014178,
+    "dimension": 4,
+    "elapsed_seconds": 0.15000000000000002,
+    "update_count": 2,
+    "uncertainty": 0.9808273892849684,
+    "state_sha256": "e5a39d36b99a1317cda470ecd02c88b1b19f8273f529ec100d0cf50c11be55af",
+    "parent_checkpoint_id": null,
+    "tags": [
+      "demo",
+      "final"
+    ]
+  },
+  "state": {
+    "working": [
+      0.02871999889612198,
+      0.011819999665021896,
+      0.03436000272631645,
+      0.007819999940693378
+    ],
+    "self_state": [
+      0.0004221999552100897,
+      0.0001784999913070351,
+      0.0005101000424474478,
+      0.00011870000162161887
+    ],
+    "goal": [
+      0.03999999910593033,
+      0.0,
+      0.03999999910593033,
+      0.0
+    ],
+    "uncertainty": 0.9808273892849684,
+    "elapsed_seconds": 0.15000000000000002,
+    "update_count": 2,
+    "decay": 0.1,
+    "learning_rate": 0.4
+  },
+  "integrity": {
+    "sha256": "e5a39d36b99a1317cda470ecd02c88b1b19f8273f529ec100d0cf50c11be55af"
+  }
+}

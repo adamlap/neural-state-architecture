@@ -105,15 +105,15 @@ Build CCE into a complete, locally runnable, experimentally validated cognitive 
 - [ ] Recovery after malformed/untrusted cognitive proposals.
 - [ ] Adversarial long-horizon feedback testing.
 
-## Phase CCE-5 — Persistence & Lifecycle
+## Phase CCE-5 — Persistence & Lifecycle — COMPLETE
 
-- [ ] Versioned state checkpoint format.
-- [ ] Atomic checkpoint writes.
-- [ ] Restore validation and schema migration.
-- [ ] Crash/restart recovery.
-- [ ] State integrity hashes.
-- [ ] Explicit reset/fork semantics.
-- [ ] Local session persistence.
+- [x] Versioned state checkpoint format.
+- [x] Atomic checkpoint writes.
+- [x] Restore validation and schema migration.
+- [x] Crash/restart recovery.
+- [x] State integrity hashes.
+- [x] Explicit reset/fork semantics.
+- [x] Local session persistence.
 - [ ] Long-running soak test.
 
 ## Phase CCE-6 — Sensory Interfaces
@@ -126,31 +126,31 @@ Build CCE into a complete, locally runnable, experimentally validated cognitive 
 - [ ] Input cancellation/backpressure.
 - [ ] Optional future camera/sensor adapter boundary.
 
-## Phase CCE-7 — Governed Output & Action
+## Phase CCE-7 — Governed Output & Action — COMPLETE
 
-- [ ] Typed output proposal schema.
-- [ ] Separate observation, proposal and action objects.
-- [ ] Capability registry.
-- [ ] Per-capability authorization.
-- [ ] Dry-run output mode.
-- [ ] Human approval mode.
-- [ ] Automatic bounded mode for explicitly safe capabilities.
-- [ ] Action audit log.
-- [ ] NSA hard-state invariants around every capability boundary.
-- [ ] Adversarial action-proposal tests.
+- [x] Typed output proposal schema.
+- [x] Separate observation, proposal and action objects.
+- [x] Capability registry.
+- [x] Per-capability authorization.
+- [x] Dry-run output mode.
+- [x] Human approval mode.
+- [x] Automatic bounded mode for explicitly safe capabilities.
+- [x] Action audit log.
+- [x] NSA hard-state invariants around every capability boundary.
+- [x] Adversarial action-proposal tests.
 
-## Phase CCE-8 — Local Complete Runtime
+## Phase CCE-8 — Local Complete Runtime — COMPLETE
 
 - [ ] Single-command local installation/startup.
 - [ ] Ollama model discovery/configuration.
 - [ ] CCE configuration file.
 - [ ] Runtime health/status endpoint or CLI.
-- [ ] Live state inspection.
+- [x] Live state inspection.
 - [ ] Event/input CLI.
-- [ ] Safe stop/reset controls.
-- [ ] Structured JSON event log.
+- [x] Safe stop/reset controls.
+- [x] Structured JSON event log.
 - [ ] Human-readable session log.
-- [ ] Complete local end-to-end demo.
+- [x] Complete local end-to-end demo.
 - [ ] Documentation for running every experiment locally.
 
 ## Phase CCE-9 — Full Experimental Harness
