@@ -1,14 +1,13 @@
 import torch
 
+from nsa.runtime.inference.base import LLMGenerationOutput
 from nsa.runtime.typed_runtime import NSATypedRuntime
-from nsa.runtime.inference.ollama import OllamaInferenceBackend
 from nsa.runtime.phantom_maintenance import PhantomMaintenanceLoop, maintain
 
 
 class DummyBackend:
     def generate(self, prompt, *, max_tokens=256, temperature=0.7):
-        from nsa.runtime.inference.base import LLMGenerationOutput
-        return LLMGenerationOutput(text="ok", model_name="dummy", latency_seconds=0.0, confidence_estimate=1.0)
+        return LLMGenerationOutput(text="ok", confidence_estimate=1.0)
 
 
 def test_maintenance_advances_persistent_state_without_model_call():
