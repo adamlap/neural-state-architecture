@@ -1,4 +1,4 @@
-name: CCE governed feedback
+name: "[auto] CCE governed feedback"
 
 on:
   pull_request:
@@ -9,6 +9,10 @@ on:
       - 'tests/test_cce_governed_feedback.py'
       - '.github/workflows/cce-governed-feedback.yml'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   evidence:
