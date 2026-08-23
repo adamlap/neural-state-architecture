@@ -1,8 +1,6 @@
-name: CCE matched cognitive loop study
+name: "[manual] CCE matched cognitive loop study"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 env:
