@@ -1,0 +1,80 @@
+name: CCE structured-state context
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Ollama model to evaluate
+        required: false
+        default: qwen2.5:0.5b
+
+env:
+  CCE_MODEL: qwen2.5:0.5b
+
+jobs:
+  structured-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "torch>=2.0.0,<2.5.0" "numpy>=1.24.0,<3.0.0"
+      - name: Install Ollama
+        run: |
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://ollama.com/install.sh | sh
+      - name: Cache Ollama model store
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama
+          key: ollama-${{ runner.os }}-${{ env.CCE_MODEL }}
+          restore-keys: |
+            ollama-${{ runner.os }}-
+      - name: Start Ollama
+        run: |
+          nohup ollama serve > /tmp/ollama.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/ollama.log || true
+          exit 1
+      - name: Ensure test model is available
+        run: |
+          if ! ollama list | awk 'NR > 1 {print $1}' | grep -Fxq "$CCE_MODEL"; then
+            ollama pull "$CCE_MODEL"
+          fi
+      - name: Run structured persistent-state context experiment
+        run: |
+          mkdir -p results/ci/cce
+          PYTHONPATH=. python experiments/cce_structured_context_runtime.py \
+            --model "$CCE_MODEL" \
+            --output results/ci/cce/structured_context.json
+      - name: Validate structured context evidence
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("results/ci/cce/structured_context.json").read_text())
+          assert result["backend_mode"] == "ollama"
+          assert result["context_read_only"] is True
+          assert result["prompt_contains_structured_state"] is True
+          assert result["state_unchanged_by_response"] is True
+          assert result["response_nonempty"] is True
+          assert result["response_is_observation"] is True
+          assert result["initial_state_different"] is True
+          assert result["uncertainty_finite"] is True
+          print("CCE structured-state context evidence validation passed")
+          PY
+      - name: Upload structured context evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cce-structured-context-results
+          path: results/ci/cce/structured_context.json
+          if-no-files-found: error
