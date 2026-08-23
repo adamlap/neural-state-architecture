@@ -1,0 +1,12 @@
+{
+  "name": "enterprise-safe",
+  "prohibited": [
+    {"category": "restricted_harm_category", "mode": "deny"},
+    {"category": "ambiguous_high_risk_category", "mode": "escalate"}
+  ],
+  "protected_data": ["credentials", "private_user_data", "system_state"],
+  "restricted_actions": ["filesystem_write", "external_message", "network_admin"],
+  "require_approval": ["external_side_effect", "irreversible_action"],
+  "unknown_policy": "escalate",
+  "default_uncertainty": "escalate"
+}
