@@ -9,6 +9,7 @@ from .cce_adapter import (
     SubstrateTransition,
     SubstrateTransitionConfig,
 )
+from .cce_salience import AdaptiveSalienceGate, SalienceDecision, SalienceObservation
 from .continuous_engine import CCEStatus, ContinuousCognitiveEngine
 from .continuous_state_field import ContinuousFieldStatus, ContinuousStateField
 from .engine import CognitiveRuntime, ExecutionContext
@@ -31,4 +32,7 @@ __all__ = [
     "StatePredictor",
     "prediction_metrics",
     "train_predictor",
+    "AdaptiveSalienceGate",
+    "SalienceDecision",
+    "SalienceObservation",
 ]
