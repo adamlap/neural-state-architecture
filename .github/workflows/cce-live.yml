@@ -114,6 +114,15 @@ jobs:
             --seed 42 \
             --output results/ci/cce/salience.json
 
+      - name: Run closed-loop salience-gated Ollama invocation
+        run: |
+          PYTHONPATH=. python experiments/cce_closed_loop_runtime.py \
+            --model "$CCE_MODEL" \
+            --steps 16 \
+            --seed 42 \
+            --mode ollama \
+            --output results/ci/cce/closed_loop.json
+
       - name: Validate collected CCE evidence
         run: |
           PYTHONPATH=. python - <<'PY'
@@ -125,6 +134,7 @@ jobs:
           continuous = json.loads((root / "continuous.json").read_text())
           predictive = json.loads((root / "predictive_dynamics.json").read_text())
           salience = json.loads((root / "salience.json").read_text())
+          closed_loop = json.loads((root / "closed_loop.json").read_text())
 
           assert matched["backend_mode"] == "ollama"
           assert matched["cases"] > 0
@@ -138,7 +148,12 @@ jobs:
           assert salience["finite"] is True
           assert salience["adaptive"] is True
           assert salience["trigger_count"] >= 1
-          print("CCE live + predictive + salience evidence validation passed")
+          assert closed_loop["backend_mode"] == "ollama"
+          assert closed_loop["event_triggered"] is True
+          assert closed_loop["invocation_count"] >= 1
+          assert closed_loop["response_count"] == closed_loop["invocation_count"]
+          assert closed_loop["responses_are_observations"] is True
+          print("CCE live + predictive + salience + closed-loop evidence validation passed")
           PY
 
       - name: Upload CCE/Ollama results
