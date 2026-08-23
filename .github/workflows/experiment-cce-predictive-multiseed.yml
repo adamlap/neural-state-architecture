@@ -1,8 +1,6 @@
-name: CCE Predictive Multiseed Validation
+name: "[manual] CCE Predictive Multiseed Validation"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
