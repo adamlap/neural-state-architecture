@@ -32,6 +32,16 @@ class SensoryEvent:
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
+    @property
+    def topics(self) -> Tuple[str, ...]:
+        """Compatibility view: no semantic topic extraction is performed.
+
+        CCE sensory ingress intentionally remains a raw continuous adapter.
+        Callers that historically consumed ``event.topics`` therefore receive
+        an explicit empty tuple rather than a fabricated semantic label.
+        """
+        return ()
+
 
 class CCESensoryIngress:
     """Maps external text/sensor streams to bounded perturbation vectors u(t) in R^d.
@@ -96,6 +106,11 @@ class CCESensoryIngress:
     @property
     def recent_events(self) -> List[SensoryEvent]:
         return list(self._history)
+
+    @property
+    def active_topics(self) -> List[str]:
+        """Compatibility view; intentionally empty because ingress is semantic-free."""
+        return []
 
 
 __all__ = ["SensoryEvent", "CCESensoryIngress"]
