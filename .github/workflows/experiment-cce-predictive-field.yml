@@ -1,8 +1,6 @@
-name: CCE Predictive Field Adapter
+name: "[manual] CCE Predictive Field Adapter"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
@@ -20,8 +18,7 @@ jobs:
       - name: Run predictive field experiment
         run: |
           mkdir -p results/ci/cce
-          PYTHONPATH=. python experiments/live/cce_predictive_field.py \
-            --output results/ci/cce/predictive_field.json
+          PYTHONPATH=. python experiments/live/cce_predictive_field.py --output results/ci/cce/predictive_field.json
       - name: Validate evidence
         run: |
           python - <<'PY'
