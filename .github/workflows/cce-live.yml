@@ -107,6 +107,13 @@ jobs:
             --samples 128 \
             --output results/ci/cce/predictive_dynamics.json
 
+      - name: Run adaptive salience runtime experiment
+        run: |
+          PYTHONPATH=. python experiments/cce_salience_runtime.py \
+            --steps 64 \
+            --seed 42 \
+            --output results/ci/cce/salience.json
+
       - name: Validate collected CCE evidence
         run: |
           PYTHONPATH=. python - <<'PY'
@@ -117,6 +124,7 @@ jobs:
           matched = json.loads((root / "ollama_matched.json").read_text())
           continuous = json.loads((root / "continuous.json").read_text())
           predictive = json.loads((root / "predictive_dynamics.json").read_text())
+          salience = json.loads((root / "salience.json").read_text())
 
           assert matched["backend_mode"] == "ollama"
           assert matched["cases"] > 0
@@ -127,7 +135,10 @@ jobs:
           assert continuous["continuous"]["running_after_stop"] is False
           assert predictive["beats_persistence"] is True
           assert predictive["improvement_over_persistence"] > 0.0
-          print("CCE live + predictive evidence validation passed")
+          assert salience["finite"] is True
+          assert salience["adaptive"] is True
+          assert salience["trigger_count"] >= 1
+          print("CCE live + predictive + salience evidence validation passed")
           PY
 
       - name: Upload CCE/Ollama results
