@@ -29,6 +29,11 @@ class SensoryEvent:
     importance: float = 0.5
     metadata: Optional[Dict[str, Any]] = None
 
+    @property
+    def topics(self) -> Tuple[str, ...]:
+        """Compatibility view; semantic topic extraction intentionally remains disabled."""
+        return ()
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
@@ -96,6 +101,11 @@ class CCESensoryIngress:
     @property
     def recent_events(self) -> List[SensoryEvent]:
         return list(self._history)
+
+    @property
+    def active_topics(self) -> List[str]:
+        """Compatibility view; returns no inferred semantic topics by design."""
+        return []
 
 
 __all__ = ["SensoryEvent", "CCESensoryIngress"]
