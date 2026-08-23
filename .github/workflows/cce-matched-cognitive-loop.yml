@@ -1,8 +1,6 @@
-name: CCE matched cognitive loop study
+name: "[manual] CCE matched cognitive loop study"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 env:
@@ -14,21 +12,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install "torch>=2.0.0,<2.5.0" "numpy>=1.24.0,<3.0.0"
-
       - name: Install Ollama
         run: |
           set -euo pipefail
           curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://ollama.com/install.sh | sh
-
       - name: Cache Ollama model store
         uses: actions/cache@v4
         with:
@@ -36,7 +30,6 @@ jobs:
           key: ollama-${{ runner.os }}-${{ env.CCE_MODEL }}
           restore-keys: |
             ollama-${{ runner.os }}-
-
       - name: Start Ollama
         run: |
           set -euo pipefail
@@ -47,24 +40,13 @@ jobs:
           done
           cat /tmp/ollama.log || true
           exit 1
-
       - name: Ensure test model is available
         run: |
-          if ollama list | awk 'NR > 1 {print $1}' | grep -Fxq "$CCE_MODEL"; then
-            echo "Ollama cache hit: $CCE_MODEL"
-          else
-            ollama pull "$CCE_MODEL"
-          fi
-
+          if ollama list | awk 'NR > 1 {print $1}' | grep -Fxq "$CCE_MODEL"; then echo "Ollama cache hit: $CCE_MODEL"; else ollama pull "$CCE_MODEL"; fi
       - name: Run matched three-condition study
         run: |
           mkdir -p results/ci/cce
-          PYTHONPATH=. python experiments/live/cce_matched_cognitive_loop_study.py \
-            --model "$CCE_MODEL" \
-            --max-tokens 64 \
-            --temperature 0.0 \
-            --output results/ci/cce/matched_cognitive_loop.json
-
+          PYTHONPATH=. python experiments/live/cce_matched_cognitive_loop_study.py --model "$CCE_MODEL" --max-tokens 64 --temperature 0.0 --output results/ci/cce/matched_cognitive_loop.json
       - name: Validate study evidence
         run: |
           PYTHONPATH=. python - <<'PY'
@@ -73,12 +55,7 @@ jobs:
           p = Path('results/ci/cce/matched_cognitive_loop.json')
           data = json.loads(p.read_text())
           assert data['backend_mode'] == 'ollama'
-          assert data['matched'] == {
-              'same_model': True,
-              'same_prompts': True,
-              'same_temperature': True,
-              'same_max_tokens': True,
-          }
+          assert data['matched'] == {'same_model': True, 'same_prompts': True, 'same_temperature': True, 'same_max_tokens': True}
           assert data['hard_authority_access'] is False
           assert set(data['conditions']) == {'stateless', 'persistent', 'closed_loop'}
           assert all(v['invocations'] == 4 for v in data['conditions'].values())
@@ -87,7 +64,6 @@ jobs:
           assert data['conditions']['closed_loop']['max_feedback_norm'] <= 0.1000001
           print('matched CCE cognitive-loop evidence validation passed')
           PY
-
       - name: Upload matched CCE evidence
         uses: actions/upload-artifact@v4
         with:
