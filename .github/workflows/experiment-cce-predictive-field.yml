@@ -1,0 +1,42 @@
+name: CCE Predictive Field Adapter
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  predictive-field:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Focused tests
+        run: PYTHONPATH=. pytest -q tests/test_predictive_field.py tests/test_predictive_dynamics.py
+      - name: Run predictive field experiment
+        run: |
+          mkdir -p results/ci/cce
+          PYTHONPATH=. python experiments/live/cce_predictive_field.py \
+            --output results/ci/cce/predictive_field.json
+      - name: Validate evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('results/ci/cce/predictive_field.json')
+          data = json.loads(p.read_text())
+          assert data['predictive_field_enabled'] is True
+          assert data['integrations'] >= 1
+          assert data['finite'] is True
+          assert 'no NSA authority access' in data['authority_boundary']
+          print('CCE predictive field evidence: PASS')
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cce-predictive-field
+          path: results/ci/cce/predictive_field.json
