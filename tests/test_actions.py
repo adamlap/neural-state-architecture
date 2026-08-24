@@ -121,13 +121,20 @@ class TestActionGovernance(unittest.TestCase):
 
     def test_configured_flow_blocks_handler(self):
         calls = []
+        flow_capability = Capability(
+            capability_id="cap_restricted", issuer="admin_authority", subject="agent",
+            action="restricted_tool", scope="tool_execution", purpose="flow test",
+        )
+        authority = CapabilityAuthority(
+            issuer_id="admin_authority", capabilities=frozenset({flow_capability})
+        )
         graph = FlowGraph()
         graph.add_node(FlowNode("agent", "caller"))
         graph.add_node(FlowNode("restricted_tool", "tool"))
         graph.add_edge(FlowEdge("agent", "restricted_tool", frozenset({"semantic"})))
-        governor = ToolGovernor(self.authority, flow_graph=graph)
+        governor = ToolGovernor(authority, flow_graph=graph)
         governor.register_tool("restricted_tool", lambda: calls.append(True))
-        request = governor.prepare_request("restricted_tool", {}, self.caller_state, "cap_db_read")
+        request = governor.prepare_request("restricted_tool", {}, self.caller_state, "cap_restricted")
         response = governor.execute(request)
         self.assertFalse(response.success)
         self.assertIn("flow denied", response.error_message)
