@@ -1,102 +1,56 @@
 # NSA Roadmap Status — 2026-08-24
 
-This is a living implementation snapshot for the master roadmap in `PLAN.md`.
+This is a living implementation snapshot for `PLAN.md`.
 
 ## Current Position
 
-NSA has moved from the original neural-security prototype into a typed cognitive substrate with a practical, model-agnostic policy control plane. The repository now has a concrete path from declarative policy to an explicit security decision and an Ollama/CCE deployment boundary.
+NSA now has a consolidated typed cognitive substrate, a model-agnostic policy control plane, live Ollama policy verification, and an observable two-rate continuous CCE runtime. This branch adds the first explicit normative-state (`ν`) implementation while preserving the hard security-state (`σ_h`) authority boundary.
 
-## Practical Control Plane — Current Milestone
-**Status: IMPLEMENTED / REFERENCE INTEGRATION**
+## Implemented milestones
 
-Implemented:
+- Declarative `NSAPolicy` / `PolicyRule` control plane.
+- Typed `SecurityDecision` vocabulary and fail-closed enforcement.
+- Live Ollama policy verification.
+- Persistent CCE maintenance + live model heartbeat.
+- `NormativeState` with bounded value dimensions and explicit confidence.
+- Pluggable `SemanticClassifier` boundary.
+- Reference semantic classifier compatible with future trained classifiers.
+- `NormativePolicy` composition producing continue/deny/escalate/approval outcomes.
+- Focused normative-layer tests.
 
-- `NSAPolicy` and `PolicyRule` declarative configuration.
-- Explicit `SecurityDecision` vocabulary: `ALLOW`, `DENY`, `ESCALATE`, `REQUIRE_APPROVAL`, `REDACT`.
-- Pluggable semantic classifier interface.
-- Deterministic `KeywordClassifier` reference implementation.
-- Protected-data and restricted-capability checks.
-- Approval gates and uncertainty handling.
-- Model-agnostic `protect_model(...)` adapter.
-- Request and output policy enforcement.
-- Fail-closed policy violations.
-- Ollama/CCE policy-aware server launcher.
-- `make serve-ollama POLICY=...` and `make serve-cce POLICY=...` deployment interface.
-- Reference safe and enterprise policies.
-- Live Ollama policy verification workflow with configurable policy file/model.
+## Normative state milestone
 
-Important limitation: the reference classifier is not a semantic safety oracle. Production-grade claims require a trained semantic/normative classifier, a defined trusted computing boundary, and independently enforced capability/runtime controls.
+**Status: FIRST TYPED PRIMITIVE / RESEARCH INTERFACE**
 
-## Continuous Runtime / CCE — New Integration Milestone
-**Status: OBSERVABLE CONTINUITY PRIMITIVE / HYPOTHESIS UNDER TEST**
-
-The CCE now has an explicit two-rate continuity direction:
+The normative layer is intentionally not a claim that morality has been solved. It provides an explicit, inspectable state `ν` that can eventually be produced by a trained semantic/normative component. The trusted runtime remains the final authority.
 
 ```text
-high-rate explicit soft-state maintenance
-                │
-                ├── persistent temporal/self state
-                │
-                └── no authority mutation
-
-lower-rate live model heartbeat
-                │
-                └── real Ollama inference
-
-                ↓
-       one trusted runtime state
+model
+  ↓
+semantic assessment
+  ↓
+ν (normative state + uncertainty)
+  ↓
+normative policy
+  ↓
+security decision
+  ↓
+trusted runtime
 ```
 
-`PhantomMaintenanceLoop` and `ContinuousRuntimeSupervisor` provide a testable engineering primitive for persistent background processing. This is deliberately described as a **phantom-processing hypothesis**, not a claim that it produces consciousness. The live integrity workflow verifies that the explicit state continues evolving, the model is actually invoked, and hard authority remains unchanged.
+## Continuous processing milestone
 
-The next scientific question is whether persistent dynamics improve measurable continuity properties such as predictive accuracy, salience stability, self-state consistency, recovery, memory integration, or action planning compared with clocked/episodic baselines.
+The CCE's `PhantomMaintenanceLoop` and `ContinuousRuntimeSupervisor` remain a separate persistent-processing substrate. The hypothesis that persistent dynamics improve continuity, self-model stability, memory integration, or planning remains empirical and should not be conflated with consciousness.
 
-## Phases 1–10 — Original NSA Foundation
-**Status: MATURE FOUNDATION / VALIDATION CONTINUES**
+## Immediate next sequence
 
-The repository contains the original lattice, conservation-law, non-interference, multi-dimensional state, native/retrofit, GPU, auditing/recovery, value-layer and formal-core work. Independent real-checkpoint/model/hardware validation remains an important open task.
+1. Run the complete PR test/security gate on this branch.
+2. Benchmark the reference semantic classifier and normative policy.
+3. Introduce a trained semantic-classifier adapter with calibration and uncertainty, without changing `NSAPolicy`.
+4. Add adversarial tests attempting to manipulate `ν` while preserving `σ_h`.
+5. Connect capabilities and tool requests to the decision path.
+6. Connect provenance and typed memory to normative assessments.
+7. Run persistent-vs-episodic CCE experiments with quantitative continuity metrics.
+8. Formalize end-to-end information-flow and authority properties.
 
-## Phases 11–27 — Typed Cognitive Substrate
-
-The canonical typed state, algebra, transitions, information flow, capability, provenance, memory, self-state, predictive self-model, actions, trusted runtime, value substrate, normative uncertainty, auditing and verification phases remain at the maturity levels described in the existing phase documents. The practical policy control plane and continuous runtime now provide the first developer-facing and continuously executing bridge across these primitives.
-
-## Current Architecture Maturity
-
-```text
-Original NSA security              ████████████████████  mature foundation
-Multi-dimensional state             ██████████████████░░  strong foundation
-Canonical typed state               ███████████████░░░░░  implementation
-General state algebra                ████████████░░░░░░░░  implementation
-Trusted transitions                  ███████████████░░░░░  foundation
-Whole-system flow                   ████████████░░░░░░░░  foundation
-Capabilities                        ██████████░░░░░░░░░░  initial module
-Provenance                          ████████░░░░░░░░░░░░  initial module
-Typed memory                        ███████░░░░░░░░░░░░░  initial module
-Self-state                          ████████████░░░░░░░░  runnable prototype
-Self-model                          █████░░░░░░░░░░░░░░░  first primitive
-Policy control plane                ███████████████░░░░░  reference integration
-Live policy verification             ███████████░░░░░░░░░  first integration gate
-Continuous maintenance               ████████░░░░░░░░░░░░  hypothesis primitive
-Live model heartbeat                 ████████░░░░░░░░░░░░  first integration
-Model adapters                      ████████░░░░░░░░░░░░  generic wrapper
-Trusted runtime                     ███░░░░░░░░░░░░░░░░░  design
-Multi-agent                         ██░░░░░░░░░░░░░░░░░░  design
-Formal verification                 ████░░░░░░░░░░░░░░░░  foundation
-```
-
-## Consolidated Immediate Build Sequence
-
-1. **Verify the consolidated mainline** with the fast unit/security suite and policy tests.
-2. **Exercise the live policy interface** against Ollama with a configurable reference policy and record request/output decisions.
-3. **Verify two-rate CCE continuity**: persistent explicit soft-state maintenance + real model heartbeat + unchanged hard authority.
-4. Compare persistent/continuous processing against clocked/episodic baselines using measurable continuity metrics.
-5. Connect capabilities directly to flow and transition enforcement.
-6. Connect provenance to claims, memory and confidence updates.
-7. Connect typed memory to the flow graph.
-8. Replace the reference keyword classifier with a benchmarked semantic classifier interface while preserving the policy API.
-9. Introduce an explicit normative/value state (`ν`) and normative uncertainty evaluation.
-10. Build typed tool/action requests and connect them to the trusted runtime.
-11. Add end-to-end formal information-flow and authority properties.
-12. Red-team the complete substrate and measure both safety and capability.
-
-The key milestone is not the number of modules. It is reaching the point where **semantic cognition, self-state, normative state, security state, provenance, memory and authority evolve through one coherent transition model while the trusted runtime retains final execution authority**.
+The architectural objective remains: semantic cognition, persistent state, normative state, security state, provenance, memory and authority should evolve through one coherent transition model while the trusted runtime retains final execution authority.
