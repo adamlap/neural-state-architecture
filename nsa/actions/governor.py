@@ -6,9 +6,10 @@ ToolGovernor: Trusted Execution Governor for NSA Actions and Tools.
 Enforces:
 1. Intelligence != Authority (Model text generation cannot trigger tools directly).
 2. Capability validation via CapabilityAuthority.
-3. Flow validation via FlowGraph.
-4. Risk-based human-in-the-loop approval gating.
-5. Reversibility tracking & transactional side-effect logging.
+3. Tool-specific hard authorizations declared at registration.
+4. Optional declarative FlowGraph validation when a graph is configured.
+5. Risk-based human-in-the-loop approval gating.
+6. Reversibility tracking & transactional side-effect logging.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from nsa.capabilities.model import CapabilityAuthority
-from nsa.core.state import CanonicalState, HardState, ProvenanceState
+from nsa.core.state import CanonicalState
 from nsa.flow.graph import FlowGraph
 from .model import (
     ActionReversibility,
@@ -53,14 +54,25 @@ class ToolGovernor:
         reversibility: ActionReversibility = ActionReversibility.REVERSIBLE,
         required_authorizations: frozenset[str] = frozenset(),
         undo_handler: Optional[Callable[..., None]] = None,
+        flow_source: str = "agent",
+        flow_dimensions: frozenset[str] = frozenset({"semantic", "hard", "soft", "provenance"}),
     ) -> None:
-        """Register an external executable tool with safety metadata."""
+        """Register an external executable tool with safety metadata.
+
+        ``required_authorizations`` are checked against the caller's hard state
+        before the handler can execute. If a FlowGraph has been configured with
+        nodes/edges, the declared source and tool destination are also checked.
+        """
+        if not name:
+            raise ValueError("tool name must be non-empty")
         self._registered_tools[name] = handler
         self._tool_metadata[name] = {
             "risk_level": risk_level,
             "reversibility": reversibility,
-            "required_authorizations": required_authorizations,
+            "required_authorizations": frozenset(required_authorizations),
             "undo_handler": undo_handler,
+            "flow_source": flow_source,
+            "flow_dimensions": frozenset(flow_dimensions),
         }
 
     def prepare_request(
@@ -78,19 +90,11 @@ class ToolGovernor:
         risk = meta["risk_level"]
         reversibility = meta["reversibility"]
 
-        # Check approval requirement based on risk limit
-        needs_manual_approval = False
-        if risk in (ToolRiskLevel.HIGH, ToolRiskLevel.CRITICAL) and self.auto_approve_risk_limit in (
+        needs_manual_approval = risk in (ToolRiskLevel.HIGH, ToolRiskLevel.CRITICAL) and self.auto_approve_risk_limit in (
             ToolRiskLevel.LOW,
             ToolRiskLevel.MEDIUM,
-        ):
-            needs_manual_approval = True
-
-        status = (
-            ToolApprovalStatus.PENDING_APPROVAL
-            if needs_manual_approval
-            else ToolApprovalStatus.APPROVED
         )
+        status = ToolApprovalStatus.PENDING_APPROVAL if needs_manual_approval else ToolApprovalStatus.APPROVED
 
         return TypedToolRequest(
             tool_name=tool_name,
@@ -102,6 +106,27 @@ class ToolGovernor:
             approval_status=status,
         )
 
+    def _validate_registration_constraints(self, request: TypedToolRequest) -> Optional[str]:
+        meta = self._tool_metadata[request.tool_name]
+        required = meta["required_authorizations"]
+        if not required.issubset(request.caller_state.hard.authorizations):
+            missing = sorted(required - request.caller_state.hard.authorizations)
+            return f"missing required authorizations: {', '.join(missing)}"
+
+        # An empty graph is the default and means no additional flow contract
+        # was configured. Once a graph is populated, registered tool flows are
+        # authoritative and must be explicitly permitted.
+        if self.flow_graph.nodes or self.flow_graph.edges:
+            violation = self.flow_graph.check_flow(
+                meta["flow_source"],
+                request.tool_name,
+                meta["flow_dimensions"],
+                request.caller_state.hard,
+            )
+            if violation is not None:
+                return f"flow denied: {violation.reason}"
+        return None
+
     def execute(
         self,
         request: TypedToolRequest,
@@ -109,7 +134,6 @@ class ToolGovernor:
         scope: str = "tool_execution",
     ) -> TypedToolResponse:
         """Authoritatively evaluate permissions and execute tool."""
-        # 1. Verify capability validity
         has_capability = self.authority.allows(
             capability_id=request.required_capability_id,
             subject=subject,
@@ -118,31 +142,15 @@ class ToolGovernor:
         )
 
         if not has_capability:
-            response = TypedToolResponse(
-                request_id=request.request_id,
-                tool_name=request.tool_name,
-                result=None,
-                output_state=request.caller_state,
-                success=False,
-                error_message=f"Capability '{request.required_capability_id}' not authorized for action '{request.tool_name}'",
-            )
-            self._execution_history.append((request, response))
-            return response
+            return self._reject(request, f"Capability '{request.required_capability_id}' not authorized for action '{request.tool_name}'")
 
-        # 2. Verify approval status
+        constraint_error = self._validate_registration_constraints(request)
+        if constraint_error is not None:
+            return self._reject(request, constraint_error)
+
         if request.approval_status != ToolApprovalStatus.APPROVED:
-            response = TypedToolResponse(
-                request_id=request.request_id,
-                tool_name=request.tool_name,
-                result=None,
-                output_state=request.caller_state,
-                success=False,
-                error_message=f"Tool execution requires explicit approval (current status: {request.approval_status})",
-            )
-            self._execution_history.append((request, response))
-            return response
+            return self._reject(request, f"Tool execution requires explicit approval (current status: {request.approval_status})")
 
-        # 3. Execute tool handler
         handler = self._registered_tools[request.tool_name]
         try:
             raw_result = handler(**request.arguments)
@@ -153,7 +161,6 @@ class ToolGovernor:
             success = False
             error_msg = str(exc)
 
-        # 4. Propagate state & provenance
         new_provenance = request.caller_state.provenance.extend(
             transformation=f"tool_exec:{request.tool_name}:{request.request_id[:8]}"
         )
@@ -162,9 +169,10 @@ class ToolGovernor:
             hard=request.caller_state.hard,
             soft=request.caller_state.soft,
             provenance=new_provenance,
+            goals=request.caller_state.goals,
+            step=request.caller_state.step + 1,
         )
 
-        # 5. Track undo for reversible actions
         meta = self._tool_metadata[request.tool_name]
         if success and meta["undo_handler"] is not None:
             undo_fn = lambda: meta["undo_handler"](**request.arguments)
@@ -178,6 +186,18 @@ class ToolGovernor:
             success=success,
             error_message=error_msg,
             side_effects=(f"executed_{request.tool_name}",) if success else (),
+        )
+        self._execution_history.append((request, response))
+        return response
+
+    def _reject(self, request: TypedToolRequest, error_message: str) -> TypedToolResponse:
+        response = TypedToolResponse(
+            request_id=request.request_id,
+            tool_name=request.tool_name,
+            result=None,
+            output_state=request.caller_state,
+            success=False,
+            error_message=error_message,
         )
         self._execution_history.append((request, response))
         return response
