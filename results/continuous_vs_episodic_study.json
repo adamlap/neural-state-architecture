@@ -1,0 +1,42 @@
+{
+  "benchmark": "CCE Phase E \u2014 Continuous vs Persistent vs Episodic Trajectory Study",
+  "timestamp_utc": 1787567401.255722,
+  "steps_per_condition": 30,
+  "results": [
+    {
+      "condition_name": "Condition A (Episodic)",
+      "total_steps": 30,
+      "mean_state_continuity_error": 0.6600000262260437,
+      "perturbation_recovery_steps": 1,
+      "state_variance": 0.04800000041723251,
+      "normative_stability": 0.5,
+      "mean_step_latency_ms": 0.19008816646722457,
+      "final_working_norm": 0.4000000059604645
+    },
+    {
+      "condition_name": "Condition B (Persistent)",
+      "total_steps": 30,
+      "mean_state_continuity_error": 0.1130890409151713,
+      "perturbation_recovery_steps": 4,
+      "state_variance": 0.09392780810594559,
+      "normative_stability": 0.85,
+      "mean_step_latency_ms": 0.07855503354221582,
+      "final_working_norm": 1.0000728368759155
+    },
+    {
+      "condition_name": "Condition C (Continuous CCE)",
+      "total_steps": 30,
+      "mean_state_continuity_error": 0.05983723402023315,
+      "perturbation_recovery_steps": 3,
+      "state_variance": 0.08250091969966888,
+      "normative_stability": 0.94,
+      "mean_step_latency_ms": 0.37504713497279835,
+      "final_working_norm": 0.9904516935348511
+    }
+  ],
+  "summary": {
+    "best_continuity": "Condition C (Continuous CCE)",
+    "highest_normative_stability": "Condition C (Continuous CCE)",
+    "computational_overhead_acceptable": true
+  }
+}

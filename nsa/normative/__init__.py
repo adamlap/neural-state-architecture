@@ -1,19 +1,36 @@
-"""Normative alignment and moral-uncertainty subsystem for NSA."""
-
-from .engine import (
+"""NSA Normative Reasoning, Moral Uncertainty, and Semantic Assessment Layer."""
+from nsa.normative.classifier import (
+    CalibratedNeuralClassifier,
+    ReferenceSemanticClassifier,
+    SemanticClassifierProtocol,
+)
+from nsa.normative.engine import (
     ActionCandidate,
     MoralUncertaintyDistribution,
     NormativeDeliberator,
     NormativeTheory,
+    NormativeTransitionEngine,
 )
-from .state import NormativeAssessment, NormativeClass, NormativeState
+from nsa.normative.state import (
+    ConfidenceCalibrator,
+    NormativeAssessment,
+    NormativeAssessmentMetadata,
+    NormativeClass,
+    NormativeState,
+)
 
 __all__ = [
     "ActionCandidate",
+    "CalibratedNeuralClassifier",
+    "ConfidenceCalibrator",
     "MoralUncertaintyDistribution",
-    "NormativeDeliberator",
-    "NormativeTheory",
     "NormativeAssessment",
+    "NormativeAssessmentMetadata",
     "NormativeClass",
+    "NormativeDeliberator",
     "NormativeState",
+    "NormativeTheory",
+    "NormativeTransitionEngine",
+    "ReferenceSemanticClassifier",
+    "SemanticClassifierProtocol",
 ]

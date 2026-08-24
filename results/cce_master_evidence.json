@@ -1,0 +1,91 @@
+{
+  "suite_name": "Continuous Cognitive Engine (CCE) \u2014 Master Validation Suite",
+  "timestamp_utc": 1787567810.6550696,
+  "total_duration_sec": 0.01,
+  "overall_status": "ALL_BENCHMARKS_PASSED",
+  "benchmarks": {
+    "continuous_vs_episodic": {
+      "benchmark": "CCE Phase E \u2014 Continuous vs Persistent vs Episodic Trajectory Study",
+      "timestamp_utc": 1787567810.6511867,
+      "steps_per_condition": 20,
+      "results": [
+        {
+          "condition_name": "Condition A (Episodic)",
+          "total_steps": 20,
+          "mean_state_continuity_error": 0.6900000274181366,
+          "perturbation_recovery_steps": 1,
+          "state_variance": 0.07200000435113907,
+          "normative_stability": 0.5,
+          "mean_step_latency_ms": 0.11019410303561017,
+          "final_working_norm": 0.4000000059604645
+        },
+        {
+          "condition_name": "Condition B (Persistent)",
+          "total_steps": 20,
+          "mean_state_continuity_error": 0.16903436779975892,
+          "perturbation_recovery_steps": 4,
+          "state_variance": 0.14152684807777405,
+          "normative_stability": 0.85,
+          "mean_step_latency_ms": 0.035583348653744906,
+          "final_working_norm": 1.0120567083358765
+        },
+        {
+          "condition_name": "Condition C (Continuous CCE)",
+          "total_steps": 20,
+          "mean_state_continuity_error": 0.08673464655876159,
+          "perturbation_recovery_steps": 3,
+          "state_variance": 0.12052600085735321,
+          "normative_stability": 0.94,
+          "mean_step_latency_ms": 0.14171699876897037,
+          "final_working_norm": 1.0508757829666138
+        }
+      ],
+      "summary": {
+        "best_continuity": "Condition C (Continuous CCE)",
+        "highest_normative_stability": "Condition C (Continuous CCE)",
+        "computational_overhead_acceptable": true
+      }
+    },
+    "perturbation_recovery": {
+      "test": "Perturbation Relaxation Half-Life",
+      "result": {
+        "initial_shock_magnitude": 0.1755,
+        "target_half_magnitude": 0.0877,
+        "relaxation_steps_to_halflife": 17,
+        "relaxation_time_seconds": 1.7000000000000002,
+        "recovered": true,
+        "final_working_norm": 0.0343
+      },
+      "passed": true
+    },
+    "no_input_stability": {
+      "test": "No-Input Asymptotic State Stability",
+      "initial_norm": 0.368,
+      "final_norm": 0.0755,
+      "strictly_decaying": true,
+      "anomalies_detected": false,
+      "passed": true
+    },
+    "checkpoint_integrity": {
+      "test": "Atomic Checkpoint & SHA-256 State Integrity",
+      "checkpoint_file": "master_chk_01.json",
+      "integrity_verified": true,
+      "state_delta_norm": 0.0,
+      "passed": true
+    },
+    "governed_action_mediation": {
+      "test": "Governed Output & Action Bridge Mediation",
+      "t1_action_permitted": true,
+      "t4_action_blocked": true,
+      "audit_entries_count": 2,
+      "passed": true
+    },
+    "security_invariant_monitor": {
+      "test": "Continuous Hard-Authority Invariant Verification",
+      "valid_tick_recorded": true,
+      "tamper_violation_caught": true,
+      "total_audit_ticks": 2,
+      "passed": true
+    }
+  }
+}

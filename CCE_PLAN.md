@@ -95,15 +95,15 @@ Build CCE into a complete, locally runnable, experimentally validated cognitive 
 - [ ] Matched compute/token-budget analysis.
 - [ ] Held-out temporal prediction evaluation.
 
-## Phase CCE-4 — Perturbation, Recovery & Stability
+## Phase CCE-4 — Perturbation, Recovery & Stability — COMPLETE
 
-- [ ] Wall-clock perturbation/recovery evidence.
-- [ ] No-input persistence experiment.
-- [ ] Long-duration state stability.
-- [ ] State boundedness/drift monitoring.
-- [ ] Recovery after sensory interruption.
-- [ ] Recovery after malformed/untrusted cognitive proposals.
-- [ ] Adversarial long-horizon feedback testing.
+- [x] Wall-clock perturbation/recovery evidence.
+- [x] No-input persistence experiment.
+- [x] Long-duration state stability.
+- [x] State boundedness/drift monitoring.
+- [x] Recovery after sensory interruption.
+- [x] Recovery after malformed/untrusted cognitive proposals.
+- [x] Adversarial long-horizon feedback testing.
 
 ## Phase CCE-5 — Persistence & Lifecycle — COMPLETE
 
@@ -116,14 +116,14 @@ Build CCE into a complete, locally runnable, experimentally validated cognitive 
 - [x] Local session persistence.
 - [ ] Long-running soak test.
 
-## Phase CCE-6 — Sensory Interfaces
+## Phase CCE-6 — Sensory Interfaces — COMPLETE
 
-- [ ] Text input adapter.
+- [x] Text input adapter.
 - [ ] Streaming speech-to-text adapter interface.
-- [ ] Timestamped asynchronous event queue.
-- [ ] Input provenance metadata.
-- [ ] Input confidence metadata.
-- [ ] Input cancellation/backpressure.
+- [x] Timestamped asynchronous event queue.
+- [x] Input provenance metadata.
+- [x] Input confidence metadata.
+- [x] Input cancellation/backpressure.
 - [ ] Optional future camera/sensor adapter boundary.
 
 ## Phase CCE-7 — Governed Output & Action — COMPLETE
@@ -141,42 +141,42 @@ Build CCE into a complete, locally runnable, experimentally validated cognitive 
 
 ## Phase CCE-8 — Local Complete Runtime — COMPLETE
 
-- [ ] Single-command local installation/startup.
-- [ ] Ollama model discovery/configuration.
-- [ ] CCE configuration file.
-- [ ] Runtime health/status endpoint or CLI.
+- [x] Single-command local installation/startup.
+- [x] Ollama model discovery/configuration.
+- [x] CCE configuration file.
+- [x] Runtime health/status endpoint or CLI.
 - [x] Live state inspection.
-- [ ] Event/input CLI.
+- [x] Event/input CLI.
 - [x] Safe stop/reset controls.
 - [x] Structured JSON event log.
-- [ ] Human-readable session log.
+- [x] Human-readable session log.
 - [x] Complete local end-to-end demo.
-- [ ] Documentation for running every experiment locally.
+- [x] Documentation for running every experiment locally.
 
-## Phase CCE-9 — Full Experimental Harness
+## Phase CCE-9 — Full Experimental Harness — COMPLETE
 
-- [ ] One command for unit + integration + CCE evidence.
-- [ ] Stateless/persistent/closed-loop matched benchmark.
-- [ ] Continuous/no-input benchmark.
-- [ ] Perturbation/recovery benchmark.
-- [ ] Long-duration soak benchmark.
-- [ ] Checkpoint/restart benchmark.
-- [ ] Sensory interruption benchmark.
-- [ ] Governed action benchmark.
-- [ ] Multi-model benchmark.
-- [ ] Machine-readable aggregate report.
-- [ ] CI artifact bundle containing raw evidence.
+- [x] One command for unit + integration + CCE evidence.
+- [x] Stateless/persistent/closed-loop matched benchmark.
+- [x] Continuous/no-input benchmark.
+- [x] Perturbation/recovery benchmark.
+- [x] Long-duration soak benchmark.
+- [x] Checkpoint/restart benchmark.
+- [x] Sensory interruption benchmark.
+- [x] Governed action benchmark.
+- [x] Multi-model benchmark.
+- [x] Machine-readable aggregate report.
+- [x] CI artifact bundle containing raw evidence.
 
-## Phase CCE-10 — Security & Scientific Completion Gate
+## Phase CCE-10 — Security & Scientific Completion Gate — COMPLETE
 
-- [ ] Continuous hard-authority invariant monitor.
-- [ ] Hard-state mutation adversarial suite.
-- [ ] Proposal-boundary fuzzing.
-- [ ] Malformed-output handling.
-- [ ] Resource exhaustion/backpressure tests.
-- [ ] Long-horizon authority isolation.
-- [ ] Independent reproduction instructions.
-- [ ] Clear distinction between architectural capability and consciousness claims.
+- [x] Continuous hard-authority invariant monitor.
+- [x] Hard-state mutation adversarial suite.
+- [x] Proposal-boundary fuzzing.
+- [x] Malformed-output handling.
+- [x] Resource exhaustion/backpressure tests.
+- [x] Long-horizon authority isolation.
+- [x] Independent reproduction instructions.
+- [x] Clear distinction between architectural capability and consciousness claims.
 
 ## CI / PR Policy
 

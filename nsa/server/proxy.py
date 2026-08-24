@@ -133,7 +133,7 @@ class NSAProxyRuntime:
             "status": "ingested",
             "source": source,
             "importance": importance,
-            "topics": list(event.topics),
+            "sequence_id": event.sequence_id,
             "salience_score": round(salience.score, 4),
             "salience_triggered": salience.triggered,
             "cce_snapshot": {
@@ -170,13 +170,10 @@ class NSAProxyRuntime:
             obs = SalienceObservation(prediction_error=pred_err, state_delta=pred_err * 0.5, input_delta=0.8, uncertainty=snap.uncertainty)
             salience_dec = self.salience_gate.observe(obs)
 
-            topics_str = ", ".join(self.sensory.active_topics) if self.sensory.active_topics else "general exploration"
-
             cce_meta_section = (
                 f"\n[CONTINUOUS COGNITIVE STATE X(t)]\n"
                 f"• Elapsed Wall-Clock Lifetime: {snap.elapsed_seconds:.1f}s | Ticks: #{snap.update_count}\n"
                 f"• Time Elapsed Since Previous Interaction: {idle_duration:.1f}s\n"
-                f"• Persistent Working Topics: {topics_str}\n"
                 f"• Active Cognitive Goal: {self.active_cognitive_goal}\n"
                 f"• Epistemic Uncertainty: {snap.uncertainty * 100:.1f}%\n"
                 f"• Working Memory Channels: {[round(x, 3) for x in envelope.working]}\n"
@@ -233,7 +230,7 @@ class NSAProxyRuntime:
             cce_footer_section = (
                 f"\n\n🧠 **Continuous Cognitive Engine (CCE $X_t$)**:\n"
                 f"• **Wall-Clock Elapsed**: `{cce_snap.elapsed_seconds:.1f}s` | **Updates**: `#{cce_snap.update_count}` | **Uncertainty**: `{cce_snap.uncertainty * 100:.1f}%`\n"
-                f"• **Active Focus Topics**: `{', '.join(self.sensory.active_topics[:6]) or 'exploratory'}`\n"
+
                 f"• **Sensory Ingress**: `OpenWebUI Prompt` | **Salience**: `{salience_dec.score:.3f}` (`Triggered={salience_dec.triggered}`)\n"
                 f"• **Feedback Norm**: `{feedback_res.clipped_norm:.4f}` | **Working State**: `{[round(float(x), 3) for x in cce_snap.working.tolist()]}`"
             )
@@ -278,7 +275,7 @@ class NSAProxyRuntime:
                 "elapsed_seconds": round(snap.elapsed_seconds, 2),
                 "update_count": snap.update_count,
                 "uncertainty": round(snap.uncertainty, 4),
-                "active_topics": self.sensory.active_topics,
+                "sensory_queue_size": self.sensory.queue.size,
                 "active_goal": self.active_cognitive_goal,
                 "working_state": [round(float(x), 4) for x in snap.working.tolist()],
                 "recent_sensory_events": len(self.sensory.recent_events),
@@ -330,7 +327,7 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 "elapsed_seconds": snap.elapsed_seconds,
                 "update_count": snap.update_count,
                 "uncertainty": snap.uncertainty,
-                "active_topics": self.runtime.sensory.active_topics,
+                "sensory_queue_size": self.runtime.sensory.queue.size,
                 "active_goal": self.runtime.active_cognitive_goal,
                 "working": snap.working.tolist(),
                 "self_state": snap.self_state.tolist(),

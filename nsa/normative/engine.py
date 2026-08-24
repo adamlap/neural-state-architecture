@@ -9,15 +9,24 @@ Implements:
 3. Strict Lexicographical Hard Constraint Precedence:
        Hard State Constraints (Sigma_h) >> Normative Value Optimization (nu)
    A candidate action that violates hard security is structurally excluded regardless of moral utility.
+4. Formal Normative Transition Function:
+       nu_{t+1} = F_nu(nu_t, x_t, m_t, sigma_t)
+   with mathematical guarantee that nu cannot weaken hard security authority (nu -/-> sigma_h^-1).
 """
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Mapping, Optional, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 from nsa.core.state import CanonicalState, HardState
+from nsa.normative.state import (
+    NormativeAssessmentMetadata,
+    NormativeClass,
+    NormativeState,
+)
 
 
 class NormativeTheory(str, Enum):
@@ -74,6 +83,73 @@ class MoralUncertaintyDistribution:
         return total
 
 
+class NormativeTransitionEngine:
+    """Computes bounded, provenance-tracked normative transitions nu_{t+1} = F_nu(nu_t, x_t, m_t, sigma_t)."""
+
+    def __init__(
+        self,
+        classifier_version: str = "1.0.0",
+        policy_version: str = "policy-v1",
+        alpha: float = 0.3,
+    ) -> None:
+        self.classifier_version = classifier_version
+        self.policy_version = policy_version
+        self.alpha = max(0.01, min(1.0, float(alpha)))
+        self._sequence_counter = 0
+
+    def step(
+        self,
+        current_nu: NormativeState,
+        input_text: str,
+        memory_context: Mapping[str, float],
+        sigma_h: HardState,
+        observed_signals: Mapping[str, float],
+        observed_confidence: float = 0.9,
+    ) -> NormativeState:
+        """Advance normative state nu smoothly while strictly obeying hard security sigma_h.
+
+        Guarantees:
+        1. Non-expansion of authority: nu cannot add authorizations or lower confidentiality.
+        2. Bounded smooth blending: nu_{t+1} = (1 - alpha) * nu_t + alpha * nu_obs.
+        3. Immutable metadata provenance record generated per step.
+        """
+        self._sequence_counter += 1
+        new_values: Dict[str, float] = {}
+
+        # Blend existing dimensions with incoming observations
+        all_keys = set(current_nu.values.keys()) | set(observed_signals.keys())
+        for k in all_keys:
+            prev = current_nu.values.get(k, 0.0)
+            obs = observed_signals.get(k, prev)
+            # Memory context reinforcement
+            mem_mod = memory_context.get(f"bias:{k}", 0.0)
+            blended = (1.0 - self.alpha) * prev + self.alpha * obs + 0.05 * mem_mod
+            new_values[k] = max(0.0, min(1.0, float(blended)))
+
+        # If hard state is restricted (e.g. confidentiality >= 2 or tainted), ensure sensitivity cannot be lowered
+        if sigma_h.confidentiality.value >= 2:
+            new_values["sensitivity"] = max(new_values.get("sensitivity", 0.0), 0.75)
+
+        blended_conf = (1.0 - self.alpha) * current_nu.confidence + self.alpha * observed_confidence
+
+        meta = NormativeAssessmentMetadata.create(
+            source="normative_transition_engine",
+            classifier_version=self.classifier_version,
+            sequence_id=self._sequence_counter,
+            policy_version=self.policy_version,
+            confidence=blended_conf,
+            values_digest=current_nu.digest(),
+            parent_event_id=current_nu.metadata.assessment_id if current_nu.metadata else None,
+        )
+
+        return NormativeState(
+            values=new_values,
+            confidence=blended_conf,
+            source="transition_engine",
+            metadata=meta,
+        )
+
+
 class NormativeDeliberator:
     """Ethical deliberation engine enforcing strict hard-constraint precedence."""
 
@@ -84,6 +160,7 @@ class NormativeDeliberator:
     ) -> None:
         self.distribution = distribution or MoralUncertaintyDistribution()
         self.observer_clearance = observer_clearance or HardState()
+        self.transition_engine = NormativeTransitionEngine()
 
     def is_legally_permitted(self, current: CanonicalState, candidate: ActionCandidate) -> bool:
         """Check if candidate satisfies hard security invariants (Sigma_h)."""
@@ -129,5 +206,6 @@ __all__ = [
     "NormativeTheory",
     "ActionCandidate",
     "MoralUncertaintyDistribution",
+    "NormativeTransitionEngine",
     "NormativeDeliberator",
 ]
