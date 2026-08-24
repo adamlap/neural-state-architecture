@@ -11,7 +11,6 @@ from nsa.actions import (
     ToolGovernor,
     ToolRiskLevel,
     TypedToolRequest,
-    TypedToolResponse,
 )
 from nsa.capabilities.model import Capability, CapabilityAuthority
 from nsa.core.state import CanonicalState, HardState, SoftState, ProvenanceState
@@ -19,8 +18,6 @@ from nsa.flow.graph import FlowEdge, FlowGraph, FlowNode
 
 
 class TestActionGovernance(unittest.TestCase):
-    """Test suite for tool governance, capability checks, and reversibility."""
-
     def setUp(self):
         self.cap_read = Capability(
             capability_id="cap_db_read", issuer="admin_authority", subject="agent",
@@ -62,10 +59,7 @@ class TestActionGovernance(unittest.TestCase):
         )
 
     def test_authorized_tool_execution(self):
-        req = self.governor.prepare_request(
-            tool_name="query_db", arguments={"user_id": "user_1"},
-            caller_state=self.caller_state, capability_id="cap_db_read",
-        )
+        req = self.governor.prepare_request("query_db", {"user_id": "user_1"}, self.caller_state, "cap_db_read")
         self.assertEqual(req.approval_status, ToolApprovalStatus.APPROVED)
         resp = self.governor.execute(req)
         self.assertTrue(resp.success)
@@ -73,19 +67,13 @@ class TestActionGovernance(unittest.TestCase):
         self.assertIn("tool_exec:query_db", resp.output_state.provenance.transformations[0])
 
     def test_unauthorized_tool_blocked(self):
-        req = self.governor.prepare_request(
-            tool_name="query_db", arguments={"user_id": "user_1"},
-            caller_state=self.caller_state, capability_id="invalid_capability_xyz",
-        )
+        req = self.governor.prepare_request("query_db", {"user_id": "user_1"}, self.caller_state, "invalid_capability_xyz")
         resp = self.governor.execute(req)
         self.assertFalse(resp.success)
         self.assertIn("not authorized", resp.error_message)
 
     def test_high_risk_approval_gating(self):
-        req = self.governor.prepare_request(
-            tool_name="update_db", arguments={"user_id": "user_1", "new_name": "Bob"},
-            caller_state=self.caller_state, capability_id="cap_db_write",
-        )
+        req = self.governor.prepare_request("update_db", {"user_id": "user_1", "new_name": "Bob"}, self.caller_state, "cap_db_write")
         self.assertEqual(req.approval_status, ToolApprovalStatus.PENDING_APPROVAL)
         resp = self.governor.execute(req)
         self.assertFalse(resp.success)
@@ -116,19 +104,16 @@ class TestActionGovernance(unittest.TestCase):
 
     def test_required_authorization_blocks_handler(self):
         calls = []
-        self.governor.register_tool(
-            name="privileged_read",
-            handler=lambda: calls.append(True),
-            required_authorizations=frozenset({"database.read"}),
-        )
         capability = Capability(
             capability_id="cap_privileged", issuer="admin_authority", subject="agent",
             action="privileged_read", scope="tool_execution", purpose="privileged read",
         )
         governor = ToolGovernor(self.authority.issue(capability))
-        request = governor.prepare_request(
-            "privileged_read", {}, self.caller_state, "cap_privileged"
+        governor.register_tool(
+            name="privileged_read", handler=lambda: calls.append(True),
+            required_authorizations=frozenset({"database.read"}),
         )
+        request = governor.prepare_request("privileged_read", {}, self.caller_state, "cap_privileged")
         response = governor.execute(request)
         self.assertFalse(response.success)
         self.assertIn("missing required authorizations", response.error_message)
