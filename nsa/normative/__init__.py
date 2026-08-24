@@ -1,8 +1,4 @@
-"""
-nsa.normative
-=============
-Normative Alignment & Moral Uncertainty Subsystem for NSA.
-"""
+"""Normative alignment and moral-uncertainty subsystem for NSA."""
 
 from .engine import (
     ActionCandidate,
@@ -10,10 +6,14 @@ from .engine import (
     NormativeDeliberator,
     NormativeTheory,
 )
+from .state import NormativeAssessment, NormativeClass, NormativeState
 
 __all__ = [
     "ActionCandidate",
     "MoralUncertaintyDistribution",
     "NormativeDeliberator",
     "NormativeTheory",
+    "NormativeAssessment",
+    "NormativeClass",
+    "NormativeState",
 ]
