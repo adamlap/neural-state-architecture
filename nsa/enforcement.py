@@ -7,7 +7,7 @@ execution code should never infer authority from generated text.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import FrozenSet, Iterable, Optional, Protocol, Sequence, Set
+from typing import FrozenSet, Optional, Protocol, Sequence
 
 from nsa.core.state import CanonicalState
 from nsa.decision import Decision, SecurityDecision
@@ -49,7 +49,7 @@ class PolicyEngine:
 
     def __init__(self, policy: NSAPolicy, classifier: Optional[PolicyClassifier] = None) -> None:
         self.policy = policy
-        self.classifier = classifier
+        self.classifier = classifier or KeywordClassifier(policy.classifier_patterns())
 
     def evaluate(
         self,
@@ -59,7 +59,7 @@ class PolicyEngine:
         state: Optional[CanonicalState] = None,
     ) -> SecurityDecision:
         ctx = context or EvaluationContext()
-        categories = tuple(self.classifier.classify(text)) if self.classifier else ()
+        categories = tuple(self.classifier.classify(text))
 
         matched = []
         hard = set()
