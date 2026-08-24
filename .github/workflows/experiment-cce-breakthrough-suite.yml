@@ -1,0 +1,55 @@
+name: CCE Breakthrough Experiment Suite
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/breakthrough/**'
+      - 'nsa/runtime/predictive_dynamics.py'
+      - 'nsa/runtime/cce_*.py'
+      - 'tests/test_cce_breakthrough_suite.py'
+      - '.github/workflows/experiment-cce-breakthrough-suite.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+
+jobs:
+  deterministic-breakthrough-suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run breakthrough experiment suite
+        run: |
+          python experiments/breakthrough/cce_breakthrough_suite.py \
+            --seeds 7 17 37 73 137 \
+            --predictor-epochs 250 \
+            --out results/cce_breakthrough_suite.json
+      - name: Run focused tests
+        run: pytest -q tests/test_cce_breakthrough_suite.py
+      - name: Upload scientific artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cce-breakthrough-suite-${{ github.sha }}
+          path: results/cce_breakthrough_suite.json
+          if-no-files-found: error
+      - name: Publish gate summary
+        run: |
+          python - <<'PY'
+          import json
+          with open('results/cce_breakthrough_suite.json', encoding='utf-8') as f:
+              r = json.load(f)
+          print('## CCE Breakthrough Experiment Gate')
+          print('')
+          print('| Gate | Result |')
+          print('|---|---|')
+          for k, v in r['gates'].items():
+              print(f'| {k} | {v} |')
+          print(f"| overall_status | {r['overall_status']} |")
+          PY
