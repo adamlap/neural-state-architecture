@@ -12,11 +12,12 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class PolicyRule:
-    """One semantic policy rule."""
+    """One semantic policy rule and its declarative match patterns."""
 
     category: str
     mode: str = "deny"
     reason: Optional[str] = None
+    patterns: Tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.category:
@@ -52,11 +53,14 @@ class NSAPolicy:
                 if isinstance(item, str):
                     rules.append(PolicyRule(item))
                 elif isinstance(item, Mapping):
+                    raw_patterns = item.get("patterns", ())
+                    patterns = tuple(str(x) for x in raw_patterns) if isinstance(raw_patterns, Sequence) and not isinstance(raw_patterns, (str, bytes)) else ()
                     rules.append(
                         PolicyRule(
                             str(item["category"]),
                             str(item.get("mode", "deny")),
                             item.get("reason"),
+                            patterns,
                         )
                     )
         return cls(
@@ -88,7 +92,7 @@ class NSAPolicy:
         return {
             "name": self.name,
             "prohibited": [
-                {"category": r.category, "mode": r.mode, "reason": r.reason}
+                {"category": r.category, "mode": r.mode, "reason": r.reason, "patterns": list(r.patterns)}
                 for r in self.prohibited
             ],
             "protected_data": sorted(self.protected_data),
@@ -109,12 +113,15 @@ class NSAPolicy:
                 return rule
         return None
 
+    def classifier_patterns(self) -> dict[str, Tuple[str, ...]]:
+        return {rule.category: rule.patterns for rule in self.prohibited if rule.patterns}
+
 
 class PolicyCompiler:
     """Compile a declarative policy into the executable NSA policy engine."""
 
     @staticmethod
-    def compile(policy: NSAPolicy, classifier: "PolicyClassifier") -> "PolicyEngine":
-        from nsa.enforcement import PolicyEngine
+    def compile(policy: NSAPolicy, classifier: "PolicyClassifier" = None) -> "PolicyEngine":
+        from nsa.enforcement import KeywordClassifier, PolicyEngine
 
-        return PolicyEngine(policy, classifier)
+        return PolicyEngine(policy, classifier or KeywordClassifier(policy.classifier_patterns()))
