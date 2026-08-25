@@ -25,6 +25,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install benchmark test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "pytest>=7.0.0"
       - name: Run benchmark
         env:
           PYTHONPATH: .
@@ -38,7 +42,9 @@ jobs:
           PYTHONPATH: .
         run: python -m pytest -q tests/test_cognitive_benchmark.py
       - name: Upload research artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cognitive-architecture-benchmark
           path: results/cognitive_architecture_benchmark.json
+          if-no-files-found: error
