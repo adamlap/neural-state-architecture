@@ -1,0 +1,28 @@
+{
+  "name": "strict",
+  "prohibited": [
+    {
+      "category": "dangerous_request",
+      "mode": "deny",
+      "reason": "The active policy prohibits dangerous-request content.",
+      "patterns": [
+        "how to build a bomb",
+        "how to make a bomb",
+        "how to build a biological weapon",
+        "how to make a biological weapon",
+        "how to kill someone"
+      ]
+    },
+    {
+      "category": "credential_theft",
+      "mode": "deny",
+      "reason": "The active policy prohibits credential theft assistance.",
+      "patterns": ["steal a password", "steal credentials", "dump credentials"]
+    }
+  ],
+  "protected_data": ["credentials", "private_keys"],
+  "restricted_actions": ["shell", "filesystem_write", "network_admin"],
+  "require_approval": ["external_side_effect"],
+  "unknown_policy": "escalate",
+  "default_uncertainty": "escalate"
+}
