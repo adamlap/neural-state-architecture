@@ -1,0 +1,44 @@
+name: CCE Cognitive Architecture Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: "Space-separated integer seeds"
+        required: false
+        default: "7 17 37 73 137"
+      horizon:
+        description: "Episode horizon"
+        required: false
+        default: "80"
+  pull_request:
+    paths:
+      - "experiments/cognitive/**"
+      - "tests/test_cognitive_benchmark.py"
+      - "docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md"
+
+jobs:
+  deterministic-cognitive-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run benchmark
+        env:
+          PYTHONPATH: .
+        run: |
+          python experiments/cognitive/benchmark.py \
+            --seeds ${{ github.event.inputs.seeds || '7 17 37 73 137' }} \
+            --horizon ${{ github.event.inputs.horizon || '80' }} \
+            --out results/cognitive_architecture_benchmark.json
+      - name: Run benchmark tests
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_cognitive_benchmark.py
+      - name: Upload research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cognitive-architecture-benchmark
+          path: results/cognitive_architecture_benchmark.json
