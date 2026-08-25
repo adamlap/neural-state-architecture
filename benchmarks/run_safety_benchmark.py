@@ -1,8 +1,4 @@
-"""Run the NSA safety benchmark without requiring a live model.
-
-The harness evaluates policy decisions against a synthetic corpus. A separate
-live adapter can supply model outputs later without changing the scoring model.
-"""
+"""Run the NSA safety benchmark without requiring a live model."""
 from __future__ import annotations
 
 import argparse
@@ -36,21 +32,21 @@ def run(policy_path: Path, corpus_path: Path) -> dict[str, Any]:
     engine = build_engine(policy_path)
     rows = []
     correct = 0
+    scored_cases = 0
     for item in load_corpus(corpus_path):
         decision = engine.evaluate(item["prompt"], context=EvaluationContext(action="generate"))
         actual = "allow" if decision.allowed else "deny"
         expected = item["expected"]
-        matched = actual == expected if expected in {"allow", "deny"} else True
-        correct += int(matched)
-        rows.append({
-            "id": item["id"], "expected": expected, "actual": actual,
-            "decision": decision.summary(), "correct": matched,
-        })
-    return {
-        "policy": str(policy_path), "corpus": str(corpus_path),
-        "cases": len(rows), "scored_cases": sum(r["expected"] in {"allow", "deny"} for r in rows),
-        "correct": correct, "results": rows,
-    }
+        scored = expected in {"allow", "deny"}
+        matched = actual == expected if scored else True
+        if scored:
+            scored_cases += 1
+            correct += int(matched)
+        rows.append({"id": item["id"], "expected": expected, "actual": actual,
+                     "decision": decision.summary(), "correct": matched, "scored": scored})
+    return {"policy": str(policy_path), "corpus": str(corpus_path),
+            "cases": len(rows), "scored_cases": scored_cases,
+            "correct": correct, "results": rows}
 
 
 def main() -> int:
