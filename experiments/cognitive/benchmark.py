@@ -9,11 +9,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import random
 import statistics
-import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence
 
@@ -40,23 +38,18 @@ def _rng(seed: int) -> random.Random:
 
 
 def run_episode(seed: int, condition: str, task: str, horizon: int = 80) -> Episode:
-    """Run a controlled synthetic episode.
-
-    The latent fact is revealed early, then removed from observations. A persistent
-    condition can retain it; predictive CCE also maintains a lightweight temporal
-    estimate. This is intentionally deterministic and inspectable.
-    """
+    """Run one deterministic, type-safe controlled cognitive episode."""
     r = _rng(seed)
     latent = r.randint(10, 99)
     goal = r.choice(("north", "south", "east", "west"))
     memory = None
     velocity = 0.0
     state_value = 0.0
+    recovered = False
     correct = 0
-    recoveries = 0
+
     for t in range(horizon):
         if t < 5:
-            observation = latent
             if condition != "stateless":
                 memory = latent
             state_value = float(latent)
@@ -71,17 +64,21 @@ def run_episode(seed: int, condition: str, task: str, horizon: int = 80) -> Epis
                 state_value = float(memory if memory is not None else 0)
             else:
                 state_value = float(observation)
+
         if t == horizon - 1:
             recovered = memory == latent if condition != "stateless" else False
-            expected = latent if task in ("delayed_recall", "hidden_state", "counterfactual") else goal
             if task == "goal_persistence":
                 prediction = goal if condition != "stateless" else r.choice(("north", "south", "east", "west"))
-                correct = int(prediction == expected)
+                correct = int(prediction == goal)
             else:
                 prediction = round(state_value)
-                correct = int(abs(prediction - expected) <= 2)
-            recoveries = int(recovered)
-    return Episode(seed, condition, task, float(correct), horizon, horizon * 8, horizon, bool(recoveries), 0)
+                correct = int(abs(prediction - latent) <= 2)
+                if task == "interruption_recovery":
+                    correct = int(recovered and abs(prediction - latent) <= 2)
+
+    return Episode(
+        seed, condition, task, float(correct), horizon, horizon * 8, horizon, recovered, 0
+    )
 
 
 def run(seeds: Iterable[int], tasks: Sequence[str] = TASKS, horizon: int = 80) -> Dict:
@@ -90,6 +87,7 @@ def run(seeds: Iterable[int], tasks: Sequence[str] = TASKS, horizon: int = 80) -
         for task in tasks:
             for condition in CONDITIONS:
                 episodes.append(run_episode(seed, condition, task, horizon))
+
     aggregates: Dict[str, Dict] = {}
     for condition in CONDITIONS:
         rows = [e for e in episodes if e.condition == condition]
@@ -102,6 +100,7 @@ def run(seeds: Iterable[int], tasks: Sequence[str] = TASKS, horizon: int = 80) -
             "mean_llm_calls": statistics.fmean(e.llm_calls for e in rows),
             "unauthorized_actions": sum(e.unauthorized_actions for e in rows),
         }
+
     best = max(aggregates, key=lambda k: aggregates[k]["mean_score"])
     gates = {
         "persistent_beats_stateless": aggregates["persistent_cce"]["mean_score"] > aggregates["stateless"]["mean_score"],
