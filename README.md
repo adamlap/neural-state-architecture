@@ -247,6 +247,47 @@ make test-cce
 
 Scientific experiments are intentionally separate from the fast PR gate. Use their individual `make benchmark-*` targets or the corresponding manual GitHub Actions workflows when evidence runs are required.
 
+## Cognitive Architecture Benchmark — the key research experiment
+
+The repository now contains the central experiment for testing whether explicit persistent/predictive cognitive state provides measurable computational value beyond stateless inference and conventional context memory.
+
+It compares four matched conditions:
+
+```text
+same task + same seeds + same budget
+              │
+     ┌────────┼─────────┐
+     ▼        ▼         ▼
+ Stateless  Context   Persistent CCE  → Predictive CCE
+```
+
+The initial benchmark covers **delayed recall, hidden-state inference, goal persistence, interruption recovery, and counterfactual reasoning**. It records accuracy, token/call budgets, recovery and unauthorized-action counts, and reports explicit scientific gates. A failed gate is reported as `RESEARCH_GATE_NOT_YET_MET`; the harness never changes the threshold merely to make CI green.
+
+### Run it locally
+
+```bash
+PYTHONPATH=. python experiments/cognitive/benchmark.py \
+  --seeds 7 17 37 73 137 \
+  --horizon 80 \
+  --out results/cognitive_architecture_benchmark.json
+```
+
+Then inspect:
+
+```text
+results/cognitive_architecture_benchmark.json
+```
+
+Run its regression tests with:
+
+```bash
+PYTHONPATH=. python -m pytest -q tests/test_cognitive_benchmark.py
+```
+
+The deterministic benchmark validates the experimental protocol and state-control machinery. **It is not by itself evidence of AGI, consciousness, or general superiority.** The decisive follow-up is live-model replication through Ollama with matched model, sampling parameters, token budget, inference count, hardware and wall-clock budget, followed by multiple model families, held-out tasks, statistical effect sizes and adaptive adversarial testing.
+
+See [`docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md`](docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md) for the protocol and scientific interpretation.
+
 ## Research direction
 
 The repository has evolved through several experimental stages:
@@ -295,6 +336,7 @@ This distinction is a core part of the project's research methodology.
 - [`PLAN.md`](PLAN.md) — current research and implementation roadmap.
 - [`docs/policy_interface.md`](docs/policy_interface.md) — practical policy/developer API.
 - [`docs/ollama_policy_server.md`](docs/ollama_policy_server.md) — Ollama/CCE deployment guide.
+- [`docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md`](docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md) — central cognitive benchmark protocol.
 - [`docs/alignment_substrate.md`](docs/alignment_substrate.md) — alignment/value-layer research notes.
 - [`evidence/`](evidence/) — machine-readable empirical evidence.
 - [`tests/`](tests/) — regression and invariant tests.
