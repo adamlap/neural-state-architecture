@@ -1,4 +1,164 @@
-# PLAN Addendum — CCE, Continuous Cognition & Live Ollama Evaluation
+# NSA Plan Status
+
+Consolidated implementation-snapshot addenda for PLAN.md.
+
+---
+
+## Live Runtime Integrity
+
+This addendum records a critical implementation boundary for the current roadmap.
+
+## Live Ollama status
+
+The repository now has a real `NSAGovernedInference` runtime envelope. A live backend call is made only after the deterministic NSA safety kernel evaluates the generation transition. After the backend returns, NSA commits a typed state transition and provenance hash.
+
+The API proxy uses this governed path. It no longer appends a synthetic `Verified [OK]` badge, fabricates a model digest, or presents a prompt-only Ollama Modelfile as an intrinsic NSA model.
+
+## Scientific boundary
+
+This implementation is **runtime governance**, not native neural-weight integration. The underlying Ollama model remains unchanged. `weight_modification=false` is intentionally exposed by the runtime status API.
+
+Therefore the evidence level is:
+
+- **Implemented:** real backend + deterministic NSA reference-monitor path.
+- **Unit-tested:** backend invocation, state advancement and provenance chaining.
+- **Not demonstrated:** whole-model intrinsic information-flow control inside Ollama's transformer computation.
+- **Open research:** native NSA integration, hidden-state/activation mediation, and statistically rigorous capability/safety comparisons.
+
+## Roadmap consequences
+
+1. Treat runtime governance as an explicit Phase 21 integration milestone, not as proof of native model wrapping.
+2. Keep prompt-only `Modelfile.nsa` clearly labelled as a non-security-boundary convenience profile.
+3. Prioritize a native/retrofit adapter that mediates actual model representations before claiming intrinsic neural NSA protection.
+4. Add live-vs-baseline safety and capability benchmarks around the same checkpoint and compute budget.
+5. Link every live claim to reproducible artifacts and exact implementation commits.
+
+---
+
+## Phase 11 Canonical Typed Neural Core
+
+This document records the first executable slice of Phase 11 in `PLAN.md`.
+
+## Implemented in this branch
+
+- Canonical typed activation protocol in `nsa/core/typed_activation.py`.
+- Explicit state domains for semantic, soft, hard, epistemic, provenance, temporal and goal state.
+- Explicit ownership metadata distinguishing model-writable state from trusted-runtime state.
+- Model proposals for model-owned fields are non-mutating; hard authority state cannot be proposed as a model write.
+- Runtime commits return a new `UnifiedCognitiveState` view instead of mutating the previous object in place.
+- Versioned JSON-compatible serialization of the canonical state contract.
+- Tests for hard-state write rejection, immutable-style runtime transitions, and serialization.
+
+## Scientific boundary
+
+This is a **software contract**, not a hardware or process-isolation security boundary. Python callers with arbitrary process access can still bypass it. The security guarantee remains dependent on the trusted NSA runtime/kernel controlling the actual execution boundary.
+
+Likewise, this does not yet make an Ollama transformer's hidden activations NSA-native. The live Ollama integration remains a real runtime reference monitor as documented in `docs/PLAN_LIVE_RUNTIME_STATUS.md`.
+
+## Remaining Phase 11 work
+
+- Partial activation/state-vector support.
+- Full compatibility adapters for legacy `StateVector`, `MultiStateVector` and quad-tuple APIs.
+- General state composition semantics across heterogeneous domains.
+- Native/retrofit neural adapters that carry this protocol into actual model representations.
+
+---
+
+## Phase 12 General State Algebra Engine
+
+Updated 2026-08-19.
+
+## Completed in merged work
+
+- Canonical heterogeneous product state.
+- Boolean domain.
+- Capability-set domain.
+- Bounded numeric domain.
+- Ordered finite-enum domain.
+- Constraint-set domain.
+- Probability-interval lattice with explicit bottom element.
+- Temporal-window lattice with explicit bottom element.
+- Coordinate-wise join/meet and product partial order via `x ⊔ y = y`.
+- Semantic domain compatibility checks and incompatible-product rejection.
+- Mixed products containing the new domains.
+- Explicit public exports from `nsa.core`.
+- Domain-specific unit tests.
+- Property-based verification of commutativity, associativity, idempotence and absorption across the supported lattice domains and product composition.
+- Coordinate-wise legal transition cones with increase/decrease/unchanged directions.
+- Exact product projection onto legal transition cones.
+- Projection legality and fixed-point tests.
+
+## Remaining Phase 12 work
+
+- Formal proofs/verification of the heterogeneous laws beyond executable property testing.
+- A principled representation for richer probabilistic distributions rather than only probability intervals.
+- Temporal semantics tied to runtime clocks/events rather than numeric ticks.
+- Constraint implication/solver semantics rather than opaque constraint identifiers.
+- Integration of transition-cone enforcement into the real NSA runtime transition path.
+- Integration of exact projection with the neural/retrofit adapter so legality is enforced during model computation rather than only at the state-management layer.
+
+## Scientific boundary
+
+These domains are deterministic mathematical state infrastructure. They do not modify transformer weights or hidden activations. They should therefore be treated as a typed substrate for future NSA transition and neural adapters, not as evidence of intrinsic neural security by themselves.
+
+---
+
+## Phase 19 Predictive Self-Model and CCE
+
+## Current state
+
+Phase 19 now has four connected layers:
+
+1. **Predictive self-model core** (`nsa/predictive_self_model.py`) — merged in PR #24.
+2. **Trusted live trajectory bridge** (`nsa/self_model/trajectory.py`) — collects explicit state transitions at the NSA runtime boundary.
+3. **Real Ollama collection/evaluation** (`experiments/live/ollama_self_state_trajectory.py`, `experiments/self_model/train_live_trajectory.py`) — uses the actual Ollama backend and compares a trained predictor with a persistence baseline.
+4. **Continuous Cognitive Engine (CCE)** — opt-in wall-clock scheduling around the authoritative NSA transition substrate, with deterministic/clocked controls and fail-closed execution.
+
+## Scientific boundary
+
+The Ollama HTTP API does not expose transformer hidden activations. Therefore the Phase 19 bridge does **not** pretend that text generation is introspection. It records only explicit NSA state plus runtime observations that are actually available.
+
+Unobservable self-state dimensions are preserved rather than fabricated. Backend confidence values remain explicitly labelled as estimates, not calibrated probabilities.
+
+Continuous CCE execution is likewise not treated as proof of consciousness. It is a measurable runtime condition in which persistent state transitions are scheduled from wall-clock time rather than requiring a user prompt to initiate each cycle.
+
+## Current empirical evidence
+
+The predictor-target-quality experiment on PR #24 completed successfully across seeds 1, 7, 21 and 42. The aggregate artifacts showed:
+
+- finite outputs;
+- zero security-state delta;
+- positive directional alignment in all tested perturbations;
+- but only 3/7 perturbation targets were closer than the disturbed state for seed 21.
+
+This means the predictor primitive is operational, but it is **not yet evidence of useful learned self-modeling**. Real trajectory training and matched baseline evaluation are required before making that claim.
+
+The repository now also contains a real-Ollama matched benchmark and a live CCE smoke benchmark. The CI path deliberately forces the Ollama backend into real mode and fails rather than silently falling back to a mock backend.
+
+## Required next evidence
+
+- Collect sufficiently long trajectories from real Ollama models.
+- Repeat across seeds and at least two model families/sizes where practical.
+- Train only on observed transitions and report held-out predictor-vs-persistence performance.
+- Measure calibration/error-detection utility separately from prediction MSE.
+- Compare baseline, persistent-state, clocked-CCE and continuous-CCE conditions under matched compute.
+- Measure long-duration continuous-state stability and transition latency.
+- Keep hard authority outside the predictor and CCE scheduler and verify zero unauthorized state mutation.
+- Test whether continuous CCE changes measurable task, planning or metacognitive performance rather than relying on self-report.
+
+## Workflow integration
+
+- Core `NSA tests` workflow now runs CCE runtime invariant tests.
+- `.github/workflows/cce-live.yml` installs Ollama, pulls a small real model, runs the matched baseline-vs-NSA benchmark, runs the clocked-vs-continuous CCE experiment, and archives JSON results as a GitHub Actions artifact.
+- Live CCE/Ollama testing is manual plus scheduled so normal pull requests do not silently incur model-download/runtime cost.
+
+## Interpretation rule
+
+A positive result must be reported with matched controls, effect sizes, uncertainty and raw artifacts. A continuously running system, persistent memory, self-referential language or predictive state model alone is not evidence of phenomenal consciousness.
+
+---
+
+## CCE Continuous Cognition and Live Ollama
 
 **Status:** active implementation track on `main`  
 **Scope:** CCE / continuous execution, live Ollama inference, predictive self-state evaluation, and reproducible workflow testing.
