@@ -1,0 +1,74 @@
+name: NSA 6.4 Independent Replication Matrix
+
+on:
+  pull_request:
+    paths:
+      - "experiments/nsa64/**"
+      - "tests/test_nsa64_replication_matrix.py"
+      - ".github/workflows/nsa64-replication.yml"
+      - "docs/NSA_6_4_REPLICATION.md"
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: "Inference backend"
+        required: true
+        default: "mock"
+        type: choice
+        options: [mock, ollama]
+      trials:
+        description: "Trials per matrix cell"
+        required: true
+        default: "20"
+      full_matrix:
+        description: "Run the full predeclared model/seed/noise matrix"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  nsa64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+      - name: Regression tests
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_nsa64_replication_matrix.py
+      - name: Smoke replication matrix
+        if: ${{ github.event_name == 'pull_request' || github.event.inputs.full_matrix != 'true' }}
+        env:
+          PYTHONPATH: .
+        run: |
+          python experiments/nsa64/replication_matrix.py \
+            --backend mock \
+            --models Qwen/Qwen2.5-3B-Instruct \
+            --dev-seeds 7 17 \
+            --heldout-seeds 101 211 \
+            --hypotheses 2 4 \
+            --noise 0.0 0.2 \
+            --trials 2 \
+            --out results/nsa64
+      - name: Full predeclared matrix
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.full_matrix == 'true' }}
+        env:
+          PYTHONPATH: .
+        run: |
+          python experiments/nsa64/replication_matrix.py \
+            --backend ${{ github.event.inputs.backend }} \
+            --trials ${{ github.event.inputs.trials }} \
+            --out results/nsa64
+      - name: Upload NSA 6.4 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nsa64-replication-evidence
+          path: results/nsa64
+          if-no-files-found: warn
