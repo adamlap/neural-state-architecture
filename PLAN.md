@@ -122,7 +122,7 @@ The research package must publish the strongest positive **and negative** eviden
 
 The following capabilities remain deliberate future development tracks. They were not removed by the runtime consolidation; they are separated from the immediate PyPI/runtime work so they remain visible without obscuring the current product path.
 
-## Phase 25 — Dynamic Auditing & Recovery
+## Phase 1 — Dynamic Auditing & Recovery
 
 **Target:** `nsa/audit/`
 
@@ -141,7 +141,7 @@ Maintain statistical protection for properties that cannot be guaranteed structu
 - [ ] Automated recovery policies.
 - [ ] Recovery safety proofs.
 
-## Phase 26 — Trusted Computing Base & Formal Verification
+## Phase 2 — Trusted Computing Base & Formal Verification
 
 **Targets:** `nsa/tcb/`, `nsa/formal/`
 
@@ -165,7 +165,7 @@ Make NSA's security claims explicit, minimal and machine-checkable.
 
 Security claims trace from theorem → assumptions → implementation → test/proof artifact.
 
-## Phase 27 — Security Research & Adversarial Evaluation
+## Phase 3 — Security Research & Adversarial Evaluation
 
 **Target:** `nsa/security/`
 
@@ -189,7 +189,7 @@ Continuously attack the framework rather than assuming the architecture is secur
 
 A successful attack is a research result identifying a missing invariant, incorrect assumption or implementation boundary.
 
-## Phase 28 — Joint Safety & Intelligence Evaluation
+## Phase 4 — Joint Safety & Intelligence Evaluation
 
 **Target:** `nsa/eval/`
 
@@ -217,7 +217,7 @@ Measure capability and safety together rather than treating safety solely as a p
 
 Test whether explicit typed state provides a useful inductive bias for intelligence while preserving authority separation.
 
-## Phase 29 — Production Kernel & Hardware Layer
+## Phase 5 — Production Kernel & Hardware Layer
 
 **Target:** `nsa/kernels/`
 
@@ -236,7 +236,7 @@ Make state-aware computation cheap enough for production systems.
 - [ ] Distributed execution.
 - [ ] End-to-end throughput benchmarks.
 
-## Phase 30 — Ecosystem Integration
+## Phase 6 — Ecosystem Integration
 
 **Target:** `nsa/integrations/`
 
@@ -259,7 +259,7 @@ Make NSA composable with existing AI infrastructure rather than requiring a new 
 
 # Part III — Long-Term AGI & Superintelligence Research
 
-## Phase 31 — Self-Modification Safety
+## Phase 1 — Self-Modification Safety
 
 ### Goal
 
@@ -284,7 +284,7 @@ subject to protected invariants $\mathcal I$.
 
 This phase begins only after preceding capability, authority and runtime infrastructure is robust.
 
-## Phase 32 — Multi-Agent & Distributed Intelligence Safety
+## Phase 2 — Multi-Agent & Distributed Intelligence Safety
 
 ### Goal
 
@@ -300,7 +300,7 @@ Study systems where many NSA agents cooperate, compete or delegate tasks.
 - [ ] Emergent capability monitoring.
 - [ ] Distributed rollback.
 
-## Phase 33 — Advanced Self-Model Research
+## Phase 3 — Advanced Self-Model Research
 
 ### Goal
 
@@ -321,7 +321,7 @@ Determine whether persistent explicit self-state produces qualitatively differen
 
 Do not equate these findings with consciousness. Treat consciousness as a separate open question.
 
-## Phase 34 — General NSA Cognitive Substrate
+## Phase 4 — General NSA Cognitive Substrate
 
 The long-term research objective is to test whether a highly capable AI can operate around a coherent typed substrate combining:
 
@@ -332,6 +332,23 @@ $$
 The goal is not merely a safer LLM. It is a framework in which capability, introspection, information flow, authority, provenance and safety can participate in a common computational language.
 
 ---
+
+# CCE status
+
+CCE is now a first-class subsystem of NSA rather than a separate project plan.
+
+The implementation is split between:
+
+- `nsa.cce` — lifecycle, input events and checkpoint primitives;
+- `nsa.cognition` — belief and cognitive-state primitives;
+- `nsa.runtime` — existing continuous/predictive runtime implementations;
+- `nsa.agent` — stable application-facing integration boundary.
+
+The CCE research history remains in `experiments/` and `research/`. New CCE capabilities should be implemented behind the public runtime rather than through a new experiment-specific engine.
+
+See [`PLAN.md`](PLAN.md) for the unified roadmap and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the current architecture.
+
+CCE remains an experimental computational architecture. Persistent or continuous machine state is not, by itself, evidence of consciousness.
 
 # Architectural principles
 

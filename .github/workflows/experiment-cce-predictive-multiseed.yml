@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install package
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,research]"
       - name: Run multiseed held-out predictor validation
         run: |
           mkdir -p results/ci/cce
