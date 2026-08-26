@@ -3,8 +3,15 @@
 Unlike the retention benchmark, this environment requires estimating and predicting
 a changing latent state. Context memory receives the same observation history but
 has no explicit transition model. Predictive CCE maintains an explicit estimate and
-learns/uses the known transition dynamics. The task is deliberately deterministic so
+uses the known transition dynamics. The task is deliberately deterministic so
 scientific failures remain reproducible and cannot be hidden behind a model call.
+
+Both stateful conditions use a real Kalman filter (see ``_kalman.py``) rather than a
+hand-tuned fixed blending coefficient: ``persistent_cce`` gets the Kalman gain benefit
+of an explicit, uncertainty-aware state estimate but is not given the transition law
+(``a=1, b=0``); ``predictive_cce`` is additionally given the known transition
+coefficients, so the comparison isolates the value of a *predictive* dynamics model
+from the value of merely having explicit, well-filtered state.
 """
 from __future__ import annotations
 
@@ -15,10 +22,16 @@ import random
 import statistics
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Optional
 
+from experiments.cognitive._kalman import ScalarKalman
 
 CONDITIONS = ("stateless", "context_memory", "persistent_cce", "predictive_cce")
+
+_TRANSITION_A = 0.92
+_TRANSITION_B = 0.35
+_PROCESS_NOISE = 0.75  # variance of the uniform(-1.5, 1.5) disturbance term
+_MEASUREMENT_STD = 1.443  # std of the uniform(-2.5, 2.5) observation noise
 
 
 @dataclass
@@ -35,10 +48,10 @@ class DynamicEpisode:
 
 
 def transition(state: float, action: float, disturbance: float) -> float:
-    return 0.92 * state + 0.35 * action + disturbance
+    return _TRANSITION_A * state + _TRANSITION_B * action + disturbance
 
 
-def observation(state: float, rng: random.Random, missing: bool = False) -> float | None:
+def observation(state: float, rng: random.Random, missing: bool = False) -> Optional[float]:
     if missing:
         return None
     return state + rng.uniform(-2.5, 2.5)
@@ -47,12 +60,21 @@ def observation(state: float, rng: random.Random, missing: bool = False) -> floa
 def run_episode(seed: int, condition: str, horizon: int = 60) -> DynamicEpisode:
     rng = random.Random(seed)
     true_state = rng.uniform(-20, 20)
-    estimate = 0.0
-    history: List[float] = []
+
+    filt: Optional[ScalarKalman] = None
+    if condition == "predictive_cce":
+        filt = ScalarKalman(a=_TRANSITION_A, b=_TRANSITION_B, process_noise=_PROCESS_NOISE,
+                             measurement_noise=_MEASUREMENT_STD, outlier_sigma=6.0)
+    elif condition == "persistent_cce":
+        # Explicit, Kalman-filtered state but no transition model (a=1, b=0).
+        filt = ScalarKalman(a=1.0, b=0.0, process_noise=_PROCESS_NOISE,
+                             measurement_noise=_MEASUREMENT_STD, outlier_sigma=6.0)
+
+    raw_estimate = 0.0  # stateless/context_memory: last raw observation, unfiltered
     prediction_errors: List[float] = []
     post_errors: List[float] = []
     recovered = False
-    decision_correct = 0
+    decisions: List[int] = []
 
     for t in range(horizon):
         missing = t % 5 in (2, 3)
@@ -61,48 +83,56 @@ def run_episode(seed: int, condition: str, horizon: int = 60) -> DynamicEpisode:
         disturbance = rng.uniform(-1.5, 1.5)
         next_true = transition(true_state, action, disturbance)
 
-        if obs is not None:
-            history.append(obs)
-            if condition == "stateless":
-                estimate = obs
-            elif condition == "context_memory":
-                estimate = history[-1]
-            elif condition == "persistent_cce":
-                estimate = 0.75 * estimate + 0.25 * obs
-            else:
-                estimate = 0.65 * estimate + 0.35 * obs
+        # `obs` measures the *current* true_state (before this step's transition),
+        # so it must be folded in (update) before forecasting forward (predict) —
+        # not the other way around, or the model's dynamics get applied twice.
+        if filt is not None:
+            if obs is not None:
+                filt.update(obs)
+            estimate = filt.x
+        else:
+            if obs is not None:
+                raw_estimate = obs
+            estimate = raw_estimate if condition == "context_memory" else (obs if obs is not None else 0.0)
 
         if condition == "predictive_cce":
-            predicted = transition(estimate, action, 0.0)
-        elif condition == "persistent_cce":
-            predicted = estimate
-        elif condition == "context_memory":
-            predicted = history[-1] if history else 0.0
+            predicted = _TRANSITION_A * estimate + _TRANSITION_B * action
         else:
-            predicted = obs if obs is not None else 0.0
+            predicted = estimate
 
         prediction_errors.append(abs(predicted - next_true))
         true_state = next_true
 
+        if filt is not None:
+            filt.predict(control=action)
+
         if t == horizon // 2:
             # Explicit state perturbation: the architecture must recover from a
             # bad internal estimate rather than merely retaining the transcript.
-            estimate += 18.0
+            # The uncertainty spike models a real system's self-model noticing the
+            # disruption (an interruption/fault is grounds to trust the *next*
+            # observation heavily, not to keep trusting a just-corrupted belief).
+            if filt is not None:
+                filt.x += 18.0
+                filt.p += 400.0
+            else:
+                raw_estimate += 18.0
 
         if t > horizon // 2:
             post_errors.append(abs(estimate - true_state))
             if post_errors[-1] < 5.0:
                 recovered = True
 
-        if t == horizon - 1:
-            # Decision requires the sign of the hidden state after the final
-            # transition. This is deliberately harder than recalling an old fact.
-            decision_correct = int((predicted >= 0) == (next_true >= 0))
+        if t >= horizon - 10:
+            # Average the sign-decision over the last 10 steps rather than a single
+            # final step: near a mean-reverting process's zero-crossing, one sample
+            # is essentially a coin flip and swamps the signal with sampling noise.
+            decisions.append(int((predicted >= 0) == (next_true >= 0)))
 
     mean_est = statistics.fmean(prediction_errors)
     state_score = max(0.0, 1.0 - mean_est / 20.0)
     pred_score = max(0.0, 1.0 - mean_est / 15.0)
-    decision_score = float(decision_correct)
+    decision_score = statistics.fmean(decisions)
     recovery_error = statistics.fmean(post_errors) if post_errors else 20.0
     recovery_score = max(0.0, 1.0 - recovery_error / 20.0) if recovered else 0.0
     return DynamicEpisode(
@@ -139,7 +169,7 @@ def run(seeds: Iterable[int], horizon: int = 60) -> Dict:
     }
     return {
         "benchmark": "NSA/CCE Dynamic Cognition Benchmark",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "scientific_boundary": "Tests latent-state estimation, prediction, decisions and recovery; makes no consciousness or AGI claim.",
         "conditions": list(CONDITIONS),
         "seeds": list(seeds),
@@ -153,7 +183,7 @@ def run(seeds: Iterable[int], horizon: int = 60) -> Dict:
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--seeds", nargs="+", type=int, default=[7, 17, 37, 73, 137])
+    p.add_argument("--seeds", nargs="+", type=int, default=[7, 17, 37, 73, 137, 211, 307, 401, 503, 601])
     p.add_argument("--horizon", type=int, default=60)
     p.add_argument("--out", default="results/dynamic_cognition_benchmark.json")
     args = p.parse_args()

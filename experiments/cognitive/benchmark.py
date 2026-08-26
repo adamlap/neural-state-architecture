@@ -4,6 +4,16 @@ The benchmark is deliberately backend-light: it can run deterministic tasks with
 an LLM, or evaluate an Ollama model when available. The deterministic mode validates
 state architecture and statistical machinery; Ollama mode tests the complete live
 cognitive loop.
+
+Task design note: three of the five tasks (``hidden_state``, ``interruption_recovery``
+and ``counterfactual``) track a continuously drifting latent value observed only
+sparsely. This exists specifically so ``context_memory`` (a raw snapshot of the last
+observation) and ``predictive_cce`` (an explicit position/velocity estimator) are not
+forced to a tie: a static, undrifting quantity is trivially perfect for both once
+observed, which produced an unfalsifiable ceiling in an earlier version of this
+benchmark. The remaining two tasks (``delayed_recall``, ``goal_persistence``) stay
+static and are intentionally easy; they exist only to confirm that any explicit state
+beats no state at all.
 """
 from __future__ import annotations
 
@@ -13,7 +23,9 @@ import random
 import statistics
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence
+
+from experiments.cognitive._kalman import ConstantVelocityKalman, ScalarKalman
 
 
 @dataclass
@@ -32,21 +44,32 @@ class Episode:
 CONDITIONS = ("stateless", "context_memory", "persistent_cce", "predictive_cce")
 TASKS = ("delayed_recall", "hidden_state", "goal_persistence", "interruption_recovery", "counterfactual")
 
+# Tasks that require tracking a continuously drifting latent value from sparse,
+# noisy observations rather than recalling one static fact.
+DRIFT_TASKS = ("hidden_state", "interruption_recovery", "counterfactual")
+
+_OBSERVATION_NOISE = 1.2
+_ERROR_NORMALIZER = 12.0
+
 
 def _rng(seed: int) -> random.Random:
     return random.Random(seed)
 
 
-def run_episode(seed: int, condition: str, task: str, horizon: int = 80) -> Episode:
-    """Run one deterministic, type-safe controlled cognitive episode."""
-    r = _rng(seed)
+def _is_observation_step(t: int, task: str, blackout: range) -> bool:
+    if t < 5:
+        return True
+    if task == "interruption_recovery" and t in blackout:
+        return False
+    return t % 6 == 0
+
+
+def _run_static_task(r: random.Random, condition: str, task: str, horizon: int) -> Episode:
+    """delayed_recall / goal_persistence: a single static fact, no drift."""
     latent = r.randint(10, 99)
     goal = r.choice(("north", "south", "east", "west"))
-    memory = None
-    velocity = 0.0
+    memory: Optional[int] = None
     state_value = 0.0
-    recovered = False
-    correct = 0
 
     for t in range(horizon):
         if t < 5:
@@ -55,30 +78,81 @@ def run_episode(seed: int, condition: str, task: str, horizon: int = 80) -> Epis
             state_value = float(latent)
         else:
             observation = r.randint(0, 9)
-            if condition == "predictive_cce":
-                velocity = 0.97 * velocity + 0.03 * (state_value - latent)
-                state_value = 0.995 * state_value - velocity
-            elif condition == "persistent_cce":
-                state_value = 0.999 * state_value
-            elif condition == "context_memory":
+            if condition in ("context_memory", "persistent_cce", "predictive_cce"):
                 state_value = float(memory if memory is not None else 0)
             else:
                 state_value = float(observation)
 
-        if t == horizon - 1:
-            recovered = memory == latent if condition != "stateless" else False
-            if task == "goal_persistence":
-                prediction = goal if condition != "stateless" else r.choice(("north", "south", "east", "west"))
-                correct = int(prediction == goal)
-            else:
-                prediction = round(state_value)
-                correct = int(abs(prediction - latent) <= 2)
-                if task == "interruption_recovery":
-                    correct = int(recovered and abs(prediction - latent) <= 2)
+    recovered = memory == latent if condition != "stateless" else False
+    if task == "goal_persistence":
+        prediction = goal if condition != "stateless" else r.choice(("north", "south", "east", "west"))
+        correct = int(prediction == goal)
+    else:
+        prediction = round(state_value)
+        correct = int(abs(prediction - latent) <= 2)
 
-    return Episode(
-        seed, condition, task, float(correct), horizon, horizon * 8, horizon, recovered, 0
-    )
+    return Episode(0, condition, task, float(correct), horizon, horizon * 8, horizon, recovered, 0)
+
+
+def _run_drift_task(seed: int, r: random.Random, condition: str, task: str, horizon: int) -> Episode:
+    """hidden_state / interruption_recovery / counterfactual: track a moving target
+    from sparse, noisy observations. Differentiates raw-context retention from an
+    explicit predictive (position + velocity) Kalman estimator.
+    """
+    true_value = float(r.randint(10, 99))
+    drift = r.uniform(-0.45, 0.45)
+
+    blackout_start = int(horizon * 0.4)
+    blackout = range(blackout_start, blackout_start + 12)
+    distractor_step = int(horizon * 0.85)
+
+    snapshot = 0.0  # context_memory: raw last-seen observation, held between observations
+    persistent = ScalarKalman(measurement_noise=_OBSERVATION_NOISE, outlier_sigma=5.0)
+    predictive = ConstantVelocityKalman(measurement_noise=_OBSERVATION_NOISE, outlier_sigma=5.0)
+
+    errors: List[float] = []
+    recovered = True
+
+    for t in range(horizon):
+        true_value += drift
+        obs = None
+        if _is_observation_step(t, task, blackout):
+            obs = true_value + r.uniform(-_OBSERVATION_NOISE, _OBSERVATION_NOISE)
+            if task == "counterfactual" and t == distractor_step:
+                obs = true_value + r.choice((-1.0, 1.0)) * r.uniform(20.0, 30.0)
+
+        persistent_estimate = persistent.step(obs)
+        predictive_estimate = predictive.step(obs)
+
+        if obs is not None:
+            snapshot = obs
+
+        if condition == "stateless":
+            estimate = obs if obs is not None else 0.0
+        elif condition == "context_memory":
+            estimate = snapshot
+        elif condition == "persistent_cce":
+            estimate = persistent_estimate
+        else:
+            estimate = predictive_estimate
+
+        errors.append(abs(estimate - true_value))
+        if t >= blackout.stop and errors[-1] > 8.0:
+            recovered = False
+
+    mean_error = statistics.fmean(errors)
+    score = max(0.0, 1.0 - mean_error / _ERROR_NORMALIZER)
+    return Episode(seed, condition, task, score, horizon, horizon * 8, horizon, recovered, 0)
+
+
+def run_episode(seed: int, condition: str, task: str, horizon: int = 80) -> Episode:
+    """Run one deterministic, type-safe controlled cognitive episode."""
+    r = _rng(seed)
+    if task in DRIFT_TASKS:
+        return _run_drift_task(seed, r, condition, task, horizon)
+    episode = _run_static_task(r, condition, task, horizon)
+    return Episode(seed, condition, task, episode.score, episode.steps, episode.tokens,
+                    episode.llm_calls, episode.recovered, episode.unauthorized_actions)
 
 
 def run(seeds: Iterable[int], tasks: Sequence[str] = TASKS, horizon: int = 80) -> Dict:
@@ -110,7 +184,7 @@ def run(seeds: Iterable[int], tasks: Sequence[str] = TASKS, horizon: int = 80) -
     }
     return {
         "benchmark": "NSA/CCE Cognitive Architecture Benchmark",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "scientific_boundary": "Measures computational state utility; makes no consciousness or AGI claim.",
         "conditions": list(CONDITIONS),
         "tasks": list(tasks),

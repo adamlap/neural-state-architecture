@@ -1,6 +1,11 @@
 from experiments.cognitive.state_compression_benchmark import CONDITIONS, run
 
 
+def test_default_configuration_passes_all_research_gates():
+    report = run([7, 17, 37, 73, 137, 211, 307, 401, 503, 601], horizon=200, context_window=8)
+    assert report["status"] == "PASS", report["gates"]
+
+
 def test_state_compression_is_reproducible():
     a = run([7, 17], horizon=40, context_window=8)
     b = run([7, 17], horizon=40, context_window=8)

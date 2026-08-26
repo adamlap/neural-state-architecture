@@ -1,0 +1,529 @@
+{
+  "benchmark": "NSA/CCE Long-Horizon State Compression Benchmark",
+  "version": "2.0.0",
+  "scientific_boundary": "Tests predictive state compression under bounded memory; makes no consciousness or AGI claim.",
+  "conditions": [
+    "stateless",
+    "bounded_context",
+    "full_context",
+    "persistent_cce",
+    "predictive_cce"
+  ],
+  "seeds": [
+    7,
+    17,
+    37,
+    73,
+    137,
+    211,
+    307,
+    401,
+    503,
+    601
+  ],
+  "horizon": 200,
+  "context_window": 8,
+  "episodes": [
+    {
+      "seed": 7,
+      "condition": "stateless",
+      "mean_prediction_error": 38.30323124450184,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 7,
+      "condition": "bounded_context",
+      "mean_prediction_error": 1.8638926982976125,
+      "prediction_score": 0.6272214603404775,
+      "decision_score": 0.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 7,
+      "condition": "full_context",
+      "mean_prediction_error": 1.8638926982976125,
+      "prediction_score": 0.6272214603404775,
+      "decision_score": 0.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 7,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 1.8910740571726665,
+      "prediction_score": 0.6217851885654667,
+      "decision_score": 0.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 7,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.5027027632894935,
+      "prediction_score": 0.8994594473421013,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "stateless",
+      "mean_prediction_error": 23.631501896400252,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "bounded_context",
+      "mean_prediction_error": 1.3360207436892073,
+      "prediction_score": 0.7327958512621585,
+      "decision_score": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "full_context",
+      "mean_prediction_error": 1.3360207436892073,
+      "prediction_score": 0.7327958512621585,
+      "decision_score": 1.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 1.3497622925184785,
+      "prediction_score": 0.7300475414963044,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.47138441051370833,
+      "prediction_score": 0.9057231178972583,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "stateless",
+      "mean_prediction_error": 14.42116117869826,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "bounded_context",
+      "mean_prediction_error": 1.2127503556126351,
+      "prediction_score": 0.757449928877473,
+      "decision_score": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "full_context",
+      "mean_prediction_error": 1.2127503556126351,
+      "prediction_score": 0.757449928877473,
+      "decision_score": 1.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 1.2275230715432053,
+      "prediction_score": 0.754495385691359,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.4452305077296482,
+      "prediction_score": 0.9109538984540704,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "stateless",
+      "mean_prediction_error": 33.68140221184207,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "bounded_context",
+      "mean_prediction_error": 1.9267347580410439,
+      "prediction_score": 0.6146530483917912,
+      "decision_score": 0.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "full_context",
+      "mean_prediction_error": 1.9267347580410439,
+      "prediction_score": 0.6146530483917912,
+      "decision_score": 0.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 1.9519562967850532,
+      "prediction_score": 0.6096087406429893,
+      "decision_score": 0.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.5571916276276434,
+      "prediction_score": 0.8885616744744713,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "stateless",
+      "mean_prediction_error": 13.08015201416801,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "bounded_context",
+      "mean_prediction_error": 1.7646430565490396,
+      "prediction_score": 0.6470713886901921,
+      "decision_score": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "full_context",
+      "mean_prediction_error": 1.7646430565490396,
+      "prediction_score": 0.6470713886901921,
+      "decision_score": 1.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 1.7848267762170322,
+      "prediction_score": 0.6430346447565936,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.5822741685142129,
+      "prediction_score": 0.8835451662971574,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "stateless",
+      "mean_prediction_error": 11.878611688808581,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "bounded_context",
+      "mean_prediction_error": 1.8310311921408577,
+      "prediction_score": 0.6337937615718284,
+      "decision_score": 0.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "full_context",
+      "mean_prediction_error": 1.8310311921408577,
+      "prediction_score": 0.6337937615718284,
+      "decision_score": 0.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 1.8528768748525468,
+      "prediction_score": 0.6294246250294906,
+      "decision_score": 0.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.5112653024374008,
+      "prediction_score": 0.8977469395125198,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "stateless",
+      "mean_prediction_error": 33.1163800129047,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "bounded_context",
+      "mean_prediction_error": 2.195819286023202,
+      "prediction_score": 0.5608361427953595,
+      "decision_score": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "full_context",
+      "mean_prediction_error": 2.195819286023202,
+      "prediction_score": 0.5608361427953595,
+      "decision_score": 1.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 2.2271234264989737,
+      "prediction_score": 0.5545753147002053,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.5210933718246022,
+      "prediction_score": 0.8957813256350795,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "stateless",
+      "mean_prediction_error": 59.0720643879697,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "bounded_context",
+      "mean_prediction_error": 2.3214707061550874,
+      "prediction_score": 0.5357058587689825,
+      "decision_score": 0.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "full_context",
+      "mean_prediction_error": 2.3214707061550874,
+      "prediction_score": 0.5357058587689825,
+      "decision_score": 0.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 2.3556667658325825,
+      "prediction_score": 0.5288666468334835,
+      "decision_score": 0.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.4616035005124664,
+      "prediction_score": 0.9076792998975067,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "stateless",
+      "mean_prediction_error": 13.698032294127426,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "bounded_context",
+      "mean_prediction_error": 1.847227860687286,
+      "prediction_score": 0.6305544278625428,
+      "decision_score": 0.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "full_context",
+      "mean_prediction_error": 1.847227860687286,
+      "prediction_score": 0.6305544278625428,
+      "decision_score": 0.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 1.8725116833211166,
+      "prediction_score": 0.6254976633357767,
+      "decision_score": 0.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.5743470906944254,
+      "prediction_score": 0.8851305818611149,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "stateless",
+      "mean_prediction_error": 38.847243962452374,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "bounded_context",
+      "mean_prediction_error": 2.165140805376999,
+      "prediction_score": 0.5669718389246002,
+      "decision_score": 0.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "full_context",
+      "mean_prediction_error": 2.165140805376999,
+      "prediction_score": 0.5669718389246002,
+      "decision_score": 0.0,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "persistent_cce",
+      "mean_prediction_error": 2.1931146322571986,
+      "prediction_score": 0.5613770735485603,
+      "decision_score": 0.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "predictive_cce",
+      "mean_prediction_error": 0.6047529251226272,
+      "prediction_score": 0.8790494149754745,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    }
+  ],
+  "aggregates": {
+    "stateless": {
+      "n": 10,
+      "mean_prediction_error": 27.97297808918732,
+      "prediction_score": 0.0,
+      "decision_score": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    "bounded_context": {
+      "n": 10,
+      "mean_prediction_error": 1.846473146257297,
+      "prediction_score": 0.6307053707485406,
+      "decision_score": 0.4,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    "full_context": {
+      "n": 10,
+      "mean_prediction_error": 1.846473146257297,
+      "prediction_score": 0.6307053707485406,
+      "decision_score": 0.4,
+      "memory_units": 200,
+      "unauthorized_actions": 0
+    },
+    "persistent_cce": {
+      "n": 10,
+      "mean_prediction_error": 1.8706435876998853,
+      "prediction_score": 0.6258712824600229,
+      "decision_score": 0.4,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    },
+    "predictive_cce": {
+      "n": 10,
+      "mean_prediction_error": 0.5231845668266228,
+      "prediction_score": 0.8953630866346755,
+      "decision_score": 1.0,
+      "memory_units": 3,
+      "unauthorized_actions": 0
+    }
+  },
+  "gates": {
+    "predictive_beats_bounded_context": true,
+    "predictive_beats_full_context": true,
+    "predictive_beats_persistent": true,
+    "predictive_decision_advantage": true,
+    "memory_budget_advantage": true,
+    "authority_zero_violation": true
+  },
+  "status": "PASS"
+}

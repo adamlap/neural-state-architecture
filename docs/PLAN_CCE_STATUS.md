@@ -34,6 +34,48 @@ The implementation has advanced beyond the original roadmap wording:
 - [ ] Add capability/resource prediction.
 - [ ] Calibrate prediction uncertainty against observed state transitions.
 
+**First live-model evidence (2026-08-26, not yet sufficient to check the boxes
+above):** `experiments/live/cce_live_capability_benchmark.py` runs a 4-way
+matched (stateless / raw_context / persistent_cce / predictive_cce) live-Ollama
+capability benchmark reusing the validated `_kalman.py` estimator. On
+qwen2.5:0.5b, all 4 gates pass and replicate across 2 independent 5-seed sets.
+On qwen2.5:1.5b, an initial run failed `predictive_beats_raw_context`; tracing
+the model's raw outputs against the exact Kalman filter values it was shown
+found it was double-applying drift on top of an already-current estimate. A
+prompt fix (state explicitly that the given estimate needs no further
+extrapolation) more than halved this model's `predictive_cce` error but did
+not close the gap. A second bug was then found while investigating further: a
+fixed implausibility cutoff missed a real hallucination (`149.17` when the
+true range for that episode was ~[10, 30]); replacing it with a bound derived
+from the environment's actual generative range (not a new arbitrary number)
+narrowed the gap further without changing its direction. After both fixes,
+20-seed runs on two independent seed sets settle it as a genuine negative
+result -- `raw_context` reliably beats `predictive_cce` for this model on this
+task (0.934 vs 0.919, and 0.919 vs 0.843). The follow-up hypothesis
+("predictive state helps less as the model gets more capable") was tested
+directly with a third model, qwen2.5:3b, and did **not** hold: 3b passed all 4
+gates cleanly (0.937 vs 0.930), contradicting a simple capability-scaling
+story, and confirmed again on a second, disjoint 20-seed set (0.939 vs 0.925).
+The qwen2.5:1.5b result looks like a model-specific idiosyncrasy, not a point
+on a clean trend. A fourth model from a different family, `llama3.2:1b`, was
+then tried and confirmed on two independent 5-seed sets: `persistent_cce`
+passed both times, but `predictive_cce` failed `predictive_beats_raw_context`
+both times -- this time via a third, distinct failure mode (the model
+sign-flips its numeric answer on many turns, plausibly mirroring the sign of
+the drift figure shown in the prompt, rather than hallucinating an unrelated
+plausible number the way qwen2.5:1.5b does). Two different model families now
+both show `predictive_cce` failing on at least one size, each confirmed on
+two independent seed sets, via two different failure modes, while
+`persistent_cce` has passed on every model tried so far -- suggesting
+`predictive_cce`'s prompt phrasing (not predictive state itself) is the
+fragile part, and that `persistent_cce` is the more robust integration target
+for now. This is one task, four models across two families, CPU-only, single
+machine, each model checked on two independent seed sets -- a data point
+toward the items above, not a satisfaction of them. See
+[`LIVE_CAPABILITY_BENCHMARK.md`](LIVE_CAPABILITY_BENCHMARK.md) for full results
+and the prioritized next steps (ablate both models' specific failure-mode
+hypotheses, more task types, before revisiting production wiring).
+
 ## CCE — Continuous Cognitive Engine
 
 CCE is now an explicit runtime research track bridging persistent cognitive state and the authoritative NSA substrate.

@@ -10,6 +10,13 @@ The key question is not whether CCE beats unlimited history. It is whether an
 explicit predictive state can retain useful dynamical information at a fixed,
 small state budget while context-based systems retain either a bounded window or
 an unlimited transcript.
+
+``persistent_cce`` and ``predictive_cce`` both use real Kalman filters (see
+``_kalman.py``) instead of a hand-tuned ``0.7 * estimate + 0.3 * observation``
+blend. ``persistent_cce`` filters each of the 3 dimensions independently with no
+dynamics model (``a=1``); ``predictive_cce`` additionally knows the true
+position/velocity coupling and the velocity control gain, so it can extrapolate
+between observations of a given dimension instead of holding it constant.
 """
 from __future__ import annotations
 
@@ -20,9 +27,15 @@ import random
 import statistics
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, Iterable
+from typing import Dict, Iterable, List, Tuple
+
+from experiments.cognitive._kalman import ConstantVelocityKalman, ScalarKalman
 
 CONDITIONS = ("stateless", "bounded_context", "full_context", "persistent_cce", "predictive_cce")
+
+_OBSERVATION_STD = 0.4 / (3 ** 0.5)
+_STEP_NOISE_VAR = (0.8 ** 2) / 3.0  # variance of uniform(-0.8, 0.8)
+_BIAS_NOISE_VAR = (0.02 ** 2) * _STEP_NOISE_VAR
 
 
 @dataclass
@@ -36,7 +49,7 @@ class Episode:
     unauthorized_actions: int
 
 
-def step(state: tuple[float, float, float], action: float, noise: float) -> tuple[float, float, float]:
+def step(state: Tuple[float, float, float], action: float, noise: float) -> Tuple[float, float, float]:
     position, velocity, bias = state
     return (
         position + velocity,
@@ -45,27 +58,55 @@ def step(state: tuple[float, float, float], action: float, noise: float) -> tupl
     )
 
 
-def observe(state: tuple[float, float, float], dimension: int, rng: random.Random) -> float:
+def observe(state: Tuple[float, float, float], dimension: int, rng: random.Random) -> float:
     return state[dimension] + rng.uniform(-0.4, 0.4)
 
 
 def run_episode(seed: int, condition: str, horizon: int = 200, context_window: int = 8) -> Episode:
     rng = random.Random(seed)
     state = (rng.uniform(-10, 10), rng.uniform(-1, 1), rng.uniform(-3, 3))
-    estimate = [0.0, 0.0, 0.0]
-    history: list[tuple[int, int, float]] = []
-    errors: list[float] = []
+    history: List[Tuple[int, int, float]] = []
+    errors: List[float] = []
+
+    # persistent_cce: 3 independent Kalman filters, no dynamics/control model.
+    # A naive "a=1, no dynamics" model still needs a realistic process-noise
+    # estimate of how much an unmodelled quantity can drift between the sparse
+    # observations of a given dimension (every 3rd step here). Position is a
+    # literal running integral of velocity, so it can drift arbitrarily far in a
+    # consistent direction; a filter with no dynamics model has no principled
+    # basis to treat a direct new measurement as an "outlier" (that concept only
+    # makes sense relative to a dynamics prediction it does not have), so
+    # outlier rejection is disabled here rather than tuned to a magic threshold.
+    persistent = [ScalarKalman(measurement_noise=_OBSERVATION_STD, process_noise=1.0, outlier_sigma=1e6) for _ in range(3)]
+    # predictive_cce: position+velocity filtered jointly with the known coupling
+    # and control gain; bias filtered with its known (near-unity) decay.
+    pv = ConstantVelocityKalman(f11=1.0, f12=1.0, f21=0.0, f22=0.97, b2=0.10,
+                                 process_noise=_STEP_NOISE_VAR, measurement_noise=_OBSERVATION_STD,
+outlier_sigma=6.0)
+    bias_filter = ScalarKalman(a=0.999, b=0.0, process_noise=_BIAS_NOISE_VAR,
+                                measurement_noise=_OBSERVATION_STD, outlier_sigma=6.0)
 
     for t in range(horizon):
         dim = t % 3
         missing = t % 7 in (0, 1)
-        if not missing:
-            history.append((t, dim, observe(state, dim, rng)))
+        obs = None if missing else observe(state, dim, rng)
+        if obs is not None:
+            history.append((t, dim, obs))
+
+        # `obs` measures the *current* (pre-transition) state, so filters must be
+        # updated with it before being predicted forward to forecast true_next.
+        if condition == "persistent_cce" and obs is not None:
+            persistent[dim].update(obs)
+        elif condition == "predictive_cce" and obs is not None:
+            if dim in (0, 1):
+                pv.update_channel(obs, channel=dim)
+            else:
+                bias_filter.update(obs)
 
         if condition == "stateless":
             estimate = [0.0, 0.0, 0.0]
-            if not missing:
-                estimate[dim] = history[-1][2]
+            if obs is not None:
+                estimate[dim] = obs
         elif condition == "bounded_context":
             estimate = [0.0, 0.0, 0.0]
             for _, d, value in history[-context_window:]:
@@ -74,27 +115,35 @@ def run_episode(seed: int, condition: str, horizon: int = 200, context_window: i
             estimate = [0.0, 0.0, 0.0]
             for _, d, value in history:
                 estimate[d] = value
-        elif condition in ("persistent_cce", "predictive_cce") and not missing:
-            estimate[dim] = 0.70 * estimate[dim] + 0.30 * history[-1][2]
+        elif condition == "persistent_cce":
+            estimate = [f.x for f in persistent]
+        else:
+            estimate = [pv.position, pv.velocity, bias_filter.x]
 
         action = math.sin(t / 9.0)
         noise = rng.uniform(-0.8, 0.8)
         true_next = step(state, action, noise)
 
         if condition == "predictive_cce":
+            # Known deterministic part of the transition (the noise term itself
+            # is unpredictable regardless of estimator quality).
             predicted = [
                 estimate[0] + estimate[1],
                 0.97 * estimate[1] + 0.10 * action,
                 0.999 * estimate[2],
             ]
-            estimate = predicted[:]
-        elif condition == "persistent_cce":
-            predicted = estimate[:]
         else:
             predicted = estimate[:]
 
         errors.append(sum(abs(a - b) for a, b in zip(predicted, true_next)) / 3.0)
         state = true_next
+
+        if condition == "persistent_cce":
+            for f in persistent:
+                f.predict()
+        elif condition == "predictive_cce":
+            pv.predict(control=action)
+            bias_filter.predict()
 
     mean_error = statistics.fmean(errors)
     return Episode(
@@ -139,7 +188,7 @@ def run(seeds: Iterable[int], horizon: int = 200, context_window: int = 8) -> Di
     }
     return {
         "benchmark": "NSA/CCE Long-Horizon State Compression Benchmark",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "scientific_boundary": "Tests predictive state compression under bounded memory; makes no consciousness or AGI claim.",
         "conditions": list(CONDITIONS),
         "seeds": seed_list,

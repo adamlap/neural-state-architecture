@@ -113,13 +113,23 @@ def run_episode(seed: int, condition: str, horizon: int = 240, context_window: i
                 state_v = 0.8 * state_v + 0.2 * v_next
             pred_v = state_v
         else:
-            if observe_v and len(transition_history) >= 4:
-                # The sufficient state is the fitted dynamics, current velocity,
-                # and drift estimate. The entire transcript is not retained.
-                model = fit_linear(transition_history)
+            # `v_next` is an exact observation of the current velocity (there is
+            # no measurement noise in this environment; only the transition
+            # coefficients are unknown). It must be reported directly rather than
+            # re-projected through the fitted model — re-projecting an already
+            # exact value discards information the model doesn't have and was
+            # strictly worse than simply trusting the observation.
+            if observe_v:
+                if len(transition_history) >= 4:
+                    # The sufficient state is the fitted dynamics, current
+                    # velocity, and drift estimate. The entire transcript is not
+                    # retained.
+                    model = fit_linear(transition_history)
                 state_v = v_next
-            pred_v = model[0] * state_v + model[1] * action + model[2]
-            state_v = pred_v
+                pred_v = state_v
+            else:
+                pred_v = model[0] * state_v + model[1] * action + model[2]
+                state_v = pred_v
 
         errors.append(abs(pred_v - v_next))
         x, v = x_next, v_next
@@ -170,7 +180,7 @@ def run(seeds: Iterable[int], horizon: int = 240, context_window: int = 8) -> di
     }
     return {
         "benchmark": "NSA/CCE Sufficient-State Dynamics Benchmark",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "scientific_boundary": "Tests whether a learned fixed-size predictive state can preserve long-horizon dynamical information; it does not establish AGI or consciousness.",
         "conditions": list(CONDITIONS),
         "seeds": seed_list,
