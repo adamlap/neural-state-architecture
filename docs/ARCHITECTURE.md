@@ -18,7 +18,7 @@ Application
 │       │              └─ goals         │       │     │
 │       │                              policy/authority│
 │       ▼                                      │     │
-│ CCE lifecycle / persistence ← trace/audit ←──┘     │
+│ nsa.cce scheduler / lifecycle ← trace/audit ←─┘     │
 └──────────────────────────┬─────────────────────────┘
                            │
                            ▼
@@ -28,12 +28,15 @@ Application
 
 ## Stable public boundary
 
-The supported application entry point is `nsa.NSA`. It is implemented in `nsa.agent` and deliberately does not import the legacy PyTorch runtime.
+The supported application entry point is `nsa.NSA`. It is implemented in `nsa.agent` and composes the canonical `nsa.cce` scheduler rather than maintaining a second continuous runtime.
 
 ```python
 from nsa import NSA, OllamaBackend
 agent = NSA(OllamaBackend("qwen2.5:3b"))
 result = agent.run("hello")
+
+agent.continuous_set_enabled(True)
+agent.continuous_start()
 ```
 
 ## State boundary
@@ -48,11 +51,19 @@ result = agent.run("hello")
 
 The model receives a read-only summary. It does not mutate authority directly.
 
-## Cognition and lifecycle
+## Continuous Cognitive Engine
 
-`nsa.cce` owns durable lifecycle primitives such as input events and integrity-checked checkpoints. `nsa.cognition` contains belief-state primitives. Existing continuous CCE engines and predictive components remain under `nsa.runtime` until their interfaces are consolidated behind `nsa.agent`.
+`nsa.cce` is now the canonical public continuous-execution boundary. `ContinuousCognitiveEngine` owns wall-clock scheduling and observability only. The supplied transition callback remains authoritative for state evolution, cognition, policy and capability checks.
 
-This separation is intentional: the public runtime is stable while research-grade cognitive mechanisms can evolve without changing every application's imports.
+The scheduler is **opt-in** and **fail-closed by default**. A transition exception freezes the last committed state and disables automatic ticks until explicitly re-enabled. Deterministic single-step execution is available through `continuous_tick()` for testing and embedded runtimes.
+
+`nsa.cce.lifecycle` owns durable lifecycle primitives such as input events and integrity-checked checkpoints. `nsa.cce.substrate` provides an optional bridge to the six-layer cognitive substrate without importing heavy ML dependencies during ordinary `import nsa`.
+
+## Compatibility boundary
+
+The former `nsa.runtime.continuous_engine` and `nsa.runtime.cce_adapter` paths are compatibility shims that re-export the canonical public CCE implementation. New code must use `nsa.cce`; the compatibility modules contain no independent scheduler or transition logic.
+
+Model-specific cognitive engines may remain in `nsa.runtime` while their interfaces are independently consolidated. They are implementation/research components, not competing application runtimes.
 
 ## Governance boundary
 
