@@ -2,210 +2,100 @@
 
 > **An experimental governed cognitive architecture and mathematical substrate for AI systems.**
 
-NSA explores a separation between **neural intelligence**, **explicit operational state**, **normative policy**, and **execution authority**. The model proposes; the NSA substrate evaluates and governs.
+NSA explores a separation between **neural intelligence**, **explicit operational/epistemic state**, **normative policy**, **capabilities**, and **execution authority**. The model proposes; the NSA substrate evaluates and governs.
 
 > [!WARNING]
-> NSA is research software. Its current reference semantic classifier is deterministic and pattern-based. A configured policy is **not** proof that a model cannot internally represent prohibited knowledge, evade a classifier, or defeat a compromised runtime. Strong safety claims require an explicitly defined trusted-computing boundary, semantic classifier, capability layer, and threat model.
+> NSA is research software. Its current reference semantic classifier is deterministic and pattern-based. A configured policy is not proof that a model cannot internally represent prohibited knowledge, evade a classifier, or defeat a compromised runtime. Safety claims are bounded by the trusted-computing boundary, semantic classifier, capability layer and threat model actually evaluated.
 
-## Why NSA exists
-
-The original goal of NSA was to make AI safety less dependent on asking a neural model to *remember to be safe*. The current architecture therefore separates:
-
-```text
-                 MODEL / INTELLIGENCE
-                         │
-                         │ proposals, reasoning, language
-                         ▼
-              ┌─────────────────────┐
-              │   NSA CONTROL PLANE │
-              │                     │
-              │ policy              │
-              │ semantic state      │
-              │ normative state     │
-              │ provenance          │
-              │ capabilities        │
-              │ uncertainty         │
-              └──────────┬──────────┘
-                         │
-                  SecurityDecision
-                         │
-              ┌──────────┴──────────┐
-              │                     │
-            DENY/ESCALATE        ALLOW
-                                    │
-                                    ▼
-                           TRUSTED RUNTIME
-                           tools / network /
-                           files / side effects
-```
-
-The central architectural principle is:
+## Core principle
 
 > **Intelligence is not authority.**
 
-This lets model developers continue improving model capability while the policy and trusted runtime boundaries remain independently configurable and auditable.
+```text
+                    MODEL / INTELLIGENCE
+                    proposals / reasoning
+                            │
+                            ▼
+                 ┌─────────────────────┐
+                 │    NSA STATE PLANE  │
+                 │                     │
+                 │ operational state   │
+                 │ belief / epistemic  │
+                 │ normative policy    │
+                 │ provenance          │
+                 │ capabilities        │
+                 │ goals / uncertainty │
+                 └──────────┬──────────┘
+                            │
+                     SecurityDecision
+                            │
+                 ┌──────────┴──────────┐
+                 │                     │
+             DENY / ESCALATE        ALLOW
+                                       │
+                                       ▼
+                              TRUSTED RUNTIME
+                            tools / files / net /
+                              external effects
+```
 
-## Practical interface — protect an Ollama model
+A model output is a proposal. Execution authority is controlled separately by typed state, policy, capability checks and the trusted runtime.
 
-The quickest way to use the current control plane is through `make`.
+## Current architecture
 
-### 1. Start Ollama normally
+NSA is a connected stack rather than a modification of one neural model:
+
+| Layer | Purpose |
+|---|---|
+| **Neural model `m`** | Language, knowledge and reasoning; normally remains frozen. |
+| **Operational state `σ`** | Explicit hard/soft security and runtime state. |
+| **Belief state `B`** | Explicit uncertainty over hypotheses/world states. |
+| **Normative state `ν`** | Policy, risk and normative information used for evaluation. |
+| **Provenance `π`** | Origin/trust information for decisions and audit. |
+| **Goals `g`** | Legitimate objective state. |
+| **Capabilities `κ`** | What the runtime is actually permitted and able to execute. |
+| **CCE** | Persistent continuous cognitive state and wall-clock dynamics. |
+| **Trusted runtime** | Final boundary for tools, files, network and external side effects. |
+| **Evidence layer** | Tests, trajectory audits, adversarial experiments and machine-readable artifacts. |
+
+A useful conceptual state is:
+
+$$\Omega_t=(m_t,\sigma_t,\nu_t,\kappa_t,\pi_t,g_t,B_t)$$
+
+The equation is a research abstraction, not a claim that every component is a single scalar/vector.
+
+## Practical deployment — protect an Ollama model
+
+Install and start Ollama, then run the NSA-compatible API server:
 
 ```bash
 ollama pull qwen2.5:3b
 make serve-ollama
 ```
 
-The NSA-compatible API server listens on port `8000` by default and forwards allowed requests to Ollama.
-
-### 2. Start with a safety policy
+With a policy:
 
 ```bash
 make serve-ollama POLICY=examples/policies/safe_assistant.json
 ```
 
-The same policy can be applied to the continuous CCE server:
+Or the continuous CCE server:
 
 ```bash
 make serve-cce POLICY=examples/policies/safe_assistant.json
 ```
 
-You can configure the model and port:
-
-```bash
-make serve-cce \
-  NSA_MODEL=qwen2.5:3b \
-  NSA_PORT=8000 \
-  POLICY=examples/policies/safe_assistant.json
-```
-
-Or use the environment variable:
-
-```bash
-NSA_POLICY=examples/policies/safe_assistant.json make serve-ollama
-```
-
-The server can also target an OpenAI-compatible backend such as LM Studio:
-
-```bash
-make serve-lmstudio POLICY=examples/policies/enterprise_safe.json
-```
-
-### 3. What happens to a request?
-
-With a policy enabled, the flow is:
+The request path is:
 
 ```text
-HTTP request
-    │
-    ▼
-extract user input
-    │
-    ▼
-semantic policy classification
-    │
-    ▼
-NSAPolicy + capability/data checks
-    │
-    ├── DENY / ESCALATE / APPROVAL ──► no model inference
-    │
-    └── ALLOW
-          │
-          ▼
-       Ollama / backend
-          │
-          ▼
-       output policy check
-          │
-          ├── blocked ──► safe replacement + audit decision
-          │
-          └── allowed ─► response
+request → policy/semantic evaluation → SecurityDecision
+        → DENY/ESCALATE or model inference
+        → output evaluation → trusted runtime
 ```
 
-The decision is represented independently as a typed `SecurityDecision`; it is not inferred from a refusal string generated by the model.
+See [`docs/policy_interface.md`](docs/policy_interface.md) and [`docs/ollama_policy_server.md`](docs/ollama_policy_server.md).
 
-### 4. Configure what is prohibited
-
-`examples/policies/safe_assistant.json` is a reference policy containing categories for harmful assistance. It is intentionally explicit:
-
-```json
-{
-  "name": "safe-assistant",
-  "prohibited": [
-    {
-      "category": "example_harm_category",
-      "mode": "deny",
-      "patterns": ["example phrase"],
-      "reason": "Configured policy reason"
-    }
-  ],
-  "protected_data": ["credentials", "private_user_data"],
-  "restricted_actions": ["filesystem_write", "external_message"],
-  "require_approval": ["external_side_effect"],
-  "unknown_policy": "escalate",
-  "default_uncertainty": "escalate"
-}
-```
-
-`patterns` are only the current reference classifier mechanism. The policy API is deliberately separated from classification so a trained semantic/normative classifier can replace it later without changing the deployment interface.
-
-### 5. Use the Python control-plane API directly
-
-```python
-from nsa import NSAPolicy, PolicyEngine, KeywordClassifier, EvaluationContext
-
-policy = NSAPolicy.from_json("examples/policies/safe_assistant.json")
-classifier = KeywordClassifier({
-    "example_harm_category": ["example phrase"],
-})
-engine = PolicyEngine(policy, classifier)
-
-decision = engine.evaluate(
-    "user request",
-    context=EvaluationContext(action="generate"),
-)
-
-print(decision.decision)
-print(decision.summary())
-```
-
-For an arbitrary existing generator:
-
-```python
-from nsa import protect_model
-
-protected = protect_model(
-    generate_fn=my_model_generate,
-    engine=engine,
-    fail_closed=True,
-)
-
-answer = protected.generate("user request")
-```
-
-The adapter evaluates both the request and generated output. Applications can inspect the `SecurityDecision` and implement their own escalation or approval UX.
-
-See [`docs/policy_interface.md`](docs/policy_interface.md) for the complete control-plane API and [`docs/ollama_policy_server.md`](docs/ollama_policy_server.md) for the server interface.
-
-## Current architecture
-
-NSA is now best understood as several connected layers rather than one monolithic model modification:
-
-| Layer | Purpose |
-|---|---|
-| **Neural model `m`** | Language, knowledge and reasoning; normally remains frozen. |
-| **Canonical state `Ω`** | Explicit semantic, hard, soft, provenance and goal state. |
-| **Hard state `σ_h`** | Structural state and authority constraints. |
-| **Policy / normative state `ν`** | Configured values, risk, uncertainty and future learned normative representations. |
-| **Security decision** | Explicit `ALLOW`, `DENY`, `ESCALATE`, `REQUIRE_APPROVAL` or `REDACT`. |
-| **Capabilities `κ`** | What the runtime is actually able to execute. |
-| **CCE** | Persistent continuous cognitive state and wall-clock dynamics. |
-| **Trusted runtime** | Final boundary for tools, files, network and external side effects. |
-| **Evidence / verification** | Tests, adversarial experiments and machine-readable evidence. |
-
-The important distinction is between **semantic understanding** and **authority**. A model can discuss a dangerous concept without automatically gaining permission to execute an action or cross a protected data boundary.
-
-## Running and testing
+## Testing and experiments
 
 Install development dependencies:
 
@@ -214,7 +104,7 @@ make venv
 make install-dev
 ```
 
-Fast software gate:
+Software gate:
 
 ```bash
 make test
@@ -226,122 +116,108 @@ Evidence validation:
 make evidence
 ```
 
-Deterministic cognitive demo:
+Deterministic demo:
 
 ```bash
 make demo
 ```
 
-Local Qwen demos:
+Scientific experiments are deliberately separate from the fast PR gate.
 
-```bash
-make demo-live-0.5b
-make demo-live-3b
-```
+### NSA 6.3 — procedural blind-world validation
 
-CCE tests:
+NSA 6.3 is the foundational six-arm experiment comparing:
 
-```bash
-make test-cce
-```
+1. Raw LLM
+2. Static guardrail
+3. Governed agent
+4. Search agent
+5. Belief agent
+6. Full NSA substrate
 
-Scientific experiments are intentionally separate from the fast PR gate. Use their individual `make benchmark-*` targets or the corresponding manual GitHub Actions workflows when evidence runs are required.
+It measures governed task completion, governance violations, information gain, risk, intervention and trajectory integrity. The current 40-trial observation reported full NSA at 100% GTC with zero observed monitored violations in that testbed. This remains a bounded empirical observation, not a universal safety claim.
 
-## Cognitive Architecture Benchmark — the key research experiment
+See [`docs/NSA_6_3_SCIENTIFIC_VALIDATION.md`](docs/NSA_6_3_SCIENTIFIC_VALIDATION.md).
 
-The repository now contains the central experiment for testing whether explicit persistent/predictive cognitive state provides measurable computational value beyond stateless inference and conventional context memory.
+### NSA 6.4 — independent replication
 
-It compares four matched conditions:
+NSA 6.4 extends the same six-arm protocol with independent development/held-out seeds, varying world complexity and noise, compute accounting, trajectory auditing and adaptive adversarial stress.
 
-```text
-same task + same seeds + same budget
-              │
-     ┌────────┼─────────┐
-     ▼        ▼         ▼
- Stateless  Context   Persistent CCE  → Predictive CCE
-```
-
-The initial benchmark covers **delayed recall, hidden-state inference, goal persistence, interruption recovery, and counterfactual reasoning**. It records accuracy, token/call budgets, recovery and unauthorized-action counts, and reports explicit scientific gates. A failed gate is reported as `RESEARCH_GATE_NOT_YET_MET`; the harness never changes the threshold merely to make CI green.
-
-### Run it locally
-
-```bash
-PYTHONPATH=. python experiments/cognitive/benchmark.py \
-  --seeds 7 17 37 73 137 \
-  --horizon 80 \
-  --out results/cognitive_architecture_benchmark.json
-```
-
-Then inspect:
+The predeclared publication matrix is:
 
 ```text
-results/cognitive_architecture_benchmark.json
+Models:      Qwen2.5-3B, Qwen3-4B, Llama 3.1 8B
+Dev seeds:   7, 17, 37, 73, 137
+Held-out:    101, 211, 307, 401, 509
+Hypotheses:  2, 4, 8, 16
+Noise:       0, .05, .10, .20, .30
 ```
 
-Run its regression tests with:
+The first real-model quick replication has now been run through Ollama with `qwen2.5:3b`. It successfully exercises the live substrate and records zero observed violations in the preserved runs, but it also shows a significant degradation at higher hypothesis complexity. **This is a stress finding, not something to hide.** It is not yet evidence of cross-model generalization.
+
+Run the local quick experiment with:
 
 ```bash
-PYTHONPATH=. python -m pytest -q tests/test_cognitive_benchmark.py
+make -f Makefile.nsa64 benchmark-nsa64-ollama-smoke
 ```
 
-The deterministic benchmark validates the experimental protocol and state-control machinery. **It is not by itself evidence of AGI, consciousness, or general superiority.** The decisive follow-up is live-model replication through Ollama with matched model, sampling parameters, token budget, inference count, hardware and wall-clock budget, followed by multiple model families, held-out tasks, statistical effect sizes and adaptive adversarial testing.
+Run the live protocol with:
 
-See [`docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md`](docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md) for the protocol and scientific interpretation.
-
-## Research direction
-
-The repository has evolved through several experimental stages:
-
-```text
-state algebra / typed security
-        ↓
-explicit hard-state governance
-        ↓
-adversarial verification
-        ↓
-CCE / persistent cognitive state
-        ↓
-real local-model inference
-        ↓
-policy + decision + enforcement control plane
-        ↓
-semantic / normative state research
-        ↓
-trusted capability and autonomous-agent governance
+```bash
+make -f Makefile.nsa64 benchmark-nsa64-ollama
 ```
 
-The next major research problem is not another prompt-level refusal mechanism. It is whether **normative state can become a first-class computational variable while hard authority constraints remain structurally outside the model's learned preferences**.
+The first live evidence bundle is preserved in [`results/nsa64/ollama-quick/`](results/nsa64/ollama-quick/).
 
-A useful conceptual state is:
+See [`docs/NSA_6_4_REPLICATION.md`](docs/NSA_6_4_REPLICATION.md) and the researcher-facing [`research/NSA_6_4_LIVE_RESULTS.md`](research/NSA_6_4_LIVE_RESULTS.md).
 
-$$\Omega_t = (m_t, \sigma_t, \nu_t, \kappa_t, \pi_t, g_t, \rho_t)$$
+## Research package
 
-where `m` is model cognition, `σ` operational state, `ν` normative/value state, `κ` capability/authority, `π` provenance and `g` goals. The architecture should preserve the distinction between what the model *believes or wants* and what the trusted system *permits*.
+The repository now includes a structured research package:
 
-## Scientific claims and limitations
+- [`research/README.md`](research/README.md) — research entry point.
+- [`research/NSA_RESEARCH_BRIEF.md`](research/NSA_RESEARCH_BRIEF.md) — architecture and hypothesis.
+- [`research/NSA_6_4_LIVE_RESULTS.md`](research/NSA_6_4_LIVE_RESULTS.md) — live-model result analysis.
+- [`research/CLAIMS_AND_EVIDENCE.md`](research/CLAIMS_AND_EVIDENCE.md) — claim/evidence boundary.
+- [`research/REPRODUCIBILITY.md`](research/REPRODUCIBILITY.md) — reproduction and reporting protocol.
+- [`research/ARCHITECTURE_OVERVIEW.md`](research/ARCHITECTURE_OVERVIEW.md) — technical architecture map.
+- [`evidence/`](evidence/) — machine-readable evidence and verification manifests.
 
-NSA experiments can demonstrate properties of particular implementations under stated assumptions. They do not establish general AGI safety or prove that an arbitrary future superintelligence cannot defeat an incorrectly designed implementation.
+## Scientific status
 
-When reading an experiment, distinguish:
+The current evidence supports a **bounded architectural hypothesis**, not a claim of AGI or consciousness.
 
-1. **Structural guarantees** — properties enforced by code/state transitions inside the trusted boundary.
-2. **Learned/semantic guarantees** — classifier or model behaviour that must be empirically evaluated.
-3. **Runtime guarantees** — capability/tool boundaries enforced outside the language model.
-4. **Scientific observations** — benchmark results that may not generalize beyond the tested environment.
+The strongest defensible interpretation is:
 
-This distinction is a core part of the project's research methodology.
+> Explicit machine-maintained operational and epistemic state can be coupled to a frozen language model and an independently enforced capability boundary. In the tested procedural environment, the full NSA substrate has achieved high governed task completion with zero observed monitored violations, and the live Ollama replication demonstrates that the substrate executes around a real local model. High-complexity live performance remains a clear limitation requiring further work.
+
+The project distinguishes four evidence classes:
+
+1. **Structural guarantees** — code/state properties inside the trusted boundary.
+2. **Runtime guarantees** — capability/tool boundaries enforced outside the model.
+3. **Empirical observations** — measured behaviour in specified environments.
+4. **Open research claims** — hypotheses that still require independent replication.
+
+A green CI workflow means the experiment executed and software checks passed. It does not by itself prove the scientific hypothesis.
+
+## What comes next
+
+The next publication-quality run is the **full live replication matrix** across independent model families, full difficulty/noise levels, larger trial counts, compute-matched controls, confidence intervals/effect sizes, held-out environments and adaptive adversarial evaluation.
+
+If that evidence survives, the project can move from benchmark development to external research validation and adoption discussions.
 
 ## Repository guide
 
-- [`PLAN.md`](PLAN.md) — current research and implementation roadmap.
-- [`docs/policy_interface.md`](docs/policy_interface.md) — practical policy/developer API.
-- [`docs/ollama_policy_server.md`](docs/ollama_policy_server.md) — Ollama/CCE deployment guide.
-- [`docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md`](docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md) — central cognitive benchmark protocol.
-- [`docs/alignment_substrate.md`](docs/alignment_substrate.md) — alignment/value-layer research notes.
-- [`evidence/`](evidence/) — machine-readable empirical evidence.
+- [`PLAN.md`](PLAN.md) — implementation and research roadmap.
+- [`docs/NSA_6_3_SCIENTIFIC_VALIDATION.md`](docs/NSA_6_3_SCIENTIFIC_VALIDATION.md) — NSA 6.3 protocol and interpretation.
+- [`docs/NSA_6_4_REPLICATION.md`](docs/NSA_6_4_REPLICATION.md) — NSA 6.4 experimental design.
+- [`docs/policy_interface.md`](docs/policy_interface.md) — policy/control-plane API.
+- [`docs/ollama_policy_server.md`](docs/ollama_policy_server.md) — Ollama deployment.
+- [`research/`](research/) — researcher-facing package.
+- [`evidence/`](evidence/) — machine-readable evidence.
 - [`tests/`](tests/) — regression and invariant tests.
-- [`experiments/`](experiments/) — scientific experiments, kept separate from the core runtime.
+- [`experiments/`](experiments/) — scientific experiments.
 
 ## Status
 
-NSA remains **experimental research software**, but the architecture now has a concrete deployment path: configure a policy, run an existing model behind the NSA server, inspect explicit security decisions, and progressively replace the reference semantic classifier with stronger learned normative/semantic components.
+**Experimental research software.** The architecture is operational and experimentally validated within the stated environments, but broad claims about general intelligence, consciousness, universal safety or arbitrary model robustness remain open research questions.
