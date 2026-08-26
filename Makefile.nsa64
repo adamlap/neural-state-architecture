@@ -1,0 +1,24 @@
+# NSA 6.4 live Ollama runner.
+# Usage: make -f Makefile.nsa64 benchmark-nsa64-ollama
+
+.PHONY: benchmark-nsa64-ollama benchmark-nsa64-ollama-smoke
+PYTHON ?= python3
+OLLAMA_BIN := $(shell command -v ollama 2>/dev/null || { [ -x "$$HOME/.local/ollama/bin/ollama" ] && echo "$$HOME/.local/ollama/bin/ollama"; })
+OLLAMA_HOST ?= 127.0.0.1:11434
+OLLAMA_MODEL ?= qwen2.5:3b
+OUT ?= results/nsa64/ollama-$(subst :,-,$(OLLAMA_MODEL))
+TRIALS ?= 20
+DEV_SEEDS ?= 7 17 37 73 137
+HELDOUT_SEEDS ?= 101 211 307 401 509
+HYPOTHESES ?= 2 4 8 16
+NOISE ?= 0.0 0.05 0.10 0.20 0.30
+
+benchmark-nsa64-ollama:
+	@[ -n "$(OLLAMA_BIN)" ] || { echo "ERROR: Ollama is not installed or not on PATH."; exit 1; }
+	@curl -sf "http://$(OLLAMA_HOST)/api/tags" >/dev/null 2>&1 || { echo "ERROR: Ollama server not reachable at $(OLLAMA_HOST)."; exit 1; }
+	@$(OLLAMA_BIN) list | grep -q "^$(OLLAMA_MODEL)" || { echo "ERROR: $(OLLAMA_MODEL) is not installed. Run: $(OLLAMA_BIN) pull $(OLLAMA_MODEL)"; exit 1; }
+	@mkdir -p "$(OUT)"
+	PYTHONPATH=. $(PYTHON) experiments/nsa64/replication_matrix.py --backend ollama --models $(OLLAMA_MODEL) --dev-seeds $(DEV_SEEDS) --heldout-seeds $(HELDOUT_SEEDS) --hypotheses $(HYPOTHESES) --noise $(NOISE) --trials $(TRIALS) --out "$(OUT)"
+
+benchmark-nsa64-ollama-smoke:
+	$(MAKE) -f Makefile.nsa64 benchmark-nsa64-ollama TRIALS=2 DEV_SEEDS="7" HELDOUT_SEEDS="101" HYPOTHESES="2" NOISE="0.0 0.3" OUT=results/nsa64/ollama-smoke
