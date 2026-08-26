@@ -2,11 +2,12 @@
 
 ## Environment
 
-Record Python, dependency, model, backend, hardware and exact Git revision for every publication run.
+Use Python 3.11 for CI and a pinned project environment for publication runs. The first live quick run was generated with Python 3.8.10, which should be recorded rather than silently normalized. The manifest stores the runtime metadata and exact Git revision. fileciteturn288file0L2-L2
 
-Install development dependencies with:
+Install the project:
 
 ```bash
+make venv
 make install-dev
 ```
 
@@ -18,9 +19,13 @@ ollama pull qwen2.5:3b
 
 ## Quick live replication
 
+From the repository root:
+
 ```bash
 make -f Makefile.nsa64 benchmark-nsa64-ollama-smoke
 ```
+
+The smoke target checks the local Ollama setup before executing a tiny matrix.
 
 ## Full live protocol
 
@@ -28,26 +33,57 @@ make -f Makefile.nsa64 benchmark-nsa64-ollama-smoke
 make -f Makefile.nsa64 benchmark-nsa64-ollama
 ```
 
-The publication run should use the full predeclared grid documented by NSA 6.4, not the reduced quick grid.
+The publication run should use the full predeclared grid from `docs/NSA_6_4_REPLICATION.md`, not the quick grid used for the first local replication.
 
 ## Evidence requirements
 
-Preserve exact Git revision, model/backend version, Python/dependencies, hardware, seeds, hypothesis/noise grid, trials, sampling parameters, token limits, wall time, model-call accounting, trajectory JSONL, aggregate JSON and manifest hash. Never estimate unavailable metrics; the current protocol records unavailable tool-call counts as null.
+Every publication run should preserve:
+
+- exact Git revision;
+- model name and model digest/version where available;
+- backend and backend version;
+- Python and dependency versions;
+- hardware information;
+- seed lists;
+- hypothesis/noise grid;
+- trial count;
+- sampling parameters;
+- token limits;
+- wall-clock measurements;
+- model-call accounting;
+- trajectory JSONL;
+- aggregate JSON;
+- manifest hash.
+
+Never fill unavailable metrics with estimates. The current protocol intentionally records unavailable tool-call counts as `null`. fileciteturn288file0L2-L2
 
 ## Statistical reporting
 
-Report each cell and aggregate across seeds. Include mean/std, confidence intervals, effect sizes against matched controls, compute-normalized effect sizes, per-seed results, worst/median cells, held-out performance and adversarial stress. Do not hide systematic failure at high hypothesis counts behind a single headline mean.
+For the final research release, report each cell separately and then aggregate across seeds. Include:
 
-## Publication checklist
+- mean and standard deviation;
+- bootstrap or exact confidence intervals for GTC and violation rates;
+- effect sizes against each matched control;
+- compute-normalized effect sizes;
+- per-seed results;
+- worst-case and median cells;
+- held-out performance;
+- adversarial stress performance.
 
-- [ ] Development and held-out seeds fixed before execution.
-- [ ] Held-out data cannot affect tuning/stress selection.
-- [ ] Model/backend versions recorded.
-- [ ] Compute budgets matched or explicitly reported as unequal.
-- [ ] All six control arms preserved.
-- [ ] Raw trajectories archived.
-- [ ] Invariants and audits recorded.
-- [ ] Failed cells retained.
-- [ ] Confidence intervals/effect sizes generated from raw trials.
-- [ ] Independent model family included.
-- [ ] Adaptive adversarial evaluation included.
+Do not collapse difficult cells into a single headline mean if that hides systematic failure at high hypothesis counts.
+
+## Reproducibility checklist
+
+Before calling an experiment publication-ready:
+
+- [ ] Development and held-out seeds are fixed before execution.
+- [ ] Held-out data cannot affect tuning or stress selection.
+- [ ] Model and backend versions are recorded.
+- [ ] Compute budgets are matched or explicitly reported as unequal.
+- [ ] All six NSA 6.3 control arms are preserved.
+- [ ] Raw trajectories are archived.
+- [ ] Every invariant and audit result is recorded.
+- [ ] Failed cells are retained.
+- [ ] Confidence intervals/effect sizes are generated from raw trial data.
+- [ ] An independent model family is included.
+- [ ] An adaptive adversarial evaluation is included.

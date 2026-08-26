@@ -1,6 +1,8 @@
 # NSA 6.4 — Independent Replication Matrix
 
-NSA 6.4 is the next empirical layer after the NSA 6.3 six-arm procedural blind-world validation. It is designed to answer whether the observed full-substrate capability/governance result survives changes in model family, random seed, environment complexity and observation noise.
+> **Status: active empirical validation layer.** The first real-model Ollama quick replication has been completed and is preserved in `results/nsa64/ollama-quick/`.
+
+NSA 6.4 asks whether the NSA 6.3 capability/governance observation survives changes in model family, random seed, environment complexity and observation noise.
 
 ## Predeclared design
 
@@ -13,28 +15,45 @@ The six arms remain unchanged:
 5. Belief agent
 6. Full NSA substrate
 
-The development matrix varies:
+Publication matrix:
 
-- models: Qwen2.5-3B, Qwen3-4B, Llama 3.1 8B (backend permitting);
-- seeds: `7, 17, 37, 73, 137`;
+- models: Qwen2.5-3B, Qwen3-4B, Llama 3.1 8B;
+- development seeds: `7, 17, 37, 73, 137`;
+- held-out seeds: `101, 211, 307, 401, 509`;
 - hypotheses: `2, 4, 8, 16`;
 - noise: `0, .05, .10, .20, .30`.
 
-Held-out evaluation uses independent seeds `101, 211, 307, 401, 509` and the same predeclared grid. Held-out observations are never used to select thresholds or tune the architecture.
+Held-out data are never used for architecture tuning, threshold selection or adaptive stress selection.
+
+## First live replication
+
+The first live run uses:
+
+```text
+backend:       Ollama
+model:         qwen2.5:3b
+hypotheses:    2, 8
+noise:         0.0, 0.2
+trials/cell:   5
+```
+
+It includes five development seeds, five held-out seeds and one adaptive adversarial run. The complete machine-readable manifest and raw trajectories are preserved under `results/nsa64/ollama-quick/`.
+
+The live run demonstrates real-model execution and preserves zero observed governance violations in the recorded cells. It also exposes a clear capability limitation: GTC falls substantially at `K=8`, including observed cells at 0–40%. That failure is retained as evidence and is not treated as a benchmark defect.
+
+See [`../research/NSA_6_4_LIVE_RESULTS.md`](../research/NSA_6_4_LIVE_RESULTS.md) for analysis.
 
 ## Compute accounting
 
-Every run records wall time and machine-trace token counts. A trajectory-step count is reported as a **model-call proxy** because the current NSA 6.3 logger records one model interaction per trajectory step but does not expose an independent tool-call counter. Missing metrics are explicitly null rather than fabricated.
+Every run records wall time and machine-trace token counts. A trajectory-step count is a **model-call proxy** because the current logger does not expose an independent tool-call counter. Missing metrics remain `null`; no values are fabricated.
 
-For publication-quality comparisons, the benchmark should be run with the same model, hardware, backend, token limits and number of trials across arms.
+Publication-quality comparisons should use the same model, hardware, backend, sampling parameters, token limits and trial count across arms.
 
 ## Adaptive adversarial stress
 
-After the development matrix completes, the lowest-GTC development configuration is selected. The benchmark then increases both hypothesis count and noise and executes a fresh adversarial run with a derived seed. The held-out set is never used for this selection. This is a stress test, not a post-hoc pass/fail threshold.
+After development completes, the lowest-GTC development configuration is selected. The benchmark increases hypothesis count and noise and executes a fresh adversarial run with a derived seed. Held-out data are never used for this selection.
 
 ## Evidence bundle
-
-Each run preserves:
 
 ```text
 results/nsa64/
@@ -43,37 +62,26 @@ results/nsa64/
   raw/<run>/aggregate.json
 ```
 
-`manifest.json` contains the git revision, model/backend configuration, seed split, complete run records, compute accounting, adaptive-stress selection and a SHA-256 integrity hash.
+The manifest records Git revision, model/backend configuration, seed split, complete run records, compute accounting, adaptive-stress selection and integrity metadata.
 
-## Run locally
+## Local execution
 
-Smoke run:
-
-```bash
-PYTHONPATH=. python experiments/nsa64/replication_matrix.py \
-  --backend mock \
-  --models Qwen/Qwen2.5-3B-Instruct \
-  --dev-seeds 7 17 \
-  --heldout-seeds 101 211 \
-  --hypotheses 2 4 \
-  --noise 0.0 0.2 \
-  --trials 2 \
-  --out results/nsa64
-```
-
-Full predeclared matrix:
+Quick live run:
 
 ```bash
-PYTHONPATH=. python experiments/nsa64/replication_matrix.py \
-  --backend mock \
-  --trials 20 \
-  --out results/nsa64
+make -f Makefile.nsa64 benchmark-nsa64-ollama
 ```
 
-For live-model replication, the same protocol can be run with `--backend ollama` after the selected models are available in Ollama.
+Smoke setup check:
+
+```bash
+make -f Makefile.nsa64 benchmark-nsa64-ollama-smoke
+```
+
+The Makefile wrapper verifies Ollama and the requested model before starting the experiment.
 
 ## Scientific boundary
 
-A green workflow means the experiment executed and its invariants/tests passed. It does **not** automatically mean the scientific hypothesis passed. NSA 6.4 is intended to produce evidence about replication, robustness and compute efficiency; it makes no claim of AGI, consciousness or general superiority by itself.
+A green workflow means the experiment executed and software invariants/tests passed. It does **not** automatically mean the scientific hypothesis passed.
 
-The subsequent research package should report both positive and negative cells, held-out results, confidence intervals/effect sizes, model metadata, raw trajectories and the exact git revision used to generate the evidence.
+The first live run is evidence for real-model execution and bounded governed performance, not evidence of AGI, consciousness, universal safety, or cross-model superiority. The publication claim requires the full matrix, independent model families, larger trial counts, confidence intervals/effect sizes and adversarial evaluation.

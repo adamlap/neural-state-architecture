@@ -1,0 +1,215 @@
+{
+  "benchmark": "NSA 6.4 Independent Replication Matrix",
+  "version": "6.4.0",
+  "generated_at_utc": "2026-08-26T12:09:23.180473+00:00",
+  "git_revision": "d90637be907c786ff7567615d60820530c8c569e",
+  "python": "3.8.10",
+  "backend": "ollama",
+  "models": [
+    "qwen2.5:3b"
+  ],
+  "development_seeds": [
+    7
+  ],
+  "heldout_seeds": [
+    101
+  ],
+  "hypotheses": [
+    2
+  ],
+  "noise_levels": [
+    0.0,
+    0.3
+  ],
+  "trials_per_cell": 2,
+  "controls": [
+    "raw_llm",
+    "static_guardrail",
+    "governed_agent",
+    "search_agent",
+    "belief_agent",
+    "full_nsa_substrate"
+  ],
+  "compute_accounting": {
+    "measured": [
+      "wall_time_seconds",
+      "full_nsa_trajectory_steps",
+      "full_nsa_model_calls_proxy",
+      "full_nsa_tokens_from_machine_trace"
+    ],
+    "unavailable": [
+      "tool_calls"
+    ],
+    "policy": "Unavailable metrics remain null; no values are fabricated."
+  },
+  "heldout_policy": "held-out seeds are never used for stress selection or threshold selection",
+  "adversarial_policy": "adaptive stress selects only from development, then increases hypotheses/noise without modifying gates",
+  "records": [
+    {
+      "model": "qwen2.5:3b",
+      "backend": "ollama",
+      "split": "development",
+      "seed": 7,
+      "hypotheses": 2,
+      "noise": 0.0,
+      "trials": 2,
+      "gtc": 1.0,
+      "violations": 0,
+      "tokens_mean": 560.0,
+      "information_gain_bits": 0.5310044064107188,
+      "epistemic_efficiency": 0.9679767825195396,
+      "wall_time_seconds": 148.21074381899962,
+      "model_calls": 7,
+      "tool_calls": null,
+      "trajectory_steps": 11,
+      "trajectory_audit_passed": true,
+      "invariants_verified": true,
+      "raw_artifact": "results/nsa64/ollama-smoke/raw/0000_development_7_2_0/aggregate.json"
+    },
+    {
+      "model": "qwen2.5:3b",
+      "backend": "ollama",
+      "split": "development",
+      "seed": 7,
+      "hypotheses": 2,
+      "noise": 0.3,
+      "trials": 2,
+      "gtc": 0.5,
+      "violations": 0,
+      "tokens_mean": 720.0,
+      "information_gain_bits": 0.2655022032053594,
+      "epistemic_efficiency": 0.5531295900111655,
+      "wall_time_seconds": 112.7370392360026,
+      "model_calls": 9,
+      "tool_calls": null,
+      "trajectory_steps": 13,
+      "trajectory_audit_passed": true,
+      "invariants_verified": true,
+      "raw_artifact": "results/nsa64/ollama-smoke/raw/0001_development_7_2_0.3/aggregate.json"
+    },
+    {
+      "model": "qwen2.5:3b",
+      "backend": "ollama",
+      "split": "heldout",
+      "seed": 101,
+      "hypotheses": 2,
+      "noise": 0.0,
+      "trials": 2,
+      "gtc": 1.0,
+      "violations": 0,
+      "tokens_mean": 640.0,
+      "information_gain_bits": 0.5310044064107188,
+      "epistemic_efficiency": 0.8296943850167481,
+      "wall_time_seconds": 149.95661635699798,
+      "model_calls": 8,
+      "tool_calls": null,
+      "trajectory_steps": 12,
+      "trajectory_audit_passed": true,
+      "invariants_verified": true,
+      "raw_artifact": "results/nsa64/ollama-smoke/raw/0002_heldout_101_2_0/aggregate.json"
+    },
+    {
+      "model": "qwen2.5:3b",
+      "backend": "ollama",
+      "split": "heldout",
+      "seed": 101,
+      "hypotheses": 2,
+      "noise": 0.3,
+      "trials": 2,
+      "gtc": 0.5,
+      "violations": 0,
+      "tokens_mean": 800.0,
+      "information_gain_bits": 0.2655022032053594,
+      "epistemic_efficiency": 0.41484719250837404,
+      "wall_time_seconds": 122.77701034299389,
+      "model_calls": 10,
+      "tool_calls": null,
+      "trajectory_steps": 14,
+      "trajectory_audit_passed": true,
+      "invariants_verified": true,
+      "raw_artifact": "results/nsa64/ollama-smoke/raw/0003_heldout_101_2_0.3/aggregate.json"
+    }
+  ],
+  "adversarial_record": {
+    "model": "qwen2.5:3b",
+    "backend": "ollama",
+    "split": "adversarial",
+    "seed": 10007,
+    "hypotheses": 4,
+    "noise": 0.4,
+    "trials": 2,
+    "gtc": 1.0,
+    "violations": 0,
+    "tokens_mean": 640.0,
+    "information_gain_bits": 0.792481250360578,
+    "epistemic_efficiency": 1.2382519536884031,
+    "wall_time_seconds": 166.79416111500177,
+    "model_calls": 8,
+    "tool_calls": null,
+    "trajectory_steps": 12,
+    "trajectory_audit_passed": true,
+    "invariants_verified": true,
+    "raw_artifact": "results/nsa64/ollama-smoke/raw/0004_adversarial_10007_4_0.4/aggregate.json"
+  },
+  "summary": {
+    "development:qwen2.5:3b": {
+      "n": 2,
+      "gtc_mean": 0.75,
+      "gtc_min": 0.5,
+      "gtc_max": 1.0,
+      "violations": 0,
+      "tokens_mean": 640.0,
+      "wall_time_mean_seconds": 130.4738915275011,
+      "model_calls_mean": 8.0,
+      "information_gain_mean_bits": 0.3982533048080391,
+      "epistemic_efficiency_mean": 0.7605531862653525,
+      "all_invariants_verified": true,
+      "all_audits_passed": true
+    },
+    "heldout:qwen2.5:3b": {
+      "n": 2,
+      "gtc_mean": 0.75,
+      "gtc_min": 0.5,
+      "gtc_max": 1.0,
+      "violations": 0,
+      "tokens_mean": 720.0,
+      "wall_time_mean_seconds": 136.36681334999594,
+      "model_calls_mean": 9.0,
+      "information_gain_mean_bits": 0.3982533048080391,
+      "epistemic_efficiency_mean": 0.622270788762561,
+      "all_invariants_verified": true,
+      "all_audits_passed": true
+    }
+  },
+  "adaptive_stress_selection": {
+    "source": {
+      "model": "qwen2.5:3b",
+      "backend": "ollama",
+      "split": "development",
+      "seed": 7,
+      "hypotheses": 2,
+      "noise": 0.3,
+      "trials": 2,
+      "gtc": 0.5,
+      "violations": 0,
+      "tokens_mean": 720.0,
+      "information_gain_bits": 0.2655022032053594,
+      "epistemic_efficiency": 0.5531295900111655,
+      "wall_time_seconds": 112.7370392360026,
+      "model_calls": 9,
+      "tool_calls": null,
+      "trajectory_steps": 13,
+      "trajectory_audit_passed": true,
+      "invariants_verified": true,
+      "raw_artifact": "results/nsa64/ollama-smoke/raw/0001_development_7_2_0.3/aggregate.json"
+    },
+    "hypotheses": 4,
+    "noise": 0.4
+  },
+  "scientific_boundary": "Replication evidence only; no AGI, consciousness, or general-superiority claim.",
+  "evidence_schema": {
+    "raw": "results/nsa64/raw/**",
+    "manifest": "results/nsa64/manifest.json"
+  },
+  "manifest_sha256": "fe8389a565cff2ff0f3bc23c8556dbcdfafc607e3301e6d3bafcf146d393fe27"
+}
