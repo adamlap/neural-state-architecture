@@ -1,14 +1,14 @@
-"""
-Neural State Architecture (NSA)
-================================
-A mathematical framework for typed neural computation.
+"""Neural State Architecture public API.
 
-Core concept: every activation is a semantic representation carried with
-explicit machine state.  The canonical framework state is available from
-``nsa.core`` and extends the original (m, sigma) abstraction into separate
-hard, soft, provenance and goal streams.
+Importing ``nsa`` is intentionally lightweight. PyTorch/Transformers/Triton and
+legacy research runtimes are available from their explicit modules and are not
+required for the state-aware agent API.
 """
+from __future__ import annotations
 
+from importlib import import_module
+
+from nsa.agent import AgentResult, ModelBackend, NSA, NSARuntime, RuntimeConfig
 from nsa.algebra import (
     DEFAULT_LATTICE,
     BitpackedStateVector,
@@ -23,175 +23,61 @@ from nsa.algebra import (
     build_level_attention_mask,
     unpack_states,
 )
-from nsa.core import (
-    CanonicalState,
-    GoalState,
-    HardState,
-    ProvenanceState,
-    SemanticState,
-    SoftState,
-    StateKind,
-    StateTransition,
-)
+from nsa.backends import BackendError, CallableBackend, EchoBackend, OllamaBackend
+from nsa.cce.lifecycle import CheckpointEnvelope, CognitiveInputEvent, CognitiveInputQueue, StateCheckpointStore
+from nsa.core.state import CanonicalState, GoalState, HardState, ProvenanceState, SemanticState, SoftState, StateKind, StateTransition
 from nsa.decision import Decision, SecurityDecision
-from nsa.enforcement import EvaluationContext, KeywordClassifier, PolicyEngine, PolicyClassifier
+from nsa.enforcement import EvaluationContext, KeywordClassifier, PolicyClassifier, PolicyEngine
 from nsa.policy import NSAPolicy, PolicyCompiler, PolicyRule
-from nsa.adapters import PolicyViolation, ProtectedModel, protect_model
-from nsa.utils import print_lattice
 
-try:
-    from nsa.attention import StateAwareAttention
-    from nsa.fused_attention import FusedStateAwareAttention
-    from nsa.hf_integration import (
-        NSAConfig,
-        NSAForCausalLM,
-        retrofit_hf_attention,
-        retrofit_llama_attention,
-    )
-    from nsa.kv_cache import NSAKVCache
-    from nsa.layers import NSACausalLM, NSATransformer, NSATransformerBlock
-    from nsa.lora import (
-        DynamicNSARetrofitBlock,
-        NSALoRAAttention,
-        NSALoRALinear,
-        apply_nsa_lora_retrofit,
-    )
-    from nsa.mask_injector import NSAMaskInjector
-    from nsa.objectives import NSALoss, SemanticLoss, StateConstraintLoss
-    from nsa.residual_taint import ResidualTaintTracker, join_levels, meet_levels
-    from nsa.state import (
-        DeclassificationOperator,
-        StateTransitionOperator,
-        StateVector,
-        WeightedStateEdge,
-    )
-    from nsa.triton_kernel import (
-        HAS_TRITON,
-        TRITON_KERNEL_DEFINED,
-        USING_TRITON_KERNEL,
-        FusedTritonStateAttention,
-        last_backend,
-    )
-    from nsa.utils import count_parameters, print_model_summary, state_labels_to_vectors
-    from nsa.value_layer import AlignmentStateProjector, ValueAlignmentLoss
-    from nsa.verifier import (
-        AdapterSwitchRecovery,
-        AuditResult,
-        Capability,
-        CompleteExecutionState,
-        HaltRecovery,
-        MultiLayerStateAuditor,
-        NSAGenerator,
-        RecoveryPolicy,
-        SecurityAutomaton,
-        SecurityExecutionState,
-        SemanticPivotRecovery,
-        SpeculativeStateAuditor,
-        StateControlTokens,
-        StateEncoderHead,
-        StreamRouter,
-        generate_with_auditor,
-    )
+__version__ = "0.4.0"
 
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
+# Heavy legacy symbols remain import-compatible but load only on demand.
+_LAZY = {
+    "StateAwareAttention": ("nsa.attention", "StateAwareAttention"),
+    "FusedStateAwareAttention": ("nsa.fused_attention", "FusedStateAwareAttention"),
+    "NSAConfig": ("nsa.hf_integration", "NSAConfig"),
+    "NSAForCausalLM": ("nsa.hf_integration", "NSAForCausalLM"),
+    "retrofit_hf_attention": ("nsa.hf_integration", "retrofit_hf_attention"),
+    "retrofit_llama_attention": ("nsa.hf_integration", "retrofit_llama_attention"),
+    "NSAKVCache": ("nsa.kv_cache", "NSAKVCache"),
+    "NSALoRALinear": ("nsa.lora", "NSALoRALinear"),
+    "NSALoRAAttention": ("nsa.lora", "NSALoRAAttention"),
+    "apply_nsa_lora_retrofit": ("nsa.lora", "apply_nsa_lora_retrofit"),
+    "NSAMaskInjector": ("nsa.mask_injector", "NSAMaskInjector"),
+    "NSALoss": ("nsa.objectives", "NSALoss"),
+    "SemanticLoss": ("nsa.objectives", "SemanticLoss"),
+    "StateConstraintLoss": ("nsa.objectives", "StateConstraintLoss"),
+    "NSATransformerBlock": ("nsa.layers", "NSATransformerBlock"),
+    "NSATransformer": ("nsa.layers", "NSATransformer"),
+    "NSACausalLM": ("nsa.layers", "NSACausalLM"),
+    "ResidualTaintTracker": ("nsa.residual_taint", "ResidualTaintTracker"),
+    "join_levels": ("nsa.residual_taint", "join_levels"),
+    "meet_levels": ("nsa.residual_taint", "meet_levels"),
+    "NSAGenerator": ("nsa.verifier", "NSAGenerator"),
+    "SecurityAutomaton": ("nsa.verifier", "SecurityAutomaton"),
+    "generate_with_auditor": ("nsa.verifier", "generate_with_auditor"),
+}
 
-__version__ = "0.3.0"
+
+def __getattr__(name: str):
+    target = _LAZY.get(name)
+    if target is None:
+        raise AttributeError(name)
+    value = getattr(import_module(target[0]), target[1])
+    globals()[name] = value
+    return value
+
+
 __all__ = [
-    # Canonical typed core
-    "CanonicalState",
-    "SemanticState",
-    "HardState",
-    "SoftState",
-    "ProvenanceState",
-    "GoalState",
-    "StateTransition",
-    "StateKind",
-    # Policy / enforcement control plane
-    "Decision",
-    "SecurityDecision",
-    "NSAPolicy",
-    "PolicyRule",
-    "PolicyCompiler",
-    "PolicyEngine",
-    "PolicyClassifier",
-    "KeywordClassifier",
-    "EvaluationContext",
-    "PolicyViolation",
-    "ProtectedModel",
-    "protect_model",
-    # Algebra
-    "StateLabel",
-    "StateLattice",
-    "ConservationLaw",
-    "DEFAULT_LATTICE",
-    "ProductStateVector",
-    "ProductLattice",
-    "BitpackedStateVector",
-    "RAGMetadataIngressEncoder",
-    "build_label_attention_mask",
-    "build_level_attention_mask",
-    "bitpack_states",
-    "unpack_states",
-    # State primitives
-    "StateVector",
-    "StateTransitionOperator",
-    "WeightedStateEdge",
-    "DeclassificationOperator",
-    # Attention
-    "StateAwareAttention",
-    "FusedStateAwareAttention",
-    "FusedTritonStateAttention",
-    "HAS_TRITON",
-    "USING_TRITON_KERNEL",
-    "TRITON_KERNEL_DEFINED",
-    "last_backend",
-    # LoRA Adapters & Retrofitting
-    "NSALoRALinear",
-    "NSALoRAAttention",
-    "apply_nsa_lora_retrofit",
-    "DynamicNSARetrofitBlock",
-    # Mask Injection & HF Integration
-    "NSAMaskInjector",
-    "NSAConfig",
-    "NSAForCausalLM",
-    "retrofit_llama_attention",
-    "retrofit_hf_attention",
-    "NSAKVCache",
-    # Verifier & NSA 2.0 Speculative Engine
-    "StateEncoderHead",
-    "SpeculativeStateAuditor",
-    "MultiLayerStateAuditor",
-    "AuditResult",
-    "TokenizerAligner",
-    "StateControlTokens",
-    "StreamRouter",
-    "SecurityAutomaton",
-    "SecurityExecutionState",
-    "Capability",
-    "CompleteExecutionState",
-    "RecoveryPolicy",
-    "SemanticPivotRecovery",
-    "AdapterSwitchRecovery",
-    "HaltRecovery",
-    "NSAGenerator",
-    "generate_with_auditor",
-    # Residual taint
-    "ResidualTaintTracker",
-    "join_levels",
-    "meet_levels",
-    # Layers
-    "NSATransformerBlock",
-    "NSATransformer",
-    "NSACausalLM",
-    # Losses
-    "SemanticLoss",
-    "StateConstraintLoss",
-    "NSALoss",
-    # Utilities
-    "count_parameters",
-    "print_model_summary",
-    "print_lattice",
-    "state_labels_to_vectors",
-]
+    "NSA", "NSARuntime", "AgentResult", "RuntimeConfig", "ModelBackend",
+    "OllamaBackend", "EchoBackend", "CallableBackend", "BackendError",
+    "CanonicalState", "SemanticState", "HardState", "SoftState", "ProvenanceState", "GoalState",
+    "StateTransition", "StateKind", "CheckpointEnvelope", "StateCheckpointStore",
+    "CognitiveInputEvent", "CognitiveInputQueue", "Decision", "SecurityDecision",
+    "NSAPolicy", "PolicyRule", "PolicyCompiler", "PolicyEngine", "PolicyClassifier",
+    "KeywordClassifier", "EvaluationContext", "StateLabel", "StateLattice", "ConservationLaw",
+    "DEFAULT_LATTICE", "ProductStateVector", "ProductLattice", "BitpackedStateVector",
+    "RAGMetadataIngressEncoder", "build_label_attention_mask", "build_level_attention_mask",
+    "bitpack_states", "unpack_states",
+] + sorted(_LAZY)

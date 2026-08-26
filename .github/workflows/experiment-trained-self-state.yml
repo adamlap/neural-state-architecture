@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -e '.[dev]'
+      - run: pip install -e '.[dev,research]'
       - name: Run trained self-state regulation experiment
         shell: bash
         run: |
@@ -69,5 +69,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -e '.[dev]'
+      - run: pip install -e '.[dev,research]'
       - run: pytest -q tests/test_trained_self_state.py

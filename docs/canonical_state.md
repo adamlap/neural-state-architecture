@@ -182,3 +182,147 @@ The canonical core is deliberately small. The next modules should attach to it i
 8. `nsa/actions/` + `nsa/runtime/` — governed tool use and autonomous execution.
 
 The goal is for every one of these modules to operate on the same canonical state contract.
+
+---
+
+## Typed Persistent Memory
+
+Memory is treated as a state-bearing system boundary, not an untyped text cache.
+
+Each item contains:
+
+$$
+M=(id,content,type,provenance,sensitivity,time,expiry)
+$$
+
+The first implementation is immutable and append-only. Reads can filter expired entries without mutating the store.
+
+## Security properties
+
+- memory retains provenance references;
+- sensitivity is explicit metadata;
+- duplicate identities are rejected;
+- expiry is explicit;
+- memory writes are distinct from model-generated claims;
+- future policy must control which state dimensions may enter memory.
+
+## Future architecture
+
+```text
+model claim
+    |
+    +--> provenance validation
+    |
+    +--> sensitivity classification
+    |
+    +--> flow policy
+    |
+    +--> memory capability
+    |
+    v
+typed memory
+```
+
+This prevents the memory layer from becoming a privilege-escalation or provenance-erasure boundary.
+
+---
+
+## Provenance and Epistemic State
+
+Provenance records the lineage of claims and observations so that confidence is not detached from evidence.
+
+A record is:
+
+$$
+P=(id,type,parents,evidence,producer)
+$$
+
+Evidence is:
+
+$$
+E=(id,source,kind,reliability,time)
+$$
+
+The first implementation is immutable and append-oriented.
+
+## Design principles
+
+- provenance is not truth;
+- source identity is not reliability;
+- model confidence must not become evidence by itself;
+- derived claims retain links to parent claims;
+- provenance cannot silently be overwritten;
+- provenance must remain separate from authority.
+
+This enables future epistemic operations such as confidence calibration, contradiction detection, source weighting and evidence-aware state transitions.
+
+## Planned integration
+
+The next layer should connect provenance to the canonical state and self-state:
+
+$$
+Evidence \rightarrow Claim \rightarrow Confidence \rightarrow SelfState
+$$
+
+while preserving the distinction:
+
+$$
+\text{epistemic confidence} \neq \text{authorization}
+$$
+
+---
+
+## Capability and Authority
+
+NSA treats authority as an externally issued, explicitly scoped capability rather than a property that a model can infer about itself.
+
+A capability is:
+
+$$
+C=(id, issuer, subject, action, scope, purpose, expiry, nonce)
+$$
+
+An action is permitted only when the trusted authority can validate:
+
+$$
+C.subject=s
+\land C.action=a
+\land C.scope=q
+\land C.expiry>t
+$$
+
+## Security principle
+
+Model cognition may propose an action. It cannot mint the capability required to execute that action.
+
+```text
+model proposal
+      |
+      v
+flow policy
+      |
+      v
+trusted capability authority
+      |
+      v
+validated action
+```
+
+## Least authority
+
+Capabilities should be as narrow as possible in action and scope. A capability for `filesystem.read:/safe/data` must not imply `filesystem.write:/safe/data` or access to another path.
+
+## Relationship to canonical state
+
+Hard state may summarize trusted authorization facts, but the capability object remains the concrete authorization artifact. This avoids treating a neural representation of permission as permission itself.
+
+## Next extensions
+
+- revocation
+- delegation with attenuation
+- capability chains
+- nonce/replay protection
+- audit records
+- resource quotas
+- human approval gates
+- tool gateway integration

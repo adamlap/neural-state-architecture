@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -e '.[dev]'
+      - run: pip install -e '.[dev,research]'
       - name: Run target-quality experiment
         shell: bash
         run: |
@@ -72,5 +72,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -e '.[dev]'
+      - run: pip install -e '.[dev,research]'
       - run: pytest -q tests/test_predictor_target_quality.py

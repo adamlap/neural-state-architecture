@@ -3,7 +3,7 @@ import os
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from demo.cli_showcase import retrofit_llama_attention
+from nsa.hf_integration import retrofit_llama_attention
 from nsa.objectives import NSADPOLoss
 
 

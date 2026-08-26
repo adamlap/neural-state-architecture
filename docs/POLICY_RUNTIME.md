@@ -99,3 +99,132 @@ The reference keyword classifier is deliberately deterministic and transparent. 
 For a production deployment, replace the classifier with a separately validated semantic classifier while keeping the policy decision and authority boundary outside model-generated text.
 
 Likewise, the current runtime monitor does not modify model weights. The long-term NSA research goal of intrinsic neural enforcement remains a separate native-model research path.
+
+---
+
+## Policy Control Plane Roadmap
+
+The existing NSA research roadmap establishes the algebraic and runtime foundations, but a deployable safety architecture also needs a developer-facing control plane. This addendum makes that requirement explicit.
+
+## Phase 11.5 — Policy & Configuration Layer
+
+- [x] Declarative `NSAPolicy` schema.
+- [x] Prohibited semantic categories with deny/escalate modes.
+- [x] Protected-data classes.
+- [x] Restricted capabilities/actions.
+- [x] Human approval gates.
+- [x] Explicit unknown-policy and uncertainty defaults.
+- [x] JSON persistence and optional YAML loading.
+
+## Phase 11.6 — Decision & Enforcement API
+
+- [x] Typed `SecurityDecision` result.
+- [x] ALLOW / DENY / ESCALATE / REQUIRE_APPROVAL / REDACT decision vocabulary.
+- [x] Matched policy categories and hard-constraint audit metadata.
+- [x] Risk and uncertainty fields.
+- [x] Fail-closed enforcement option.
+
+## Phase 11.7 — Model Adapter Layer
+
+- [x] Model-agnostic `protect_model(...)` wrapper.
+- [x] Pre-generation request enforcement.
+- [x] Post-generation output enforcement.
+- [x] Explicit policy violation exception.
+- [ ] Native Hugging Face generation adapter.
+- [ ] vLLM/SGLang runtime adapters.
+- [ ] Native NSA model integration.
+
+## Phase 11.8 — Reference Policies
+
+- [x] Enterprise reference policy.
+- [ ] Developer-agent policy.
+- [ ] High-security policy.
+- [ ] Autonomous-agent policy.
+
+## Phase 11.9 — Policy Verification
+
+- [x] Unit tests for deny/approval/capability/output boundaries.
+- [ ] Automated policy regression corpus.
+- [ ] Adversarial semantic-classification benchmark.
+- [ ] False-positive/false-negative measurement.
+- [ ] Distribution-shift evaluation.
+- [ ] Structural guarantee ledger linking each rule to its trusted enforcement boundary.
+
+## Scientific boundary
+
+A declarative policy is not itself a semantic oracle. Learned normative/semantic components can estimate intent and risk, while NSA hard state and trusted capability boundaries enforce what is structurally permitted. Security claims must state the classifier, TCB and enforcement assumptions under which they hold.
+
+---
+
+## Integration Verification
+
+This document defines the practical integration checkpoint before extending NSA's normative/value layer.
+
+## 1. Policy path
+
+A policy is the single source of truth for configured safety rules:
+
+```text
+policy file
+   -> NSAPolicy
+   -> PolicyEngine
+   -> SecurityDecision
+   -> model/runtime enforcement
+```
+
+Do not duplicate policy parsing or reconstruct rules in servers. Runtime adapters consume `NSAPolicy`/`PolicyEngine` directly.
+
+## 2. Ollama smoke test
+
+Start an unprotected server:
+
+```bash
+make serve-ollama
+```
+
+Start with a policy:
+
+```bash
+make serve-ollama POLICY=examples/policies/safe_assistant.json
+```
+
+The policy must be evaluated before the request reaches the model and again against generated output where the adapter supports output enforcement.
+
+## 3. CCE smoke test
+
+```bash
+make serve-cce POLICY=examples/policies/safe_assistant.json
+```
+
+The CCE runtime must retain its continuous state lifecycle while the policy layer remains an authority boundary rather than becoming part of the learned model state.
+
+## 4. Decision semantics
+
+Consumers should handle explicit decisions rather than infer policy state from generated text:
+
+- `ALLOW`: continue normally.
+- `DENY`: do not invoke the protected operation.
+- `ESCALATE`: stop and request higher-trust handling.
+- `REQUIRE_APPROVAL`: wait for explicit authorization.
+- `REDACT`: remove protected output when the policy supports redaction.
+
+## 5. Integration invariant
+
+The central architectural rule is:
+
+> Intelligence is not authority.
+
+A model may reason about an operation without acquiring the capability to perform it. Capability checks and trusted runtime enforcement must remain outside the model's learned weights.
+
+## 6. Verification layers
+
+Before adding new architecture, verify in this order:
+
+1. unit tests for state algebra and policy decisions;
+2. policy/server tests;
+3. CCE lifecycle tests;
+4. Ollama request/response smoke tests;
+5. hard-state integrity and adversarial checks;
+6. long-running scientific experiments manually.
+
+This keeps fast correctness/security gates distinct from experimental evidence.

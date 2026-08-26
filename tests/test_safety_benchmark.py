@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from benchmarks.run_safety_benchmark import run
+from experiments.safety.run_safety_benchmark import run
 
 
 def _paths() -> tuple[Path, Path]:
     root = Path(__file__).resolve().parents[1]
-    return root / "policies" / "strict.json", root / "benchmarks" / "safety_corpus.jsonl"
+    return root / "policies" / "strict.json", root / "experiments" / "safety" / "safety_corpus.jsonl"
 
 
 def test_safety_benchmark_runs_against_reference_policy():
