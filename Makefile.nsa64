@@ -6,6 +6,10 @@
 PYTHON ?= python3
 UV := $(shell command -v uv 2>/dev/null || echo "")
 
+# Ollama is frequently installed user-locally (no sudo) rather than on PATH.
+OLLAMA_BIN := $(shell command -v ollama 2>/dev/null || { [ -x "$$HOME/.local/ollama/bin/ollama" ] && echo "$$HOME/.local/ollama/bin/ollama"; })
+OLLAMA_HOST ?= 127.0.0.1:11434
+
 OLLAMA_MODEL ?= qwen2.5:3b
 OUT ?= results/nsa64/ollama-$(subst :,-,$(OLLAMA_MODEL))
 TRIALS ?= 20
@@ -15,8 +19,9 @@ HYPOTHESES ?= 2 4 8 16
 NOISE ?= 0.0 0.05 0.10 0.20 0.30
 
 benchmark-nsa64-ollama: ## Run the full NSA 6.4 live replication matrix against local Ollama
-	@command -v ollama >/dev/null 2>&1 || { echo "ERROR: Ollama is not installed or not on PATH."; exit 1; }
-	@ollama list | grep -q "^$(OLLAMA_MODEL)" || { echo "ERROR: $(OLLAMA_MODEL) is not installed. Run: ollama pull $(OLLAMA_MODEL)"; exit 1; }
+	@[ -n "$(OLLAMA_BIN)" ] || { echo "ERROR: Ollama is not installed or not on PATH (checked \$$PATH and ~/.local/ollama/bin/ollama)."; exit 1; }
+	@curl -sf "http://$(OLLAMA_HOST)/api/tags" >/dev/null 2>&1 || { echo "ERROR: Ollama server not reachable at $(OLLAMA_HOST). Start it with: $(OLLAMA_BIN) serve &"; exit 1; }
+	@$(OLLAMA_BIN) list | grep -q "^$(OLLAMA_MODEL)" || { echo "ERROR: $(OLLAMA_MODEL) is not installed. Run: $(OLLAMA_BIN) pull $(OLLAMA_MODEL)"; exit 1; }
 	@mkdir -p "$(OUT)"
 	@if [ -n "$(UV)" ]; then \
 		PYTHONPATH=. $(UV) run python experiments/nsa64/replication_matrix.py \
