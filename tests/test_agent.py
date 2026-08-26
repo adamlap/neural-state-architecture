@@ -22,3 +22,25 @@ def test_agent_observation_updates_uncertainty():
     agent.observe("sensor", source="sensor", confidence=0.75)
     assert agent.state.soft.confidence == 0.75
     assert agent.state.soft.uncertainty == 0.25
+
+
+def test_public_cce_is_composed_by_nsa_runtime():
+    agent = NSA(EchoBackend(), config=RuntimeConfig(continuous_enabled=True))
+    assert agent.continuous_status().enabled
+    before = agent.state.step
+    assert agent.continuous_tick()
+    assert agent.state.step == before + 1
+    assert agent.continuous_status().tick_count == 1
+
+
+def test_public_cce_can_use_authoritative_transition_callback():
+    seen = []
+
+    def transition(state):
+        seen.append(state.step)
+        return state
+
+    agent = NSA(EchoBackend(), config=RuntimeConfig(continuous_enabled=True), continuous_transition=transition)
+    assert agent.continuous_tick()
+    assert seen == [0]
+    assert agent.continuous_status().tick_count == 1
