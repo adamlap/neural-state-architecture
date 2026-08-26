@@ -4,7 +4,7 @@ import argparse, hashlib, json, platform, statistics, subprocess, time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from experiments.nsa63.scientific_validation_suite import run_nsa63_validation_suite
 
 DEFAULT_MODELS = ["Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen3-4B", "meta-llama/Llama-3.1-8B-Instruct"]
@@ -17,7 +17,7 @@ NOISE_LEVELS = [0.0, 0.05, 0.10, 0.20, 0.30]
 class RunRecord:
     model: str; backend: str; split: str; seed: int; hypotheses: int; noise: float; trials: int
     gtc: float; violations: int; tokens_mean: float; information_gain_bits: float
-    epistemic_efficiency: float; wall_time_seconds: float; model_calls: int; tool_calls: int
+    epistemic_efficiency: float; wall_time_seconds: float; model_calls: int; tool_calls: Optional[int]
     trajectory_steps: int; trajectory_audit_passed: bool; invariants_verified: bool; raw_artifact: str
 
 def git_revision() -> str:
@@ -36,26 +36,31 @@ def run_one(*, model: str, backend: str, split: str, seed: int, hypotheses: int,
     wall_time = time.perf_counter() - started
     full = report["empirical_observations"]["Arm_6_Full_NSA_Substrate"]
     traj_path = run_dir / "trajectory.jsonl"
-    steps = token_total = 0
+    full_steps = full_tokens = total_steps = 0
     if traj_path.exists():
         with traj_path.open(encoding="utf-8") as fh:
             for line in fh:
-                if line.strip():
-                    steps += 1
-                    try: token_total += int(json.loads(line).get("tokens_consumed", 0))
-                    except (ValueError, TypeError, json.JSONDecodeError): pass
+                if not line.strip(): continue
+                total_steps += 1
+                try:
+                    row = json.loads(line)
+                    if row.get("arm") == "Arm_6_Full_NSA_Substrate":
+                        full_steps += 1
+                        full_tokens += int(row.get("tokens_consumed", 0))
+                except (ValueError, TypeError, json.JSONDecodeError):
+                    continue
     raw_path = run_dir / "aggregate.json"
     report["nsa64_compute_accounting"] = {
-        "wall_time_seconds": wall_time, "trajectory_steps": steps,
-        "model_calls_proxy": steps, "tool_calls_proxy": None,
-        "tokens_from_machine_trace": token_total,
+        "wall_time_seconds": wall_time, "trajectory_steps_all_arms": total_steps,
+        "full_nsa_trajectory_steps": full_steps, "full_nsa_model_calls_proxy": full_steps,
+        "full_nsa_tokens_from_machine_trace": full_tokens, "tool_calls": None,
         "reported_full_nsa_mean_tokens": float(full["tokens_mean"]),
-        "note": "model_calls is a trajectory-step proxy; tool calls are not emitted by the NSA 6.3 logger and remain null rather than fabricated",
+        "note": "model-call count is an arm-specific trajectory-step proxy; the NSA 6.3 logger does not expose an independent tool-call counter, so tool_calls is null",
     }
     raw_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return RunRecord(model, backend, split, seed, hypotheses, noise, trials, float(full["gtc_mean"]),
         int(full["violations"]), float(full["tokens_mean"]), float(full["information_gain_mean_bits"]),
-        float(full["epistemic_efficiency"]), wall_time, steps, 0, steps,
+        float(full["epistemic_efficiency"]), wall_time, full_steps, None, total_steps,
         bool(report["governance_invariants"]["trajectory_audit_passed"]), bool(report["invariants_verified"]), str(raw_path))
 
 def paired_summary(records: List[RunRecord]) -> Dict[str, Any]:
@@ -96,7 +101,7 @@ def main() -> None:
         "backend": args.backend, "models": args.models, "development_seeds": args.dev_seeds, "heldout_seeds": args.heldout_seeds,
         "hypotheses": args.hypotheses, "noise_levels": args.noise, "trials_per_cell": args.trials,
         "controls": ["raw_llm", "static_guardrail", "governed_agent", "search_agent", "belief_agent", "full_nsa_substrate"],
-        "compute_accounting": {"measured": ["trajectory_steps", "model_calls_proxy", "tokens_from_machine_trace", "wall_time_seconds"],
+        "compute_accounting": {"measured": ["wall_time_seconds", "full_nsa_trajectory_steps", "full_nsa_model_calls_proxy", "full_nsa_tokens_from_machine_trace"],
             "unavailable": ["tool_calls"], "policy": "Unavailable metrics remain null; no values are fabricated."},
         "heldout_policy": "held-out seeds are never used for stress selection or threshold selection",
         "adversarial_policy": "adaptive stress selects only from development, then increases hypotheses/noise without modifying gates",
