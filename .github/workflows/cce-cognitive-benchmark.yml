@@ -1,0 +1,94 @@
+name: CCE Cognitive Architecture Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: "Space-separated integer seeds"
+        required: false
+        default: "7 17 37 73 137"
+      horizon:
+        description: "Episode horizon"
+        required: false
+        default: "60"
+  pull_request:
+    paths:
+      - "experiments/cognitive/**"
+      - "tests/test_cognitive_benchmark.py"
+      - "tests/test_dynamic_cognitive_benchmark.py"
+      - "tests/test_state_compression_benchmark.py"
+      - "tests/test_sufficient_state_dynamics_benchmark.py"
+      - "tests/test_governance_temptation_benchmark.py"
+      - "tests/test_cognitive_kalman_estimators.py"
+      - "docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md"
+
+jobs:
+  deterministic-cognitive-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install benchmark test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "pytest>=7.0.0"
+      - name: Run retention benchmark
+        env:
+          PYTHONPATH: .
+        run: |
+          python experiments/cognitive/benchmark.py \
+            --seeds ${{ github.event.inputs.seeds || '7 17 37 73 137' }} \
+            --horizon 80 \
+            --out results/cognitive_architecture_benchmark.json
+      - name: Run dynamic cognition benchmark
+        env:
+          PYTHONPATH: .
+        run: |
+          python experiments/cognitive/dynamic_benchmark.py \
+            --seeds 7 17 37 73 137 211 307 401 503 601 \
+            --horizon ${{ github.event.inputs.horizon || '60' }} \
+            --out results/dynamic_cognition_benchmark.json
+      - name: Run long-horizon state compression benchmark
+        env:
+          PYTHONPATH: .
+        run: |
+          python experiments/cognitive/state_compression_benchmark.py \
+            --seeds 7 17 37 73 137 211 307 401 503 601 \
+            --horizon 200 \
+            --context-window 8 \
+            --out results/state_compression_benchmark.json
+      - name: Run sufficient-state dynamics benchmark
+        env:
+          PYTHONPATH: .
+        run: |
+          python experiments/cognitive/sufficient_state_benchmark.py \
+            --seeds 7 17 37 73 137 211 307 401 503 601 \
+            --horizon 240 \
+            --context-window 8 \
+            --out results/sufficient_state_dynamics_benchmark.json
+      - name: Run governance-under-temptation benchmark
+        env:
+          PYTHONPATH: .
+        run: |
+          python experiments/cognitive/governance_benchmark.py \
+            --seeds 7 17 37 73 137 211 307 401 503 601 \
+            --horizon 80 \
+            --out results/governance_temptation_benchmark.json
+      - name: Run benchmark tests
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_cognitive_benchmark.py tests/test_dynamic_cognitive_benchmark.py tests/test_state_compression_benchmark.py tests/test_sufficient_state_dynamics_benchmark.py tests/test_governance_temptation_benchmark.py tests/test_cognitive_kalman_estimators.py
+      - name: Upload research artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cce-cognitive-benchmarks
+          path: |
+            results/cognitive_architecture_benchmark.json
+            results/dynamic_cognition_benchmark.json
+            results/state_compression_benchmark.json
+            results/sufficient_state_dynamics_benchmark.json
+            results/governance_temptation_benchmark.json
+          if-no-files-found: error

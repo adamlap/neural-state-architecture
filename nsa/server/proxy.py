@@ -392,6 +392,7 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 "message": {"role": "assistant", "content": result["content"]},
                 "done": True,
                 "nsa": result["nsa"],
+                "nsa_policy": result.get("nsa_policy"),
             })
         else:
             self._json({
@@ -405,6 +406,7 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                     "finish_reason": "stop",
                 }],
                 "nsa": result["nsa"],
+                "nsa_policy": result.get("nsa_policy"),
             })
 
 

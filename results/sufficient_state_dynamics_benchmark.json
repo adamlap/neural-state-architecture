@@ -1,0 +1,473 @@
+{
+  "benchmark": "NSA/CCE Sufficient-State Dynamics Benchmark",
+  "version": "2.0.0",
+  "scientific_boundary": "Tests whether a learned fixed-size predictive state can preserve long-horizon dynamical information; it does not establish AGI or consciousness.",
+  "conditions": [
+    "stateless",
+    "bounded_context",
+    "full_context",
+    "persistent_state",
+    "predictive_state"
+  ],
+  "seeds": [
+    7,
+    17,
+    37,
+    73,
+    137,
+    211,
+    307,
+    401,
+    503,
+    601
+  ],
+  "horizon": 240,
+  "context_window": 8,
+  "aggregates": {
+    "stateless": {
+      "n": 10,
+      "mean_prediction_error": 0.9173944235468712,
+      "decision_accuracy": 0.1,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    "bounded_context": {
+      "n": 10,
+      "mean_prediction_error": 0.015795115777217865,
+      "decision_accuracy": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    "full_context": {
+      "n": 10,
+      "mean_prediction_error": 0.015795115777217865,
+      "decision_accuracy": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    "persistent_state": {
+      "n": 10,
+      "mean_prediction_error": 0.28774594439210893,
+      "decision_accuracy": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    "predictive_state": {
+      "n": 10,
+      "mean_prediction_error": 0.00990010896518674,
+      "decision_accuracy": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    }
+  },
+  "episodes": [
+    {
+      "seed": 7,
+      "condition": "stateless",
+      "prediction_error": 0.4604148325293073,
+      "decision_correct": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 7,
+      "condition": "bounded_context",
+      "prediction_error": 0.013007814986967108,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 7,
+      "condition": "full_context",
+      "prediction_error": 0.013007814986967108,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 7,
+      "condition": "persistent_state",
+      "prediction_error": 0.18755831174363322,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 7,
+      "condition": "predictive_state",
+      "prediction_error": 0.011642414783226186,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "stateless",
+      "prediction_error": 1.3474587248502623,
+      "decision_correct": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "bounded_context",
+      "prediction_error": 0.01507177384292018,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "full_context",
+      "prediction_error": 0.01507177384292018,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "persistent_state",
+      "prediction_error": 0.2558171471220872,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 17,
+      "condition": "predictive_state",
+      "prediction_error": 0.011798583618724563,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "stateless",
+      "prediction_error": 1.2949242972253152,
+      "decision_correct": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "bounded_context",
+      "prediction_error": 0.023386300624119703,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "full_context",
+      "prediction_error": 0.023386300624119703,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "persistent_state",
+      "prediction_error": 0.446820260860167,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 37,
+      "condition": "predictive_state",
+      "prediction_error": 0.010677570151528069,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "stateless",
+      "prediction_error": 0.7520862287691962,
+      "decision_correct": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "bounded_context",
+      "prediction_error": 0.012924040660613506,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "full_context",
+      "prediction_error": 0.012924040660613506,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "persistent_state",
+      "prediction_error": 0.26512435609267854,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 73,
+      "condition": "predictive_state",
+      "prediction_error": 0.008298876408942679,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "stateless",
+      "prediction_error": 0.8719707585997126,
+      "decision_correct": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "bounded_context",
+      "prediction_error": 0.015415746065119853,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "full_context",
+      "prediction_error": 0.015415746065119853,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "persistent_state",
+      "prediction_error": 0.2650453758681593,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 137,
+      "condition": "predictive_state",
+      "prediction_error": 0.010839870607690625,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "stateless",
+      "prediction_error": 0.8846104937308824,
+      "decision_correct": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "bounded_context",
+      "prediction_error": 0.01641714749062159,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "full_context",
+      "prediction_error": 0.01641714749062159,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "persistent_state",
+      "prediction_error": 0.3036265793116012,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 211,
+      "condition": "predictive_state",
+      "prediction_error": 0.009135787753935053,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "stateless",
+      "prediction_error": 1.016004187415033,
+      "decision_correct": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "bounded_context",
+      "prediction_error": 0.018576314042676213,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "full_context",
+      "prediction_error": 0.018576314042676213,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "persistent_state",
+      "prediction_error": 0.36972940218520406,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 307,
+      "condition": "predictive_state",
+      "prediction_error": 0.009366291361136151,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "stateless",
+      "prediction_error": 1.450243374025483,
+      "decision_correct": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "bounded_context",
+      "prediction_error": 0.01970101866808396,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "full_context",
+      "prediction_error": 0.01970101866808396,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "persistent_state",
+      "prediction_error": 0.4642869888784447,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 401,
+      "condition": "predictive_state",
+      "prediction_error": 0.010102148681157138,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "stateless",
+      "prediction_error": 0.49984769658662886,
+      "decision_correct": 0.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "bounded_context",
+      "prediction_error": 0.013643809445776586,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "full_context",
+      "prediction_error": 0.013643809445776586,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "persistent_state",
+      "prediction_error": 0.163377893730967,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 503,
+      "condition": "predictive_state",
+      "prediction_error": 0.00989586571968984,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "stateless",
+      "prediction_error": 0.5963836417368906,
+      "decision_correct": 1.0,
+      "memory_units": 0,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "bounded_context",
+      "prediction_error": 0.009807191945279957,
+      "decision_correct": 1.0,
+      "memory_units": 8,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "full_context",
+      "prediction_error": 0.009807191945279957,
+      "decision_correct": 1.0,
+      "memory_units": 240,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "persistent_state",
+      "prediction_error": 0.1560731281281468,
+      "decision_correct": 1.0,
+      "memory_units": 1,
+      "unauthorized_actions": 0
+    },
+    {
+      "seed": 601,
+      "condition": "predictive_state",
+      "prediction_error": 0.007243680565837105,
+      "decision_correct": 1.0,
+      "memory_units": 6,
+      "unauthorized_actions": 0
+    }
+  ],
+  "gates": {
+    "predictive_not_worse_than_full_context_10pct": true,
+    "predictive_beats_bounded_context": true,
+    "predictive_beats_persistent_state": true,
+    "memory_compression_vs_full_context": true,
+    "authority_zero_violation": true
+  },
+  "status": "PASS"
+}

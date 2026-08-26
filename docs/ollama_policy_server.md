@@ -99,3 +99,24 @@ not by itself prove that an LLM cannot internally represent prohibited
 knowledge. Strong guarantees require the classifier, trusted runtime,
 capability boundary, and model integration to be included explicitly in the
 threat model.
+
+## Verified 2026-08-26
+
+`make serve-cce`/`make serve-ollama` (via `GNUmakefile` + `scripts/policy_server.py`)
+were exercised end-to-end against real Ollama models (qwen2.5:0.5b, 1.5b, 3b),
+both with and without a policy (JSON and YAML), confirming `NSA_MODEL`,
+`NSA_PORT` and `POLICY`/`SAFETY_POLICY`/`NSA_POLICY` all work as documented
+above. Two bugs found and fixed in the process:
+
+- `nsa/server/proxy.py`'s HTTP handler built the `/api/chat` and
+  `/v1/chat/completions` JSON responses from an explicit allow-list of keys
+  that did not include `nsa_policy` -- the audit object this document
+  describes was computed correctly internally but never reached the client.
+- `scripts/policy_server.py`'s request-blocked early return used a different
+  response shape (`nsa.policy` = a bare decision summary) than the
+  full-response path (`nsa_policy` = `{request, output, enforcement}`), so a
+  denied request was indistinguishable from "no policy configured" to a
+  client only checking for `nsa_policy`.
+
+Both are fixed; `tests/test_policy_server.py` has regression coverage for the
+request-blocked and allowed shapes.

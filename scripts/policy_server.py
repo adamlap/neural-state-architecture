@@ -58,11 +58,17 @@ def _install_policy(runtime: Any, policy: Any, engine: Any) -> None:
         latest = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
         request_decision = engine.evaluate(latest, context=EvaluationContext(action="generate"))
         if not request_decision.allowed:
+            policy_audit = {
+                "request": request_decision.summary(),
+                "output": None,
+                "enforcement": "request_blocked",
+            }
             return {
                 "content": "I can't help with that request.",
                 "raw_content": "I can't help with that request.",
                 "model": f"nsa-{self.model_name}",
-                "nsa": {"policy": request_decision.summary(), "enforcement": "request_blocked"},
+                "nsa": {"policy": policy_audit, "enforcement": "request_blocked"},
+                "nsa_policy": policy_audit,
             }
 
         result = original_process_chat(messages)
