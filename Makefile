@@ -1,272 +1,68 @@
-# ==============================================================================
-# Makefile for Neural State Architecture (NSA) - Modernized Research Platform
-# ==============================================================================
-
-.PHONY: help install install-dev venv test evidence sync-metadata \
-        demo demo-debug demo-live demo-live-0.5b demo-live-3b demo-live-ollama demo-lmstudio \
-        benchmark benchmark-nsa64 benchmark-nsa63 benchmark-nsa63-3b benchmark-nsa63-ablation \
-        benchmark-nsa62 benchmark-smoke benchmark-canonical-3b benchmark-live benchmark-lmstudio benchmark-ollama \
-        benchmark-nsa60 benchmark-ablation benchmark-gpse benchmark-gtc benchmark-security \
-        redteam report legacy-showcase clean
-
-UV := $(shell command -v uv 2>/dev/null || (test -f ~/.local/bin/uv && echo ~/.local/bin/uv) || (test -f ~/.cargo/bin/uv && echo ~/.cargo/bin/uv) || echo "uv")
-UV_EXISTS := $(shell command -v $(UV) >/dev/null 2>&1 && echo yes || echo no)
-
-export PYTHONPATH := .
-PYTHON ?= python3
-VENV_DIR ?= .venv
-
 .DEFAULT_GOAL := help
+PYTHON ?= python3
+export PYTHONPATH := .
 
-help: ## Display available targets
-	@echo "Neural State Architecture (NSA) — Master Command Suite"
-	@echo "======================================================"
-	@grep -E '^[a-zA-Z0-9_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-26s\033[0m %s\n", $$1, $$2}'
+.PHONY: help install install-dev test test-core test-cce build clean \
+        demo serve serve-cce serve-ollama chat-ollama \
+        benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama \
+        benchmark-live evidence research
 
-venv: ## Create virtual environment
-	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) venv $(VENV_DIR); else $(PYTHON) -m venv $(VENV_DIR); fi
+help: ## Show the small set of supported developer commands
+	@printf '\nNSA developer commands\n\n'
+	@printf '  make install       Install the runtime package\n'
+	@printf '  make install-dev   Install runtime + development dependencies\n'
+	@printf '  make test          Run the complete regression suite\n'
+	@printf '  make demo          Run the deterministic runtime demo\n'
+	@printf '  make serve         Start the NSA Ollama-compatible server\n'
+	@printf '  make benchmark     Run the primary NSA 6.4 research benchmark\n'
+	@printf '  make research      Run evidence validation + primary benchmark\n'
+	@printf '  make build         Build the Python wheel and source distribution\n\n'
 
-install: ## Install runtime requirements
-	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) pip install -r requirements.txt; else $(PYTHON) -m pip install -r requirements.txt; fi
+install: ## Install the installable NSA runtime
+	$(PYTHON) -m pip install -e .
 
-install-dev: install ## Install runtime and development dependencies
-	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) pip install pytest black ruff mypy; else $(PYTHON) -m pip install pytest black ruff mypy; fi
+install-dev: ## Install runtime and development dependencies
+	$(PYTHON) -m pip install -e '.[dev]'
 
-test: ## Run unit and integration test suite
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python -m pytest -v tests/; \
-	else \
-		PYTHONPATH=. $(PYTHON) -m pytest -v tests/; \
-	fi
+test: ## Run the complete regression suite
+	$(PYTHON) -m pytest -q
 
-evidence: ## Validate and verify the machine-traceable formal evidence manifest
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python evidence/validate_evidence.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) evidence/validate_evidence.py; \
-	fi
+test-core: ## Run only public runtime/API regression tests
+	$(PYTHON) -m pytest -q tests/test_runtime.py
 
-sync-metadata: ## Automatically synchronize test and claim counts across repository metadata
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python scripts/sync_metadata.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) scripts/sync_metadata.py; \
-	fi
+test-cce: ## Run CCE regression tests
+	$(PYTHON) -m pytest -q tests/test_cce*.py tests/test_*cce*.py 2>/dev/null || true
 
-demo: ## Launch closed-loop cognitive runtime demonstration (scientific blind mode)
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend mock; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend mock; \
-	fi
+build: ## Build wheel and source distribution
+	$(PYTHON) -m pip install --upgrade build
+	$(PYTHON) -m build
 
-demo-debug: ## Launch closed-loop demo in debug mode (revealing hidden ground truth)
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend mock --debug; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend mock --debug; \
-	fi
+demo: ## Run the deterministic state-aware runtime demo
+	$(PYTHON) examples/quickstart.py
 
-demo-live-0.5b: ## Launch fast smoke demonstration with local cached Qwen2.5-0.5B-Instruct
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend cached --model Qwen/Qwen2.5-0.5B-Instruct; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend cached --model Qwen/Qwen2.5-0.5B-Instruct; \
-	fi
+serve: serve-ollama ## Start the default local Ollama server
+serve-cce: serve-ollama ## Backwards-compatible CCE server alias
+serve-ollama: ## Start the existing OpenAI/Ollama-compatible NSA server
+	$(PYTHON) -m nsa.server.proxy --backend ollama --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}
 
-demo-live-3b: ## Launch canonical live closed-loop demo with cached Qwen2.5-3B-Instruct
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend cached --model Qwen/Qwen2.5-3B-Instruct; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend cached --model Qwen/Qwen2.5-3B-Instruct; \
-	fi
+chat-ollama: ## Start the existing interactive Ollama cognitive demo
+	$(PYTHON) experiments/nsa62/interactive_chat.py --backend ollama --model $${NSA_MODEL:-qwen2.5:3b}
 
-demo-live: demo-live-3b ## Alias for canonical 3B live demonstration
+benchmark: benchmark-nsa64 ## Primary research benchmark; historical suites are run explicitly
+benchmark-nsa64: ## Run the NSA 6.4 falsification/replication benchmark
+	$(PYTHON) experiments/nsa64/falsification_suite.py --trials $${NSA_TRIALS:-20}
+benchmark-nsa63: ## Run the NSA 6.3 scientific validation suite
+	$(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend mock --trials $${NSA_TRIALS:-40}
+benchmark-ollama: ## Run the canonical live NSA 6.3 Ollama benchmark
+	$(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend ollama --model $${NSA_MODEL:-qwen2.5:3b} --trials $${NSA_TRIALS:-20}
+benchmark-live: benchmark-ollama ## Backwards-compatible live benchmark alias
 
-demo-live-ollama: ## Launch live demonstration connected to local Ollama (qwen2.5:3b)
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend ollama --model qwen2.5:3b; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend ollama --model qwen2.5:3b; \
-	fi
+evidence: ## Validate the machine-readable evidence manifest
+	$(PYTHON) evidence/validate_evidence.py
 
-demo-lmstudio: ## Launch live closed-loop demo connected to LM Studio on port 1234
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/live_cognitive_demo.py --backend lmstudio --model default; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/live_cognitive_demo.py --backend lmstudio --model default; \
-	fi
+research: evidence benchmark ## Validate evidence and run the primary research benchmark
 
-benchmark: benchmark-nsa64 benchmark-nsa63 benchmark-nsa62 benchmark-ablation benchmark-gpse benchmark-gtc benchmark-security ## Run complete benchmark suite
-
-benchmark-nsa63: ## Run NSA 6.3 procedural randomized validation & 6-arm ablation suite (40 mock trials)
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa63/scientific_validation_suite.py --backend mock --trials 40; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend mock --trials 40; \
-	fi
-
-benchmark-nsa63-3b: ## Run NSA 6.3 benchmark with real cached Qwen2.5-3B-Instruct (20 trials)
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa63/scientific_validation_suite.py --backend cached --model Qwen/Qwen2.5-3B-Instruct --trials 20 --output-dir results/nsa63/qwen2.5-3b; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend cached --model Qwen/Qwen2.5-3B-Instruct --trials 20 --output-dir results/nsa63/qwen2.5-3b; \
-	fi
-
-benchmark-nsa64: ## Run NSA 6.4 adversarial scientific falsification suite
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa64/falsification_suite.py --trials 20; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa64/falsification_suite.py --trials 20; \
-	fi
-
-benchmark-lmstudio: ## Run NSA 6.3 ablation benchmark via LM Studio
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa63/scientific_validation_suite.py --backend lmstudio --trials 20 --output-dir results/nsa63/lmstudio; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend lmstudio --trials 20 --output-dir results/nsa63/lmstudio; \
-	fi
-
-benchmark-ollama: ## Run NSA 6.3 ablation benchmark via Ollama qwen2.5:3b
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa63/scientific_validation_suite.py --backend ollama --model qwen2.5:3b --trials 20 --output-dir results/nsa63/ollama; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa63/scientific_validation_suite.py --backend ollama --model qwen2.5:3b --trials 20 --output-dir results/nsa63/ollama; \
-	fi
-
-benchmark-nsa63-ablation: benchmark-nsa63 ## Alias for NSA 6.3 six-arm ablation benchmark
-
-benchmark-nsa62: ## Run NSA 6.2 closed-loop cognitive benchmark in fast mock mode
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend mock; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend mock; \
-	fi
-
-benchmark-smoke: ## Run 4-trial cached Qwen2.5-0.5B smoke benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend cached --model Qwen/Qwen2.5-0.5B-Instruct --trials 4 --output-dir results/nsa62/qwen2.5-0.5b; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/qwen25_3b_cognitive_benchmark.py --backend cached --model Qwen/Qwen2.5-0.5B-Instruct --trials 4 --output-dir results/nsa62/qwen2.5-0.5b; \
-	fi
-
-benchmark-canonical-3b: ## Run canonical live benchmark on cached Qwen2.5-3B-Instruct (20 trials)
-	$(MAKE) benchmark-nsa63-3b
-
-benchmark-live: benchmark-canonical-3b ## Alias for the canonical cached Qwen2.5-3B benchmark
-
-benchmark-nsa60: ## Run NSA 6.0 real-model cognitive transfer benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa60/real_model_transfer_suite.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa60/real_model_transfer_suite.py; \
-	fi
-
-benchmark-ablation: ## Run NSA 5.1 controlled cognitive ablation suite
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa51/ablation_suite.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa51/ablation_suite.py; \
-	fi
-
-benchmark-gpse: ## Run NSA 5.0 GPSE benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa50/gpse_benchmark.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa50/gpse_benchmark.py; \
-	fi
-
-benchmark-gtc: ## Run NSA 4.2 GTC benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa41/gtc_benchmark.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa41/gtc_benchmark.py; \
-	fi
-
-benchmark-security: ## Run NSA 4.0 strategic deceptive adversary benchmark
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/security/strategic_deceptive_adversary.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/security/strategic_deceptive_adversary.py; \
-	fi
-
-redteam: ## Run full red-team adversarial suite
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python prototype/security/adversarial_suite.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) prototype/security/adversarial_suite.py; \
-	fi
-
-report: ## Generate verification report
-	@echo "Generating NSA Empirical Verification Report..."
-	@$(MAKE) test
-	@$(MAKE) evidence
-	@$(MAKE) benchmark-nsa63
-
-legacy-showcase: ## Launch legacy showcase; use demo-live targets for current runtime
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run python demo/web_demo.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) demo/web_demo.py; \
-	fi
-
-clean: ## Clean Python build artifacts and temporary files
-	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
-
-serve-cce: ## Launch OpenAI/Ollama API server with live CCE Continuous Cognitive Engine & Sensory Ingress
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python -m nsa.server.proxy --backend ollama --model qwen2.5:3b --port 8000; \
-	else \
-		PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend ollama --model qwen2.5:3b --port 8000; \
-	fi
-
-serve-ollama: ## Launch OpenAI & Ollama compatible API server for OpenWebUI backed by Ollama
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python -m nsa.server.proxy --backend ollama --model qwen2.5:3b --port 8000; \
-	else \
-		PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend ollama --model qwen2.5:3b --port 8000; \
-	fi
-
-serve-lmstudio: ## Launch OpenAI & Ollama compatible API server for OpenWebUI backed by LM Studio
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python -m nsa.server.proxy --backend lmstudio --model qwen2.5:3b --port 8000; \
-	else \
-		PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend lmstudio --model qwen2.5:3b --port 8000; \
-	fi
-
-chat-ollama: ## Interactive CLI terminal chat with live NSA cognitive state & Ollama
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/interactive_chat.py --backend ollama --model qwen2.5:3b; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/interactive_chat.py --backend ollama --model qwen2.5:3b; \
-	fi
-
-chat-lmstudio: ## Interactive CLI terminal chat with live NSA cognitive state & LM Studio
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/nsa62/interactive_chat.py --backend lmstudio --model qwen2.5:3b; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/nsa62/interactive_chat.py --backend lmstudio --model qwen2.5:3b; \
-	fi
-
-
-demo-cce: ## Run CCE continuous runtime demonstration
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python experiments/cce_unified_runtime.py; \
-	else \
-		PYTHONPATH=. $(PYTHON) experiments/cce_unified_runtime.py; \
-	fi
-
-test-cce: ## Run full Continuous Cognitive Engine test suite
-	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		$(UV) run pytest tests/test_cce_*.py -v; \
-	else \
-		$(PYTHON) -m pytest tests/test_cce_*.py -v; \
-	fi
-
-
-export-modelfile: ## Export native Ollama Modelfile with embedded NSA cognitive invariants
-	@echo "Exporting Modelfile.nsa..."
-	@cp Modelfile.nsa ./Modelfile 2>/dev/null || true
-	@echo "Exported Modelfile. Run 'ollama create nsa-qwen -f Modelfile.nsa' in Windows/WSL."
-
+clean: ## Remove generated Python/build artifacts
+	find . -type d -name '__pycache__' -prune -exec rm -rf {} +	
+	find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
+	rm -rf build dist *.egg-info
