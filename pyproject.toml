@@ -37,7 +37,7 @@ Documentation = "https://github.com/adamlap/neural-state-architecture/tree/main/
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["nsa*"]
+include = ["nsa*", "experiments*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
