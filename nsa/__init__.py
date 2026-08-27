@@ -1,8 +1,7 @@
 """Neural State Architecture public API.
 
-Importing ``nsa`` is intentionally lightweight. PyTorch/Transformers/Triton and
-legacy research runtimes are available from their explicit modules and are not
-required for the state-aware agent API.
+The public API owns state, cognition lifecycle, continuous execution, policy,
+and model adapters. Heavy model-specific implementations remain lazy.
 """
 from __future__ import annotations
 
@@ -10,21 +9,12 @@ from importlib import import_module
 
 from nsa.agent import AgentResult, ModelBackend, NSA, NSARuntime, RuntimeConfig
 from nsa.algebra import (
-    DEFAULT_LATTICE,
-    BitpackedStateVector,
-    ConservationLaw,
-    ProductLattice,
-    ProductStateVector,
-    RAGMetadataIngressEncoder,
-    StateLabel,
-    StateLattice,
-    bitpack_states,
-    build_label_attention_mask,
-    build_level_attention_mask,
-    unpack_states,
+    DEFAULT_LATTICE, BitpackedStateVector, ConservationLaw, ProductLattice,
+    ProductStateVector, RAGMetadataIngressEncoder, StateLabel, StateLattice,
+    bitpack_states, build_label_attention_mask, build_level_attention_mask, unpack_states,
 )
 from nsa.backends import BackendError, CallableBackend, EchoBackend, OllamaBackend
-from nsa.cce.lifecycle import CheckpointEnvelope, CognitiveInputEvent, CognitiveInputQueue, StateCheckpointStore
+from nsa.cce import CCEStatus, CheckpointEnvelope, CognitiveInputEvent, CognitiveInputQueue, ContinuousCognitiveEngine, StateCheckpointStore
 from nsa.core.state import CanonicalState, GoalState, HardState, ProvenanceState, SemanticState, SoftState, StateKind, StateTransition
 from nsa.decision import Decision, SecurityDecision
 from nsa.enforcement import EvaluationContext, KeywordClassifier, PolicyClassifier, PolicyEngine
@@ -32,7 +22,7 @@ from nsa.policy import NSAPolicy, PolicyCompiler, PolicyRule
 
 __version__ = "0.4.0"
 
-# Heavy legacy symbols remain import-compatible but load only on demand.
+# Heavy model/research symbols remain import-compatible but load only on demand.
 _LAZY = {
     "StateAwareAttention": ("nsa.attention", "StateAwareAttention"),
     "FusedStateAwareAttention": ("nsa.fused_attention", "FusedStateAwareAttention"),
@@ -72,9 +62,10 @@ def __getattr__(name: str):
 __all__ = [
     "NSA", "NSARuntime", "AgentResult", "RuntimeConfig", "ModelBackend",
     "OllamaBackend", "EchoBackend", "CallableBackend", "BackendError",
+    "CCEStatus", "ContinuousCognitiveEngine", "CheckpointEnvelope", "StateCheckpointStore",
+    "CognitiveInputEvent", "CognitiveInputQueue",
     "CanonicalState", "SemanticState", "HardState", "SoftState", "ProvenanceState", "GoalState",
-    "StateTransition", "StateKind", "CheckpointEnvelope", "StateCheckpointStore",
-    "CognitiveInputEvent", "CognitiveInputQueue", "Decision", "SecurityDecision",
+    "StateTransition", "StateKind", "Decision", "SecurityDecision",
     "NSAPolicy", "PolicyRule", "PolicyCompiler", "PolicyEngine", "PolicyClassifier",
     "KeywordClassifier", "EvaluationContext", "StateLabel", "StateLattice", "ConservationLaw",
     "DEFAULT_LATTICE", "ProductStateVector", "ProductLattice", "BitpackedStateVector",

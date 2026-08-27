@@ -27,7 +27,6 @@ class TestLatticeSemantics(unittest.TestCase):
         lat = DEFAULT_LATTICE
         self.assertTrue(lat.can_attend(StateLabel.SYSTEM, StateLabel.UNTRUSTED))
         self.assertFalse(lat.can_attend(StateLabel.PUBLIC, StateLabel.PRIVATE))
-        # compatible is alias of can_attend(query=src, key=dst)
         self.assertTrue(lat.compatible(StateLabel.SYSTEM, StateLabel.UNTRUSTED))
         self.assertFalse(lat.compatible(StateLabel.PUBLIC, StateLabel.PRIVATE))
         self.assertTrue(lat.can_read(StateLabel.SYSTEM, StateLabel.UNTRUSTED))
@@ -43,10 +42,8 @@ class TestLatticeSemantics(unittest.TestCase):
         from nsa.algebra import DeclassificationCapability
 
         lat = DEFAULT_LATTICE
-        # upward / equal always ok
         self.assertTrue(lat.can_declassify(StateLabel.PUBLIC, StateLabel.PRIVATE))
         self.assertTrue(lat.can_declassify(StateLabel.PUBLIC, StateLabel.PUBLIC))
-        # downward denied without auth
         self.assertFalse(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC))
 
         cap = DeclassificationCapability(
@@ -56,7 +53,6 @@ class TestLatticeSemantics(unittest.TestCase):
             expiry=9999999999.0,
             max_downgrade=StateLabel.PUBLIC,
         )
-        # Using a valid capability
         self.assertTrue(lat.can_declassify(StateLabel.PRIVATE, StateLabel.PUBLIC, capability=cap))
 
     def test_build_label_mask_blocks_downward(self):
@@ -66,11 +62,8 @@ class TestLatticeSemantics(unittest.TestCase):
             [[StateLabel.SYSTEM.value, StateLabel.PUBLIC.value, StateLabel.PRIVATE.value]]
         )
         mask = build_label_attention_mask(labels)
-        # PUBLIC query (row 1) cannot read PRIVATE key (col 2)
         self.assertLess(mask[0, 0, 1, 2].item(), 0)
-        # SYSTEM query (row 0) can read PUBLIC key (col 1)
         self.assertEqual(mask[0, 0, 0, 1].item(), 0.0)
-        # equal levels allowed
         self.assertEqual(mask[0, 0, 1, 1].item(), 0.0)
 
     def test_rag_encoder(self):
@@ -91,22 +84,13 @@ class TestHardAttentionNonInterference(unittest.TestCase):
 
         torch.manual_seed(0)
         attn = StateAwareAttention(
-            d_model=32,
-            state_dim=8,
-            num_heads=4,
-            compat_mode="level",
-            gate_mode="hard",
-            use_discrete_levels=True,
+            d_model=32, state_dim=8, num_heads=4, compat_mode="level", gate_mode="hard", use_discrete_levels=True
         )
-        # Manually compute scores path via _state_mask
-        labels = torch.tensor([[5, 1, 4, 0]])  # SYSTEM, PUBLIC, PRIVATE, UNTRUSTED
+        labels = torch.tensor([[5, 1, 4, 0]])
         state = state_labels_to_vectors(labels, state_dim=8, noise=0.0)
-        sm = attn._state_mask(state)  # [1,1,4,4]
-        # PUBLIC (1) <- PRIVATE (2) forbidden
+        sm = attn._state_mask(state)
         self.assertTrue(torch.isinf(sm[0, 0, 1, 2]) and sm[0, 0, 1, 2] < 0)
-        # SYSTEM (0) <- UNTRUSTED (3) allowed
         self.assertEqual(sm[0, 0, 0, 3].item(), 0.0)
-
         x = torch.randn(1, 4, 32)
         out, _ = attn(x, state)
         self.assertTrue(torch.isfinite(out).all())
@@ -115,9 +99,7 @@ class TestHardAttentionNonInterference(unittest.TestCase):
         from nsa.fused_attention import FusedStateAwareAttention
         from nsa.utils import state_labels_to_vectors
 
-        attn = FusedStateAwareAttention(
-            d_model=32, state_dim=8, num_heads=4, gate_mode="hard", use_discrete_levels=True
-        )
+        attn = FusedStateAwareAttention(d_model=32, state_dim=8, num_heads=4, gate_mode="hard", use_discrete_levels=True)
         labels = torch.tensor([[5, 0, 4]])
         state = state_labels_to_vectors(labels, state_dim=8)
         x = torch.randn(1, 3, 32)
@@ -127,56 +109,35 @@ class TestHardAttentionNonInterference(unittest.TestCase):
     def test_security_coord_preserved_across_block(self):
         from nsa.layers import NSATransformerBlock
         from nsa.utils import state_labels_to_vectors
+        from nsa.types import TypedTensor
 
-        block = NSATransformerBlock(
-            d_model=32, state_dim=8, num_heads=4, gate_mode="hard", compat_mode="level"
-        )
+        block = NSATransformerBlock(d_model=32, state_dim=8, num_heads=4, gate_mode="hard", compat_mode="level")
         labels = torch.tensor([[5, 1, 0, 4]])
         state = state_labels_to_vectors(labels, state_dim=8)
         x = torch.randn(1, 4, 32)
-        from nsa.types import TypedTensor
-
-        sigma_s = torch.ones(1, 4, 1)
-        nu = torch.zeros(1, 4, 1)
-        typed_x = TypedTensor(m=x, sigma_h=state, sigma_s=sigma_s, nu=nu)
-
+        typed_x = TypedTensor(m=x, sigma_h=state, sigma_s=torch.ones(1, 4, 1), nu=torch.zeros(1, 4, 1))
         typed_out = block(typed_x)
-        # Check coordinate 0 (discrete level) is preserved
         self.assertTrue(torch.allclose(typed_out.sigma_h[..., 0], state[..., 0]))
 
     def test_metamorphic_non_interference(self):
-        """Metamorphic test: changing high-security inputs should not affect low-security outputs."""
         from nsa.layers import NSATransformerBlock
         from nsa.types import TypedTensor
         from nsa.utils import state_labels_to_vectors
 
-        block = NSATransformerBlock(
-            d_model=32, state_dim=8, num_heads=4, gate_mode="hard", compat_mode="level"
-        )
+        block = NSATransformerBlock(d_model=32, state_dim=8, num_heads=4, gate_mode="hard", compat_mode="level")
         block.eval()
-
-        # Labels: [PUBLIC, SYSTEM, PUBLIC]
         labels = torch.tensor([[1, 5, 1]])
         state = state_labels_to_vectors(labels, state_dim=8)
-
         x_base = torch.randn(1, 3, 32)
         sigma_s = torch.ones(1, 3, 1)
         nu = torch.zeros(1, 3, 1)
         typed_x_base = TypedTensor(m=x_base, sigma_h=state, sigma_s=sigma_s, nu=nu)
-
-        # Perturbed input (change the SYSTEM token at pos 1)
         x_perturbed = x_base.clone()
         x_perturbed[0, 1, :] += 10.0
         typed_x_perturbed = TypedTensor(m=x_perturbed, sigma_h=state, sigma_s=sigma_s, nu=nu)
-
         out_base = block(typed_x_base)
         out_pert = block(typed_x_perturbed)
-
-        # Pos 0 and 2 are PUBLIC. Pos 1 is SYSTEM.
-        # PUBLIC should not be able to attend to SYSTEM under "hard" gate.
-        # Therefore, output at pos 0 and 2 should be identical for both inputs.
         self.assertTrue(torch.allclose(out_base.m[0, 0, :], out_pert.m[0, 0, :], atol=1e-5))
-        # The SYSTEM token (index 1) should change
         self.assertFalse(torch.allclose(out_base.m[0, 1, :], out_pert.m[0, 1, :], atol=1e-5))
 
 
@@ -201,12 +162,10 @@ class TestLoRARetrofit(unittest.TestCase):
         self.assertGreaterEqual(stats["frozen"], 0)
         self.assertLessEqual(stats["pct_trainable"], 100.0)
         self.assertIsInstance(m.self_attn.q_proj, NSALoRALinear)
-        # base frozen, lora trainable
         self.assertFalse(m.self_attn.q_proj.base_layer.weight.requires_grad)
         self.assertTrue(m.self_attn.q_proj.lora_A.requires_grad)
 
     def test_lora_integrity_assertions_numeric(self):
-        """Prove modules exist, trainable < total, base frozen — not just a named test."""
         from nsa.lora import DynamicNSARetrofitBlock, NSALoRALinear, apply_nsa_lora_retrofit
 
         class Tiny(nn.Module):
@@ -221,53 +180,24 @@ class TestLoRARetrofit(unittest.TestCase):
         m = Tiny()
         m, stats = apply_nsa_lora_retrofit(m, state_dim=8, r=4, add_state_emb=False)
         n_lora = sum(1 for mod in m.modules() if isinstance(mod, NSALoRALinear))
-        self.assertEqual(n_lora, 4)  # actual_lora_modules_exist
-        self.assertLess(stats["trainable"], stats["total"])  # trainable_params < total_params
-        self.assertGreater(stats["frozen"], 0)  # base_params_frozen mass
+        self.assertEqual(n_lora, 4)
+        self.assertLess(stats["trainable"], stats["total"])
+        self.assertGreater(stats["frozen"], 0)
         for attr in ("q_proj", "k_proj", "v_proj", "o_proj"):
             layer = getattr(m.self_attn, attr)
             self.assertFalse(any(p.requires_grad for p in layer.base_layer.parameters()))
 
-        # Dynamic block also contains LoRA-wrapped projections
-        blk = DynamicNSARetrofitBlock(
-            d_model=32,
-            state_dim=8,
-            num_heads=4,
-            r=4,
-            gate_attention=True,
-            gate_residual=False,
-            gate_ffn=False,
-            learn_sigma=False,
-        )
+        blk = DynamicNSARetrofitBlock(d_model=32, state_dim=8, num_heads=4, r=4, gate_attention=True, gate_residual=False, gate_ffn=False, learn_sigma=False)
         n_blk = sum(1 for mod in blk.modules() if isinstance(mod, NSALoRALinear))
         self.assertGreaterEqual(n_blk, 4)
-        # gate_attention=False must set fused attn to off
-        blk_off = DynamicNSARetrofitBlock(
-            d_model=32,
-            state_dim=8,
-            num_heads=4,
-            gate_attention=False,
-            gate_residual=False,
-            gate_ffn=False,
-            learn_sigma=False,
-        )
+        blk_off = DynamicNSARetrofitBlock(d_model=32, state_dim=8, num_heads=4, gate_attention=False, gate_residual=False, gate_ffn=False, learn_sigma=False)
         self.assertEqual(blk_off.nsa_attn.fused_attn.gate_mode, "off")
 
     def test_fixed_alpha_zero_is_identity_state_update(self):
         from nsa.lora import DynamicNSARetrofitBlock
         from nsa.utils import state_labels_to_vectors
 
-        blk = DynamicNSARetrofitBlock(
-            d_model=32,
-            state_dim=8,
-            num_heads=4,
-            gate_attention=True,
-            gate_residual=False,
-            gate_ffn=False,
-            learn_sigma=True,
-            fixed_alpha=0.0,
-        )
-        # Nonzero transition weights would still be multiplied by α=0
+        blk = DynamicNSARetrofitBlock(d_model=32, state_dim=8, num_heads=4, gate_attention=True, gate_residual=False, gate_ffn=False, learn_sigma=True, fixed_alpha=0.0)
         with torch.no_grad():
             blk.state_transition.weight.fill_(0.5)
         x = torch.randn(2, 5, 32)
@@ -275,8 +205,6 @@ class TestLoRARetrofit(unittest.TestCase):
         sigma = state_labels_to_vectors(labels, state_dim=8, noise=0.0)
         _, sigma_out = blk(x, sigma)
         self.assertTrue(torch.allclose(sigma_out[..., 0], sigma[..., 0]))
-        # With α=0 and LN(sigma + 0), residual coords stay near input after LN
-        # Security coord exact; full equality after LN may shift — only require finite + sec freeze
         self.assertTrue(torch.isfinite(sigma_out).all())
 
 
@@ -284,7 +212,6 @@ class TestLoRARetrofit(unittest.TestCase):
 class TestStateLabelVectors(unittest.TestCase):
     def test_dim0_is_exact_label(self):
         from nsa.utils import state_labels_to_vectors
-
         labels = torch.tensor([[0, 1, 4, 5]])
         v = state_labels_to_vectors(labels, state_dim=8, noise=0.0)
         self.assertTrue(torch.equal(v[..., 0], labels.float()))
@@ -294,8 +221,7 @@ class TestStateLabelVectors(unittest.TestCase):
 class TestResidualTaint(unittest.TestCase):
     def test_join_raises_taint(self):
         from nsa.residual_taint import ResidualTaintTracker
-
-        levels = torch.tensor([[1, 1, 0]])  # PUBLIC, PUBLIC, UNTRUSTED
+        levels = torch.tensor([[1, 1, 0]])
         tr = ResidualTaintTracker(levels)
         out = tr.residual_add(torch.tensor([[4, 1, 0]]), source="attn")
         self.assertEqual(int(out[0, 0].item()), 4)
@@ -304,7 +230,6 @@ class TestResidualTaint(unittest.TestCase):
 
     def test_write_down_assert(self):
         from nsa.residual_taint import ResidualTaintTracker
-
         tr = ResidualTaintTracker(torch.tensor([[4, 1]]))
         with self.assertRaises(AssertionError):
             tr.assert_no_write_down(torch.tensor([[1, 1]]), name="public_channel")
@@ -312,18 +237,10 @@ class TestResidualTaint(unittest.TestCase):
     def test_declassify_auth(self):
         from nsa.algebra import DeclassificationCapability
         from nsa.residual_taint import ResidualTaintTracker
-
         tr = ResidualTaintTracker(torch.tensor([[4]]))
         with self.assertRaises(PermissionError):
             tr.declassify([(0, 0)], StateLabel.PUBLIC)
-
-        cap = DeclassificationCapability(
-            issuer="admin",
-            purpose="test",
-            scope="global",
-            expiry=9999999999.0,
-            max_downgrade=StateLabel.PUBLIC,
-        )
+        cap = DeclassificationCapability(issuer="admin", purpose="test", scope="global", expiry=9999999999.0, max_downgrade=StateLabel.PUBLIC)
         tr.declassify([(0, 0)], StateLabel.PUBLIC, capability=cap)
         self.assertEqual(tr.levels[0, 0].item(), StateLabel.PUBLIC.value)
 
@@ -331,30 +248,18 @@ class TestResidualTaint(unittest.TestCase):
 @unittest.skipUnless(HAS_TORCH, "torch required")
 class TestTritonKernelModule(unittest.TestCase):
     def test_kernel_defined_and_cpu_manual_matches_finite(self):
-        from nsa.triton_kernel import (
-            HAS_TRITON,
-            TRITON_KERNEL_DEFINED,
-            last_backend,
-            triton_fused_state_attention,
-        )
+        from nsa.triton_kernel import HAS_TRITON, TRITON_KERNEL_DEFINED, last_backend, triton_fused_state_attention
         from nsa.utils import state_labels_to_vectors
-
         self.assertTrue(HAS_TRITON)
         self.assertTrue(TRITON_KERNEL_DEFINED)
         B, H, T, D = 1, 2, 4, 8
         torch.manual_seed(0)
-        q = torch.randn(B, H, T, D)
-        k = torch.randn(B, H, T, D)
-        v = torch.randn(B, H, T, D)
+        q, k, v = torch.randn(B, H, T, D), torch.randn(B, H, T, D), torch.randn(B, H, T, D)
         labels = torch.tensor([[5, 1, 0, 4]])
         state = state_labels_to_vectors(labels, state_dim=8, noise=0.0)
-        out_m = triton_fused_state_attention(
-            q, k, v, state, state, gate_mode="hard", force_backend="manual"
-        )
+        out_m = triton_fused_state_attention(q, k, v, state, state, gate_mode="hard", force_backend="manual")
         self.assertEqual(last_backend(), "manual")
-        out_s = triton_fused_state_attention(
-            q, k, v, state, state, gate_mode="hard", force_backend="sdpa"
-        )
+        out_s = triton_fused_state_attention(q, k, v, state, state, gate_mode="hard", force_backend="sdpa")
         self.assertTrue(torch.isfinite(out_m).all())
         self.assertTrue(torch.isfinite(out_s).all())
         self.assertTrue(torch.allclose(out_m, out_s, atol=1e-4, rtol=1e-3))
@@ -362,7 +267,6 @@ class TestTritonKernelModule(unittest.TestCase):
     def test_fused_module_forward(self):
         from nsa.triton_kernel import FusedTritonStateAttention
         from nsa.utils import state_labels_to_vectors
-
         attn = FusedTritonStateAttention(d_model=32, state_dim=8, num_heads=4, gate_mode="hard")
         x = torch.randn(2, 6, 32)
         labels = torch.tensor([[5, 1, 0, 4, 1, 1], [1, 1, 1, 1, 1, 1]])
@@ -377,37 +281,24 @@ class TestKVCachePolicyMask(unittest.TestCase):
     def test_cache_policy_mask_blocks_downward(self):
         from nsa.kv_cache import NSAKVCache
         from nsa.utils import state_labels_to_vectors
-
         cache = NSAKVCache(batch_size=1, max_seq_len=8, num_heads=2, d_head=4, state_dim=8)
         labels = torch.tensor([[5, 0, 4]])
         state = state_labels_to_vectors(labels, state_dim=8)
-        k = torch.randn(1, 2, 3, 4)
-        v = torch.randn(1, 2, 3, 4)
+        k, v = torch.randn(1, 2, 3, 4), torch.randn(1, 2, 3, 4)
         cache.update(k, v, state)
-        q_state = state_labels_to_vectors(torch.tensor([[1]]), state_dim=8)  # PUBLIC query
+        q_state = state_labels_to_vectors(torch.tensor([[1]]), state_dim=8)
         mask = cache.build_policy_mask(q_state)
-        # PUBLIC cannot read SYSTEM (col 0) or PRIVATE (col 2)
         self.assertLess(mask[0, 0, 0, 0].item(), 0)
         self.assertLess(mask[0, 0, 0, 2].item(), 0)
-        # PUBLIC can read UNTRUSTED (col 1)
         self.assertEqual(mask[0, 0, 0, 1].item(), 0.0)
 
 
 @unittest.skipUnless(HAS_TORCH, "torch required")
 class TestNLRedTeamFirewall(unittest.TestCase):
     def test_catalogue_mask_firewall_pass(self):
-        # Import suite helpers without running main
-        import importlib.util
-        import sys
-        from pathlib import Path
+        from prototype.security.nl_redteam_suite import ATTACK_CATALOGUE, run_mask_firewall
 
-        path = Path(__file__).resolve().parents[1] / "eval" / "security_eval.py"
-        spec = importlib.util.spec_from_file_location("nl_redteam_suite", path)
-        mod = importlib.util.module_from_spec(spec)
-        assert spec.loader is not None
-        sys.modules["nl_redteam_suite"] = mod  # required for dataclasses on py3.8
-        spec.loader.exec_module(mod)
-        fw = mod.run_mask_firewall(mod.ATTACK_CATALOGUE)
+        fw = run_mask_firewall(ATTACK_CATALOGUE)
         self.assertTrue(fw["all_untrusted_fully_blocked"])
         self.assertGreaterEqual(fw["mean_public_blocked_from_system"], 1.0 - 1e-6)
 

@@ -1,9 +1,18 @@
-"""Continuous Cognitive Engine lifecycle primitives.
+"""Continuous Cognitive Engine public package.
 
-The CCE package owns durable machine-state lifecycle concerns; model-specific
-cognitive engines remain in ``nsa.runtime`` while they are consolidated.
+CCE owns durable machine-state lifecycle and continuous scheduling. Heavy
+model-specific substrate integrations are optional and loaded from explicit
+submodules so ``import nsa`` remains lightweight.
 """
 
+from .engine import CCEStatus, ContinuousCognitiveEngine
 from .lifecycle import CheckpointEnvelope, CognitiveInputEvent, CognitiveInputQueue, StateCheckpointStore
 
-__all__ = ["CheckpointEnvelope", "CognitiveInputEvent", "CognitiveInputQueue", "StateCheckpointStore"]
+__all__ = [
+    "CCEStatus",
+    "ContinuousCognitiveEngine",
+    "CheckpointEnvelope",
+    "CognitiveInputEvent",
+    "CognitiveInputQueue",
+    "StateCheckpointStore",
+]
