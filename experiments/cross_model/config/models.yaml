@@ -1,0 +1,28 @@
+# Local models. Ollama model names may be changed without touching experiment code.
+models:
+  - name: qwen2.5:3b
+    family: qwen
+    enabled: true
+  - name: qwen2.5:7b
+    family: qwen
+    enabled: true
+  - name: llama3.1:8b
+    family: llama
+    enabled: true
+  - name: gemma3:4b
+    family: gemma
+    enabled: true
+
+profiles:
+  smoke:
+    seeds: 2
+    tasks: [prediction, long_horizon]
+    horizons: [4, 8]
+  local:
+    seeds: 20
+    tasks: [prediction, long_horizon, partial_observation, recovery, information_gain, authority]
+    horizons: [4, 8, 16]
+  reproduction:
+    seeds: 50
+    tasks: [prediction, long_horizon, partial_observation, recovery, information_gain, authority]
+    horizons: [4, 8, 16, 32]
