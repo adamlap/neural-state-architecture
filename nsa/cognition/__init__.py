@@ -1,6 +1,9 @@
-"""Model-agnostic cognitive substrate primitives."""
+"""Lightweight model-agnostic cognitive substrate primitives.
 
-from .belief_state import BeliefState
+Heavy legacy belief implementations are intentionally not imported here so the
+base NSA package does not acquire mandatory ML dependencies.
+"""
+
 from .substrate import (
     CognitiveMetrics,
     CognitiveState,
@@ -15,15 +18,7 @@ from .substrate import (
 )
 
 __all__ = [
-    "BeliefState",
-    "CognitiveMetrics",
-    "CognitiveState",
-    "CognitiveSubstrate",
-    "CognitiveSwitches",
-    "IntegrationGraph",
-    "Prediction",
-    "PredictionState",
-    "SelfModelState",
-    "WorkspaceCandidate",
-    "WorkspaceState",
+    "CognitiveMetrics", "CognitiveState", "CognitiveSubstrate", "CognitiveSwitches",
+    "IntegrationGraph", "Prediction", "PredictionState", "SelfModelState",
+    "WorkspaceCandidate", "WorkspaceState",
 ]
