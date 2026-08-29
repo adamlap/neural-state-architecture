@@ -28,12 +28,50 @@ Consolidate existing CCE, belief, predictive, epistemic, normative, self-state a
 Target state:
 
 $$
-\Omega_t=(m_t,\sigma_t,\nu_t,\kappa_t,\pi_t,g_t,\rho_t)
+\\Omega_t=(m_t,\\sigma_t,\\nu_t,\\kappa_t,\\pi_t,g_t,\\rho_t)
 $$
 
 where explicit operational/epistemic/normative state remains inspectable and auditable while the neural model remains replaceable.
 
 The scientific question is whether explicit state is **causally useful** for cognition and safety, not whether persistent state should be described as consciousness.
+
+#### Three-stage cognitive-state program
+
+Go 1, Go 2 and Go 3 are cumulative branches. Each stage starts from the previous stage and must continue to use `nsa.NSA` / CCE as the only public runtime boundary.
+
+**Go 1 — Cognitive substrate + GWT + integration**
+
+- [x] Competitive attention, salience scoring and bounded workspace.
+- [x] Recurrent ignition/broadcast tracing.
+- [x] Persistent prediction/error and uncertainty state.
+- [x] Explicit integration graph and coupling/influence metrics.
+- [x] Self-state, self-prediction and metacognitive signals.
+- [x] Deterministic cognitive transition path.
+- [x] Information-gain scoring.
+- [x] Mechanism ablation switches.
+- [x] Instrumentation and deterministic tests.
+- [x] Research boundary and falsifiable hypotheses.
+
+**Go 2 — Embodied/active cognition**
+
+- [ ] Active inference and action/observation selection.
+- [ ] Valuation and homeostatic drives.
+- [ ] Autonomous information acquisition under capability/policy constraints.
+- [ ] Richer self model and persistent identity/autobiographical state.
+- [ ] Go 1 mechanism ablations retained as first-class controls.
+
+**Go 3 — Consciousness research harness**
+
+- [ ] Theory-specific GWT experiments.
+- [ ] IIT-inspired integration experiments.
+- [ ] Recurrent-processing experiments.
+- [ ] Higher-order/self-model experiments.
+- [ ] Continuity and interruption/recovery experiments.
+- [ ] Cross-model property experiments.
+- [ ] Statistical analysis, effect sizes and uncertainty.
+- [ ] Reproducibility and raw-trajectory suite.
+
+Scientific boundary: these stages investigate **consciousness-inspired computational properties**. They do not claim that a machine is conscious. Consciousness remains an open scientific question.
 
 ## Evidence and experimental conditions
 
@@ -51,7 +89,7 @@ All major cognitive/capability claims must distinguish the following epistemic l
 Every important claim should trace:
 
 $$
-\text{Claim}\rightarrow\text{Assumption}\rightarrow\text{Implementation}\rightarrow\text{Test}\rightarrow\text{Experiment}\rightarrow\text{Artifact}\rightarrow\text{Status}
+\\text{Claim}\\rightarrow\\text{Assumption}\\rightarrow\\text{Implementation}\\rightarrow\\text{Test}\\rightarrow\\text{Experiment}\\rightarrow\\text{Artifact}\\rightarrow\\text{Status}
 $$
 
 ### Matched experimental conditions
@@ -266,10 +304,10 @@ Make NSA composable with existing AI infrastructure rather than requiring a new 
 Treat model modification as a typed, policy-governed state transition:
 
 $$
-(M_t,S_t)\rightarrow(M_{t+1},S_{t+1})
+(M_t,S_t)\\rightarrow(M_{t+1},S_{t+1})
 $$
 
-subject to protected invariants $\mathcal I$.
+subject to protected invariants $\\mathcal I$.
 
 ### Tasks
 
@@ -326,7 +364,7 @@ Do not equate these findings with consciousness. Treat consciousness as a separa
 The long-term research objective is to test whether a highly capable AI can operate around a coherent typed substrate combining:
 
 $$
-\boxed{\text{World Model}+\text{Self Model}+\text{State Algebra}+\text{Capability System}+\text{Memory}+\text{Values}+\text{Action Governance}}
+\\boxed{\\text{World Model}+\\text{Self Model}+\\text{State Algebra}+\\text{Capability System}+\\text{Memory}+\\text{Values}+\\text{Action Governance}}
 $$
 
 The goal is not merely a safer LLM. It is a framework in which capability, introspection, information flow, authority, provenance and safety can participate in a common computational language.
