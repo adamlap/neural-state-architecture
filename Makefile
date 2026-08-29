@@ -1,6 +1,9 @@
 .DEFAULT_GOAL := help
 PYTHON ?= python3
 UV := $(shell command -v uv 2>/dev/null || echo "")
+UV_EXISTS := $(if $(UV),yes,no)
+UV_VENV ?= .venv
+UV_PYTHON ?= $(UV_VENV)/bin/python
 export PYTHONPATH := .
 
 SAFETY_POLICY ?= $(POLICY)
@@ -20,7 +23,7 @@ NOISE ?= 0.0 0.05 0.10 0.20 0.30
 
 define RUN_NSA_SERVER
 	@if [ "$(UV_EXISTS)" = "yes" ]; then \
-		PYTHONPATH=. $(UV) run python scripts/policy_server.py $(1) --model $(NSA_MODEL) --port $(NSA_PORT) $(if $(NSA_BACKEND_URL),--backend-url $(NSA_BACKEND_URL),) $(if $(NSA_POLICY),--policy $(NSA_POLICY),) $(if $(filter 0 false no,$(CCE)),--no-cce,); \
+				PYTHONPATH=. $(UV) run --python $(UV_PYTHON) --no-project python scripts/policy_server.py $(1) --model $(NSA_MODEL) --port $(NSA_PORT) $(if $(NSA_BACKEND_URL),--backend-url $(NSA_BACKEND_URL),) $(if $(NSA_POLICY),--policy $(NSA_POLICY),) $(if $(filter 0 false no,$(CCE)),--no-cce,); \
 	else \
 		PYTHONPATH=. $(PYTHON) scripts/policy_server.py $(1) --model $(NSA_MODEL) --port $(NSA_PORT) $(if $(NSA_BACKEND_URL),--backend-url $(NSA_BACKEND_URL),) $(if $(NSA_POLICY),--policy $(NSA_POLICY),) $(if $(filter 0 false no,$(CCE)),--no-cce,); \
 	fi
@@ -49,19 +52,19 @@ help: ## Show the supported developer commands
 	@printf '  make build         Build wheel and source distribution\n\n'
 
 install: ## Install the NSA runtime package
-	$(PYTHON) -m pip install -e .
+	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) venv --python 3.12 --allow-existing $(UV_VENV) && $(UV) pip install --python $(UV_PYTHON) -e '.[ml]'; else $(PYTHON) -m pip install -e .[ml]; fi
 
 install-dev: ## Install runtime and development dependencies
-	$(PYTHON) -m pip install -e '.[dev]'
+	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) venv --python 3.12 --allow-existing $(UV_VENV) && $(UV) pip install --python $(UV_PYTHON) -e '.[ml,dev]'; else $(PYTHON) -m pip install -e '.[ml,dev]'; fi
 
 test: ## Run the complete regression suite
-	$(PYTHON) -m pytest -q
+	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) run --python $(UV_PYTHON) --no-project python -m pytest -q; else $(PYTHON) -m pytest -q; fi
 
 test-core: ## Run public runtime/API regression tests
-	$(PYTHON) -m pytest -q tests/test_agent.py
+	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) run --python $(UV_PYTHON) --no-project python -m pytest -q tests/test_agent.py; else $(PYTHON) -m pytest -q tests/test_agent.py; fi
 
 test-cce: ## Run CCE/runtime regression tests
-	$(PYTHON) -m pytest -q tests -k 'cce or runtime'
+	@if [ "$(UV_EXISTS)" = "yes" ]; then $(UV) run --python $(UV_PYTHON) --no-project python -m pytest -q tests -k 'cce or runtime'; else $(PYTHON) -m pytest -q tests -k 'cce or runtime'; fi
 
 build: ## Build wheel and source distribution
 	$(PYTHON) -m pip install --upgrade build
@@ -78,10 +81,10 @@ serve: serve-ollama ## Start the default local Ollama server
 serve-cce: serve-ollama ## Backwards-compatible CCE server alias
 
 serve-ollama: ## Start the existing OpenAI/Ollama-compatible NSA server
-	$(PYTHON) -m nsa.server.proxy --backend ollama --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}
+	@if [ "$(UV_EXISTS)" = "yes" ]; then PYTHONPATH=. $(UV) run --python $(UV_PYTHON) --no-project python -m nsa.server.proxy --backend ollama --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}; else PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend ollama --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}; fi
 
 serve-lmstudio: ## Start the OpenAI/LMStudio-compatible NSA server
-	$(PYTHON) -m nsa.server.proxy --backend lmstudio --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}
+	@if [ "$(UV_EXISTS)" = "yes" ]; then PYTHONPATH=. $(UV) run --python $(UV_PYTHON) --no-project python -m nsa.server.proxy --backend lmstudio --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}; else PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend lmstudio --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}; fi
 
 serve-cce-policy: ## Launch Ollama-backed CCE server with optional SAFETY_POLICY=policies/strict.yaml
 	$(call RUN_NSA_SERVER,--backend ollama)
