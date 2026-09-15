@@ -1,7 +1,7 @@
 """Adapter from the neural six-layer substrate to canonical CCE proposals."""
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Any, Sequence
 import torch
 from nsa.cognition.interfaces import ActionCandidate
 from nsa.core.omega import UnifiedCognitiveState
@@ -12,14 +12,13 @@ from nsa.runtime.cognitive_substrate import CognitiveDynamicsSubstrate, Cognitiv
 class SubstrateProposal:
     action: ActionCandidate | None
     substrate_result: CognitiveStepResult
-    semantic_update: object | None = None
+    semantic_update: Any = None
     soft_updates: dict[str, float] | None = None
 
 class SixLayerCanonicalAdapter:
     """Use the six-layer neural substrate as proposer, never as authority."""
-    def __init__(self, substrate: CognitiveDynamicsSubstrate, *, action_payload_factory=None) -> None:
+    def __init__(self, substrate: CognitiveDynamicsSubstrate) -> None:
         self.substrate = substrate
-        self.action_payload_factory = action_payload_factory or (lambda tensor: {"tensor": tensor})
 
     def propose(self, state: CanonicalState, omega: UnifiedCognitiveState,
                 candidates: Sequence[ActionCandidate]) -> SubstrateProposal:
@@ -34,10 +33,10 @@ class SixLayerCanonicalAdapter:
             tuples.append((candidate.action_id, tensor, clearance, candidate.risk, verification))
         result = self.substrate.step(omega, tuples)
         selected = next((candidate for candidate in candidates if candidate.action_id == result.executed_action_id), None)
+        # A governor/kernel rejection is a proposal rejection, not a state mutation.
         if not result.transition_committed:
             selected = None
-        updates = {"uncertainty": min(1.0, result.kernel_result.invariant_results[0].passed is False and state.soft.uncertainty or state.soft.uncertainty)}
-        return SubstrateProposal(selected, result, soft_updates=updates)
+        return SubstrateProposal(selected, result)
 
     def __call__(self, state: CanonicalState, omega: UnifiedCognitiveState,
                  candidates: Sequence[ActionCandidate]) -> ActionCandidate | None:
