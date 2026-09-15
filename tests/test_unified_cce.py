@@ -1,6 +1,6 @@
 from nsa.cce import CognitiveTransactionEngine, EventKind
 from nsa.cognition.interfaces import ActionCandidate
-from nsa.core.state import CanonicalState, HardState
+from nsa.core.state import CanonicalState, HardState, StateTransition
 from nsa.core.transition import TransitionProposal, TransitionValidator, state_digest
 
 
@@ -22,17 +22,9 @@ def test_soft_transition_is_atomic_and_audited():
 
 def test_unauthorized_hard_transition_cannot_commit():
     state = CanonicalState()
-    proposal = TransitionProposal(
-        action_id="elevate",
-        hard_transition=TransitionProposal.__dataclass_fields__["hard_transition"].default,
-    )
-    # A missing hard transition is harmless; explicitly test the real validator path below.
     target = HardState(authorizations=frozenset({"write"}), license_tier=2)
-    bad = TransitionProposal(
-        action_id="elevate",
-        hard_transition=__import__("nsa.core.state", fromlist=["StateTransition"]).StateTransition(state.hard, target),
-    )
-    next_state, receipt = TransitionValidator().apply(state, bad)
+    proposal = TransitionProposal(action_id="elevate", hard_transition=StateTransition(state.hard, target))
+    next_state, receipt = TransitionValidator().apply(state, proposal)
     assert next_state == state
     assert not receipt.committed
 
@@ -40,10 +32,11 @@ def test_unauthorized_hard_transition_cannot_commit():
 def test_authorized_hard_transition_commits():
     state = CanonicalState()
     target = HardState(authorizations=frozenset({"write"}), license_tier=1)
-    transition = __import__("nsa.core.state", fromlist=["StateTransition"]).StateTransition(state.hard, target).authorize("cap-1")
+    transition = StateTransition(state.hard, target).authorize("cap-1")
     tx = CognitiveTransactionEngine(state).tick(action_id="elevate", hard_transition=transition)
     assert tx.receipt.committed
     assert tx.state.hard == target
+    assert tx.state.step == 1
 
 
 def test_policy_denial_prevents_execution():
