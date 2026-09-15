@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 from nsa.cce.engine import CCEStatus, ContinuousCognitiveEngine
+from nsa.cce.persistence import TrajectoryJournal
 from nsa.cce.transaction import CognitiveTransaction, CognitiveTransactionEngine
 from nsa.cognition.interfaces import ActionCandidate
 from nsa.core.capabilities import CapabilityAuthority, CapabilityToken
@@ -26,11 +27,12 @@ class CanonicalCCERuntime:
                  policy: Callable | None = None, safety_gate: Callable | None = None,
                  executor: Callable | None = None, capability_authority: CapabilityAuthority | None = None,
                  capability_tokens: Mapping[str, CapabilityToken] | None = None,
+                 journal: TrajectoryJournal | None = None,
                  interval_seconds: float = 0.1, enabled: bool = False, fail_closed: bool = True) -> None:
         self.transaction_engine = CognitiveTransactionEngine(
             initial_state, selector=selector, policy=policy, safety_gate=safety_gate,
-            executor=executor, capability_authority=capability_authority,
-            capability_tokens=capability_tokens)
+            executor=executor, capability_authority=capability_authority, capability_tokens=capability_tokens)
+        self.journal = journal
         self._pending: TickInput | None = None
         self.engine = ContinuousCognitiveEngine(initial_state, self._step,
             interval_seconds=interval_seconds, enabled=enabled, fail_closed=fail_closed)
@@ -61,12 +63,13 @@ class CanonicalCCERuntime:
                 provenance_source=item.provenance_source, evidence_id=item.evidence_id,
                 metadata=item.metadata)
         self.engine.set_state(self.transaction_engine.state)
+        if result is not None and self.journal is not None:
+            self.journal.append(self.transaction_engine.trajectory.latest)
         return result
 
     def _step(self, _state: CanonicalState) -> CanonicalState:
         self.tick()
         return self.transaction_engine.state
-
     def start(self) -> bool:
         return self.engine.start()
     def stop(self, timeout: float | None = None) -> bool:
