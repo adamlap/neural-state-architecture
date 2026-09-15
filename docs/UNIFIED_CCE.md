@@ -1,66 +1,98 @@
 # Unified CCE transaction architecture
 
-This document defines the convergence point for NSA's state, cognition and
-continuous execution work.
+This document defines the convergence point for NSA state, cognition and continuous execution.
 
-## Invariant
+## Canonical invariant
 
-The model is a proposer, not an authority. A CCE tick follows:
+**Model cognition proposes. Policy and authority govern. Safety validates. Structural validation validates state transitions. Execution happens only after all configured gates pass. Canonical state commits once.**
 
 ```text
 observation
-    -> cognitive proposal
-    -> action candidates
-    -> policy decision
-    -> structural transition validation
-    -> external execution (if permitted)
-    -> canonical state commit
-    -> provenance / trajectory record
+   ↓
+belief update
+   ↓
+prediction / self-model
+   ↓
+prediction error + information need
+   ↓
+deliberation / action proposal
+   ↓
+policy
+   ↓
+capability verification
+   ↓
+immutable safety kernel
+   ↓
+structural transition validation
+   ↓
+capability consumption
+   ↓
+external execution
+   ↓
+canonical state commit
+   ↓
+provenance + append-only trajectory
 ```
 
-Hard authority can only change through an explicitly authorized
-`StateTransition`. Soft cognitive channels may evolve, but they never grant
-hard authority.
+Hard authority can only change through an explicitly authorized `StateTransition`.
+Soft cognitive channels may evolve, but they never grant hard authority.
 
-## Components
+## Converged components
 
 - `nsa.core.state.CanonicalState`: stable typed state boundary.
-- `nsa.core.transition`: proposal validation, atomic application and state digest.
-- `nsa.cce.events`: typed cognitive event vocabulary.
+- `nsa.core.transition`: atomic proposals, validation, receipts and state digests.
+- `nsa.core.capabilities`: authenticated capability constraints with separate verify/consume operations.
+- `nsa.core.safety_kernel.ImmutableSafetyKernel`: deterministic reference monitor; capability consumption is explicit.
+- `nsa.cce.events`: typed observation, belief, prediction, prediction-error, cognition, governance and commit events.
 - `nsa.cce.trajectory`: append-only in-memory transition history.
-- `nsa.cce.transaction.CognitiveTransactionEngine`: one-tick transaction coordinator.
-- `nsa.cce.canonical_runtime.CanonicalCCERuntime`: scheduler + transaction engine.
-- `nsa.cognition.interfaces`: model-agnostic prediction, belief, action and
-  information-gain protocols.
-- `nsa.cognition.deliberation`: uncertainty-sensitive action selection.
+- `nsa.cce.persistence.TrajectoryJournal`: durable JSONL trajectory journal with integrity verification.
+- `nsa.cce.transaction.CognitiveTransactionEngine`: canonical transaction coordinator.
+- `nsa.cce.loop.CognitiveLoop`: observe → believe → predict → error → deliberate → govern → commit orchestration.
+- `nsa.cce.canonical_runtime.CanonicalCCERuntime`: wall-clock scheduler over the canonical transaction engine, with optional durable journaling.
+- `nsa.cce.omega_adapter.CanonicalOmegaAdapter`: explicit one-way CanonicalState → Omega bridge.
+- `nsa.cce.substrate_adapter.SixLayerCanonicalAdapter`: turns the neural six-layer substrate into action proposals rather than authority.
+- `nsa.cce.safety_adapter.ImmutableKernelGate`: exposes the immutable kernel as a canonical CCE safety gate.
+- `nsa.cognition.deliberation.InformationSeekingPlanner`: makes missing evidence an explicit T1-style action proposal that still passes normal governance.
 
-## Why this is the convergence layer
+## Capability lifecycle
 
-The repository contains richer experimental `UnifiedCognitiveState` and
-six-layer substrate implementations. They should progressively adapt to this
-transaction boundary rather than creating parallel state/commit paths.
+Capability authorization has three distinct states:
 
-A future substrate adapter should translate its rich internal state into a
-canonical proposal, invoke the same policy/capability/safety gates, and commit
-through the same transaction engine.
+1. **Verify** — authenticate scope, action, tier, expiry, replay status and constraints.
+2. **Govern** — policy, safety and structural gates may still reject the proposal without burning the nonce.
+3. **Consume** — consume the nonce immediately before an external effect.
 
-## Safety boundary
+This prevents rejected proposals from consuming capabilities while preserving one-shot replay protection for actually authorized use.
 
-Execution is deliberately placed after policy and structural validation. A
-future capability/safety adapter should become another mandatory gate before
-`executor`, not be implemented inside the model or scheduler.
+## Neural / Omega boundary
 
-Execution failure produces no canonical state commit. Successful execution is
-recorded as an event, while the next state is still created immutably through
-the validator.
+The six-layer neural substrate remains useful for simulation, epistemic reasoning and
+self-modeling, but it is not the canonical state owner. `CanonicalOmegaAdapter` provides
+a one-way representation bridge and `SixLayerCanonicalAdapter` exposes substrate results
+as proposals. No tensor output can directly mutate canonical hard authority.
 
-## Next convergence steps
+The public compatibility `CognitiveDynamicsSubstrate.step()` still returns a projected
+Omega for older callers; new integrations should use the canonical adapters and transaction engine.
 
-1. Adapt the existing six-layer `CognitiveDynamicsSubstrate` to emit canonical
-   proposals rather than owning a parallel `UnifiedCognitiveState` commit.
-2. Add capability and immutable safety-kernel hooks to `CognitiveTransactionEngine`.
-3. Persist `CognitiveTrajectory` records alongside existing checkpoints.
-4. Add belief/prediction/self-model adapters and prediction-error events.
-5. Add goal-driven information-seeking action generation.
-6. Make the public `NSA` runtime expose this transaction trajectory without
-   making PyTorch mandatory for the base package.
+## Information seeking
+
+High uncertainty is represented explicitly through `InformationNeed` and can produce a
+governed information-gathering `ActionCandidate`. Information seeking is not an authority
+bypass: the resulting action is still subject to policy, capability, safety and structural validation.
+
+## Durability and replay
+
+`TrajectoryJournal` stores append-only JSONL records. `verify()` checks monotonic steps,
+well-formed SHA-256 state digests, and optionally the latest digest against a live canonical
+state. This is the base for durable replay. Full state reconstruction remains a separate
+phase because arbitrary semantic payloads cannot safely be reconstructed from summaries alone.
+
+## Remaining hardening phases
+
+1. **Transactional effect/commit coupling** — introduce an effect receipt or two-phase executor so a non-idempotent external effect cannot succeed while its canonical commit fails.
+2. **General capability constraint evaluator** — move beyond `max_risk` and `reversible_only` to typed scopes, targets, rate limits and resource bounds.
+3. **Production key management** — require explicit injected key material in production deployments; keep the demo key only for legacy research fixtures.
+4. **Full Omega state adapters** — connect learned self-model state, epistemic vectors and prediction-error metrics to canonical soft/provenance channels through explicit typed adapters.
+5. **Durable replay** — persist enough canonical state material to reconstruct and verify a trajectory, with schema/version hashes and corruption detection.
+6. **Adversarial end-to-end matrix** — continuously prove that model output cannot bypass policy, capability, safety, hard-state authorization or trajectory integrity.
+7. **PyTorch isolation** — keep the base canonical CCE usable without importing the neural substrate; neural dependencies should remain optional integration modules.
