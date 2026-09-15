@@ -1,9 +1,9 @@
 """Canonical CCE transaction coordinator.
 
-The engine separates proposal, governance, capability authorization, safety
-mediation, transition validation, execution and commit. Model output is never
-itself authority; external effects occur only after every configured gate has
-approved the proposal.
+The engine separates proposal, governance, capability verification, safety
+mediation, transition validation, capability consumption, execution and commit.
+Model output is never itself authority; external effects occur only after every
+configured gate has approved the proposal.
 """
 from __future__ import annotations
 
@@ -40,14 +40,10 @@ class CognitiveTransactionEngine:
     """Turn a cognitive tick into one governed, auditable state transaction."""
 
     def __init__(
-        self,
-        initial_state: CanonicalState,
-        *,
+        self, initial_state: CanonicalState, *,
         selector: Optional[Callable[[CanonicalState, Sequence[ActionCandidate]], ActionCandidate | None]] = None,
-        policy: Optional[PolicyHook] = None,
-        safety_gate: Optional[GateHook] = None,
-        executor: Optional[ExecutionHook] = None,
-        validator: Optional[TransitionValidator] = None,
+        policy: Optional[PolicyHook] = None, safety_gate: Optional[GateHook] = None,
+        executor: Optional[ExecutionHook] = None, validator: Optional[TransitionValidator] = None,
         trajectory: Optional[CognitiveTrajectory] = None,
         capability_authority: Optional[CapabilityAuthority] = None,
         capability_tokens: Optional[Mapping[str, CapabilityToken]] = None,
@@ -94,99 +90,68 @@ class CognitiveTransactionEngine:
             return "capability constraint reversible_only violated"
         return None
 
-    def _capability_gate(self, action: ActionCandidate) -> tuple[bool, str]:
-        """Check declared capabilities and consume supplied cryptographic tokens."""
+    def _verify_capabilities(self, action: ActionCandidate) -> tuple[bool, str, tuple[CapabilityToken, ...]]:
+        """Verify all required capabilities without consuming any nonce."""
         required = tuple(action.required_capabilities)
         if not required:
-            return True, "no capabilities required"
-
+            return True, "no capabilities required", ()
+        verified: list[CapabilityToken] = []
         for capability in required:
             if self.state.hard.has_permission(capability):
                 continue
             token = self.capability_tokens.get(capability) or self.capability_tokens.get(action.action_id)
             if token is None:
-                return False, f"missing capability: {capability}"
+                return False, f"missing capability: {capability}", ()
             constraint_reason = self._check_constraints(token, action)
             if constraint_reason is not None:
-                return False, constraint_reason
+                return False, constraint_reason, ()
             if self.capability_authority is None:
-                return False, "capability token supplied without a capability authority"
-            ok, reason = self.capability_authority.verify_and_consume_capability(
-                token=token,
-                action_id=action.action_id,
-                required_tier=self._required_tier(action),
-                current_time=time(),
+                return False, "capability token supplied without a capability authority", ()
+            ok, reason = self.capability_authority.verify_capability(
+                token=token, action_id=action.action_id,
+                required_tier=self._required_tier(action), current_time=time(),
             )
             if not ok:
+                return False, reason, ()
+            verified.append(token)
+        return True, "capabilities verified", tuple(verified)
+
+    def _consume_capabilities(self, tokens: Sequence[CapabilityToken]) -> tuple[bool, str]:
+        if self.capability_authority is None:
+            return True, "no cryptographic capabilities to consume"
+        for token in tokens:
+            ok, reason = self.capability_authority.consume_capability(token)
+            if not ok:
                 return False, reason
-        return True, "capabilities authorized"
+        return True, "capabilities consumed"
 
     @staticmethod
     def _proposal_receipt(state: CanonicalState, proposal: TransitionProposal, reason: str) -> TransitionReceipt:
         source = state_digest(state)
-        return TransitionReceipt(
-            proposal.action_id,
-            source,
-            source,
-            state_digest(proposal),
-            False,
-            reason,
-            time(),
-            state.step,
-        )
+        return TransitionReceipt(proposal.action_id, source, source, state_digest(proposal), False, reason, time(), state.step)
 
-    def _reject(
-        self,
-        proposal: TransitionProposal,
-        selected: Optional[ActionCandidate],
-        policy_allowed: bool,
-        reason: str,
-        events: list[CognitiveEvent],
-    ) -> CognitiveTransaction:
+    def _reject(self, proposal, selected, policy_allowed, reason, events):
         receipt = self._proposal_receipt(self.state, proposal, reason)
         events.append(self._event(EventKind.ROLLBACK, {"reason": reason}))
         self.trajectory.append(self.state, receipt=receipt, events=events)
-        return CognitiveTransaction(
-            self.state, proposal, selected, policy_allowed, reason,
-            False, None, receipt, tuple(events),
-        )
+        return CognitiveTransaction(self.state, proposal, selected, policy_allowed, reason, False, None, receipt, tuple(events))
 
     def tick(
-        self,
-        *,
-        action_candidates: Sequence[ActionCandidate] = (),
-        observation: Any = None,
-        semantic_update: Any = None,
-        soft_updates: Optional[Mapping[str, float]] = None,
-        hard_transition: Optional[StateTransition] = None,
-        action_id: str = "cognitive_tick",
-        reason: str = "CCE state transition",
-        provenance_source: Optional[str] = None,
-        evidence_id: Optional[str] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
+        self, *, action_candidates: Sequence[ActionCandidate] = (), observation: Any = None,
+        semantic_update: Any = None, soft_updates: Optional[Mapping[str, float]] = None,
+        hard_transition: Optional[StateTransition] = None, action_id: str = "cognitive_tick",
+        reason: str = "CCE state transition", provenance_source: Optional[str] = None,
+        evidence_id: Optional[str] = None, metadata: Optional[Mapping[str, Any]] = None,
     ) -> CognitiveTransaction:
         events: list[CognitiveEvent] = []
         if observation is not None:
             events.append(self._event(EventKind.OBSERVATION, {"observation": observation}))
-
         selected = self.selector(self.state, action_candidates)
         if selected is not None:
-            events.append(self._event(EventKind.ACTION_PROPOSAL, {
-                "action_id": selected.action_id,
-                "risk": selected.risk,
-                "expected_utility": selected.expected_utility,
-            }))
-
-        proposal = TransitionProposal(
-            action_id=selected.action_id if selected is not None else action_id,
-            reason=reason,
-            semantic=semantic_update,
-            soft_updates=soft_updates,
-            hard_transition=hard_transition,
-            provenance_source=provenance_source,
-            evidence_id=evidence_id,
-            metadata=metadata,
-        )
+            events.append(self._event(EventKind.ACTION_PROPOSAL, {"action_id": selected.action_id, "risk": selected.risk, "expected_utility": selected.expected_utility}))
+        proposal = TransitionProposal(action_id=selected.action_id if selected else action_id, reason=reason,
+            semantic=semantic_update, soft_updates=soft_updates, hard_transition=hard_transition,
+            provenance_source=provenance_source, evidence_id=evidence_id, metadata=metadata)
 
         allowed, policy_reason = True, "no policy hook"
         if selected is not None and self.policy is not None:
@@ -195,12 +160,12 @@ class CognitiveTransactionEngine:
         if not allowed:
             return self._reject(proposal, selected, False, policy_reason, events)
 
+        verified_tokens: tuple[CapabilityToken, ...] = ()
         if selected is not None:
-            capability_allowed, capability_reason = self._capability_gate(selected)
-            events.append(self._event(EventKind.CAPABILITY, {"allowed": capability_allowed, "reason": capability_reason}))
+            capability_allowed, capability_reason, verified_tokens = self._verify_capabilities(selected)
+            events.append(self._event(EventKind.CAPABILITY, {"allowed": capability_allowed, "reason": capability_reason, "consumed": False}))
             if not capability_allowed:
                 return self._reject(proposal, selected, True, capability_reason, events)
-
             if self.safety_gate is not None:
                 safety_allowed, safety_reason = self._decision(self.safety_gate, self.state, selected)
                 events.append(self._event(EventKind.POLICY, {"gate": "safety", "allowed": safety_allowed, "reason": safety_reason}))
@@ -210,6 +175,12 @@ class CognitiveTransactionEngine:
         ok, validation_reason = self.validator.validate(self.state, proposal)
         if not ok:
             return self._reject(proposal, selected, True, validation_reason, events)
+
+        if selected is not None and verified_tokens:
+            consumed, consume_reason = self._consume_capabilities(verified_tokens)
+            events.append(self._event(EventKind.CAPABILITY, {"allowed": consumed, "reason": consume_reason, "consumed": consumed}))
+            if not consumed:
+                return self._reject(proposal, selected, True, consume_reason, events)
 
         executed = False
         execution_result: Any = None
@@ -225,16 +196,12 @@ class CognitiveTransactionEngine:
 
         next_state, receipt = self.validator.apply(self.state, proposal)
         if receipt.committed:
-            events.append(self._event(EventKind.STATE_COMMIT, {
-                "source_digest": receipt.source_digest,
-                "target_digest": receipt.target_digest,
-            }))
+            events.append(self._event(EventKind.STATE_COMMIT, {"source_digest": receipt.source_digest, "target_digest": receipt.target_digest}))
             self.state = next_state
         else:
             events.append(self._event(EventKind.ROLLBACK, {"reason": receipt.reason}))
         self.trajectory.append(self.state, receipt=receipt, events=events)
-        return CognitiveTransaction(self.state, proposal, selected, allowed, policy_reason, executed,
-                                    execution_result, receipt, tuple(events))
+        return CognitiveTransaction(self.state, proposal, selected, allowed, policy_reason, executed, execution_result, receipt, tuple(events))
 
 
 __all__ = ["CognitiveTransaction", "CognitiveTransactionEngine"]
