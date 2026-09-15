@@ -16,9 +16,18 @@ from .substrate import (
     WorkspaceCandidate,
     WorkspaceState,
 )
+from .interfaces import (
+    ActionCandidate,
+    ActionSelector,
+    BeliefUpdater,
+    InformationGainModel,
+    PredictionError,
+    Predictor,
+)
 
 __all__ = [
     "CognitiveMetrics", "CognitiveState", "CognitiveSubstrate", "CognitiveSwitches",
     "IntegrationGraph", "Prediction", "PredictionState", "SelfModelState",
-    "WorkspaceCandidate", "WorkspaceState",
+    "WorkspaceCandidate", "WorkspaceState", "ActionCandidate", "ActionSelector",
+    "BeliefUpdater", "InformationGainModel", "PredictionError", "Predictor",
 ]
