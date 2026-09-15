@@ -1,33 +1,20 @@
-"""Lightweight model-agnostic cognitive substrate primitives.
-
-Heavy legacy belief implementations are intentionally not imported here so the
-base NSA package does not acquire mandatory ML dependencies.
-"""
+"""Lightweight model-agnostic cognitive substrate primitives."""
 
 from .substrate import (
-    CognitiveMetrics,
-    CognitiveState,
-    CognitiveSubstrate,
-    CognitiveSwitches,
-    IntegrationGraph,
-    Prediction,
-    PredictionState,
-    SelfModelState,
-    WorkspaceCandidate,
-    WorkspaceState,
+    CognitiveMetrics, CognitiveState, CognitiveSubstrate, CognitiveSwitches,
+    IntegrationGraph, Prediction, PredictionState, SelfModelState,
+    WorkspaceCandidate, WorkspaceState,
 )
 from .interfaces import (
-    ActionCandidate,
-    ActionSelector,
-    BeliefUpdater,
-    InformationGainModel,
-    PredictionError,
-    Predictor,
+    ActionCandidate, ActionSelector, BeliefUpdater, InformationGainModel,
+    PredictionError, Predictor,
 )
+from .deliberation import DeliberationDecision, UncertaintyDrivenDeliberator
 
 __all__ = [
     "CognitiveMetrics", "CognitiveState", "CognitiveSubstrate", "CognitiveSwitches",
     "IntegrationGraph", "Prediction", "PredictionState", "SelfModelState",
     "WorkspaceCandidate", "WorkspaceState", "ActionCandidate", "ActionSelector",
     "BeliefUpdater", "InformationGainModel", "PredictionError", "Predictor",
+    "DeliberationDecision", "UncertaintyDrivenDeliberator",
 ]
