@@ -1,8 +1,4 @@
-"""Authoritative, auditable cognitive state transitions.
-
-The transition layer is deliberately independent of any model framework. Model
-outputs are proposals; only a validated transaction can produce the next state.
-"""
+"""Authoritative, auditable cognitive state transitions."""
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -11,7 +7,7 @@ import json
 from time import time
 from typing import Any, Mapping, Optional
 
-from nsa.core.state import CanonicalState, HardState, StateTransition
+from nsa.core.state import CanonicalState, StateTransition
 
 
 def _stable(value: Any) -> str:
@@ -19,7 +15,12 @@ def _stable(value: Any) -> str:
 
 
 def state_digest(state: CanonicalState) -> str:
-    return sha256(_stable(state.summary()).encode("utf-8")).hexdigest()
+    """Hash all canonical state channels, including semantic content."""
+    payload = {
+        "summary": state.summary(),
+        "semantic": state.semantic.value,
+    }
+    return sha256(_stable(payload).encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -78,27 +79,30 @@ class TransitionValidator:
         proposal_digest = sha256(_stable({
             "action_id": proposal.action_id,
             "reason": proposal.reason,
+            "semantic": proposal.semantic,
             "soft": proposal.soft_updates,
+            "hard": proposal.hard_transition,
+            "source": proposal.provenance_source,
+            "evidence": proposal.evidence_id,
             "metadata": proposal.metadata,
         }).encode("utf-8")).hexdigest()
         if not ok:
             return state, TransitionReceipt(proposal.action_id, source, source, proposal_digest, False, reason, time(), state.step)
 
+        # Build the complete target first; increment the logical clock exactly once.
         target = state
         if proposal.semantic is not None:
-            target = target.with_semantic(proposal.semantic)
+            target = replace(target, semantic=replace(target.semantic, value=proposal.semantic))
         if proposal.soft_updates:
-            target = replace(target, soft=replace(target.soft, **proposal.soft_updates), step=target.step + 1)
+            target = replace(target, soft=replace(target.soft, **proposal.soft_updates))
         if proposal.provenance_source or proposal.evidence_id:
             target = replace(
                 target,
                 provenance=target.provenance.extend(source=proposal.provenance_source, evidence_id=proposal.evidence_id),
-                step=target.step + 1,
             )
         if proposal.hard_transition is not None:
-            target = target.transition(proposal.hard_transition)
-        if target is state:
-            target = replace(target, step=target.step + 1)
+            target = replace(target, hard=proposal.hard_transition.target)
+        target = replace(target, step=state.step + 1)
 
         target_digest = state_digest(target)
         return target, TransitionReceipt(proposal.action_id, source, target_digest, proposal_digest, True, "committed", time(), target.step)
