@@ -1,7 +1,7 @@
 """Canonical CCE transaction coordinator.
 
-The engine separates proposal, governance, transition validation, capability
-authorization, safety mediation, execution and commit. Model output is never
+The engine separates proposal, governance, capability authorization, safety
+mediation, transition validation, execution and commit. Model output is never
 itself authority; external effects occur only after every configured gate has
 approved the proposal.
 """
@@ -80,37 +80,10 @@ class CognitiveTransactionEngine:
             return bool(decision[0]), str(decision[1])
         return bool(decision), "gate allowed" if decision else "gate denied"
 
-    def _capability_gate(self, action: ActionCandidate) -> tuple[bool, str]:
-        """Check declared capabilities and consume supplied cryptographic tokens.
-
-        A hard-state authorization is sufficient for a named capability. A
-        capability token may satisfy a missing authorization, but only after
-        cryptographic verification, expiry/replay checks and constraint checks.
-        """
-        required = tuple(action.required_capabilities)
-        if not required:
-            return True, "no capabilities required"
-
-        for capability in required:
-            if self.state.hard.has_permission(capability):
-                continue
-            token = self.capability_tokens.get(capability) or self.capability_tokens.get(action.action_id)
-            if token is None:
-                return False, f"missing capability: {capability}"
-            if self.capability_authority is None:
-                return False, "capability token supplied without a capability authority"
-            ok, reason = self.capability_authority.verify_and_consume_capability(
-                token=token,
-                action_id=action.action_id,
-                required_tier=TrustTier.T1_INFO_GATHER,
-                current_time=time(),
-            )
-            if not ok:
-                return False, reason
-            constraint_reason = self._check_constraints(token, action)
-            if constraint_reason is not None:
-                return False, constraint_reason
-        return True, "capabilities authorized"
+    @staticmethod
+    def _required_tier(action: ActionCandidate) -> TrustTier:
+        # Capability scope must reflect the effect class rather than epistemic confidence.
+        return TrustTier.T2_REVERSIBLE if action.reversible else TrustTier.T3_SIDE_EFFECTS
 
     @staticmethod
     def _check_constraints(token: CapabilityToken, action: ActionCandidate) -> Optional[str]:
@@ -121,6 +94,33 @@ class CognitiveTransactionEngine:
         if constraints.get("reversible_only") and not action.reversible:
             return "capability constraint reversible_only violated"
         return None
+
+    def _capability_gate(self, action: ActionCandidate) -> tuple[bool, str]:
+        """Check declared capabilities and consume supplied cryptographic tokens."""
+        required = tuple(action.required_capabilities)
+        if not required:
+            return True, "no capabilities required"
+
+        for capability in required:
+            if self.state.hard.has_permission(capability):
+                continue
+            token = self.capability_tokens.get(capability) or self.capability_tokens.get(action.action_id)
+            if token is None:
+                return False, f"missing capability: {capability}"
+            constraint_reason = self._check_constraints(token, action)
+            if constraint_reason is not None:
+                return False, constraint_reason
+            if self.capability_authority is None:
+                return False, "capability token supplied without a capability authority"
+            ok, reason = self.capability_authority.verify_and_consume_capability(
+                token=token,
+                action_id=action.action_id,
+                required_tier=self._required_tier(action),
+                current_time=time(),
+            )
+            if not ok:
+                return False, reason
+        return True, "capabilities authorized"
 
     @staticmethod
     def _proposal_receipt(state: CanonicalState, proposal: TransitionProposal, reason: str) -> TransitionReceipt:
