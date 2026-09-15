@@ -1,8 +1,9 @@
 """
 NSA capability-theoretic authorization and trust hierarchy.
 
-Capability constraints are part of the authenticated payload so a token's
-scope and restrictions cannot be altered without invalidating its signature.
+Capability constraints are authenticated as part of the token payload.
+Verification is deliberately separated from nonce consumption so rejected
+pre-execution proposals do not burn capabilities.
 """
 from __future__ import annotations
 
@@ -76,35 +77,36 @@ def _payload(token: CapabilityToken) -> str:
 
 
 class CapabilityAuthority:
-    """External authority capable of minting and validating capabilities."""
+    """External authority capable of minting and validating capabilities.
+
+    The default key is retained only for backwards-compatible research/tests.
+    Production deployments should inject key material explicitly.
+    """
 
     def __init__(self, master_secret_key: bytes = b"nsa-tcb-master-secret-key-3.0") -> None:
+        if not master_secret_key:
+            raise ValueError("master_secret_key must be non-empty")
         self._master_secret = master_secret_key
         self._consumed_nonces: Set[str] = set()
 
     def mint_capability(
-        self,
-        principal: str,
-        action_id: str,
-        scope: str,
-        target_tier: TrustTier,
-        validity_duration_sec: float = 60.0,
-        nonce: Optional[str] = None,
+        self, principal: str, action_id: str, scope: str, target_tier: TrustTier,
+        validity_duration_sec: float = 60.0, nonce: Optional[str] = None,
         constraints: Optional[Dict[str, Any]] = None,
     ) -> CapabilityToken:
+        if validity_duration_sec <= 0:
+            raise ValueError("validity_duration_sec must be positive")
         nonce_val = nonce or hashlib.sha256(f"{time.time()}:{action_id}:{principal}".encode()).hexdigest()[:16]
         expiry = time.time() + validity_duration_sec
         token = CapabilityToken(principal, action_id, scope, target_tier, nonce_val, expiry, "", dict(constraints or {}))
         signature = hmac.new(self._master_secret, _payload(token).encode("utf-8"), hashlib.sha256).hexdigest()
         return CapabilityToken(principal, action_id, scope, target_tier, nonce_val, expiry, signature, token.constraints)
 
-    def verify_and_consume_capability(
-        self,
-        token: CapabilityToken,
-        action_id: str,
-        required_tier: TrustTier,
+    def verify_capability(
+        self, token: CapabilityToken, action_id: str, required_tier: TrustTier,
         current_time: Optional[float] = None,
     ) -> Tuple[bool, str]:
+        """Validate a capability without consuming its replay nonce."""
         if token.nonce in self._consumed_nonces:
             return False, "Capability replay attack detected: nonce already consumed."
         if token.is_expired(current_time):
@@ -116,8 +118,24 @@ class CapabilityAuthority:
         expected_sig = hmac.new(self._master_secret, _payload(token).encode("utf-8"), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(token.signature, expected_sig):
             return False, "Cryptographic capability signature forgery detected."
+        return True, "Capability verified successfully."
+
+    def consume_capability(self, token: CapabilityToken) -> Tuple[bool, str]:
+        """Consume a previously verified capability immediately before use."""
+        if token.nonce in self._consumed_nonces:
+            return False, "Capability replay attack detected: nonce already consumed."
         self._consumed_nonces.add(token.nonce)
-        return True, "Capability verified and consumed successfully."
+        return True, "Capability consumed successfully."
+
+    def verify_and_consume_capability(
+        self, token: CapabilityToken, action_id: str, required_tier: TrustTier,
+        current_time: Optional[float] = None,
+    ) -> Tuple[bool, str]:
+        """Backward-compatible atomic verify-and-consume helper."""
+        ok, reason = self.verify_capability(token, action_id, required_tier, current_time)
+        if not ok:
+            return False, reason
+        return self.consume_capability(token)
 
 
 __all__ = ["CapabilityToken", "CapabilityAuthority", "TrustThermodynamicsVector", "TrustTier"]
