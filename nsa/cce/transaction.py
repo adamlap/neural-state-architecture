@@ -1,10 +1,4 @@
-"""Canonical CCE transaction coordinator.
-
-The engine separates proposal, governance, capability verification, safety
-mediation, transition validation, capability consumption, execution and commit.
-Model output is never itself authority; external effects occur only after every
-configured gate has approved the proposal.
-"""
+"""Canonical CCE transaction coordinator."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,14 +12,14 @@ from nsa.core.capabilities import CapabilityAuthority, CapabilityToken, TrustTie
 from nsa.core.state import CanonicalState, StateTransition
 from nsa.core.transition import TransitionProposal, TransitionReceipt, TransitionValidator, state_digest
 
-PolicyHook = Callable[[CanonicalState, ActionCandidate], bool | tuple[bool, str]]
-GateHook = Callable[[CanonicalState, ActionCandidate], bool | tuple[bool, str]]
-ExecutionHook = Callable[[ActionCandidate, CanonicalState], Any]
+PolicyHook = Callable[[Any, ActionCandidate], bool | tuple[bool, str]]
+GateHook = Callable[[Any, ActionCandidate], bool | tuple[bool, str]]
+ExecutionHook = Callable[[ActionCandidate, Any], Any]
 
 
 @dataclass(frozen=True)
 class CognitiveTransaction:
-    state: CanonicalState
+    state: Any
     proposal: TransitionProposal
     selected_action: Optional[ActionCandidate]
     policy_allowed: bool
@@ -38,16 +32,8 @@ class CognitiveTransaction:
 
 class CognitiveTransactionEngine:
     """Turn a cognitive tick into one governed, auditable state transaction."""
-
-    def __init__(
-        self, initial_state: CanonicalState, *,
-        selector: Optional[Callable[[CanonicalState, Sequence[ActionCandidate]], ActionCandidate | None]] = None,
-        policy: Optional[PolicyHook] = None, safety_gate: Optional[GateHook] = None,
-        executor: Optional[ExecutionHook] = None, validator: Optional[TransitionValidator] = None,
-        trajectory: Optional[CognitiveTrajectory] = None,
-        capability_authority: Optional[CapabilityAuthority] = None,
-        capability_tokens: Optional[Mapping[str, CapabilityToken]] = None,
-    ) -> None:
+    def __init__(self, initial_state, *, selector=None, policy=None, safety_gate=None, executor=None,
+                 validator=None, trajectory=None, capability_authority=None, capability_tokens=None):
         self.state = initial_state
         self.selector = selector or self._default_selector
         self.policy = policy
@@ -59,64 +45,59 @@ class CognitiveTransactionEngine:
         self.capability_tokens = dict(capability_tokens or {})
         self._event_counter = 0
 
-    def _event(self, kind: EventKind, payload: Mapping[str, Any]) -> CognitiveEvent:
+    def _event(self, kind, payload):
         self._event_counter += 1
         return CognitiveEvent(kind, self.state.step, f"evt-{self.state.step}-{self._event_counter}", dict(payload))
 
     @staticmethod
-    def _default_selector(state: CanonicalState, candidates: Sequence[ActionCandidate]) -> ActionCandidate | None:
+    def _default_selector(state, candidates):
         if not candidates:
             return None
         return max(candidates, key=lambda c: (c.expected_utility - c.risk, c.reversible))
 
     @staticmethod
-    def _decision(hook: GateHook, state: CanonicalState, action: ActionCandidate) -> tuple[bool, str]:
+    def _decision(hook, state, action):
         decision = hook(state, action)
         if isinstance(decision, tuple):
             return bool(decision[0]), str(decision[1])
         return bool(decision), "gate allowed" if decision else "gate denied"
 
     @staticmethod
-    def _required_tier(action: ActionCandidate) -> TrustTier:
+    def _required_tier(action):
         return TrustTier.T2_REVERSIBLE if action.reversible else TrustTier.T3_SIDE_EFFECTS
 
     @staticmethod
-    def _check_constraints(token: CapabilityToken, action: ActionCandidate) -> Optional[str]:
-        constraints = token.constraints
-        max_risk = constraints.get("max_risk")
+    def _check_constraints(token, action):
+        max_risk = token.constraints.get("max_risk")
         if max_risk is not None and action.risk > float(max_risk):
             return f"capability constraint max_risk={max_risk} violated by risk={action.risk}"
-        if constraints.get("reversible_only") and not action.reversible:
+        if token.constraints.get("reversible_only") and not action.reversible:
             return "capability constraint reversible_only violated"
         return None
 
-    def _verify_capabilities(self, action: ActionCandidate) -> tuple[bool, str, tuple[CapabilityToken, ...]]:
-        """Verify all required capabilities without consuming any nonce."""
+    def _verify_capabilities(self, action):
         required = tuple(action.required_capabilities)
         if not required:
             return True, "no capabilities required", ()
-        verified: list[CapabilityToken] = []
+        verified = []
         for capability in required:
             if self.state.hard.has_permission(capability):
                 continue
             token = self.capability_tokens.get(capability) or self.capability_tokens.get(action.action_id)
             if token is None:
                 return False, f"missing capability: {capability}", ()
-            constraint_reason = self._check_constraints(token, action)
-            if constraint_reason is not None:
-                return False, constraint_reason, ()
+            reason = self._check_constraints(token, action)
+            if reason is not None:
+                return False, reason, ()
             if self.capability_authority is None:
                 return False, "capability token supplied without a capability authority", ()
-            ok, reason = self.capability_authority.verify_capability(
-                token=token, action_id=action.action_id,
-                required_tier=self._required_tier(action), current_time=time(),
-            )
+            ok, reason = self.capability_authority.verify_capability(token, action.action_id, self._required_tier(action), time())
             if not ok:
                 return False, reason, ()
             verified.append(token)
         return True, "capabilities verified", tuple(verified)
 
-    def _consume_capabilities(self, tokens: Sequence[CapabilityToken]) -> tuple[bool, str]:
+    def _consume_capabilities(self, tokens):
         if self.capability_authority is None:
             return True, "no cryptographic capabilities to consume"
         for token in tokens:
@@ -126,7 +107,7 @@ class CognitiveTransactionEngine:
         return True, "capabilities consumed"
 
     @staticmethod
-    def _proposal_receipt(state: CanonicalState, proposal: TransitionProposal, reason: str) -> TransitionReceipt:
+    def _proposal_receipt(state, proposal, reason):
         source = state_digest(state)
         return TransitionReceipt(proposal.action_id, source, source, state_digest(proposal), False, reason, time(), state.step)
 
@@ -136,19 +117,17 @@ class CognitiveTransactionEngine:
         self.trajectory.append(self.state, receipt=receipt, events=events)
         return CognitiveTransaction(self.state, proposal, selected, policy_allowed, reason, False, None, receipt, tuple(events))
 
-    def tick(
-        self, *, action_candidates: Sequence[ActionCandidate] = (), observation: Any = None,
-        semantic_update: Any = None, soft_updates: Optional[Mapping[str, float]] = None,
-        hard_transition: Optional[StateTransition] = None, action_id: str = "cognitive_tick",
-        reason: str = "CCE state transition", provenance_source: Optional[str] = None,
-        evidence_id: Optional[str] = None, metadata: Optional[Mapping[str, Any]] = None,
-    ) -> CognitiveTransaction:
-        events: list[CognitiveEvent] = []
+    def tick(self, *, action_candidates=(), observation=None, semantic_update=None, soft_updates=None,
+             hard_transition=None, action_id="cognitive_tick", reason="CCE state transition",
+             provenance_source=None, evidence_id=None, metadata=None,
+             cognitive_events: Sequence[CognitiveEvent] = ()):
+        events = list(cognitive_events)
         if observation is not None:
             events.append(self._event(EventKind.OBSERVATION, {"observation": observation}))
         selected = self.selector(self.state, action_candidates)
         if selected is not None:
-            events.append(self._event(EventKind.ACTION_PROPOSAL, {"action_id": selected.action_id, "risk": selected.risk, "expected_utility": selected.expected_utility}))
+            events.append(self._event(EventKind.ACTION_PROPOSAL, {"action_id": selected.action_id,
+                "risk": selected.risk, "expected_utility": selected.expected_utility}))
         proposal = TransitionProposal(action_id=selected.action_id if selected else action_id, reason=reason,
             semantic=semantic_update, soft_updates=soft_updates, hard_transition=hard_transition,
             provenance_source=provenance_source, evidence_id=evidence_id, metadata=metadata)
@@ -160,7 +139,7 @@ class CognitiveTransactionEngine:
         if not allowed:
             return self._reject(proposal, selected, False, policy_reason, events)
 
-        verified_tokens: tuple[CapabilityToken, ...] = ()
+        verified_tokens = ()
         if selected is not None:
             capability_allowed, capability_reason, verified_tokens = self._verify_capabilities(selected)
             events.append(self._event(EventKind.CAPABILITY, {"allowed": capability_allowed, "reason": capability_reason, "consumed": False}))
@@ -182,8 +161,7 @@ class CognitiveTransactionEngine:
             if not consumed:
                 return self._reject(proposal, selected, True, consume_reason, events)
 
-        executed = False
-        execution_result: Any = None
+        executed, execution_result = False, None
         if selected is not None and self.executor is not None:
             try:
                 execution_result = self.executor(selected, self.state)
