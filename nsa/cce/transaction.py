@@ -82,7 +82,6 @@ class CognitiveTransactionEngine:
 
     @staticmethod
     def _required_tier(action: ActionCandidate) -> TrustTier:
-        # Capability scope must reflect the effect class rather than epistemic confidence.
         return TrustTier.T2_REVERSIBLE if action.reversible else TrustTier.T3_SIDE_EFFECTS
 
     @staticmethod
@@ -136,6 +135,22 @@ class CognitiveTransactionEngine:
             state.step,
         )
 
+    def _reject(
+        self,
+        proposal: TransitionProposal,
+        selected: Optional[ActionCandidate],
+        policy_allowed: bool,
+        reason: str,
+        events: list[CognitiveEvent],
+    ) -> CognitiveTransaction:
+        receipt = self._proposal_receipt(self.state, proposal, reason)
+        events.append(self._event(EventKind.ROLLBACK, {"reason": reason}))
+        self.trajectory.append(self.state, receipt=receipt, events=events)
+        return CognitiveTransaction(
+            self.state, proposal, selected, policy_allowed, reason,
+            False, None, receipt, tuple(events),
+        )
+
     def tick(
         self,
         *,
@@ -178,32 +193,23 @@ class CognitiveTransactionEngine:
             allowed, policy_reason = self._decision(self.policy, self.state, selected)
             events.append(self._event(EventKind.POLICY, {"allowed": allowed, "reason": policy_reason}))
         if not allowed:
-            receipt = self._proposal_receipt(self.state, proposal, policy_reason)
-            events.append(self._event(EventKind.ROLLBACK, {"reason": policy_reason}))
-            return CognitiveTransaction(self.state, proposal, selected, False, policy_reason, False, None, receipt, tuple(events))
+            return self._reject(proposal, selected, False, policy_reason, events)
 
         if selected is not None:
             capability_allowed, capability_reason = self._capability_gate(selected)
             events.append(self._event(EventKind.CAPABILITY, {"allowed": capability_allowed, "reason": capability_reason}))
             if not capability_allowed:
-                receipt = self._proposal_receipt(self.state, proposal, capability_reason)
-                events.append(self._event(EventKind.ROLLBACK, {"reason": capability_reason}))
-                return CognitiveTransaction(self.state, proposal, selected, True, capability_reason, False, None, receipt, tuple(events))
+                return self._reject(proposal, selected, True, capability_reason, events)
 
             if self.safety_gate is not None:
                 safety_allowed, safety_reason = self._decision(self.safety_gate, self.state, selected)
                 events.append(self._event(EventKind.POLICY, {"gate": "safety", "allowed": safety_allowed, "reason": safety_reason}))
                 if not safety_allowed:
-                    receipt = self._proposal_receipt(self.state, proposal, safety_reason)
-                    events.append(self._event(EventKind.ROLLBACK, {"reason": safety_reason}))
-                    return CognitiveTransaction(self.state, proposal, selected, True, safety_reason, False, None, receipt, tuple(events))
+                    return self._reject(proposal, selected, True, safety_reason, events)
 
-        # Structural validation occurs before any external side effect.
         ok, validation_reason = self.validator.validate(self.state, proposal)
         if not ok:
-            receipt = self._proposal_receipt(self.state, proposal, validation_reason)
-            events.append(self._event(EventKind.ROLLBACK, {"reason": validation_reason}))
-            return CognitiveTransaction(self.state, proposal, selected, True, validation_reason, False, None, receipt, tuple(events))
+            return self._reject(proposal, selected, True, validation_reason, events)
 
         executed = False
         execution_result: Any = None
@@ -212,10 +218,8 @@ class CognitiveTransactionEngine:
                 execution_result = self.executor(selected, self.state)
             except Exception as exc:
                 reason_text = f"execution failed: {type(exc).__name__}: {exc}"
-                receipt = self._proposal_receipt(self.state, proposal, reason_text)
                 events.append(self._event(EventKind.ERROR, {"reason": reason_text}))
-                events.append(self._event(EventKind.ROLLBACK, {"reason": reason_text}))
-                return CognitiveTransaction(self.state, proposal, selected, True, reason_text, False, None, receipt, tuple(events))
+                return self._reject(proposal, selected, True, reason_text, events)
             executed = True
             events.append(self._event(EventKind.EXECUTION, {"action_id": selected.action_id, "result": execution_result}))
 
