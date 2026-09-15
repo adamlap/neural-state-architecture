@@ -1,19 +1,20 @@
 """Canonical CCE transaction coordinator.
 
-This is the bridge between the scheduler and the rest of NSA.  It does not
-execute tools itself: callers provide governance/execution hooks.  Every tick
-produces one auditable decision and one canonical state transition.
+The engine separates proposal, governance, transition validation, execution and
+commit.  Model output is never itself authority.  The executor runs only after
+policy and structural transition validation have succeeded.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import time
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 from nsa.cce.events import CognitiveEvent, EventKind
 from nsa.cce.trajectory import CognitiveTrajectory
 from nsa.cognition.interfaces import ActionCandidate
-from nsa.core.state import CanonicalState
-from nsa.core.transition import TransitionProposal, TransitionReceipt, TransitionValidator
+from nsa.core.state import CanonicalState, StateTransition
+from nsa.core.transition import TransitionProposal, TransitionReceipt, TransitionValidator, state_digest
 
 PolicyHook = Callable[[CanonicalState, ActionCandidate], bool | tuple[bool, str]]
 ExecutionHook = Callable[[ActionCandidate, CanonicalState], Any]
@@ -33,7 +34,7 @@ class CognitiveTransaction:
 
 
 class CognitiveTransactionEngine:
-    """Turn a cognitive tick into a governed, atomic state transition."""
+    """Turn a cognitive tick into one governed, auditable state transaction."""
 
     def __init__(
         self,
@@ -53,9 +54,9 @@ class CognitiveTransactionEngine:
         self.trajectory = trajectory or CognitiveTrajectory(initial_state)
         self._event_counter = 0
 
-    def _event(self, kind: EventKind, payload: Mapping[str, Any], *, source: str = "cce") -> CognitiveEvent:
+    def _event(self, kind: EventKind, payload: Mapping[str, Any]) -> CognitiveEvent:
         self._event_counter += 1
-        return CognitiveEvent(kind, self.state.step, f"evt-{self.state.step}-{self._event_counter}", dict(payload), source)
+        return CognitiveEvent(kind, self.state.step, f"evt-{self.state.step}-{self._event_counter}", dict(payload))
 
     @staticmethod
     def _default_selector(state: CanonicalState, candidates: Sequence[ActionCandidate]) -> ActionCandidate | None:
@@ -70,6 +71,7 @@ class CognitiveTransactionEngine:
         observation: Any = None,
         semantic_update: Any = None,
         soft_updates: Optional[Mapping[str, float]] = None,
+        hard_transition: Optional[StateTransition] = None,
         action_id: str = "cognitive_tick",
         reason: str = "CCE state transition",
         provenance_source: Optional[str] = None,
@@ -98,29 +100,45 @@ class CognitiveTransactionEngine:
                 policy_reason = "policy allowed" if allowed else "policy denied"
             events.append(self._event(EventKind.POLICY, {"allowed": allowed, "reason": policy_reason}))
 
-        if selected is not None and not allowed:
-            proposal = TransitionProposal(action_id, reason, metadata=metadata)
-            receipt = TransitionReceipt(action_id, self.trajectory.latest.state_digest, self.trajectory.latest.state_digest,
-                                        "", False, policy_reason, 0.0, self.state.step)
-            events.append(self._event(EventKind.ROLLBACK, {"reason": policy_reason}))
-            return CognitiveTransaction(self.state, proposal, selected, False, policy_reason, False, None, receipt, tuple(events))
-
-        executed = False
-        execution_result: Any = None
-        if selected is not None and self.executor is not None:
-            execution_result = self.executor(selected, self.state)
-            executed = True
-            events.append(self._event(EventKind.EXECUTION, {"action_id": selected.action_id, "result": execution_result}))
-
         proposal = TransitionProposal(
             action_id=selected.action_id if selected is not None else action_id,
             reason=reason,
             semantic=semantic_update,
             soft_updates=soft_updates,
+            hard_transition=hard_transition,
             provenance_source=provenance_source,
             evidence_id=evidence_id,
             metadata=metadata,
         )
+        if not allowed:
+            source = state_digest(self.state)
+            receipt = TransitionReceipt(proposal.action_id, source, source, "", False, policy_reason, time(), self.state.step)
+            events.append(self._event(EventKind.ROLLBACK, {"reason": policy_reason}))
+            return CognitiveTransaction(self.state, proposal, selected, False, policy_reason, False, None, receipt, tuple(events))
+
+        # Structural validation occurs before any external side effect.
+        ok, validation_reason = self.validator.validate(self.state, proposal)
+        if not ok:
+            source = state_digest(self.state)
+            receipt = TransitionReceipt(proposal.action_id, source, source, "", False, validation_reason, time(), self.state.step)
+            events.append(self._event(EventKind.ROLLBACK, {"reason": validation_reason}))
+            return CognitiveTransaction(self.state, proposal, selected, True, validation_reason, False, None, receipt, tuple(events))
+
+        executed = False
+        execution_result: Any = None
+        if selected is not None and self.executor is not None:
+            try:
+                execution_result = self.executor(selected, self.state)
+            except Exception as exc:
+                reason_text = f"execution failed: {type(exc).__name__}: {exc}"
+                source = state_digest(self.state)
+                receipt = TransitionReceipt(proposal.action_id, source, source, "", False, reason_text, time(), self.state.step)
+                events.append(self._event(EventKind.ERROR, {"reason": reason_text}))
+                events.append(self._event(EventKind.ROLLBACK, {"reason": reason_text}))
+                return CognitiveTransaction(self.state, proposal, selected, True, reason_text, False, None, receipt, tuple(events))
+            executed = True
+            events.append(self._event(EventKind.EXECUTION, {"action_id": selected.action_id, "result": execution_result}))
+
         next_state, receipt = self.validator.apply(self.state, proposal)
         if receipt.committed:
             events.append(self._event(EventKind.STATE_COMMIT, {
@@ -128,11 +146,9 @@ class CognitiveTransactionEngine:
                 "target_digest": receipt.target_digest,
             }))
             self.state = next_state
-            self.trajectory.append(self.state, receipt=receipt, events=events)
         else:
             events.append(self._event(EventKind.ROLLBACK, {"reason": receipt.reason}))
-            self.trajectory.append(self.state, receipt=receipt, events=events)
-
+        self.trajectory.append(self.state, receipt=receipt, events=events)
         return CognitiveTransaction(self.state, proposal, selected, allowed, policy_reason, executed,
                                     execution_result, receipt, tuple(events))
 
