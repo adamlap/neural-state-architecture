@@ -7,10 +7,9 @@ statistics that higher-level training systems can consume.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping
+from typing import Iterable, Mapping
 
-from nsa.cce.events import EventKind
-from nsa.cce.trajectory import CognitiveTrajectory, TrajectoryRecord
+from nsa.cce.trajectory import CognitiveTrajectory
 
 
 @dataclass(frozen=True)
