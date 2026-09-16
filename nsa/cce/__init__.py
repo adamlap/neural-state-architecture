@@ -20,7 +20,7 @@ __all__ = [
     "CanonicalCCERuntime", "TickInput", "CognitiveCycle", "CognitiveLoop", "default_prediction_error",
     "TrajectoryJournal", "record_to_dict", "CallableEffect", "EffectReceipt", "TwoPhaseExecutor",
     "ImmutableKernelGate", "SafetyDecision", "CanonicalOmegaAdapter", "OmegaDimensions",
-    "SixLayerCanonicalAdapter", "SubstrateProposal",
+    "SixLayerCanonicalAdapter", "SubstrateProposal", "OmegaFeedback", "OmegaFeedbackAdapter",
 ]
 
 _LAZY = {
@@ -30,13 +30,14 @@ _LAZY = {
     "OmegaDimensions": ("nsa.cce.omega_adapter", "OmegaDimensions"),
     "SixLayerCanonicalAdapter": ("nsa.cce.substrate_adapter", "SixLayerCanonicalAdapter"),
     "SubstrateProposal": ("nsa.cce.substrate_adapter", "SubstrateProposal"),
+    "OmegaFeedback": ("nsa.cce.omega_feedback", "OmegaFeedback"),
+    "OmegaFeedbackAdapter": ("nsa.cce.omega_feedback", "OmegaFeedbackAdapter"),
 }
 
 
 def __getattr__(name: str):
     target = _LAZY.get(name)
-    if target is None:
-        raise AttributeError(name)
+    if target is None: raise AttributeError(name)
     import importlib
     module = importlib.import_module(target[0])
     value = getattr(module, target[1])
