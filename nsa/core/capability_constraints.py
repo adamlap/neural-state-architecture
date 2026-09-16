@@ -39,16 +39,36 @@ class CapabilityConstraintEvaluator:
       * ``scope`` / ``scopes``
       * ``max_resource_cost``
       * ``max_calls`` + ``window_seconds`` (per action/target key)
+
+    ``strict=True`` rejects unknown constraint keys. The default remains
+    compatibility-oriented because older capability tokens may contain
+    extension keys owned by higher-level policy components.
     """
 
-    def __init__(self) -> None:
+    SUPPORTED = frozenset({
+        "max_risk", "reversible_only", "target", "targets", "scope", "scopes",
+        "max_resource_cost", "max_calls", "window_seconds",
+    })
+
+    def __init__(self, *, strict: bool = False) -> None:
+        self.strict = strict
         self._calls: dict[tuple[str, str, str], list[float]] = {}
 
-    def evaluate(self, token: CapabilityToken, action: ActionCandidate, *,
-                 context: ConstraintContext | None = None) -> ConstraintDecision:
+    def evaluate(
+        self,
+        token: CapabilityToken,
+        action: ActionCandidate,
+        *,
+        context: ConstraintContext | None = None,
+    ) -> ConstraintDecision:
         context = context or ConstraintContext()
         c = token.constraints
         matched: list[str] = []
+
+        if self.strict:
+            unknown = sorted(set(c) - self.SUPPORTED)
+            if unknown:
+                return ConstraintDecision(False, f"unsupported capability constraints: {unknown}")
 
         max_risk = c.get("max_risk")
         if max_risk is not None:
@@ -94,12 +114,15 @@ class CapabilityConstraintEvaluator:
                 return ConstraintDecision(False, f"rate limit max_calls={max_calls}/{window}s exceeded", tuple(matched))
             matched.append("rate_limit")
 
-        # Unknown constraints are deliberately ignored here for compatibility;
-        # callers may configure strict mode to make them fail closed.
         return ConstraintDecision(True, "capability constraints satisfied", tuple(matched))
 
-    def record_use(self, token: CapabilityToken, action: ActionCandidate, *,
-                   context: ConstraintContext | None = None) -> None:
+    def record_use(
+        self,
+        token: CapabilityToken,
+        action: ActionCandidate,
+        *,
+        context: ConstraintContext | None = None,
+    ) -> None:
         c = token.constraints
         if "max_calls" not in c:
             return
