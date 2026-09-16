@@ -14,18 +14,59 @@ def _stable(value: Any) -> str:
     return json.dumps(value, sort_keys=True, default=str, separators=(",", ":"))
 
 
+def _canonical_payload(state: CanonicalState) -> dict[str, Any]:
+    """Return every canonical channel in a deterministic representation.
+
+    The digest is an integrity boundary, so it must not rely on ``summary()``
+    accidentally containing every field. In particular, provenance history
+    and goal metadata are part of the canonical state and therefore part of
+    its digest.
+    """
+    return {
+        "semantic": state.semantic.value,
+        "hard": {
+            "confidentiality": state.hard.confidentiality.name,
+            "integrity": state.hard.integrity.name,
+            "authorizations": sorted(state.hard.authorizations),
+            "license_tier": state.hard.license_tier,
+        },
+        "soft": {
+            "uncertainty": state.soft.uncertainty,
+            "risk": state.soft.risk,
+            "confidence": state.soft.confidence,
+            "resource_pressure": state.soft.resource_pressure,
+        },
+        "provenance": {
+            "sources": list(state.provenance.sources),
+            "transformations": list(state.provenance.transformations),
+            "evidence_ids": list(state.provenance.evidence_ids),
+            "trust_domain": state.provenance.trust_domain,
+            "timestamp": state.provenance.timestamp,
+        },
+        "goals": {
+            "goals": list(state.goals.goals),
+            "active_goal": state.goals.active_goal,
+            "priority": state.goals.priority,
+        },
+        "step": state.step,
+    }
+
+
 def state_digest(state: CanonicalState) -> str:
-    """Hash all canonical state channels, including semantic content."""
-    payload = {"summary": state.summary(), "semantic": state.semantic.value}
-    return sha256(_stable(payload).encode("utf-8")).hexdigest()
+    """Hash the complete canonical state, including all semantic channels."""
+    return sha256(_stable(_canonical_payload(state)).encode("utf-8")).hexdigest()
 
 
 def proposal_digest(proposal: "TransitionProposal") -> str:
     """Hash a proposal without pretending it is a CanonicalState."""
     payload = {
-        "action_id": proposal.action_id, "reason": proposal.reason, "semantic": proposal.semantic,
-        "soft": proposal.soft_updates, "hard": proposal.hard_transition,
-        "source": proposal.provenance_source, "evidence": proposal.evidence_id,
+        "action_id": proposal.action_id,
+        "reason": proposal.reason,
+        "semantic": proposal.semantic,
+        "soft": proposal.soft_updates,
+        "hard": proposal.hard_transition,
+        "source": proposal.provenance_source,
+        "evidence": proposal.evidence_id,
         "metadata": proposal.metadata,
     }
     return sha256(_stable(payload).encode("utf-8")).hexdigest()
@@ -44,7 +85,8 @@ class TransitionProposal:
     metadata: Mapping[str, Any] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
-        if not self.action_id: raise ValueError("action_id must be non-empty")
+        if not self.action_id:
+            raise ValueError("action_id must be non-empty")
         object.__setattr__(self, "soft_updates", dict(self.soft_updates or {}))
         object.__setattr__(self, "metadata", dict(self.metadata or {}))
 
@@ -68,10 +110,13 @@ class TransitionValidator:
 
     def validate(self, state: CanonicalState, proposal: TransitionProposal) -> tuple[bool, str]:
         unknown = set(proposal.soft_updates) - self.ALLOWED_SOFT
-        if unknown: return False, f"unknown soft-state fields: {sorted(unknown)}"
+        if unknown:
+            return False, f"unknown soft-state fields: {sorted(unknown)}"
         if proposal.hard_transition is not None:
-            if proposal.hard_transition.source != state.hard: return False, "hard transition source does not match current state"
-            if not proposal.hard_transition.authorized: return False, "hard-state transition is not authorized"
+            if proposal.hard_transition.source != state.hard:
+                return False, "hard transition source does not match current state"
+            if not proposal.hard_transition.authorized:
+                return False, "hard-state transition is not authorized"
         return True, "validated"
 
     def apply(self, state: CanonicalState, proposal: TransitionProposal) -> tuple[CanonicalState, TransitionReceipt]:
@@ -87,11 +132,26 @@ class TransitionValidator:
         if proposal.soft_updates:
             target = replace(target, soft=replace(target.soft, **proposal.soft_updates))
         if proposal.provenance_source or proposal.evidence_id:
-            target = replace(target, provenance=target.provenance.extend(source=proposal.provenance_source, evidence_id=proposal.evidence_id))
+            target = replace(
+                target,
+                provenance=target.provenance.extend(
+                    source=proposal.provenance_source,
+                    evidence_id=proposal.evidence_id,
+                ),
+            )
         if proposal.hard_transition is not None:
             target = replace(target, hard=proposal.hard_transition.target)
         target = replace(target, step=state.step + 1)
-        return target, TransitionReceipt(proposal.action_id, source, state_digest(target), digest, True, "committed", time(), target.step)
+        return target, TransitionReceipt(
+            proposal.action_id,
+            source,
+            state_digest(target),
+            digest,
+            True,
+            "committed",
+            time(),
+            target.step,
+        )
 
 
 __all__ = ["TransitionProposal", "TransitionReceipt", "TransitionValidator", "proposal_digest", "state_digest"]
