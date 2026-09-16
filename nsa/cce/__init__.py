@@ -1,13 +1,10 @@
-"""Continuous Cognitive Engine public package.
-
-Canonical CCE imports remain free of neural dependencies. Omega and six-layer
-integrations are loaded lazily when explicitly requested.
-"""
+"""Continuous Cognitive Engine public package."""
 from .engine import CCEStatus, ContinuousCognitiveEngine
 from .events import CognitiveEvent, EventKind
 from .lifecycle import CheckpointEnvelope, CognitiveInputEvent, CognitiveInputQueue, StateCheckpointStore
 from .trajectory import CognitiveTrajectory, TrajectoryRecord
 from .transaction import CognitiveTransaction, CognitiveTransactionEngine
+from .async_transaction import AsyncCognitiveTransactionEngine, AsyncExecutionHook
 from .canonical_runtime import CanonicalCCERuntime, TickInput
 from .loop import CognitiveCycle, CognitiveLoop, default_prediction_error
 from .orchestrator import CognitiveCycleResult, CognitiveOrchestrator
@@ -18,6 +15,7 @@ __all__ = [
     "CCEStatus", "ContinuousCognitiveEngine", "CognitiveEvent", "EventKind",
     "CheckpointEnvelope", "CognitiveInputEvent", "CognitiveInputQueue", "StateCheckpointStore",
     "CognitiveTrajectory", "TrajectoryRecord", "CognitiveTransaction", "CognitiveTransactionEngine",
+    "AsyncCognitiveTransactionEngine", "AsyncExecutionHook",
     "CanonicalCCERuntime", "TickInput", "CognitiveCycle", "CognitiveLoop", "default_prediction_error",
     "CognitiveCycleResult", "CognitiveOrchestrator", "TrajectoryJournal", "record_to_dict",
     "CallableEffect", "EffectReceipt", "TwoPhaseExecutor",
