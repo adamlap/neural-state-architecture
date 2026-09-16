@@ -55,6 +55,11 @@ class CanonicalCCERuntime:
     def trajectory(self):
         return self.transaction_engine.trajectory
 
+    @property
+    def async_transaction_engine(self) -> AsyncCognitiveTransactionEngine:
+        """The authoritative async transaction coordinator used by async effects."""
+        return self._async_transaction_engine
+
     def submit(self, tick: TickInput) -> None:
         self._pending = tick
 
