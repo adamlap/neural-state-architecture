@@ -4,95 +4,76 @@ This document defines the convergence point for NSA state, cognition and continu
 
 ## Canonical invariant
 
-**Model cognition proposes. Policy and authority govern. Safety validates. Structural validation validates state transitions. Execution happens only after all configured gates pass. Canonical state commits once.**
+**Model cognition proposes. Policy and authority govern. Safety validates. Structural validation validates state transitions. Effects execute only after all configured gates pass. Canonical state commits once.**
 
 ```text
-observation
-   ↓
-belief update
-   ↓
-prediction / self-model
-   ↓
-prediction error + information need
-   ↓
-deliberation / action proposal
-   ↓
-policy
-   ↓
-capability verification
-   ↓
-immutable safety kernel
-   ↓
-structural transition validation
-   ↓
-capability consumption
-   ↓
-external execution
-   ↓
-canonical state commit
-   ↓
-provenance + append-only trajectory
+observation → belief → prediction/self-model → prediction error
+→ information need → deliberation → policy → capability verification
+→ immutable safety kernel → structural validation → effect prepare
+→ capability consume → effect commit → canonical state commit
+→ provenance / trajectory
 ```
 
-Hard authority can only change through an explicitly authorized `StateTransition`.
-Soft cognitive channels may evolve, but they never grant hard authority.
+Hard authority can only change through an explicitly authorized `StateTransition`. Soft cognitive channels may evolve, but they never grant hard authority.
 
 ## Converged components
 
-- `nsa.core.state.CanonicalState`: stable typed state boundary.
-- `nsa.core.transition`: atomic proposals, validation, receipts and state digests.
-- `nsa.core.capabilities`: authenticated capability constraints with separate verify/consume operations.
-- `nsa.core.safety_kernel.ImmutableSafetyKernel`: deterministic reference monitor; capability consumption is explicit.
-- `nsa.cce.events`: typed observation, belief, prediction, prediction-error, cognition, governance and commit events.
-- `nsa.cce.trajectory`: append-only in-memory transition history.
-- `nsa.cce.persistence.TrajectoryJournal`: durable JSONL trajectory journal with integrity verification.
-- `nsa.cce.transaction.CognitiveTransactionEngine`: canonical transaction coordinator.
-- `nsa.cce.loop.CognitiveLoop`: observe → believe → predict → error → deliberate → govern → commit orchestration.
-- `nsa.cce.canonical_runtime.CanonicalCCERuntime`: wall-clock scheduler over the canonical transaction engine, with optional durable journaling.
-- `nsa.cce.omega_adapter.CanonicalOmegaAdapter`: explicit one-way CanonicalState → Omega bridge.
-- `nsa.cce.substrate_adapter.SixLayerCanonicalAdapter`: turns the neural six-layer substrate into action proposals rather than authority.
-- `nsa.cce.safety_adapter.ImmutableKernelGate`: exposes the immutable kernel as a canonical CCE safety gate.
-- `nsa.cognition.deliberation.InformationSeekingPlanner`: makes missing evidence an explicit T1-style action proposal that still passes normal governance.
+- `CanonicalState`: stable typed state boundary.
+- `TransitionProposal` / `TransitionReceipt` / `TransitionValidator`: atomic proposals, validation and state digests.
+- `CapabilityAuthority`: authenticated capability lifecycle with separate verify/consume operations.
+- `CapabilityConstraintEvaluator`: typed target, scope, risk, resource and rate constraints.
+- `ImmutableSafetyKernel`: deterministic reference monitor.
+- `CognitiveTransactionEngine`: canonical transaction coordinator.
+- `CognitiveLoop`: observe → believe → predict → error → information seeking → deliberate → govern → commit.
+- `TwoPhaseExecutor`: explicit prepare/commit/abort/compensate boundary for non-idempotent effects.
+- `TrajectoryJournal`: append-only JSONL durability with complete canonical state snapshots and replay verification.
+- `OmegaFeedbackAdapter`: one-way projection of rich neural/self-model telemetry into governed canonical proposals.
+- `CanonicalOmegaAdapter`: explicit CanonicalState → Omega bridge.
+- `SixLayerCanonicalAdapter`: neural substrate output is a proposal, never an authority path.
+- `NSARuntime.canonical_cce`: public runtime access to the canonical transaction plane and trajectory.
 
 ## Capability lifecycle
 
-Capability authorization has three distinct states:
+1. **Verify** — authenticate action, tier, expiry, replay status and signed constraints.
+2. **Govern** — policy, safety and structural gates may reject without consuming the nonce.
+3. **Consume** — all required capabilities are re-verified and consumed immediately before effect commit.
 
-1. **Verify** — authenticate scope, action, tier, expiry, replay status and constraints.
-2. **Govern** — policy, safety and structural gates may still reject the proposal without burning the nonce.
-3. **Consume** — consume the nonce immediately before an external effect.
+Multiple required capabilities are verified before any are consumed, preventing partial consumption when one capability is invalid.
 
-This prevents rejected proposals from consuming capabilities while preserving one-shot replay protection for actually authorized use.
+## Typed capability constraints
+
+Signed constraints can express maximum risk, reversible-only actions, target allow-lists, scope allow-lists, maximum resource cost and bounded calls per time window. Constraint evaluation only narrows an authenticated capability; it never grants authority.
+
+## Two-phase effects
+
+Non-idempotent integrations can implement `prepare`, `commit`, `abort` and `compensate`. Preparation occurs only after governance and structural validation. Capability consumption occurs immediately before effect commit. If effect commit fails, canonical state does not commit. If an unexpected canonical commit failure occurs after an effect succeeds, the engine requests compensation and records the effect receipt.
+
+Legacy callables remain supported, but integrations with externally visible side effects should use `TwoPhaseExecutor`.
 
 ## Neural / Omega boundary
 
-The six-layer neural substrate remains useful for simulation, epistemic reasoning and
-self-modeling, but it is not the canonical state owner. `CanonicalOmegaAdapter` provides
-a one-way representation bridge and `SixLayerCanonicalAdapter` exposes substrate results
-as proposals. No tensor output can directly mutate canonical hard authority.
+The neural six-layer substrate remains useful for simulation, epistemic reasoning and self-modeling, but it is not the canonical state owner. `CanonicalOmegaAdapter` provides a one-way representation bridge. `OmegaFeedbackAdapter` turns epistemic/self-model telemetry into a `TransitionProposal` that must pass canonical gates.
 
-The public compatibility `CognitiveDynamicsSubstrate.step()` still returns a projected
-Omega for older callers; new integrations should use the canonical adapters and transaction engine.
+No tensor output can directly mutate canonical hard authority.
 
 ## Information seeking
 
-High uncertainty is represented explicitly through `InformationNeed` and can produce a
-governed information-gathering `ActionCandidate`. Information seeking is not an authority
-bypass: the resulting action is still subject to policy, capability, safety and structural validation.
+High uncertainty is represented explicitly through `InformationNeed`. `InformationSeekingPlanner` can generate a governed evidence-gathering candidate when no ordinary candidate is available. Information gathering remains subject to policy, capability, safety and structural validation.
 
-## Durability and replay
+## Durable replay
 
-`TrajectoryJournal` stores append-only JSONL records. `verify()` checks monotonic steps,
-well-formed SHA-256 state digests, and optionally the latest digest against a live canonical
-state. This is the base for durable replay. Full state reconstruction remains a separate
-phase because arbitrary semantic payloads cannot safely be reconstructed from summaries alone.
+Trajectory records can persist complete canonical state under versioned `nsa.canonical-state.v1`. The codec reconstructs semantic data, hard authority, soft state, provenance, goals and logical step. Journal verification re-hashes reconstructed snapshots and rejects corruption or schema mismatches. Non-JSON semantic objects are rejected rather than silently serialized lossily.
 
-## Remaining hardening phases
+## PyTorch isolation
 
-1. **Transactional effect/commit coupling** — introduce an effect receipt or two-phase executor so a non-idempotent external effect cannot succeed while its canonical commit fails.
-2. **General capability constraint evaluator** — move beyond `max_risk` and `reversible_only` to typed scopes, targets, rate limits and resource bounds.
-3. **Production key management** — require explicit injected key material in production deployments; keep the demo key only for legacy research fixtures.
-4. **Full Omega state adapters** — connect learned self-model state, epistemic vectors and prediction-error metrics to canonical soft/provenance channels through explicit typed adapters.
-5. **Durable replay** — persist enough canonical state material to reconstruct and verify a trajectory, with schema/version hashes and corruption detection.
-6. **Adversarial end-to-end matrix** — continuously prove that model output cannot bypass policy, capability, safety, hard-state authorization or trajectory integrity.
-7. **PyTorch isolation** — keep the base canonical CCE usable without importing the neural substrate; neural dependencies should remain optional integration modules.
+Canonical `nsa`, `nsa.core`, `nsa.cce` and `nsa.cognition` imports no longer eagerly load tensor-based substrate/Omega modules. Neural integrations are lazy and activate only when explicitly requested, keeping the control plane suitable for deterministic lightweight deployments.
+
+## Production key management
+
+`CapabilityAuthority.from_environment()` requires an explicit `NSA_CAPABILITY_MASTER_SECRET` (configurable variable name). The historical demo key remains only for backwards-compatible research fixtures and must not be used for production deployments.
+
+## Verification strategy
+
+The hardening suite covers state codec round-trips, journal reconstruction, typed capability constraints, rejected-policy nonce preservation, two-phase effect ordering and neural import isolation, in addition to the existing adversarial governance suites.
+
+CI remains authoritative for the complete repository verification; this integration environment cannot execute the GitHub checkout locally.
