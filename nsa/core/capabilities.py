@@ -1,40 +1,23 @@
-"""
-nsa/core/capabilities.py
-========================
-NSA 3.0 Capability-Theoretic Authorization & Trust Hierarchy Engine.
-
-Implements:
-1. Five-Tier Trust Hierarchy (T0 <= T1 <= T2 <= T3 <= T4).
-2. Cryptographic Capability Object kappa:
-   kappa = (principal, action, scope, resource, expiry, nonce, hmac_signature)
-3. Multidimensional Trust Thermodynamics Vector:
-   T = (T_epistemic, T_cognitive, T_authority, T_provenance, T_operational)
-4. Non-forgeability theorem: kappa cannot be synthesized from Omega_cognitive.
-"""
-
+"""NSA capability-theoretic authorization and trust hierarchy."""
 from __future__ import annotations
-
 import enum
 import hashlib
 import hmac
+import json
+import os
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
-
+from typing import Any, Dict, Optional, Set, Tuple
 
 class TrustTier(enum.IntEnum):
-    """Five-Tier Trust Hierarchy."""
-    T0_COGNITION = 0      # Pure internal cognition / thought / memory lookup
-    T1_INFO_GATHER = 1    # Read-only information gathering / governed inspection
-    T2_REVERSIBLE = 2     # Reversible computation / sandboxed evaluation
-    T3_SIDE_EFFECTS = 3   # External side effects (network, storage writes)
-    T4_CRITICAL = 4       # Irreversible / critical operations (keys, root actions)
-
+    T0_COGNITION = 0
+    T1_INFO_GATHER = 1
+    T2_REVERSIBLE = 2
+    T3_SIDE_EFFECTS = 3
+    T4_CRITICAL = 4
 
 @dataclass(frozen=True)
 class CapabilityToken:
-    """Cryptographic capability kappa representing unforgeable authority."""
-
     principal: str
     action_id: str
     scope: str
@@ -43,99 +26,76 @@ class CapabilityToken:
     expiry_timestamp: float
     signature: str
     constraints: Dict[str, Any] = field(default_factory=dict)
-
     def is_expired(self, current_time: Optional[float] = None) -> bool:
-        now = current_time if current_time is not None else time.time()
-        return now > self.expiry_timestamp
-
+        return (current_time if current_time is not None else time.time()) > self.expiry_timestamp
 
 @dataclass
 class TrustThermodynamicsVector:
-    """Multidimensional trust thermodynamics vector T."""
-
-    t_epistemic: float     # [0, 1] Justification backing
-    t_cognitive: float     # [0, 1] Internal self-state health (1.0 - error)
-    t_authority: float     # [0, 1] Operational clearance
-    t_provenance: float    # [0, 1] Cryptographic lineage trust
-    t_operational: float   # [0, 1] Effective operational clearance ceiling
-
+    t_epistemic: float
+    t_cognitive: float
+    t_authority: float
+    t_provenance: float
+    t_operational: float
     def compute_max_authorized_tier(self) -> TrustTier:
-        """Derives the maximum allowed trust tier based on cognitive health."""
-        if self.t_cognitive < 0.20 or self.t_provenance < 0.50:
-            return TrustTier.T0_COGNITION
-        elif self.t_cognitive < 0.50:
-            return TrustTier.T1_INFO_GATHER
-        elif self.t_cognitive < 0.75:
-            return TrustTier.T2_REVERSIBLE
-        elif self.t_authority < 0.80:
-            return TrustTier.T3_SIDE_EFFECTS
-        else:
-            return TrustTier.T4_CRITICAL
+        if self.t_cognitive < 0.20 or self.t_provenance < 0.50: return TrustTier.T0_COGNITION
+        if self.t_cognitive < 0.50: return TrustTier.T1_INFO_GATHER
+        if self.t_cognitive < 0.75: return TrustTier.T2_REVERSIBLE
+        if self.t_authority < 0.80: return TrustTier.T3_SIDE_EFFECTS
+        return TrustTier.T4_CRITICAL
 
+def _canonical_constraints(constraints: Dict[str, Any]) -> str:
+    return json.dumps(constraints, sort_keys=True, separators=(",", ":"), default=str)
+
+def _payload(token: CapabilityToken) -> str:
+    return ":".join((token.principal, token.action_id, token.scope, str(token.target_tier.value),
+                     token.nonce, f"{token.expiry_timestamp:.3f}", _canonical_constraints(token.constraints)))
 
 class CapabilityAuthority:
     """External authority capable of minting and validating capabilities."""
-
-    def __init__(self, master_secret_key: bytes = b"nsa-tcb-master-secret-key-3.0") -> None:
-        self._master_secret = master_secret_key
+    DEMO_SECRET = b"nsa-tcb-master-secret-key-3.0"
+    def __init__(self, master_secret_key: Optional[bytes] = None) -> None:
+        # Explicit key injection is the production API. The legacy no-argument
+        # constructor remains for research fixtures; production code should use
+        # from_environment() so a secret is never committed to source control.
+        self._master_secret = master_secret_key if master_secret_key is not None else self.DEMO_SECRET
+        if not self._master_secret: raise ValueError("master_secret_key must be non-empty")
         self._consumed_nonces: Set[str] = set()
 
-    def mint_capability(
-        self,
-        principal: str,
-        action_id: str,
-        scope: str,
-        target_tier: TrustTier,
-        validity_duration_sec: float = 60.0,
-        nonce: Optional[str] = None,
-        constraints: Optional[Dict[str, Any]] = None,
-    ) -> CapabilityToken:
-        """Mint a cryptographically signed capability token kappa."""
+    @classmethod
+    def from_environment(cls, variable: str = "NSA_CAPABILITY_MASTER_SECRET") -> "CapabilityAuthority":
+        value = os.environ.get(variable)
+        if not value:
+            raise RuntimeError(f"missing required capability secret environment variable: {variable}")
+        return cls(value.encode("utf-8"))
+
+    def mint_capability(self, principal: str, action_id: str, scope: str, target_tier: TrustTier,
+                        validity_duration_sec: float = 60.0, nonce: Optional[str] = None,
+                        constraints: Optional[Dict[str, Any]] = None) -> CapabilityToken:
+        if validity_duration_sec <= 0: raise ValueError("validity_duration_sec must be positive")
         nonce_val = nonce or hashlib.sha256(f"{time.time()}:{action_id}:{principal}".encode()).hexdigest()[:16]
         expiry = time.time() + validity_duration_sec
-        constraints_dict = constraints or {}
+        token = CapabilityToken(principal, action_id, scope, target_tier, nonce_val, expiry, "", dict(constraints or {}))
+        signature = hmac.new(self._master_secret, _payload(token).encode(), hashlib.sha256).hexdigest()
+        return CapabilityToken(principal, action_id, scope, target_tier, nonce_val, expiry, signature, token.constraints)
 
-        payload = f"{principal}:{action_id}:{scope}:{target_tier.value}:{nonce_val}:{expiry:.3f}"
-        signature = hmac.new(self._master_secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    def verify_capability(self, token: CapabilityToken, action_id: str, required_tier: TrustTier,
+                          current_time: Optional[float] = None) -> Tuple[bool, str]:
+        if token.nonce in self._consumed_nonces: return False, "Capability replay attack detected: nonce already consumed."
+        if token.is_expired(current_time): return False, "Capability expired."
+        if token.action_id != action_id and token.action_id != "*": return False, f"Capability action mismatch: grants {token.action_id}, requested {action_id}."
+        if token.target_tier < required_tier: return False, f"Insufficient tier: capability grants {token.target_tier.name}, requires {required_tier.name}."
+        expected_sig = hmac.new(self._master_secret, _payload(token).encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(token.signature, expected_sig): return False, "Cryptographic capability signature forgery detected."
+        return True, "Capability verified successfully."
 
-        return CapabilityToken(
-            principal=principal,
-            action_id=action_id,
-            scope=scope,
-            target_tier=target_tier,
-            nonce=nonce_val,
-            expiry_timestamp=expiry,
-            signature=signature,
-            constraints=constraints_dict,
-        )
-
-    def verify_and_consume_capability(
-        self,
-        token: CapabilityToken,
-        action_id: str,
-        required_tier: TrustTier,
-        current_time: Optional[float] = None,
-    ) -> Tuple[bool, str]:
-        """Verify signature, expiry, tier match, and consume nonce atomically."""
-        if token.nonce in self._consumed_nonces:
-            return False, "Capability replay attack detected: nonce already consumed."
-
-        if token.is_expired(current_time):
-            return False, "Capability expired."
-
-        if token.action_id != action_id and token.action_id != "*":
-            return False, f"Capability action mismatch: grants {token.action_id}, requested {action_id}."
-
-        if token.target_tier < required_tier:
-            return False, f"Insufficient tier: capability grants {token.target_tier.name}, requires {required_tier.name}."
-
-        # Verify HMAC signature
-        payload = f"{token.principal}:{token.action_id}:{token.scope}:{token.target_tier.value}:{token.nonce}:{token.expiry_timestamp:.3f}"
-        expected_sig = hmac.new(self._master_secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()
-
-        if not hmac.compare_digest(token.signature, expected_sig):
-            return False, "Cryptographic capability signature forgery detected."
-
-        # Atomic consumption
+    def consume_capability(self, token: CapabilityToken) -> Tuple[bool, str]:
+        if token.nonce in self._consumed_nonces: return False, "Capability replay attack detected: nonce already consumed."
         self._consumed_nonces.add(token.nonce)
-        return True, "Capability verified and consumed successfully."
+        return True, "Capability consumed successfully."
+
+    def verify_and_consume_capability(self, token: CapabilityToken, action_id: str, required_tier: TrustTier,
+                                      current_time: Optional[float] = None) -> Tuple[bool, str]:
+        ok, reason = self.verify_capability(token, action_id, required_tier, current_time)
+        return (False, reason) if not ok else self.consume_capability(token)
+
+__all__ = ["CapabilityToken", "CapabilityAuthority", "TrustThermodynamicsVector", "TrustTier"]
