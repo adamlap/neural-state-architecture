@@ -8,6 +8,7 @@ from .async_transaction import AsyncCognitiveTransactionEngine, AsyncExecutionHo
 from .canonical_runtime import CanonicalCCERuntime, TickInput
 from .loop import CognitiveCycle, CognitiveLoop, default_prediction_error
 from .orchestrator import CognitiveCycleResult, CognitiveOrchestrator
+from .async_orchestrator import AsyncCognitiveCycleResult, AsyncCognitiveOrchestrator, AsyncEffect
 from .persistence import TrajectoryJournal, record_to_dict
 from .effects import CallableEffect, EffectReceipt, TwoPhaseExecutor
 
@@ -17,8 +18,8 @@ __all__ = [
     "CognitiveTrajectory", "TrajectoryRecord", "CognitiveTransaction", "CognitiveTransactionEngine",
     "AsyncCognitiveTransactionEngine", "AsyncExecutionHook",
     "CanonicalCCERuntime", "TickInput", "CognitiveCycle", "CognitiveLoop", "default_prediction_error",
-    "CognitiveCycleResult", "CognitiveOrchestrator", "TrajectoryJournal", "record_to_dict",
-    "CallableEffect", "EffectReceipt", "TwoPhaseExecutor",
+    "CognitiveCycleResult", "CognitiveOrchestrator", "AsyncCognitiveCycleResult", "AsyncCognitiveOrchestrator", "AsyncEffect",
+    "TrajectoryJournal", "record_to_dict", "CallableEffect", "EffectReceipt", "TwoPhaseExecutor",
     "ImmutableKernelGate", "SafetyDecision", "CanonicalOmegaAdapter", "OmegaDimensions",
     "SixLayerCanonicalAdapter", "SubstrateProposal", "OmegaFeedback", "OmegaFeedbackAdapter",
 ]
