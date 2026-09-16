@@ -1,12 +1,11 @@
-from nsa.cce import CognitiveEvent, CognitiveTrajectory, EventKind, TrajectoryLearner
+from nsa.cce import CognitiveTrajectory, CognitiveTransactionEngine, TrajectoryLearner
 from nsa.cognition import ActionCandidate
 from nsa.core.state import CanonicalState
-from nsa.cce import CognitiveTransactionEngine
 
 
 def test_trajectory_learner_preserves_causal_transition_and_outcome():
     engine = CognitiveTransactionEngine(CanonicalState())
-    result = engine.tick(
+    engine.tick(
         action_candidates=(ActionCandidate("inspect", expected_utility=0.8, risk=0.1),),
         semantic_update={"observed": True},
     )
