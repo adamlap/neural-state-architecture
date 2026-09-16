@@ -10,8 +10,9 @@ from nsa.cce.transaction import CognitiveTransactionEngine
 from nsa.cognition.interfaces import ActionCandidate
 from nsa.core.capabilities import CapabilityAuthority, TrustTier
 from nsa.core.capability_constraints import CapabilityConstraintEvaluator, ConstraintContext
-from nsa.core.state import CanonicalState
+from nsa.core.state import CanonicalState, GoalState
 from nsa.core.state_codec import decode_state, encode_state
+from nsa.core.transition import state_digest
 
 
 class FakeEffect:
@@ -25,6 +26,14 @@ class FakeEffect:
 def test_state_codec_round_trip_preserves_digest():
     state = CanonicalState().observe(uncertainty=0.4, confidence=0.8)
     assert decode_state(encode_state(state)) == state
+
+
+def test_state_digest_covers_provenance_and_goals():
+    base = CanonicalState()
+    sourced = CanonicalState().observe(uncertainty=0.0)
+    sourced = sourced.with_goal(GoalState(goals=("ship",), active_goal="ship", priority=0.7))
+    assert state_digest(base) != state_digest(sourced)
+    assert state_digest(sourced) == state_digest(decode_state(encode_state(sourced)))
 
 
 def test_journal_reconstructs_complete_state(tmp_path):
@@ -46,6 +55,16 @@ def test_constraint_target_and_rate_limit():
     assert evaluator.evaluate(token, action, context=context).allowed
     evaluator.record_use(token, action, context=context)
     assert not evaluator.evaluate(token, action, context=context).allowed
+
+
+def test_strict_constraints_fail_closed_on_unknown_keys():
+    authority = CapabilityAuthority(b"test-secret")
+    token = authority.mint_capability("test", "inspect", "docs", TrustTier.T1_INFO_GATHER,
+        constraints={"future_policy_v1": {"allow": True}})
+    action = ActionCandidate("inspect", expected_utility=1.0, required_capabilities=("docs",))
+    decision = CapabilityConstraintEvaluator(strict=True).evaluate(token, action)
+    assert not decision.allowed
+    assert "unsupported" in decision.reason
 
 
 def test_rejected_policy_does_not_consume_capability():
