@@ -5,10 +5,12 @@ from dataclasses import dataclass
 from time import time
 from typing import Any, Callable, Mapping, Optional, Sequence
 
+from nsa.cce.effects import EffectReceipt, TwoPhaseExecutor
 from nsa.cce.events import CognitiveEvent, EventKind
 from nsa.cce.trajectory import CognitiveTrajectory
 from nsa.cognition.interfaces import ActionCandidate
 from nsa.core.capabilities import CapabilityAuthority, CapabilityToken, TrustTier
+from nsa.core.capability_constraints import CapabilityConstraintEvaluator, ConstraintContext
 from nsa.core.state import CanonicalState, StateTransition
 from nsa.core.transition import TransitionProposal, TransitionReceipt, TransitionValidator, state_digest
 
@@ -28,21 +30,32 @@ class CognitiveTransaction:
     execution_result: Any
     receipt: TransitionReceipt
     events: tuple[CognitiveEvent, ...]
+    effect_receipt: EffectReceipt | None = None
 
 
 class CognitiveTransactionEngine:
-    """Turn a cognitive tick into one governed, auditable state transaction."""
+    """Turn a cognitive tick into one governed, auditable state transaction.
+
+    For non-idempotent effects, pass ``effect_executor``. It implements prepare /
+    commit / abort / compensate and makes the effect lifecycle explicit. The
+    legacy callable ``executor`` remains supported for compatibility.
+    """
     def __init__(self, initial_state, *, selector=None, policy=None, safety_gate=None, executor=None,
-                 validator=None, trajectory=None, capability_authority=None, capability_tokens=None):
+                 effect_executor: TwoPhaseExecutor | None = None, validator=None, trajectory=None,
+                 capability_authority=None, capability_tokens=None, constraint_evaluator=None):
+        if executor is not None and effect_executor is not None:
+            raise ValueError("provide executor or effect_executor, not both")
         self.state = initial_state
         self.selector = selector or self._default_selector
         self.policy = policy
         self.safety_gate = safety_gate
         self.executor = executor
+        self.effect_executor = effect_executor
         self.validator = validator or TransitionValidator()
         self.trajectory = trajectory or CognitiveTrajectory(initial_state)
         self.capability_authority = capability_authority
         self.capability_tokens = dict(capability_tokens or {})
+        self.constraint_evaluator = constraint_evaluator or CapabilityConstraintEvaluator()
         self._event_counter = 0
 
     def _event(self, kind, payload):
@@ -67,13 +80,11 @@ class CognitiveTransactionEngine:
         return TrustTier.T2_REVERSIBLE if action.reversible else TrustTier.T3_SIDE_EFFECTS
 
     @staticmethod
-    def _check_constraints(token, action):
-        max_risk = token.constraints.get("max_risk")
-        if max_risk is not None and action.risk > float(max_risk):
-            return f"capability constraint max_risk={max_risk} violated by risk={action.risk}"
-        if token.constraints.get("reversible_only") and not action.reversible:
-            return "capability constraint reversible_only violated"
-        return None
+    def _constraint_context(action):
+        payload = action.payload if isinstance(action.payload, Mapping) else {}
+        return ConstraintContext(
+            target=payload.get("target"), scope=payload.get("scope"),
+            resource_cost=float(payload.get("resource_cost", 0.0)), now=time())
 
     def _verify_capabilities(self, action):
         required = tuple(action.required_capabilities)
@@ -86,24 +97,32 @@ class CognitiveTransactionEngine:
             token = self.capability_tokens.get(capability) or self.capability_tokens.get(action.action_id)
             if token is None:
                 return False, f"missing capability: {capability}", ()
-            reason = self._check_constraints(token, action)
-            if reason is not None:
-                return False, reason, ()
             if self.capability_authority is None:
                 return False, "capability token supplied without a capability authority", ()
-            ok, reason = self.capability_authority.verify_capability(token, action.action_id, self._required_tier(action), time())
+            decision = self.constraint_evaluator.evaluate(token, action, context=self._constraint_context(action))
+            if not decision.allowed:
+                return False, f"capability constraint rejected: {decision.reason}", ()
+            ok, reason = self.capability_authority.verify_capability(
+                token, action.action_id, self._required_tier(action), time())
             if not ok:
                 return False, reason, ()
             verified.append(token)
         return True, "capabilities verified", tuple(verified)
 
-    def _consume_capabilities(self, tokens):
+    def _consume_capabilities(self, tokens, action):
         if self.capability_authority is None:
             return True, "no cryptographic capabilities to consume"
+        # Verify every token before consuming any, preventing partial consumption.
+        for token in tokens:
+            ok, reason = self.capability_authority.verify_capability(
+                token, action.action_id, self._required_tier(action), time())
+            if not ok:
+                return False, reason
         for token in tokens:
             ok, reason = self.capability_authority.consume_capability(token)
             if not ok:
                 return False, reason
+            self.constraint_evaluator.record_use(token, action, context=self._constraint_context(action))
         return True, "capabilities consumed"
 
     @staticmethod
@@ -111,11 +130,11 @@ class CognitiveTransactionEngine:
         source = state_digest(state)
         return TransitionReceipt(proposal.action_id, source, source, state_digest(proposal), False, reason, time(), state.step)
 
-    def _reject(self, proposal, selected, policy_allowed, reason, events):
+    def _reject(self, proposal, selected, policy_allowed, reason, events, effect_receipt=None):
         receipt = self._proposal_receipt(self.state, proposal, reason)
         events.append(self._event(EventKind.ROLLBACK, {"reason": reason}))
         self.trajectory.append(self.state, receipt=receipt, events=events)
-        return CognitiveTransaction(self.state, proposal, selected, policy_allowed, reason, False, None, receipt, tuple(events))
+        return CognitiveTransaction(self.state, proposal, selected, policy_allowed, reason, False, None, receipt, tuple(events), effect_receipt)
 
     def tick(self, *, action_candidates=(), observation=None, semantic_update=None, soft_updates=None,
              hard_transition=None, action_id="cognitive_tick", reason="CCE state transition",
@@ -155,14 +174,36 @@ class CognitiveTransactionEngine:
         if not ok:
             return self._reject(proposal, selected, True, validation_reason, events)
 
+        prepared_id, prepared = None, None
+        if selected is not None and self.effect_executor is not None:
+            try:
+                prepared_id, prepared = self.effect_executor.prepare(selected, self.state)
+                events.append(self._event(EventKind.EXECUTION, {"phase": "prepared", "effect_id": prepared_id}))
+            except Exception as exc:
+                return self._reject(proposal, selected, True,
+                                    f"effect prepare failed: {type(exc).__name__}: {exc}", events)
+
         if selected is not None and verified_tokens:
-            consumed, consume_reason = self._consume_capabilities(verified_tokens)
+            consumed, consume_reason = self._consume_capabilities(verified_tokens, selected)
             events.append(self._event(EventKind.CAPABILITY, {"allowed": consumed, "reason": consume_reason, "consumed": consumed}))
             if not consumed:
+                if prepared_id is not None:
+                    try: self.effect_executor.effect.abort(prepared)
+                    except Exception: pass
                 return self._reject(proposal, selected, True, consume_reason, events)
 
+        effect_receipt = None
         executed, execution_result = False, None
-        if selected is not None and self.executor is not None:
+        if selected is not None and self.effect_executor is not None:
+            effect_receipt = self.effect_executor.commit(prepared_id, prepared, selected)
+            events.append(self._event(EventKind.EXECUTION, {
+                "phase": "committed" if effect_receipt.committed else "failed",
+                "effect_id": effect_receipt.effect_id, "result": effect_receipt.result,
+                "reason": effect_receipt.reason}))
+            if not effect_receipt.committed:
+                return self._reject(proposal, selected, True, effect_receipt.reason, events, effect_receipt)
+            executed, execution_result = True, effect_receipt.result
+        elif selected is not None and self.executor is not None:
             try:
                 execution_result = self.executor(selected, self.state)
             except Exception as exc:
@@ -174,12 +215,18 @@ class CognitiveTransactionEngine:
 
         next_state, receipt = self.validator.apply(self.state, proposal)
         if receipt.committed:
-            events.append(self._event(EventKind.STATE_COMMIT, {"source_digest": receipt.source_digest, "target_digest": receipt.target_digest}))
+            events.append(self._event(EventKind.STATE_COMMIT, {"source_digest": receipt.source_digest, "target_digest": receipt.target_digest,
+                "effect_id": effect_receipt.effect_id if effect_receipt else None}))
             self.state = next_state
         else:
+            if effect_receipt is not None and effect_receipt.committed:
+                try:
+                    effect_receipt = self.effect_executor.compensate(effect_receipt)
+                except Exception:
+                    pass
             events.append(self._event(EventKind.ROLLBACK, {"reason": receipt.reason}))
         self.trajectory.append(self.state, receipt=receipt, events=events)
-        return CognitiveTransaction(self.state, proposal, selected, allowed, policy_reason, executed, execution_result, receipt, tuple(events))
+        return CognitiveTransaction(self.state, proposal, selected, allowed, policy_reason, executed, execution_result, receipt, tuple(events), effect_receipt)
 
 
 __all__ = ["CognitiveTransaction", "CognitiveTransactionEngine"]
