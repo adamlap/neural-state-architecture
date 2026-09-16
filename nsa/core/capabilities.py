@@ -51,15 +51,19 @@ def _payload(token: CapabilityToken) -> str:
                      token.nonce, f"{token.expiry_timestamp:.3f}", _canonical_constraints(token.constraints)))
 
 class CapabilityAuthority:
-    """External authority capable of minting and validating capabilities."""
+    """External authority capable of minting and validating capabilities.
+
+    A capability can be *reserved* while an asynchronous effect is in flight.
+    Reservation closes the concurrent-use window without consuming authority
+    until the external operation has succeeded. Failed operations release the
+    reservation and leave the token reusable.
+    """
     DEMO_SECRET = b"nsa-tcb-master-secret-key-3.0"
     def __init__(self, master_secret_key: Optional[bytes] = None) -> None:
-        # Explicit key injection is the production API. The legacy no-argument
-        # constructor remains for research fixtures; production code should use
-        # from_environment() so a secret is never committed to source control.
         self._master_secret = master_secret_key if master_secret_key is not None else self.DEMO_SECRET
         if not self._master_secret: raise ValueError("master_secret_key must be non-empty")
         self._consumed_nonces: Set[str] = set()
+        self._reserved_nonces: Dict[str, str] = {}
 
     @classmethod
     def from_environment(cls, variable: str = "NSA_CAPABILITY_MASTER_SECRET") -> "CapabilityAuthority":
@@ -81,6 +85,7 @@ class CapabilityAuthority:
     def verify_capability(self, token: CapabilityToken, action_id: str, required_tier: TrustTier,
                           current_time: Optional[float] = None) -> Tuple[bool, str]:
         if token.nonce in self._consumed_nonces: return False, "Capability replay attack detected: nonce already consumed."
+        if token.nonce in self._reserved_nonces: return False, "Capability is currently reserved by another transaction."
         if token.is_expired(current_time): return False, "Capability expired."
         if token.action_id != action_id and token.action_id != "*": return False, f"Capability action mismatch: grants {token.action_id}, requested {action_id}."
         if token.target_tier < required_tier: return False, f"Insufficient tier: capability grants {token.target_tier.name}, requires {required_tier.name}."
@@ -88,8 +93,38 @@ class CapabilityAuthority:
         if not hmac.compare_digest(token.signature, expected_sig): return False, "Cryptographic capability signature forgery detected."
         return True, "Capability verified successfully."
 
+    def reserve_capability(self, token: CapabilityToken, action_id: str, required_tier: TrustTier,
+                           reservation_id: Optional[str] = None, current_time: Optional[float] = None) -> Tuple[bool, str, str | None]:
+        ok, reason = self.verify_capability(token, action_id, required_tier, current_time)
+        if not ok:
+            return False, reason, None
+        rid = reservation_id or hashlib.sha256(f"{time.time_ns()}:{token.nonce}:{action_id}".encode()).hexdigest()[:24]
+        self._reserved_nonces[token.nonce] = rid
+        return True, "Capability reserved successfully.", rid
+
+    def release_capability(self, token: CapabilityToken, reservation_id: str) -> Tuple[bool, str]:
+        current = self._reserved_nonces.get(token.nonce)
+        if current is None:
+            return False, "Capability is not reserved."
+        if current != reservation_id:
+            return False, "Capability reservation mismatch."
+        del self._reserved_nonces[token.nonce]
+        return True, "Capability reservation released successfully."
+
+    def consume_reserved_capability(self, token: CapabilityToken, reservation_id: str) -> Tuple[bool, str]:
+        current = self._reserved_nonces.get(token.nonce)
+        if current != reservation_id:
+            return False, "Capability reservation mismatch."
+        if token.nonce in self._consumed_nonces:
+            del self._reserved_nonces[token.nonce]
+            return False, "Capability replay attack detected: nonce already consumed."
+        del self._reserved_nonces[token.nonce]
+        self._consumed_nonces.add(token.nonce)
+        return True, "Reserved capability consumed successfully."
+
     def consume_capability(self, token: CapabilityToken) -> Tuple[bool, str]:
         if token.nonce in self._consumed_nonces: return False, "Capability replay attack detected: nonce already consumed."
+        if token.nonce in self._reserved_nonces: return False, "Capability is currently reserved by another transaction."
         self._consumed_nonces.add(token.nonce)
         return True, "Capability consumed successfully."
 
