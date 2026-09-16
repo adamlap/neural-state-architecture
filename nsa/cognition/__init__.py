@@ -5,10 +5,13 @@ substrate is loaded lazily so CCE can operate without PyTorch.
 """
 from .interfaces import ActionCandidate, ActionSelector, BeliefUpdater, InformationGainModel, PredictionError, Predictor, Prediction
 from .deliberation import DeliberationDecision, InformationNeed, InformationSeekingPlanner, UncertaintyDrivenDeliberator
+from .model import CognitiveContext, CognitiveModel, CognitiveProposal, InformationNeedProposal
+from .tools import ToolRegistry, ToolSpec
 
 __all__ = [
     "ActionCandidate", "ActionSelector", "BeliefUpdater", "InformationGainModel", "Prediction", "PredictionError", "Predictor",
     "DeliberationDecision", "InformationNeed", "InformationSeekingPlanner", "UncertaintyDrivenDeliberator",
+    "CognitiveContext", "CognitiveModel", "CognitiveProposal", "InformationNeedProposal", "ToolRegistry", "ToolSpec",
     "CognitiveMetrics", "CognitiveState", "CognitiveSubstrate", "CognitiveSwitches", "IntegrationGraph",
     "PredictionState", "SelfModelState", "WorkspaceCandidate", "WorkspaceState",
 ]
