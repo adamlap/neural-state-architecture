@@ -6,6 +6,7 @@ from nsa.cce.effects import TwoPhaseExecutor
 from nsa.cce.engine import CCEStatus, ContinuousCognitiveEngine
 from nsa.cce.persistence import TrajectoryJournal
 from nsa.cce.transaction import CognitiveTransaction, CognitiveTransactionEngine
+from nsa.cce.async_transaction import AsyncCognitiveTransactionEngine
 from nsa.cognition.interfaces import ActionCandidate
 from nsa.core.capabilities import CapabilityAuthority, CapabilityToken
 from nsa.core.state import CanonicalState
@@ -35,6 +36,10 @@ class CanonicalCCERuntime:
             initial_state, selector=selector, policy=policy, safety_gate=safety_gate,
             executor=executor, effect_executor=effect_executor,
             capability_authority=capability_authority, capability_tokens=capability_tokens)
+        self._async_transaction_engine = AsyncCognitiveTransactionEngine(
+            initial_state, selector=selector, policy=policy, safety_gate=safety_gate,
+            capability_authority=capability_authority, capability_tokens=capability_tokens,
+            trajectory=self.transaction_engine.trajectory)
         self.journal = journal
         self._pending: TickInput | None = None
         self.engine = ContinuousCognitiveEngine(initial_state, self._step,
@@ -67,6 +72,23 @@ class CanonicalCCERuntime:
                 metadata=item.metadata)
         self.engine.set_state(self.transaction_engine.state)
         if result is not None and self.journal is not None:
+            self.journal.append(self.transaction_engine.trajectory.latest, state=self.transaction_engine.state)
+        return result
+
+    async def tick_async(self, tick: TickInput | None = None, *, executor=None) -> CognitiveTransaction:
+        """Await an external effect before advancing canonical state."""
+        if tick is None:
+            tick = self._pending or TickInput()
+        self._pending = None
+        result = await self._async_transaction_engine.tick_async(
+            observation=tick.observation, semantic_update=tick.semantic_update,
+            soft_updates=tick.soft_updates, action_candidates=tick.action_candidates,
+            action_id=tick.action_id, reason=tick.reason,
+            provenance_source=tick.provenance_source, evidence_id=tick.evidence_id,
+            metadata=tick.metadata, executor=executor)
+        self.transaction_engine.state = self._async_transaction_engine.state
+        self.engine.set_state(self.transaction_engine.state)
+        if self.journal is not None:
             self.journal.append(self.transaction_engine.trajectory.latest, state=self.transaction_engine.state)
         return result
 
