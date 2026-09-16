@@ -15,10 +15,10 @@ AsyncExecutionHook = Callable[[Any, Any], Awaitable[Any]]
 class AsyncCognitiveTransactionEngine(CognitiveTransactionEngine):
     """CCE transaction engine that awaits side effects before state commit.
 
-    This is the bridge needed by async MCP/HTTP/tool runtimes: model proposals
-    are validated first, the effect is awaited, and canonical state is committed
-    only after the effect succeeds. A failed effect therefore cannot appear as
-    a successful canonical action merely because an event loop was involved.
+    Capability-bearing actions reserve their tokens while an external async
+    effect is in flight. A failed effect releases the reservation; successful
+    effects consume the reserved capability before canonical state is committed.
+    This prevents concurrent transactions from reusing the same one-shot token.
     """
 
     async def tick_async(
@@ -89,18 +89,32 @@ class AsyncCognitiveTransactionEngine(CognitiveTransactionEngine):
         if not ok:
             return self._reject(proposal, selected, True, validation_reason, events)
 
+        reservations: list[tuple[Any, str]] = []
         if selected is not None and verified_tokens:
-            consumed, consume_reason = self._consume_capabilities(verified_tokens, selected)
+            if self.capability_authority is None:
+                return self._reject(proposal, selected, True, "capability authority unavailable", events)
+            for token in verified_tokens:
+                reserved, reserve_reason, reservation_id = self.capability_authority.reserve_capability(
+                    token, selected.action_id, self._required_tier(selected), current_time=time()
+                )
+                if not reserved or reservation_id is None:
+                    for reserved_token, rid in reservations:
+                        self.capability_authority.release_capability(reserved_token, rid)
+                    return self._reject(proposal, selected, True, reserve_reason, events)
+                reservations.append((token, reservation_id))
             events.append(self._event(EventKind.CAPABILITY, {
-                "allowed": consumed, "reason": consume_reason, "consumed": consumed,
+                "allowed": True,
+                "reason": "capabilities reserved for async effect",
+                "reserved": len(reservations),
+                "consumed": False,
             }))
-            if not consumed:
-                return self._reject(proposal, selected, True, consume_reason, events)
 
         executed = False
         execution_result = None
         if selected is not None:
             if executor is None:
+                for token, rid in reservations:
+                    self.capability_authority.release_capability(token, rid)
                 return self._reject(proposal, selected, True, "async executor required", events)
             try:
                 execution_result = await executor(selected, self.state)
@@ -110,9 +124,27 @@ class AsyncCognitiveTransactionEngine(CognitiveTransactionEngine):
                     "result": execution_result,
                 }))
             except Exception as exc:
+                for token, rid in reservations:
+                    self.capability_authority.release_capability(token, rid)
                 reason_text = f"execution failed: {type(exc).__name__}: {exc}"
                 events.append(self._event(EventKind.ERROR, {"reason": reason_text}))
                 return self._reject(proposal, selected, True, reason_text, events)
+
+        if reservations:
+            for token, rid in reservations:
+                consumed, consume_reason = self.capability_authority.consume_reserved_capability(token, rid)
+                if not consumed:
+                    for other_token, other_rid in reservations:
+                        if other_token.nonce != token.nonce:
+                            self.capability_authority.release_capability(other_token, other_rid)
+                    events.append(self._event(EventKind.ERROR, {"reason": consume_reason}))
+                    return self._reject(proposal, selected, True, consume_reason, events)
+                self.constraint_evaluator.record_use(token, selected, context=self._constraint_context(selected))
+            events.append(self._event(EventKind.CAPABILITY, {
+                "allowed": True,
+                "reason": "reserved capabilities consumed after successful effect",
+                "consumed": True,
+            }))
 
         next_state, receipt = self.validator.apply(self.state, proposal)
         if receipt.committed:

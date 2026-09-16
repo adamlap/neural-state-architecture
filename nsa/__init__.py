@@ -13,13 +13,32 @@ from nsa.algebra import (
     bitpack_states, build_label_attention_mask, build_level_attention_mask, unpack_states,
 )
 from nsa.backends import BackendError, CallableBackend, EchoBackend, OllamaBackend
-from nsa.cce import CCEStatus, CheckpointEnvelope, CognitiveInputEvent, CognitiveInputQueue, ContinuousCognitiveEngine, StateCheckpointStore
+from nsa.cce import (
+    CCEStatus, CheckpointEnvelope, CognitiveInputEvent, CognitiveInputQueue,
+    ContinuousCognitiveEngine, StateCheckpointStore, CognitiveEvent, EventKind,
+    CognitiveTrajectory, TrajectoryRecord, TrajectoryExample, TrajectoryLearner,
+    CognitiveTransaction, CognitiveTransactionEngine, AsyncCognitiveTransactionEngine,
+    AsyncExecutionHook, CanonicalCCERuntime, TickInput, CognitiveCycle, CognitiveLoop,
+    default_prediction_error, AsyncCognitiveCycle, AsyncCognitiveLoop, CognitiveCycleResult,
+    CognitiveOrchestrator, AsyncCognitiveCycleResult, AsyncCognitiveOrchestrator, AsyncEffect,
+    TrajectoryJournal, record_to_dict, CallableEffect, EffectReceipt, TwoPhaseExecutor,
+)
 from nsa.core.state import CanonicalState, GoalState, HardState, ProvenanceState, SemanticState, SoftState, StateKind, StateTransition
+from nsa.core.transition import TransitionProposal, TransitionReceipt, TransitionValidator, state_digest, proposal_digest
+from nsa.core.capabilities import CapabilityAuthority, CapabilityToken, TrustThermodynamicsVector, TrustTier
+from nsa.core.capability_constraints import CapabilityConstraintEvaluator, ConstraintContext, ConstraintDecision
+from nsa.core.state_codec import SCHEMA_VERSION, decode_state, dumps_state, encode_state, round_trip
+from nsa.cognition import (
+    ActionCandidate, ActionSelector, BeliefUpdater, InformationGainModel, PredictionError,
+    Predictor, Prediction, DeliberationDecision, InformationNeed, InformationSeekingPlanner,
+    UncertaintyDrivenDeliberator, CognitiveContext, CognitiveModel, CognitiveProposal,
+    InformationNeedProposal, ToolRegistry, ToolSpec,
+)
 from nsa.decision import Decision, SecurityDecision
 from nsa.enforcement import EvaluationContext, KeywordClassifier, PolicyClassifier, PolicyEngine
 from nsa.policy import NSAPolicy, PolicyCompiler, PolicyRule
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 _LAZY = {
     "NSA": ("nsa.agent", "NSA"), "NSARuntime": ("nsa.agent", "NSARuntime"),
@@ -53,8 +72,17 @@ def __getattr__(name: str):
 __all__ = sorted(set([
     "NSA", "NSARuntime", "AgentResult", "RuntimeConfig", "ModelBackend", "OllamaBackend", "EchoBackend", "CallableBackend", "BackendError",
     "CCEStatus", "ContinuousCognitiveEngine", "CheckpointEnvelope", "StateCheckpointStore", "CognitiveInputEvent", "CognitiveInputQueue",
+    "CognitiveEvent", "EventKind", "CognitiveTrajectory", "TrajectoryRecord", "TrajectoryExample", "TrajectoryLearner",
+    "CognitiveTransaction", "CognitiveTransactionEngine", "AsyncCognitiveTransactionEngine", "AsyncExecutionHook", "CanonicalCCERuntime", "TickInput",
+    "CognitiveCycle", "CognitiveLoop", "default_prediction_error", "AsyncCognitiveCycle", "AsyncCognitiveLoop", "CognitiveCycleResult", "CognitiveOrchestrator",
+    "AsyncCognitiveCycleResult", "AsyncCognitiveOrchestrator", "AsyncEffect", "TrajectoryJournal", "record_to_dict", "CallableEffect", "EffectReceipt", "TwoPhaseExecutor",
     "CanonicalState", "SemanticState", "HardState", "SoftState", "ProvenanceState", "GoalState", "StateTransition", "StateKind",
-    "Decision", "SecurityDecision", "NSAPolicy", "PolicyRule", "PolicyCompiler", "PolicyEngine", "PolicyClassifier", "KeywordClassifier", "EvaluationContext",
-    "StateLabel", "StateLattice", "ConservationLaw", "DEFAULT_LATTICE", "ProductStateVector", "ProductLattice", "BitpackedStateVector",
-    "RAGMetadataIngressEncoder", "build_label_attention_mask", "build_level_attention_mask", "bitpack_states", "unpack_states",
+    "TransitionProposal", "TransitionReceipt", "TransitionValidator", "state_digest", "proposal_digest", "CapabilityAuthority", "CapabilityToken",
+    "TrustThermodynamicsVector", "TrustTier", "CapabilityConstraintEvaluator", "ConstraintContext", "ConstraintDecision", "SCHEMA_VERSION", "decode_state",
+    "dumps_state", "encode_state", "round_trip", "ActionCandidate", "ActionSelector", "BeliefUpdater", "InformationGainModel", "PredictionError", "Predictor",
+    "Prediction", "DeliberationDecision", "InformationNeed", "InformationSeekingPlanner", "UncertaintyDrivenDeliberator", "CognitiveContext", "CognitiveModel",
+    "CognitiveProposal", "InformationNeedProposal", "ToolRegistry", "ToolSpec", "Decision", "SecurityDecision", "NSAPolicy", "PolicyRule", "PolicyCompiler",
+    "PolicyEngine", "PolicyClassifier", "KeywordClassifier", "EvaluationContext", "StateLabel", "StateLattice", "ConservationLaw", "DEFAULT_LATTICE",
+    "ProductStateVector", "ProductLattice", "BitpackedStateVector", "RAGMetadataIngressEncoder", "build_label_attention_mask", "build_level_attention_mask",
+    "bitpack_states", "unpack_states",
 ] + list(_LAZY)))

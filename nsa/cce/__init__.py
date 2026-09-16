@@ -3,6 +3,7 @@ from .engine import CCEStatus, ContinuousCognitiveEngine
 from .events import CognitiveEvent, EventKind
 from .lifecycle import CheckpointEnvelope, CognitiveInputEvent, CognitiveInputQueue, StateCheckpointStore
 from .trajectory import CognitiveTrajectory, TrajectoryRecord
+from .trajectory_learning import TrajectoryExample, TrajectoryLearner
 from .transaction import CognitiveTransaction, CognitiveTransactionEngine
 from .async_transaction import AsyncCognitiveTransactionEngine, AsyncExecutionHook
 from .canonical_runtime import CanonicalCCERuntime, TickInput
@@ -16,14 +17,14 @@ from .effects import CallableEffect, EffectReceipt, TwoPhaseExecutor
 __all__ = [
     "CCEStatus", "ContinuousCognitiveEngine", "CognitiveEvent", "EventKind",
     "CheckpointEnvelope", "CognitiveInputEvent", "CognitiveInputQueue", "StateCheckpointStore",
-    "CognitiveTrajectory", "TrajectoryRecord", "CognitiveTransaction", "CognitiveTransactionEngine",
-    "AsyncCognitiveTransactionEngine", "AsyncExecutionHook",
+    "CognitiveTrajectory", "TrajectoryRecord", "TrajectoryExample", "TrajectoryLearner",
+    "CognitiveTransaction", "CognitiveTransactionEngine", "AsyncCognitiveTransactionEngine", "AsyncExecutionHook",
     "CanonicalCCERuntime", "TickInput", "CognitiveCycle", "CognitiveLoop", "default_prediction_error",
-    "AsyncCognitiveCycle", "AsyncCognitiveLoop",
-    "CognitiveCycleResult", "CognitiveOrchestrator", "AsyncCognitiveCycleResult", "AsyncCognitiveOrchestrator", "AsyncEffect",
-    "TrajectoryJournal", "record_to_dict", "CallableEffect", "EffectReceipt", "TwoPhaseExecutor",
-    "ImmutableKernelGate", "SafetyDecision", "CanonicalOmegaAdapter", "OmegaDimensions",
-    "SixLayerCanonicalAdapter", "SubstrateProposal", "OmegaFeedback", "OmegaFeedbackAdapter",
+    "AsyncCognitiveCycle", "AsyncCognitiveLoop", "CognitiveCycleResult", "CognitiveOrchestrator",
+    "AsyncCognitiveCycleResult", "AsyncCognitiveOrchestrator", "AsyncEffect", "TrajectoryJournal", "record_to_dict",
+    "CallableEffect", "EffectReceipt", "TwoPhaseExecutor", "ImmutableKernelGate", "SafetyDecision",
+    "CanonicalOmegaAdapter", "OmegaDimensions", "SixLayerCanonicalAdapter", "SubstrateProposal",
+    "OmegaFeedback", "OmegaFeedbackAdapter",
 ]
 
 _LAZY = {
