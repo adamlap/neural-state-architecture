@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from nsa.cce import CanonicalCCERuntime, CognitiveOrchestrator
 from nsa.cognition import ActionCandidate, CognitiveContext, CognitiveProposal
 from nsa.core.state import CanonicalState
@@ -33,5 +35,5 @@ def test_model_is_only_a_proposal_source_and_cce_commits():
     assert result.transaction.receipt.committed is True
     assert runtime.state.step == 1
     assert runtime.state.semantic.value["belief_updates"][0]["fact"] == "observed"
-    assert runtime.state.soft.confidence == 0.7
-    assert runtime.state.soft.uncertainty == 0.30000000000000004
+    assert runtime.state.soft.confidence == pytest.approx(0.7)
+    assert runtime.state.soft.uncertainty == pytest.approx(0.3)
