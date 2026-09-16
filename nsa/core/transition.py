@@ -16,9 +16,17 @@ def _stable(value: Any) -> str:
 
 def state_digest(state: CanonicalState) -> str:
     """Hash all canonical state channels, including semantic content."""
+    payload = {"summary": state.summary(), "semantic": state.semantic.value}
+    return sha256(_stable(payload).encode("utf-8")).hexdigest()
+
+
+def proposal_digest(proposal: "TransitionProposal") -> str:
+    """Hash a proposal without pretending it is a CanonicalState."""
     payload = {
-        "summary": state.summary(),
-        "semantic": state.semantic.value,
+        "action_id": proposal.action_id, "reason": proposal.reason, "semantic": proposal.semantic,
+        "soft": proposal.soft_updates, "hard": proposal.hard_transition,
+        "source": proposal.provenance_source, "evidence": proposal.evidence_id,
+        "metadata": proposal.metadata,
     }
     return sha256(_stable(payload).encode("utf-8")).hexdigest()
 
@@ -26,7 +34,6 @@ def state_digest(state: CanonicalState) -> str:
 @dataclass(frozen=True)
 class TransitionProposal:
     """A proposed state change before policy/kernel validation."""
-
     action_id: str
     reason: str = ""
     semantic: Any = None
@@ -37,8 +44,7 @@ class TransitionProposal:
     metadata: Mapping[str, Any] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
-        if not self.action_id:
-            raise ValueError("action_id must be non-empty")
+        if not self.action_id: raise ValueError("action_id must be non-empty")
         object.__setattr__(self, "soft_updates", dict(self.soft_updates or {}))
         object.__setattr__(self, "metadata", dict(self.metadata or {}))
 
@@ -46,7 +52,6 @@ class TransitionProposal:
 @dataclass(frozen=True)
 class TransitionReceipt:
     """Immutable receipt linking a proposal, validation and committed state."""
-
     action_id: str
     source_digest: str
     target_digest: str
@@ -59,53 +64,34 @@ class TransitionReceipt:
 
 class TransitionValidator:
     """Validate and apply proposals without allowing hard-state bypasses."""
-
     ALLOWED_SOFT = frozenset({"uncertainty", "risk", "confidence", "resource_pressure"})
 
     def validate(self, state: CanonicalState, proposal: TransitionProposal) -> tuple[bool, str]:
         unknown = set(proposal.soft_updates) - self.ALLOWED_SOFT
-        if unknown:
-            return False, f"unknown soft-state fields: {sorted(unknown)}"
+        if unknown: return False, f"unknown soft-state fields: {sorted(unknown)}"
         if proposal.hard_transition is not None:
-            if proposal.hard_transition.source != state.hard:
-                return False, "hard transition source does not match current state"
-            if not proposal.hard_transition.authorized:
-                return False, "hard-state transition is not authorized"
+            if proposal.hard_transition.source != state.hard: return False, "hard transition source does not match current state"
+            if not proposal.hard_transition.authorized: return False, "hard-state transition is not authorized"
         return True, "validated"
 
     def apply(self, state: CanonicalState, proposal: TransitionProposal) -> tuple[CanonicalState, TransitionReceipt]:
         ok, reason = self.validate(state, proposal)
         source = state_digest(state)
-        proposal_digest = sha256(_stable({
-            "action_id": proposal.action_id,
-            "reason": proposal.reason,
-            "semantic": proposal.semantic,
-            "soft": proposal.soft_updates,
-            "hard": proposal.hard_transition,
-            "source": proposal.provenance_source,
-            "evidence": proposal.evidence_id,
-            "metadata": proposal.metadata,
-        }).encode("utf-8")).hexdigest()
+        digest = proposal_digest(proposal)
         if not ok:
-            return state, TransitionReceipt(proposal.action_id, source, source, proposal_digest, False, reason, time(), state.step)
+            return state, TransitionReceipt(proposal.action_id, source, source, digest, False, reason, time(), state.step)
 
-        # Build the complete target first; increment the logical clock exactly once.
         target = state
         if proposal.semantic is not None:
             target = replace(target, semantic=replace(target.semantic, value=proposal.semantic))
         if proposal.soft_updates:
             target = replace(target, soft=replace(target.soft, **proposal.soft_updates))
         if proposal.provenance_source or proposal.evidence_id:
-            target = replace(
-                target,
-                provenance=target.provenance.extend(source=proposal.provenance_source, evidence_id=proposal.evidence_id),
-            )
+            target = replace(target, provenance=target.provenance.extend(source=proposal.provenance_source, evidence_id=proposal.evidence_id))
         if proposal.hard_transition is not None:
             target = replace(target, hard=proposal.hard_transition.target)
         target = replace(target, step=state.step + 1)
-
-        target_digest = state_digest(target)
-        return target, TransitionReceipt(proposal.action_id, source, target_digest, proposal_digest, True, "committed", time(), target.step)
+        return target, TransitionReceipt(proposal.action_id, source, state_digest(target), digest, True, "committed", time(), target.step)
 
 
-__all__ = ["TransitionProposal", "TransitionReceipt", "TransitionValidator", "state_digest"]
+__all__ = ["TransitionProposal", "TransitionReceipt", "TransitionValidator", "proposal_digest", "state_digest"]
