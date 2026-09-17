@@ -55,8 +55,22 @@ class NSARuntime:
         return CanonicalState(semantic=semantic)
 
     def _sync_canonical(self) -> None:
-        self._canonical_cce.transaction_engine.state = self.state
-        self._canonical_cce.engine.set_state(self.state)
+        """Synchronize legacy state through an explicit canonical CCE transition."""
+        canonical = self._canonical_cce.state
+        if canonical == self.state:
+            return
+        self._canonical_cce.tick(TickInput(
+            observation={"compatibility_sync": self.state.summary()},
+            semantic_update=self.state.semantic.value,
+            soft_updates={
+                "confidence": float(self.state.soft.confidence),
+                "uncertainty": float(self.state.soft.uncertainty),
+                "risk": float(self.state.soft.risk),
+            },
+            reason="legacy compatibility state synchronization",
+            provenance_source="nsa.agent.compatibility",
+            metadata={"legacy_step": self.state.step},
+        ))
 
     def _run_cognitive_transition(self, observation: Any, *, confidence: float = 1.0, action: Any = None) -> None:
         if self.cognitive is not None: self.cognitive_state = self.cognitive.transition(self.cognitive_state, observation, confidence=confidence, action=action)
