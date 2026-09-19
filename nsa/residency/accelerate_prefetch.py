@@ -89,10 +89,9 @@ class AccelerateDiskPrefetcher:
         return touched
 
     def __call__(self, region_id: str, tier: object) -> None:
-        # Only NVMe/disk-backed regions need this adapter. RAM/VRAM loading
-        # remains owned by the caller/backend.
-        if str(getattr(tier, "value", tier)) == "nvme":
-            self.prefetch(region_id)
+        # The target tier is where the prediction wants the region next;
+        # the adapter warms the disk-backed source before Accelerate loads it.
+        self.prefetch(region_id)
 
 
 __all__ = ["AccelerateDiskPrefetcher"]
