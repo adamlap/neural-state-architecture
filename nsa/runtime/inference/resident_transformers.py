@@ -9,7 +9,8 @@ import os
 from typing import Any, Dict, List, Mapping, Optional, Union
 from nsa.runtime.inference.action_parser import ActionParser
 from nsa.runtime.inference.base import BackendMode, InferenceBackend, LLMGenerationOutput
-from nsa.residency import MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers, cognitive_state_features, ResidencyTrace
+from nsa.residency import ActiveResidencyController, MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers, cognitive_state_features, ResidencyTrace
+from nsa.residency.accelerate_prefetch import AccelerateDiskPrefetcher
 
 class SelectiveStorageTransformersBackend(InferenceBackend):
     """Disk-backed Transformers inference with NSA residency planning."""
@@ -85,9 +86,28 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         self.model=model
         self._loaded=True
         self.residency.register(self._build_regions(config))
-        instrument_decoder_layers(self.model, self.residency)
-        self.trace.extend(self.residency.events)
+        self.residency.trace = self.trace
+        self._active_residency_state: Mapping[str, object] = {"tags": []}
+        self.prefetcher = AccelerateDiskPrefetcher(
+            offload_folder,
+            {region.region_id: region.parameter_prefixes for region in self.residency.regions.values()},
+        ) if self.prefetch else None
+        self.residency_controller = ActiveResidencyController(
+            self.residency,
+            load_fn=lambda _region_id, _tier: None,
+            lookahead=2,
+            prefetch_fn=(self.prefetcher.prefetch if self.prefetcher is not None else None),
+        )
+        instrument_decoder_layers(
+            self.model,
+            self.residency,
+            on_region=(self._on_region_execute if self.prefetch else None),
+        )
         return True
+
+    def _on_region_execute(self, region_id: str) -> None:
+        if getattr(self, "residency_controller", None) is not None:
+            self.residency_controller.prefetch_async(self._active_residency_state)
 
     def _state_tags(self,prompt:str)->Mapping[str,object]:
         return {"tags":[w.lower() for w in prompt.split() if len(w)>4][:8]}
@@ -99,9 +119,9 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         if not self._loaded: self.load_model()
         import torch
         assert self.model is not None and self.tokenizer is not None
-        decisions=self.residency.plan(cognitive_state_features(state) if state is not None else self._state_tags(prompt))
+        self._active_residency_state = cognitive_state_features(state) if state is not None else self._state_tags(prompt)
+        decisions=self.residency.plan(self._active_residency_state)
         for decision in decisions: self.residency.scores[decision.region_id]=decision.score
-        self.trace.extend(self.residency.events[-len(decisions):] if decisions else ())
         inputs=self.tokenizer(prompt,return_tensors="pt")
         input_device=next(self.model.parameters()).device
         inputs={k:v.to(input_device) for k,v in inputs.items()}
