@@ -13,9 +13,10 @@ from nsa.runtime.inference.openai_compatible import (
 )
 from nsa.runtime.inference.transformers import PyTorchTransformersBackend
 from nsa.runtime.inference.resident_transformers import SelectiveStorageTransformersBackend
+from nsa.runtime.inference.model_registry import LOCAL_MODELS, LocalModelSpec, get_local_model
 
 __all__ = [
     "ActionParser", "BackendMode", "InferenceBackend", "LLMGenerationOutput",
     "LMStudioInferenceBackend", "OllamaInferenceBackend", "OpenAICompatibleBackend",
-    "PyTorchTransformersBackend", "SelectiveStorageTransformersBackend",
+    "PyTorchTransformersBackend", "SelectiveStorageTransformersBackend", "LOCAL_MODELS", "LocalModelSpec", "get_local_model",
 ]
