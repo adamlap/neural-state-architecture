@@ -1,0 +1,35 @@
+name: residency-smoke
+
+on:
+  pull_request:
+    paths:
+      - "nsa/residency/**"
+      - "nsa/runtime/inference/**"
+      - "experiments/residency/**"
+      - "scripts/residency_smoke_test.py"
+      - "tests/test_residency*.py"
+      - "tests/test_active_residency*.py"
+      - ".github/workflows/residency-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package and test dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Residency smoke test
+        run: python scripts/residency_smoke_test.py
+      - name: Residency unit tests
+        run: >
+          python -m pytest -q
+          tests/test_residency.py
+          tests/test_active_residency.py
+          tests/test_active_residency_async.py
+          tests/test_residency_trace.py
+          tests/test_accelerate_prefetch.py
+          tests/test_resident_backend.py
