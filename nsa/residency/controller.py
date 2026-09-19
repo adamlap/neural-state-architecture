@@ -11,6 +11,7 @@ from nsa.residency.types import MemoryTier, ResidencyEvent
 
 LoadFn = Callable[[str, MemoryTier], None]
 EvictFn = Callable[[str, MemoryTier], None]
+PrefetchFn = Callable[[str], None]
 
 @dataclass(frozen=True)
 class PrefetchTask:
@@ -21,10 +22,11 @@ class PrefetchTask:
 
 class ActiveResidencyController:
     """Turn NSA residency plans into backend load/evict operations."""
-    def __init__(self, manager: NeuralResidencyManager, load_fn: LoadFn, evict_fn: Optional[EvictFn] = None, lookahead: int = 2) -> None:
+    def __init__(self, manager: NeuralResidencyManager, load_fn: LoadFn, evict_fn: Optional[EvictFn] = None, lookahead: int = 2, prefetch_fn: Optional[PrefetchFn] = None) -> None:
         self.manager = manager
         self.load_fn = load_fn
         self.evict_fn = evict_fn
+        self.prefetch_fn = prefetch_fn
         self.lookahead = max(0, lookahead)
         self._lock = Lock()
         self._inflight: set[str] = set()
@@ -43,17 +45,32 @@ class ActiveResidencyController:
         self.manager.record_event(ResidencyEvent(monotonic(), task.region_id, "prefetch-complete", MemoryTier.NVME, task.tier, self.manager.regions[task.region_id].size_bytes, (monotonic()-started)*1000, "predictive-prefetch"))
 
     def prefetch_async(self, state: Mapping[str, object]) -> list[PrefetchTask]:
-        """Schedule predictive loads without blocking the inference thread."""
+        """Warm predicted regions without claiming they are resident."""
         tasks = self._tasks(self.manager.plan(state))
+        if self.prefetch_fn is None:
+            return tasks
         for task in tasks:
             with self._lock:
                 if task.region_id in self._inflight:
                     continue
                 self._inflight.add(task.region_id)
-                future = self._executor.submit(self._load, task)
+                future = self._executor.submit(self._prefetch, task)
                 self._futures[task.region_id] = future
                 future.add_done_callback(lambda _, rid=task.region_id: self._finish(rid))
         return tasks
+
+    def _prefetch(self, task: PrefetchTask) -> None:
+        started = monotonic()
+        self.manager.record_event(ResidencyEvent(
+            monotonic(), task.region_id, "prefetch", MemoryTier.NVME, task.tier,
+            self.manager.regions[task.region_id].size_bytes, 0.0, "predictive-prefetch-start"
+        ))
+        self.prefetch_fn(task.region_id)
+        self.manager.record_event(ResidencyEvent(
+            monotonic(), task.region_id, "prefetch-complete", MemoryTier.NVME, task.tier,
+            self.manager.regions[task.region_id].size_bytes,
+            (monotonic() - started) * 1000, "predictive-prefetch"
+        ))
 
     def _finish(self, region_id: str) -> None:
         with self._lock:
