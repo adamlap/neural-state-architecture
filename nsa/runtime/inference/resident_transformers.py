@@ -7,10 +7,9 @@ residency manager supplies region-level prediction, planning and telemetry.
 from __future__ import annotations
 import os
 from typing import Any, Dict, List, Mapping, Optional, Union
-import torch
 from nsa.runtime.inference.action_parser import ActionParser
 from nsa.runtime.inference.base import BackendMode, InferenceBackend, LLMGenerationOutput
-from nsa.residency import MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers, cognitive_state_features
+from nsa.residency import MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers, cognitive_state_features, ResidencyTrace
 
 class SelectiveStorageTransformersBackend(InferenceBackend):
     """Disk-backed Transformers inference with NSA residency planning."""
@@ -22,6 +21,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         self.model_name=model_name
         self.model_path=model_path or model_name
         self.mode=BackendMode(mode) if isinstance(mode,str) else mode
+        import torch
         self.device=torch.device(device if device!="auto" and torch.cuda.is_available() else "cpu")
         self.prefetch=prefetch
         self.hot_layers=max(0,hot_layers)
@@ -30,6 +30,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         self.model=None
         self.tokenizer=None
         self._loaded=False
+        self.trace=ResidencyTrace()
         self.residency=NeuralResidencyManager(ResidencyPolicy(
             vram_budget_bytes=int(vram_budget_gb*1024**3),
             ram_budget_bytes=int(ram_budget_gb*1024**3),
@@ -85,6 +86,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         self._loaded=True
         self.residency.register(self._build_regions(config))
         instrument_decoder_layers(self.model, self.residency)
+        self.trace.extend(self.residency.events)
         return True
 
     def _state_tags(self,prompt:str)->Mapping[str,object]:
@@ -95,9 +97,11 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         if self.mode==BackendMode.MOCK:
             return LLMGenerationOutput(text='{"thought":"mock","action":"probe_service_config","params":{},"confidence":0.88}',tokens=[1,2,3],confidence_estimate=0.88)
         if not self._loaded: self.load_model()
+        import torch
         assert self.model is not None and self.tokenizer is not None
         decisions=self.residency.plan(cognitive_state_features(state) if state is not None else self._state_tags(prompt))
         for decision in decisions: self.residency.scores[decision.region_id]=decision.score
+        self.trace.extend(self.residency.events[-len(decisions):] if decisions else ())
         inputs=self.tokenizer(prompt,return_tensors="pt")
         input_device=next(self.model.parameters()).device
         inputs={k:v.to(input_device) for k,v in inputs.items()}
