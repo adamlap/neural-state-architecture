@@ -29,6 +29,8 @@ def instrument_decoder_layers(model: Any, manager: NeuralResidencyManager, on_re
             previous = manager.current_region
             if hasattr(manager.predictor, "observe_transition"):
                 manager.predictor.observe_transition(previous, __rid)
+            elif hasattr(manager.predictor, "observe"):
+                manager.predictor.observe(previous, __rid)
             manager.current_region = __rid
             if on_region is not None:
                 on_region(__rid)
