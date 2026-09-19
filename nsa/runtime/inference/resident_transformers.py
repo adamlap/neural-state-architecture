@@ -144,6 +144,11 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             raw_response={"residency":self.residency.snapshot().__dict__},
         )
 
+    def close(self) -> None:
+        controller = getattr(self, "residency_controller", None)
+        if controller is not None:
+            controller.shutdown(wait=True)
+
     def propose_action(self,system_context:str,task_instruction:str,
                        available_tools:List[Dict[str,Any]],fallback_action:str="probe_service_config")->Dict[str,Any]:
         tools="\n".join(f"- {t.get('name','')}: {t.get('description','')}" for t in available_tools)
