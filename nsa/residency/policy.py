@@ -17,7 +17,7 @@ class ResidencyPolicy:
     vram_budget_bytes: int
     ram_budget_bytes: int
     min_relevance: float = 0.05
-    prefetch_threshold: float = 0.60
+    prefetch_threshold: float = 0.55
     retain_threshold: float = 0.35
     def decide(self, region: NeuralRegion, relevance: float, future_probability: float, dependency_probability: float = 0.0, load_latency_ms: float = 0.0) -> ResidencyDecision:
         relevance = max(0.0, min(1.0, relevance))
