@@ -13,7 +13,11 @@ def test_trace_is_bounded_and_reports_metrics():
     assert metrics["bytes_moved"] == 20
 
 
-def test_model_registry_resolves_environment_override():
+def test_model_registry_resolves_environment_override(tmp_path):
     spec = get_local_model("3B")
     assert spec.model_id == "Qwen/Qwen2.5-3B-Instruct"
     assert spec.resolve_path({"NSA_QWEN_3B_PATH": "/models/qwen3b"}) == "/models/qwen3b"
+    root = tmp_path / "cache" / "snapshots"
+    snapshot = root / "abc123"
+    snapshot.mkdir(parents=True)
+    assert spec.__class__(spec.key, spec.model_id, spec.env_var, str(root.parent), spec.vram_budget_gb, spec.ram_budget_gb).checkpoint_path() == str(snapshot)
