@@ -18,7 +18,7 @@ nsa.residency provides NeuralRegion, ResidencyPolicy, HeuristicResidencyPredicto
 
 SelectiveStorageTransformersBackend provides a Transformers/Accelerate backend using an empty model skeleton and checkpoint-backed dispatch. Accelerate can use disk-backed overflow, so the full model does not need to be duplicated in host RAM.
 
-The first phase intentionally does not claim active predictive tensor prefetch. Accelerate owns the low-level materialization hooks. NSA currently records a residency plan and exposes the interfaces needed to replace advisory planning with active prefetch/retention.
+NSA now has an active predictive control path. At decoder boundaries the learned/heuristic predictor plans the next regions. `AccelerateDiskPrefetcher` warms the NVMe-backed safetensor pages asynchronously, while Accelerate remains the owner of actual parameter materialization. This is deliberately page-cache prefetch rather than direct mutation of Accelerate hook state; the model is only marked resident when a backend actually performs the transfer.
 
 ## Running the targets
 
@@ -28,7 +28,7 @@ Install the ml-residency extra, then point SelectiveStorageTransformersBackend a
 
 1. Foundation — region model, policy, predictor, cache, telemetry.
 2. Disk residency — empty-model + disk-backed checkpoint execution.
-3. Active residency — predictive prefetch and retention hooks around decoder regions.
+3. Active residency — predictive page-cache prefetch and retention hooks around decoder regions.
 4. State coupling — use NSA cognitive state instead of prompt heuristics.
 5. Learned residency — train the predictor from region transition traces.
 6. MoE specialization — experts become independently resident neural regions.
