@@ -9,11 +9,12 @@ from nsa.residency.controller import ActiveResidencyController, PrefetchTask
 from nsa.residency.cognitive import cognitive_state_features
 from nsa.residency.learned import OnlineResidencyPredictor
 from nsa.residency.trace import ResidencyTrace
+from nsa.residency.accelerate_prefetch import AccelerateDiskPrefetcher
 
 __all__ = [
     "MemoryTier", "ResidencyState", "NeuralRegion", "ResidencyEvent", "ResidencySnapshot",
     "ResidencyPolicy", "ResidencyDecision", "ResidencyCache", "ResidencyPredictor",
     "HeuristicResidencyPredictor", "NeuralResidencyManager", "instrument_decoder_layers",
     "ActiveResidencyController", "PrefetchTask", "cognitive_state_features",
-    "OnlineResidencyPredictor", "ResidencyTrace",
+    "OnlineResidencyPredictor", "ResidencyTrace", "AccelerateDiskPrefetcher",
 ]
