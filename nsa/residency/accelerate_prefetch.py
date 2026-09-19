@@ -46,13 +46,15 @@ class AccelerateDiskPrefetcher:
                     pass
             return
         payload = json.loads(index_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            return
         weight_map = payload.get("weight_map", payload)
         if not isinstance(weight_map, dict):
             return
         self._index = {str(k): v for k, v in weight_map.items() if isinstance(v, (str, dict))}
         grouped: dict[str, list[str]] = {}
         for key, meta in self._index.items():
-            filename = str(meta.get("filename", "")) if isinstance(meta, dict) else str(meta) if isinstance(meta, dict) else str(meta)
+            filename = str(meta.get("filename", "")) if isinstance(meta, dict) else str(meta)
             if filename:
                 grouped.setdefault(filename, []).append(key)
         self._file_keys = {name: tuple(keys) for name, keys in grouped.items()}
@@ -63,7 +65,7 @@ class AccelerateDiskPrefetcher:
         for key, meta in self._index.items():
             if prefixes and not any(key.startswith(prefix) for prefix in prefixes):
                 continue
-            filename = str(meta.get("filename", ""))
+            filename = str(meta.get("filename", "")) if isinstance(meta, dict) else str(meta)
             if filename:
                 grouped.setdefault(filename, []).append(key)
         return {name: tuple(keys) for name, keys in grouped.items()}
