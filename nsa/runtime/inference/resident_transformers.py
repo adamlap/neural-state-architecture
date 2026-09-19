@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Mapping, Optional, Union
 import torch
 from nsa.runtime.inference.action_parser import ActionParser
 from nsa.runtime.inference.base import BackendMode, InferenceBackend, LLMGenerationOutput
-from nsa.residency import MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers
+from nsa.residency import MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers, cognitive_state_features
 
 class SelectiveStorageTransformersBackend(InferenceBackend):
     """Disk-backed Transformers inference with NSA residency planning."""
@@ -82,7 +82,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             return LLMGenerationOutput(text='{"thought":"mock","action":"probe_service_config","params":{},"confidence":0.88}',tokens=[1,2,3],confidence_estimate=0.88)
         if not self._loaded: self.load_model()
         assert self.model is not None and self.tokenizer is not None
-        decisions=self.residency.plan(state or self._state_tags(prompt))
+        decisions=self.residency.plan(cognitive_state_features(state) if state is not None else self._state_tags(prompt))
         for decision in decisions: self.residency.scores[decision.region_id]=decision.score
         inputs=self.tokenizer(prompt,return_tensors="pt")
         input_device=next(self.model.parameters()).device
