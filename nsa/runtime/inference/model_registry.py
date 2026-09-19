@@ -19,10 +19,19 @@ class LocalModelSpec:
     def resolve_path(self, environ: Mapping[str, str] | None = None) -> str:
         values = environ if environ is not None else os.environ
         configured = values.get(self.env_var)
-        return configured or self.default_path
+        return str(Path(configured or self.default_path).expanduser())
 
     def is_local(self, environ: Mapping[str, str] | None = None) -> bool:
         return Path(self.resolve_path(environ)).exists()
+
+    def checkpoint_path(self, environ: Mapping[str, str] | None = None) -> str:
+        path = Path(self.resolve_path(environ))
+        snapshots = path / "snapshots"
+        if snapshots.is_dir():
+            candidates = sorted(p for p in snapshots.iterdir() if p.is_dir())
+            if candidates:
+                return str(candidates[-1])
+        return str(path)
 
 
 LOCAL_MODELS: dict[str, LocalModelSpec] = {
