@@ -48,8 +48,9 @@ class ResidencyTrace:
         events = self.events()
         prefetch = [e for e in events if e.action == "prefetch"]
         execute = [e for e in events if e.action == "execute"]
-        transfers = [e for e in events if e.action in {"resident", "evict", "prefetch"}]
-        hits = sum(1 for e in prefetch if "hit" in e.reason.lower())
+        transfers = [e for e in events if e.action in {"resident", "evict", "prefetch", "prefetch-complete"}]
+        completed = {e.region_id: e.timestamp for e in events if e.action == "prefetch-complete"}
+        hits = sum(1 for e in execute if completed.get(e.region_id, -1) <= e.timestamp)
         bytes_moved = sum(e.bytes_moved for e in transfers)
         return {
             "events": len(events),
