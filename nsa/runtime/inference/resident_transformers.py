@@ -24,6 +24,8 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         self.mode=BackendMode(mode) if isinstance(mode,str) else mode
         self.device=torch.device(device if device!="auto" and torch.cuda.is_available() else "cpu")
         self.prefetch=prefetch
+        self.hot_layers=max(0,hot_layers)
+        self.warm_layers=max(0,warm_layers)
         self.no_split_module_classes=no_split_module_classes or ["Qwen2DecoderLayer","Qwen3DecoderLayer"]
         self.model=None
         self.tokenizer=None
@@ -46,6 +48,17 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             dependencies=(f"layer.{i-1}",) if i else (),
         ) for i in range(layers)]
 
+    def _selective_device_map(self, layer_count: int) -> dict[str, str]:
+        """Construct an explicit VRAM/RAM/disk map for decoder regions."""
+        device = str(self.device)
+        mapping = {"model.embed_tokens": device, "model.norm": device, "lm_head": device}
+        hot = set(range(min(self.hot_layers, layer_count)))
+        hot.update(range(max(0, layer_count - self.hot_layers), layer_count))
+        warm = set(range(self.hot_layers, min(layer_count, self.hot_layers + self.warm_layers)))
+        warm.update(range(max(self.hot_layers, layer_count-self.hot_layers-self.warm_layers), max(self.hot_layers, layer_count-self.hot_layers)))
+        for i in range(layer_count):
+            mapping[f"model.layers.{i}"] = device if i in hot else ("cpu" if i in warm else "disk")
+        return mapping
     def load_model(self) -> bool:
         if self._loaded: return True
         try:
@@ -71,6 +84,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         self.model=model
         self._loaded=True
         self.residency.register(self._build_regions(config))
+        instrument_decoder_layers(self.model, self.residency)
         return True
 
     def _state_tags(self,prompt:str)->Mapping[str,object]:
