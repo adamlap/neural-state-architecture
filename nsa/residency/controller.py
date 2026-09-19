@@ -47,9 +47,9 @@ class ActiveResidencyController:
                 if task.region_id in self._inflight:
                     continue
                 self._inflight.add(task.region_id)
-            future = self._executor.submit(self._load, task)
-            self._futures[task.region_id] = future
-            future.add_done_callback(lambda _, rid=task.region_id: self._finish(rid))
+                future = self._executor.submit(self._load, task)
+                self._futures[task.region_id] = future
+                future.add_done_callback(lambda _, rid=task.region_id: self._finish(rid))
         return tasks
 
     def _finish(self, region_id: str) -> None:
