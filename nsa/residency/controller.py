@@ -36,8 +36,11 @@ class ActiveResidencyController:
         return [PrefetchTask(d.region_id, d.desired_tier, d.score, d.reason) for d in candidates[:self.lookahead]]
 
     def _load(self, task: PrefetchTask) -> None:
+        started = monotonic()
+        self.manager.record_event(ResidencyEvent(monotonic(), task.region_id, "prefetch", MemoryTier.NVME, task.tier, self.manager.regions[task.region_id].size_bytes, 0.0, "predictive-prefetch-start"))
         self.load_fn(task.region_id, task.tier)
         self.manager.record_resident(task.region_id, task.tier, reason="predictive-prefetch")
+        self.manager.record_event(ResidencyEvent(monotonic(), task.region_id, "prefetch-complete", MemoryTier.NVME, task.tier, self.manager.regions[task.region_id].size_bytes, (monotonic()-started)*1000, "predictive-prefetch"))
 
     def prefetch_async(self, state: Mapping[str, object]) -> list[PrefetchTask]:
         """Schedule predictive loads without blocking the inference thread."""
@@ -81,7 +84,7 @@ class ActiveResidencyController:
             finally:
                 with self._lock:
                     self._inflight.discard(task.region_id)
-        self.manager.events.append(ResidencyEvent(monotonic(), "*", "prefetch-cycle", None, None, 0, (monotonic()-started)*1000, f"tasks={len(tasks)}"))
+        self.manager.record_event(ResidencyEvent(monotonic(), "*", "prefetch-cycle", None, None, 0, (monotonic()-started)*1000, f"tasks={len(tasks)}"))
         return tasks
 
     def retain_or_evict(self, decisions: Sequence[ResidencyDecision]) -> list[str]:
