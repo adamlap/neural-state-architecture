@@ -31,7 +31,7 @@ def instrument_decoder_layers(model: Any, manager: NeuralResidencyManager) -> in
                 manager.predictor.observe_transition(previous, __rid)
             manager.current_region = __rid
             result = __original(*args, **kwargs)
-            manager.events.append(ResidencyEvent(
+            manager.record_event(ResidencyEvent(
                 monotonic(), __rid, "execute", manager.tiers.get(__rid, MemoryTier.NVME),
                 manager.tiers.get(__rid, MemoryTier.NVME), 0,
                 (monotonic()-started)*1000, "decoder-forward"
