@@ -25,7 +25,7 @@ class ResidencyPolicy:
         dependency_probability = max(0.0, min(1.0, dependency_probability))
         latency_penalty = min(0.25, load_latency_ms / 1000.0)
         size_penalty = min(0.25, region.size_bytes / max(self.vram_budget_bytes, 1))
-        score = 0.45 * relevance + 0.40 * future_probability + 0.15 * dependency_probability - latency_penalty - size_penalty
+        score = 0.30 * relevance + 0.60 * future_probability + 0.10 * dependency_probability - latency_penalty - size_penalty
         if score >= self.prefetch_threshold:
             tier = MemoryTier.VRAM
         elif score >= self.retain_threshold:
