@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from time import monotonic
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Sequence
 from nsa.residency.cache import CacheEntry, ResidencyCache
 from nsa.residency.policy import ResidencyDecision, ResidencyPolicy
 from nsa.residency.predictor import HeuristicResidencyPredictor, ResidencyPredictor
@@ -12,6 +12,7 @@ from nsa.residency.types import MemoryTier, NeuralRegion, ResidencyEvent, Reside
 class NeuralResidencyManager:
     policy: ResidencyPolicy
     predictor: ResidencyPredictor = field(default_factory=HeuristicResidencyPredictor)
+    trace: Any = field(default=None, repr=False)
     def __post_init__(self) -> None:
         self.regions: dict[str, NeuralRegion] = {}
         self.states: dict[str, ResidencyState] = {}
@@ -21,6 +22,11 @@ class NeuralResidencyManager:
         self.vram_cache = ResidencyCache(self.policy.vram_budget_bytes)
         self.ram_cache = ResidencyCache(self.policy.ram_budget_bytes)
         self.current_region: str | None = None
+
+    def record_event(self, event: ResidencyEvent) -> None:
+        self.events.append(event)
+        if self.trace is not None:
+            self.trace.record(event)
     def register(self, regions: Sequence[NeuralRegion]) -> None:
         for region in regions:
             self.regions[region.region_id] = region
@@ -49,7 +55,7 @@ class NeuralResidencyManager:
         self.states[region_id] = ResidencyState.RESIDENT
         self.tiers[region_id] = tier
         self.current_region = region_id
-        self.events.append(ResidencyEvent(monotonic(),region_id,"resident",None,tier,region.size_bytes,(monotonic()-started)*1000,reason))
+        self.record_event(ResidencyEvent(monotonic(),region_id,"resident",None,tier,region.size_bytes,(monotonic()-started)*1000,reason))
         for victim in evicted: self.record_evicted(victim.region.region_id, reason="capacity")
     def record_evicted(self, region_id: str, reason: str = "") -> None:
         tier = self.tiers.get(region_id)
@@ -57,7 +63,7 @@ class NeuralResidencyManager:
         elif tier == MemoryTier.RAM: self.ram_cache.remove(region_id)
         self.states[region_id] = ResidencyState.COLD
         self.tiers[region_id] = MemoryTier.NVME
-        self.events.append(ResidencyEvent(monotonic(),region_id,"evict",tier,MemoryTier.NVME,0,0.0,reason))
+        self.record_event(ResidencyEvent(monotonic(),region_id,"evict",tier,MemoryTier.NVME,0,0.0,reason))
     def snapshot(self) -> ResidencySnapshot:
         bytes_by_tier = {MemoryTier.VRAM:0,MemoryTier.RAM:0,MemoryTier.NVME:0}
         for rid,state in self.states.items():
