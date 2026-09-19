@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Mapping, Optional, Union
 import torch
 from nsa.runtime.inference.action_parser import ActionParser
 from nsa.runtime.inference.base import BackendMode, InferenceBackend, LLMGenerationOutput
-from nsa.residency import MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy
+from nsa.residency import MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers
 
 class SelectiveStorageTransformersBackend(InferenceBackend):
     """Disk-backed Transformers inference with NSA residency planning."""
