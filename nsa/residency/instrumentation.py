@@ -2,11 +2,11 @@
 from __future__ import annotations
 from functools import wraps
 from time import monotonic
-from typing import Any
+from typing import Any, Callable, Optional
 from nsa.residency.manager import NeuralResidencyManager
 from nsa.residency.types import MemoryTier, ResidencyEvent
 
-def instrument_decoder_layers(model: Any, manager: NeuralResidencyManager) -> int:
+def instrument_decoder_layers(model: Any, manager: NeuralResidencyManager, on_region: Optional[Callable[[str], None]] = None) -> int:
     """Wrap decoder layer forwards so actual region execution feeds the predictor.
 
     Accelerate's disk hooks run before the wrapped forward, so the event is
@@ -30,6 +30,8 @@ def instrument_decoder_layers(model: Any, manager: NeuralResidencyManager) -> in
             if hasattr(manager.predictor, "observe_transition"):
                 manager.predictor.observe_transition(previous, __rid)
             manager.current_region = __rid
+            if on_region is not None:
+                on_region(__rid)
             result = __original(*args, **kwargs)
             manager.record_event(ResidencyEvent(
                 monotonic(), __rid, "execute", manager.tiers.get(__rid, MemoryTier.NVME),
