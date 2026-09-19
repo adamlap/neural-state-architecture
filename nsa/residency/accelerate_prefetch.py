@@ -21,7 +21,7 @@ class AccelerateDiskPrefetcher:
         self.parameter_prefixes = {
             region: tuple(prefixes) for region, prefixes in parameter_prefixes.items()
         }
-        self._index: dict[str, dict[str, object]] = {}
+        self._index: dict[str, object] = {}
         self._file_keys: dict[str, tuple[str, ...]] = {}
         self._lock = Lock()
         self._load_index()
@@ -33,15 +33,26 @@ class AccelerateDiskPrefetcher:
     def _load_index(self) -> None:
         index_path = self.offload_dir / "index.json"
         if not index_path.is_file():
+            # Accelerate can offload a non-sharded checkpoint without an index.
+            # Discover a single safetensors file so prefetch still works.
+            files = sorted(self.offload_dir.glob("*.safetensors"))
+            if len(files) == 1:
+                try:
+                    from safetensors import safe_open
+                    with safe_open(str(files[0]), framework="pt", device="cpu") as handle:
+                        self._index = {key: files[0].name for key in handle.keys()}
+                        self._file_keys = {files[0].name: tuple(handle.keys())}
+                except ImportError:
+                    pass
             return
         payload = json.loads(index_path.read_text(encoding="utf-8"))
         weight_map = payload.get("weight_map", payload)
         if not isinstance(weight_map, dict):
             return
-        self._index = {str(k): v for k, v in weight_map.items() if isinstance(v, dict)}
+        self._index = {str(k): v for k, v in weight_map.items() if isinstance(v, (str, dict))}
         grouped: dict[str, list[str]] = {}
         for key, meta in self._index.items():
-            filename = str(meta.get("filename", ""))
+            filename = str(meta.get("filename", "")) if isinstance(meta, dict) else str(meta) if isinstance(meta, dict) else str(meta)
             if filename:
                 grouped.setdefault(filename, []).append(key)
         self._file_keys = {name: tuple(keys) for name, keys in grouped.items()}
