@@ -12,7 +12,7 @@ from nsa.runtime.inference.openai_compatible import (
     OpenAICompatibleBackend,
     discover_windows_host_ip,
 )
-from nsa.runtime.inference.transformers import PyTorchTransformersBackend
+from nsa.runtime.inference.transformers import PyTorchTransformersBackend\nfrom nsa.runtime.inference.resident_transformers import SelectiveStorageTransformersBackend
 
 __all__ = [
     "ActionParser",
