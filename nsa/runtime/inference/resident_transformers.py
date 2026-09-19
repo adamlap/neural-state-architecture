@@ -94,7 +94,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         ) if self.prefetch else None
         self.residency_controller = ActiveResidencyController(
             self.residency,
-            load_fn=lambda _region_id, _tier: None,
+            load_fn=self._unsupported_physical_prefetch,
             lookahead=2,
             prefetch_fn=(self.prefetcher.prefetch if self.prefetcher is not None else None),
         )
@@ -104,6 +104,13 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             on_region=(self._on_region_execute if self.prefetch else None),
         )
         return True
+
+    @staticmethod
+    def _unsupported_physical_prefetch(region_id: str, tier: MemoryTier) -> None:
+        raise RuntimeError(
+            "Direct physical residency transfer is owned by Accelerate; "
+            "use prefetch_async() for the page-cache prefetch path."
+        )
 
     def _on_region_execute(self, region_id: str) -> None:
         if getattr(self, "residency_controller", None) is not None:
