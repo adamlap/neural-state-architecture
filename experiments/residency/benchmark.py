@@ -24,6 +24,7 @@ def run_one(model_key:str, root:Path, prompt:str, vram_gb:float, ram_gb:float)->
     started=time.perf_counter()
     out=backend.generate(prompt,max_tokens=64,temperature=0.0)
     elapsed=time.perf_counter()-started
+    backend.close()
     peak_vram=torch.cuda.max_memory_allocated() if torch.cuda.is_available() else 0
     snap=backend.residency.snapshot()
     return {
