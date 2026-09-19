@@ -4,7 +4,7 @@ from functools import wraps
 from time import monotonic
 from typing import Any
 from nsa.residency.manager import NeuralResidencyManager
-from nsa.residency.types import MemoryTier
+from nsa.residency.types import MemoryTier, ResidencyEvent
 
 def instrument_decoder_layers(model: Any, manager: NeuralResidencyManager) -> int:
     """Wrap decoder layer forwards so actual region execution feeds the predictor.
@@ -31,7 +31,7 @@ def instrument_decoder_layers(model: Any, manager: NeuralResidencyManager) -> in
                 manager.predictor.observe_transition(previous, __rid)
             manager.current_region = __rid
             result = __original(*args, **kwargs)
-            manager.events.append(__import__("nsa.residency.types", fromlist=["ResidencyEvent"]).ResidencyEvent(
+            manager.events.append(ResidencyEvent(
                 monotonic(), __rid, "execute", manager.tiers.get(__rid, MemoryTier.NVME),
                 manager.tiers.get(__rid, MemoryTier.NVME), 0,
                 (monotonic()-started)*1000, "decoder-forward"
