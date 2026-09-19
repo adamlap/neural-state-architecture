@@ -15,6 +15,18 @@ from nsa.residency.accelerate_prefetch import AccelerateDiskPrefetcher
 class SelectiveStorageTransformersBackend(InferenceBackend):
     """Disk-backed Transformers inference with NSA residency planning."""
 
+    @classmethod
+    def from_local_model(cls, key: str, **kwargs: Any) -> "SelectiveStorageTransformersBackend":
+        from nsa.runtime.inference.model_registry import get_local_model
+        spec = get_local_model(key)
+        return cls(
+            model_name=spec.model_id,
+            model_path=spec.checkpoint_path(),
+            vram_budget_gb=spec.vram_budget_gb,
+            ram_budget_gb=spec.ram_budget_gb,
+            **kwargs,
+        )
+
     def __init__(self, model_name: str="Qwen/Qwen2.5-3B-Instruct", model_path: Optional[str]=None,
                  mode: Union[BackendMode,str]=BackendMode.CACHED, device: str="cuda",
                  vram_budget_gb: float=4.0, ram_budget_gb: float=8.0,
