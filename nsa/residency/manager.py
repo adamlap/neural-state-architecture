@@ -49,13 +49,14 @@ class NeuralResidencyManager:
         return max((probabilities.get(dep,0.0) for dep in region.dependencies), default=0.0)
     def record_resident(self, region_id: str, tier: MemoryTier, reason: str = "") -> None:
         region = self.regions[region_id]
+        source = self.tiers.get(region_id, MemoryTier.NVME)
         started = monotonic()
         cache = self.vram_cache if tier == MemoryTier.VRAM else self.ram_cache
         evicted = cache.put(CacheEntry(region,tier,region.size_bytes))
         self.states[region_id] = ResidencyState.RESIDENT
         self.tiers[region_id] = tier
         self.current_region = region_id
-        self.record_event(ResidencyEvent(monotonic(),region_id,"resident",None,tier,region.size_bytes,(monotonic()-started)*1000,reason))
+        self.record_event(ResidencyEvent(monotonic(),region_id,"resident",source,tier,region.size_bytes,(monotonic()-started)*1000,reason))
         for victim in evicted: self.record_evicted(victim.region.region_id, reason="capacity")
     def record_evicted(self, region_id: str, reason: str = "") -> None:
         tier = self.tiers.get(region_id)
@@ -63,7 +64,7 @@ class NeuralResidencyManager:
         elif tier == MemoryTier.RAM: self.ram_cache.remove(region_id)
         self.states[region_id] = ResidencyState.COLD
         self.tiers[region_id] = MemoryTier.NVME
-        self.record_event(ResidencyEvent(monotonic(),region_id,"evict",tier,MemoryTier.NVME,0,0.0,reason))
+        self.record_event(ResidencyEvent(monotonic(),region_id,"evict",tier,MemoryTier.NVME,self.regions[region_id].size_bytes,0.0,reason))
     def snapshot(self) -> ResidencySnapshot:
         bytes_by_tier = {MemoryTier.VRAM:0,MemoryTier.RAM:0,MemoryTier.NVME:0}
         for rid,state in self.states.items():
