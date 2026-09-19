@@ -56,7 +56,7 @@ _LAZY = {
     "NSATransformerBlock": ("nsa.layers", "NSATransformerBlock"), "NSATransformer": ("nsa.layers", "NSATransformer"),
     "NSACausalLM": ("nsa.layers", "NSACausalLM"), "ResidualTaintTracker": ("nsa.residual_taint", "ResidualTaintTracker"),
     "join_levels": ("nsa.residual_taint", "join_levels"), "meet_levels": ("nsa.residual_taint", "meet_levels"),
-    "NSAGenerator": ("nsa.verifier", "NSAGenerator"), "SecurityAutomaton": ("nsa.verifier", "SecurityAutomaton"),
+    "NSAGenerator": ("nsa.verifier", "NSAGenerator"),\n    "SelectiveStorageTransformersBackend": ("nsa.runtime.inference.resident_transformers", "SelectiveStorageTransformersBackend"), "SecurityAutomaton": ("nsa.verifier", "SecurityAutomaton"),
     "generate_with_auditor": ("nsa.verifier", "generate_with_auditor"),
 }
 
