@@ -29,8 +29,8 @@ class ResidencyCache:
         while self._bytes > self.capacity_bytes and self._entries:
             rid,victim = self._entries.popitem(last=False)
             self._bytes -= victim.bytes_resident
-            if rid != entry.region.region_id: evicted.append(victim)
-            else: break
+            evicted.append(victim)
+            if rid == entry.region.region_id: break
         return evicted
     def remove(self, region_id: str) -> CacheEntry | None:
         entry = self._entries.pop(region_id, None)
