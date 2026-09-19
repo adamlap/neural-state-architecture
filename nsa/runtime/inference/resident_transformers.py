@@ -18,7 +18,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
     def __init__(self, model_name: str="Qwen/Qwen2.5-3B-Instruct", model_path: Optional[str]=None,
                  mode: Union[BackendMode,str]=BackendMode.CACHED, device: str="cuda",
                  vram_budget_gb: float=4.0, ram_budget_gb: float=8.0,
-                 prefetch: bool=True, no_split_module_classes: Optional[List[str]]=None) -> None:
+                 prefetch: bool=True, hot_layers: int=2, warm_layers: int=2, no_split_module_classes: Optional[List[str]]=None) -> None:
         self.model_name=model_name
         self.model_path=model_path or model_name
         self.mode=BackendMode(mode) if isinstance(mode,str) else mode
@@ -61,7 +61,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         offload_folder=os.path.join(os.path.expanduser("~/.cache/nsa"),"residency",
                                     self.model_name.replace("/","_").replace(":","_"))
         os.makedirs(offload_folder,exist_ok=True)
-        device_map="auto" if self.device.type!="cpu" else {"":"cpu"}
+        device_map=self._selective_device_map(int(getattr(config,"num_hidden_layers",0)))
         model=load_checkpoint_and_dispatch(
             model,checkpoint=self.model_path,device_map=device_map,
             no_split_module_classes=self.no_split_module_classes,
