@@ -1,6 +1,7 @@
 """Predictive active residency orchestration."""
 from __future__ import annotations
 from dataclasses import dataclass
+from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
 from time import monotonic
 from typing import Callable, Mapping, Optional, Sequence
@@ -27,10 +28,44 @@ class ActiveResidencyController:
         self.lookahead = max(0, lookahead)
         self._lock = Lock()
         self._inflight: set[str] = set()
+        self._executor = ThreadPoolExecutor(max_workers=max(1, lookahead), thread_name_prefix="nsa-residency")
+        self._futures: dict[str, Future[None]] = {}
 
     def _tasks(self, decisions: Sequence[ResidencyDecision]) -> list[PrefetchTask]:
         candidates = [d for d in decisions if d.prefetch and d.desired_tier in (MemoryTier.VRAM, MemoryTier.RAM)]
         return [PrefetchTask(d.region_id, d.desired_tier, d.score, d.reason) for d in candidates[:self.lookahead]]
+
+    def _load(self, task: PrefetchTask) -> None:
+        self.load_fn(task.region_id, task.tier)
+        self.manager.record_resident(task.region_id, task.tier, reason="predictive-prefetch")
+
+    def prefetch_async(self, state: Mapping[str, object]) -> list[PrefetchTask]:
+        """Schedule predictive loads without blocking the inference thread."""
+        tasks = self._tasks(self.manager.plan(state))
+        for task in tasks:
+            with self._lock:
+                if task.region_id in self._inflight:
+                    continue
+                self._inflight.add(task.region_id)
+            future = self._executor.submit(self._load, task)
+            self._futures[task.region_id] = future
+            future.add_done_callback(lambda _, rid=task.region_id: self._finish(rid))
+        return tasks
+
+    def _finish(self, region_id: str) -> None:
+        with self._lock:
+            self._inflight.discard(region_id)
+            self._futures.pop(region_id, None)
+
+    def wait(self, region_id: Optional[str] = None, timeout: Optional[float] = None) -> None:
+        """Wait for one region or all currently scheduled prefetches."""
+        futures = [self._futures.get(region_id)] if region_id else list(self._futures.values())
+        for future in futures:
+            if future is not None:
+                future.result(timeout=timeout)
+
+    def shutdown(self, wait: bool = True) -> None:
+        self._executor.shutdown(wait=wait)
 
     def tick(self, state: Mapping[str, object]) -> list[PrefetchTask]:
         decisions = self.manager.plan(state)
@@ -42,8 +77,7 @@ class ActiveResidencyController:
                     continue
                 self._inflight.add(task.region_id)
             try:
-                self.load_fn(task.region_id, task.tier)
-                self.manager.record_resident(task.region_id, task.tier, reason="predictive-prefetch")
+                self._load(task)
             finally:
                 with self._lock:
                     self._inflight.discard(task.region_id)
