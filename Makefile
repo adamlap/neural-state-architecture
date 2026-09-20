@@ -152,9 +152,9 @@ residency: residency-smoke ## Run the residency smoke experiment
 residency-smoke: ## Run the fast residency smoke experiment
 	python scripts/run_residency_experiments.sh smoke
 
-residency-benchmark: ## Run the local residency benchmark matrix
-	@test -n "$(RESIDENCY_MODEL_PATH)" || (echo "RESIDENCY_MODEL_PATH is required, e.g. make residency-benchmark RESIDENCY_MODEL_PATH=/models/Qwen2.5-1.5B-Instruct"; exit 2)
+residency-benchmark: ## Run the local residency benchmark matrix; downloads the selected model when no path is supplied
 	MODEL="$(RESIDENCY_MODEL)" \
+	MODEL_PATH="$(RESIDENCY_MODEL_PATH)" \
 	RUNS="$(RESIDENCY_RUNS)" \
 	MAX_TOKENS="$(RESIDENCY_MAX_TOKENS)" \
 	PREFETCH="$(RESIDENCY_PREFETCH)" \
