@@ -1,15 +1,7 @@
-"""Run repeatable cold/warm residency experiments for local Qwen checkpoints.
+"""Run repeatable cold/warm residency experiments for Qwen checkpoints.
 
-This harness intentionally reports measurements rather than declaring a winner.
-It compares the current NSA selective-storage backend with prefetch disabled/enabled
-and records residency telemetry, generation latency, and GPU memory.
-
-Example:
-  python -m experiments.residency.benchmark_matrix \
-    --model 1.5b --model-path /models/Qwen2.5-1.5B-Instruct \
-    --runs 3 --max-tokens 64 --prefetch both
-
-The script does not download models.
+If --model-path is omitted, the selected model is downloaded automatically
+through Hugging Face Hub and reused from the local cache on subsequent runs.
 """
 from __future__ import annotations
 
@@ -23,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from huggingface_hub import snapshot_download
 
 from nsa.runtime.inference.resident_transformers import SelectiveStorageTransformersBackend
 from nsa.runtime.inference.model_registry import get_local_model
@@ -43,6 +36,23 @@ def _reset_gpu_stats() -> None:
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats()
+
+
+def _resolve_model_path(model_key: str, requested_path: str | None) -> str:
+    spec = get_local_model(model_key)
+    if requested_path:
+        path = Path(requested_path).expanduser()
+        if not path.exists():
+            raise FileNotFoundError(f"Model path does not exist: {path}")
+        return spec.checkpoint_path({spec.env_var: str(path)})
+
+    cached = Path(spec.resolve_path())
+    if cached.exists():
+        return spec.checkpoint_path()
+
+    print(f"Model {spec.model_id} not found locally; downloading to the Hugging Face cache...")
+    snapshot = snapshot_download(repo_id=spec.model_id)
+    return snapshot
 
 
 def _run_once(
@@ -84,12 +94,12 @@ def _run_once(
         _reset_gpu_stats()
 
 
-def run_condition(args: argparse.Namespace, prefetch: bool) -> list[dict[str, Any]]:
+def run_condition(args: argparse.Namespace, prefetch: bool, model_path: str) -> list[dict[str, Any]]:
     rows = []
     for run in range(1, args.runs + 1):
         row = _run_once(
             model_key=args.model,
-            model_path=args.model_path,
+            model_path=model_path,
             prompt=args.prompt,
             max_tokens=args.max_tokens,
             prefetch=prefetch,
@@ -99,7 +109,7 @@ def run_condition(args: argparse.Namespace, prefetch: bool) -> list[dict[str, An
         row.update(
             {
                 "model": args.model,
-                "model_path": str(Path(args.model_path).expanduser()),
+                "model_path": str(Path(model_path).expanduser()),
                 "prefetch": prefetch,
                 "run": run,
                 "pid": os.getpid(),
@@ -118,34 +128,34 @@ def run_condition(args: argparse.Namespace, prefetch: bool) -> list[dict[str, An
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=["1.5b", "3b"], required=True)
-    parser.add_argument("--model-path", required=True)
+    parser.add_argument(
+        "--model-path",
+        default=None,
+        help="Local checkpoint path. If omitted, download/reuse the Hugging Face checkpoint.",
+    )
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--max-tokens", type=int, default=64)
-    parser.add_argument("--vram-gb", type=float, default=4.0)
-    parser.add_argument("--ram-gb", type=float, default=8.0)
-    parser.add_argument(
-        "--prefetch",
-        choices=["on", "off", "both"],
-        default="both",
-        help="Run predictive page-cache prefetch on, off, or both.",
-    )
+    parser.add_argument("--vram-gb", type=float, default=None)
+    parser.add_argument("--ram-gb", type=float, default=None)
+    parser.add_argument("--prefetch", choices=["on", "off", "both"], default="both")
     parser.add_argument(
         "--prompt",
         default="Explain how persistent cognitive state can improve an agent's reasoning.",
     )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=Path("results/residency/matrix.json"),
-    )
+    parser.add_argument("--output", type=Path, default=Path("results/residency/matrix.json"))
     args = parser.parse_args()
     if args.runs < 1 or args.max_tokens < 1:
         parser.error("--runs and --max-tokens must be positive")
 
+    spec = get_local_model(args.model)
+    model_path = _resolve_model_path(args.model, args.model_path)
+    vram_gb = args.vram_gb if args.vram_gb is not None else spec.vram_budget_gb
+    ram_gb = args.ram_gb if args.ram_gb is not None else spec.ram_budget_gb
+
     conditions = [True, False] if args.prefetch == "both" else [args.prefetch == "on"]
     rows: list[dict[str, Any]] = []
     for condition in conditions:
-        rows.extend(run_condition(args, condition))
+        rows.extend(run_condition(args, condition, model_path))
 
     payload = {
         "experiment": "nsa_selective_storage_matrix",
@@ -157,12 +167,14 @@ def main() -> None:
         },
         "config": {
             "model": args.model,
-            "model_path": str(Path(args.model_path).expanduser()),
+            "model_id": spec.model_id,
+            "model_path": str(Path(model_path).expanduser()),
+            "downloaded_automatically": args.model_path is None,
             "runs": args.runs,
             "max_tokens": args.max_tokens,
             "prefetch": args.prefetch,
-            "vram_gb": args.vram_gb,
-            "ram_gb": args.ram_gb,
+            "vram_gb": vram_gb,
+            "ram_gb": ram_gb,
             "prompt": args.prompt,
         },
         "runs": rows,
