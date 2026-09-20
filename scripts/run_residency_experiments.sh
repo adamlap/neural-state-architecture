@@ -2,10 +2,8 @@
 set -euo pipefail
 
 # Repeatable local experiment entrypoint.
-#
-# Examples:
-#   ./scripts/run_residency_experiments.sh smoke
-#   ./scripts/run_residency_experiments.sh benchmark 1.5b /path/to/Qwen2.5-1.5B-Instruct
+# If no checkpoint path is supplied, the benchmark downloads the selected
+# Hugging Face model into the normal local cache.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -16,31 +14,27 @@ case "${1:-help}" in
     ;;
   benchmark)
     MODEL="${2:?model key required: 1.5b or 3b}"
-    MODEL_PATH="${3:?local model path required}"
+    MODEL_PATH="${3:-}"
     RUNS="${RUNS:-3}"
     MAX_TOKENS="${MAX_TOKENS:-64}"
     PREFETCH="${PREFETCH:-both}"
-    OUTPUT="${OUTPUT:-results/residency/${MODEL}-matrix.json}"
-
-    python -m experiments.residency.benchmark_matrix \
-      --model "$MODEL" \
-      --model-path "$MODEL_PATH" \
-      --runs "$RUNS" \
-      --max-tokens "$MAX_TOKENS" \
-      --prefetch "$PREFETCH" \
-      --output "$OUTPUT"
+    ARGS=(--model "$MODEL" --runs "$RUNS" --max-tokens "$MAX_TOKENS" --prefetch "$PREFETCH")
+    if [ -n "$MODEL_PATH" ]; then ARGS+=(--model-path "$MODEL_PATH"); fi
+    python -m experiments.residency.benchmark_matrix "${ARGS[@]}"
     ;;
   *)
     cat <<'EOF'
 Usage:
   ./scripts/run_residency_experiments.sh smoke
-  ./scripts/run_residency_experiments.sh benchmark <1.5b|3b> <local-checkpoint>
+  ./scripts/run_residency_experiments.sh benchmark <1.5b|3b> [local-checkpoint]
+
+If local-checkpoint is omitted, the selected Qwen checkpoint is downloaded
+automatically into the Hugging Face cache.
 
 Environment:
   RUNS=3
   MAX_TOKENS=64
   PREFETCH=both|on|off
-  OUTPUT=results/residency/<model>-matrix.json
 EOF
     exit 2
     ;;
