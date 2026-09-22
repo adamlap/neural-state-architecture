@@ -175,7 +175,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             load_fn=self._unsupported_physical_prefetch,
             lookahead=2,
             prefetch_fn=(self.prefetcher.prefetch if self.prefetcher is not None else None),
-            prefetch_eligible=(self.prefetcher.covers if self.prefetcher is not None else None),
+            prefetch_eligible=(self._prefetch_eligible if self.prefetcher is not None else None),
         )
         instrument_decoder_layers(
             self.model,
@@ -194,6 +194,13 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
     def _on_region_execute(self, region_id: str) -> None:
         if self.residency_controller is not None:
             self.residency_controller.prefetch_async(self._active_residency_state)
+
+    def _prefetch_eligible(self, region_id: str) -> bool:
+        # covers() is a cheap dict lookup; needs_warming() costs a mincore
+        # check but skips scheduling a background task entirely for a region
+        # that's already resident, which is the common case once decoding has
+        # run for a while (see docs/ACTIVE_RESIDENCY.md).
+        return self.prefetcher.covers(region_id) and self.prefetcher.needs_warming(region_id)
 
     def generate(self,prompt:str,max_tokens:int=256,temperature:float=0.7,
                  extract_hidden:bool=False,state:Optional[Mapping[str,object]]=None)->LLMGenerationOutput:
@@ -226,6 +233,8 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
     def close(self) -> None:
         if self.residency_controller is not None:
             self.residency_controller.shutdown(wait=True)
+        if self.prefetcher is not None:
+            self.prefetcher.close()
         self.trace.close()
 
     def propose_action(self,system_context:str,task_instruction:str,

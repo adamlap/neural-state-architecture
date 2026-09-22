@@ -155,6 +155,9 @@ def _run_once(
             "placement_bytes": {tier.value: int(size) for tier, size in snapshot.bytes_by_tier.items()},
             "region_count": len(backend.residency.regions),
             "trace": backend.trace.metrics(),
+            # bytes the prefetcher found already page-cache resident (so correctly
+            # read nothing) -- distinct from bytes_prefetched, which it actually read
+            "bytes_already_resident": backend.prefetcher.bytes_already_resident if backend.prefetcher else 0,
             "page_cache_files_dropped": files_dropped,
             "rss_bytes": _rss_bytes(),
             "gpu": _gpu_stats(),
@@ -181,17 +184,28 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "tokens_per_sec_median": statistics.median(r["tokens_per_sec"] for r in subset),
             "load_sec_median": statistics.median(r["load_sec"] for r in subset),
             "bytes_prefetched_median": statistics.median(r["trace"]["bytes_prefetched"] for r in subset),
+            "bytes_already_resident_median": statistics.median(r.get("bytes_already_resident", 0) for r in subset),
             "prefetch_hit_rate_median": statistics.median(r["trace"]["prefetch_hit_rate"] for r in subset),
             "prefetch_coverage_median": statistics.median(r["trace"]["prefetch_coverage"] for r in subset),
         }
     notes = []
     on, off = summary.get("prefetch_on"), summary.get("prefetch_off")
+
+    def _touched_nothing(stats: dict[str, Any]) -> bool:
+        # bytes_prefetched==0 alone is not a problem: the background prefetch
+        # thread can legitimately lose its race against the main thread's own
+        # synchronous read on a fast enough model/layer, and mincore gating
+        # then correctly finds the region already resident (bytes_already_resident)
+        # rather than re-reading it. Only *neither* ever happening is a real
+        # problem (no disk-offloaded regions, or a broken offload index).
+        return stats["bytes_prefetched_median"] <= 0 and stats["bytes_already_resident_median"] <= 0
+
     if on and off:
         summary["decode_speedup_on_vs_off"] = off["decode_sec_median"] / on["decode_sec_median"]
-        if on["bytes_prefetched_median"] <= 0:
-            notes.append("prefetch warmed no bytes: the on/off comparison measures nothing (no disk-offloaded regions or no offload index).")
-    elif on and on["bytes_prefetched_median"] <= 0:
-        notes.append("prefetch warmed no bytes.")
+        if _touched_nothing(on):
+            notes.append("prefetch touched no bytes (prefetched or already-resident): the on/off comparison measures nothing (no disk-offloaded regions or no offload index).")
+    elif on and _touched_nothing(on):
+        notes.append("prefetch touched no bytes (prefetched or already-resident).")
     hashes = {r["output_sha256"] for r in rows}
     summary["outputs_identical_across_runs"] = len(hashes) == 1
     if len(hashes) != 1:

@@ -25,6 +25,8 @@ from pathlib import Path
 from threading import Lock
 from typing import Mapping, Optional, Sequence
 
+from nsa.residency.page_cache import PageCacheProbe
+
 _MAX_HEADER_BYTES = 100 * 1024 * 1024
 
 
@@ -65,16 +67,29 @@ class AccelerateDiskPrefetcher:
         offload_dir: str | Path,
         parameter_prefixes: Mapping[str, Sequence[str]],
         chunk_bytes: int = 8 * 1024 * 1024,
+        skip_if_resident: bool = True,
+        resident_threshold: float = 0.98,
     ) -> None:
         self.offload_dir = Path(offload_dir).expanduser()
         self.parameter_prefixes = {region: tuple(prefixes) for region, prefixes in parameter_prefixes.items()}
         self.chunk_bytes = max(4096, chunk_bytes)
+        # Re-reading bytes already in the OS page cache is pure overhead: it
+        # cannot make Accelerate's own later read any faster, since the page
+        # cache is what makes that read fast in the first place. Gate on real
+        # residency (mincore) instead of assuming every predicted region is
+        # cold; see docs/ACTIVE_RESIDENCY.md for measurements with this on/off.
+        self.skip_if_resident = skip_if_resident
+        self.resident_threshold = resident_threshold
         self._extents: dict[str, tuple[Extent, ...]] = {}
         self._headers: dict[Path, dict[str, tuple[int, int]]] = {}
         self._region_cache: dict[str, list[Extent]] = {}
         self._lock = Lock()
         self.bytes_prefetched = 0
+        self.bytes_already_resident = 0
         self.read_errors = 0
+        # One mmap per file, reused: a fresh mmap()/munmap() per check measured
+        # as more expensive than the re-read it exists to avoid (see page_cache.py).
+        self._page_cache = PageCacheProbe()
         self._load_index()
 
     @property
@@ -160,6 +175,23 @@ class AccelerateDiskPrefetcher:
         """Whether any of the region's parameters live in the offload index."""
         return bool(self._region_extents(region_id))
 
+    def needs_warming(self, region_id: str) -> bool:
+        """Cheap synchronous check: is any part of this region not yet resident?
+
+        Meant to run on the caller's own thread *before* deciding whether a
+        background prefetch task is worth scheduling at all -- scheduling one
+        (lock, ThreadPoolExecutor handoff, telemetry) costs more than this
+        check does once mmaps are cached (PageCacheProbe), so for an
+        already-warm region (the common case once a model has run for a
+        while) this avoids that cost entirely rather than paying it only to
+        find nothing to read.
+        """
+        if not self.skip_if_resident:
+            return True
+        with self._lock:
+            extents = self._region_extents(region_id)
+        return any(not self._already_resident(extent) for extent in extents)
+
     def _warm(self, extent: Extent, buffer: bytearray) -> int:
         """Read an extent through the page cache, discarding the data."""
         read_total = 0
@@ -181,18 +213,31 @@ class AccelerateDiskPrefetcher:
                 remaining -= got
         return read_total
 
+    def _already_resident(self, extent: Extent) -> bool:
+        if not self.skip_if_resident:
+            return False
+        fraction = self._page_cache.resident_fraction(str(extent.path), extent.offset, extent.length)
+        return fraction is not None and fraction >= self.resident_threshold
+
     def prefetch(self, region_id: str) -> int:
         """Warm the pages backing ``region_id`` and return the bytes actually read.
 
         Returns 0 when nothing could be warmed (unknown region, unmapped
-        parameters, missing files). No model parameter is replaced and no NSA
-        state is mutated.
+        parameters, missing files) *or* when everything was already resident
+        in the OS page cache (skip_if_resident, the default): re-reading
+        already-cached bytes cannot make Accelerate's later read any faster
+        and only adds disk/CPU contention. No model parameter is replaced
+        and no NSA state is mutated.
         """
         with self._lock:
             extents = self._region_extents(region_id)
         buffer = bytearray(self.chunk_bytes)
         total = 0
+        skipped = 0
         for extent in extents:
+            if self._already_resident(extent):
+                skipped += extent.length
+                continue
             try:
                 total += self._warm(extent, buffer)
             except OSError:
@@ -200,10 +245,15 @@ class AccelerateDiskPrefetcher:
                     self.read_errors += 1
         with self._lock:
             self.bytes_prefetched += total
+            self.bytes_already_resident += skipped
         return total
 
     def __call__(self, region_id: str, tier: object = None) -> int:
         return self.prefetch(region_id)
+
+    def close(self) -> None:
+        """Release cached mmaps. Safe to call more than once."""
+        self._page_cache.close()
 
 
 __all__ = ["AccelerateDiskPrefetcher", "Extent", "read_safetensors_header"]
