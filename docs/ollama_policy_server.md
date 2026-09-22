@@ -100,6 +100,25 @@ knowledge. Strong guarantees require the classifier, trusted runtime,
 capability boundary, and model integration to be included explicitly in the
 threat model.
 
+## Securing the HTTP server
+
+The server is a control plane: chat, sensor injection and checkpoint writes. It
+has no authentication unless you configure it.
+
+| Setting | Default | Effect |
+|---|---|---|
+| `--host` | `0.0.0.0` | Bind address. Binding beyond loopback without a token logs a warning; use `127.0.0.1` unless another host (e.g. a container) must reach it. |
+| `NSA_API_TOKEN` | unset | When set, every request except `OPTIONS` needs `Authorization: Bearer <token>`. |
+| `NSA_CORS_ORIGINS` | unset | Comma-separated browser origins allowed in addition to loopback origins. There is no wildcard: a web page on another origin cannot drive the server. |
+| `NSA_MAX_BODY_BYTES` | `1048576` | Larger request bodies get `413`; malformed bodies get `400`. |
+
+Checkpoint ids sent to `/api/cce/checkpoint` must match `[A-Za-z0-9][A-Za-z0-9._-]{0,127}`; anything that could
+leave the checkpoint directory is rejected with `400`.
+
+The keyword classifier normalises case, Unicode width, invisible format characters and whitespace before
+matching, and when several categories match the most restrictive outcome (deny over escalate) wins. Categories the
+policy does not describe follow `unknown_policy`.
+
 ## Verified 2026-08-26
 
 `make serve-cce`/`make serve-ollama` (via `GNUmakefile` + `scripts/policy_server.py`)
