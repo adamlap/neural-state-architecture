@@ -4,10 +4,33 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
+import warnings
 from typing import FrozenSet, Mapping, Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from nsa.enforcement import PolicyClassifier, PolicyEngine
+
+
+_KNOWN_KEYS = frozenset({
+    "name", "prohibited", "protected_data", "restricted_actions", "require_approval",
+    "unknown_policy", "default_uncertainty",
+})
+
+
+def _string_set(data: Mapping[str, object], key: str) -> FrozenSet[str]:
+    """A policy list field must really be a list of strings.
+
+    A bare string would otherwise be iterated into a set of characters and
+    silently weaken the policy.
+    """
+    raw = data.get(key)
+    if raw is None:
+        return frozenset()
+    if isinstance(raw, (str, bytes)) or not isinstance(raw, (list, tuple, set, frozenset)):
+        raise ValueError(f"policy field {key!r} must be a list of strings, got {type(raw).__name__}")
+    if not all(isinstance(item, str) for item in raw):
+        raise ValueError(f"policy field {key!r} must contain only strings")
+    return frozenset(raw)
 
 
 @dataclass(frozen=True)
@@ -46,29 +69,43 @@ class NSAPolicy:
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, object]) -> "NSAPolicy":
-        raw_rules = data.get("prohibited", ())
+        if not isinstance(data, Mapping):
+            raise ValueError(f"policy document must be a mapping, got {type(data).__name__}")
+        unknown = sorted(str(k) for k in set(data) - _KNOWN_KEYS)
+        if unknown:
+            warnings.warn(f"unknown policy keys ignored: {unknown}", UserWarning, stacklevel=2)
+        raw_rules = data.get("prohibited")
         rules = []
-        if isinstance(raw_rules, Sequence) and not isinstance(raw_rules, (str, bytes)):
+        if raw_rules is not None:
+            if isinstance(raw_rules, (str, bytes)) or not isinstance(raw_rules, (list, tuple)):
+                raise ValueError("policy field 'prohibited' must be a list of rules")
             for item in raw_rules:
                 if isinstance(item, str):
                     rules.append(PolicyRule(item))
                 elif isinstance(item, Mapping):
+                    if "category" not in item:
+                        raise ValueError("every prohibited rule needs a 'category'")
                     raw_patterns = item.get("patterns", ())
-                    patterns = tuple(str(x) for x in raw_patterns) if isinstance(raw_patterns, Sequence) and not isinstance(raw_patterns, (str, bytes)) else ()
+                    if isinstance(raw_patterns, (str, bytes)) or not isinstance(raw_patterns, (list, tuple)):
+                        raise ValueError(f"patterns for {item['category']!r} must be a list of strings")
+                    if not all(isinstance(p, str) for p in raw_patterns):
+                        raise ValueError(f"patterns for {item['category']!r} must contain only strings")
                     rules.append(
                         PolicyRule(
                             str(item["category"]),
                             str(item.get("mode", "deny")),
                             item.get("reason"),
-                            patterns,
+                            tuple(raw_patterns),
                         )
                     )
+                else:
+                    raise ValueError(f"unsupported prohibited rule: {item!r}")
         return cls(
             name=str(data.get("name", "default")),
             prohibited=tuple(rules),
-            protected_data=frozenset(str(x) for x in data.get("protected_data", ()) or ()),
-            restricted_actions=frozenset(str(x) for x in data.get("restricted_actions", ()) or ()),
-            require_approval=frozenset(str(x) for x in data.get("require_approval", ()) or ()),
+            protected_data=_string_set(data, "protected_data"),
+            restricted_actions=_string_set(data, "restricted_actions"),
+            require_approval=_string_set(data, "require_approval"),
             unknown_policy=str(data.get("unknown_policy", "escalate")),
             default_uncertainty=str(data.get("default_uncertainty", "escalate")),
         )
