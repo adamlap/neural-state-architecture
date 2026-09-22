@@ -1,7 +1,8 @@
 """Neural State Architecture public API.
 
-Agent/model implementations are exposed through lazy attributes where possible.
-The core package still imports existing CCE components at module load time.
+The canonical control plane is importable without PyTorch. Agent/model APIs
+remain available through lazy attributes and therefore only load neural
+implementations when explicitly requested.
 """
 from __future__ import annotations
 from importlib import import_module

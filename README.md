@@ -106,6 +106,7 @@ Governance produces a typed `SecurityDecision`; it is not inferred from a refusa
 | `nsa.capabilities` | Capability and authority boundaries. |
 | `nsa.policy` / `nsa.enforcement` | Policy compilation, classification and explicit security decisions. |
 | `nsa.attention`, `nsa.layers`, `nsa.hf_integration` | Optional PyTorch/Transformer integration. |
+| `nsa.residency` | Experimental neural virtual memory: region-level weight placement, prediction and NVMe prefetch for disk-offloaded models (`[ml-residency]`; see `docs/NEURAL_RESIDENCY.md`). |
 | `experiments/` | Research-only benchmarks; never part of the runtime dependency path. |
 
 The central design principle is:
