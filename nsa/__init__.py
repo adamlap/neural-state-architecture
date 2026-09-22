@@ -58,6 +58,8 @@ _LAZY = {
     "join_levels": ("nsa.residual_taint", "join_levels"), "meet_levels": ("nsa.residual_taint", "meet_levels"),
     "NSAGenerator": ("nsa.verifier", "NSAGenerator"), "SecurityAutomaton": ("nsa.verifier", "SecurityAutomaton"),
     "generate_with_auditor": ("nsa.verifier", "generate_with_auditor"),
+    "ZeroShotSemanticClassifier": ("nsa.semantic_classifier", "ZeroShotSemanticClassifier"),
+    "HybridClassifier": ("nsa.semantic_classifier", "HybridClassifier"),
 }
 
 

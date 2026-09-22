@@ -41,12 +41,18 @@ class PolicyRule:
     mode: str = "deny"
     reason: Optional[str] = None
     patterns: Tuple[str, ...] = ()
+    description: Optional[str] = None
 
     def __post_init__(self) -> None:
         if not self.category:
             raise ValueError("policy rule category must be non-empty")
         if self.mode not in {"deny", "escalate", "allow"}:
             raise ValueError("policy rule mode must be deny, escalate, or allow")
+
+    @property
+    def label(self) -> str:
+        """Short human-readable phrase for this category (semantic classifier hypothesis text)."""
+        return self.description or self.category.replace("_", " ").replace("-", " ")
 
 
 @dataclass(frozen=True)
@@ -90,12 +96,16 @@ class NSAPolicy:
                         raise ValueError(f"patterns for {item['category']!r} must be a list of strings")
                     if not all(isinstance(p, str) for p in raw_patterns):
                         raise ValueError(f"patterns for {item['category']!r} must contain only strings")
+                    description = item.get("description")
+                    if description is not None and not isinstance(description, str):
+                        raise ValueError(f"description for {item['category']!r} must be a string")
                     rules.append(
                         PolicyRule(
                             str(item["category"]),
                             str(item.get("mode", "deny")),
                             item.get("reason"),
                             tuple(raw_patterns),
+                            description,
                         )
                     )
                 else:
@@ -129,7 +139,8 @@ class NSAPolicy:
         return {
             "name": self.name,
             "prohibited": [
-                {"category": r.category, "mode": r.mode, "reason": r.reason, "patterns": list(r.patterns)}
+                {"category": r.category, "mode": r.mode, "reason": r.reason, "patterns": list(r.patterns),
+                 "description": r.description}
                 for r in self.prohibited
             ],
             "protected_data": sorted(self.protected_data),
@@ -153,6 +164,15 @@ class NSAPolicy:
     def classifier_patterns(self) -> dict[str, Tuple[str, ...]]:
         return {rule.category: rule.patterns for rule in self.prohibited if rule.patterns}
 
+    def classifier_labels(self) -> dict[str, str]:
+        """{category: short human-readable phrase}, for a semantic (zero-shot) classifier.
+
+        Every prohibited category gets a label, whether or not it has
+        keyword patterns, since the point of a semantic classifier is to
+        catch phrasing the keyword patterns don't.
+        """
+        return {rule.category: rule.label for rule in self.prohibited}
+
 
 class PolicyCompiler:
     """Compile a declarative policy into the executable NSA policy engine."""
@@ -162,3 +182,24 @@ class PolicyCompiler:
         from nsa.enforcement import KeywordClassifier, PolicyEngine
 
         return PolicyEngine(policy, classifier or KeywordClassifier(policy.classifier_patterns()))
+
+    @staticmethod
+    def compile_semantic(policy: NSAPolicy, *, semantic_classifier: "PolicyClassifier" = None,
+                         include_keyword: bool = True, short_circuit: bool = False,
+                         **semantic_kwargs: object) -> "PolicyEngine":
+        """Compile with a pretrained semantic classifier as a paraphrase backstop.
+
+        By default this is KeywordClassifier (fast, exact) plus
+        ZeroShotSemanticClassifier (slower, generalises past exact patterns);
+        pass `semantic_classifier` to supply your own, or `include_keyword=False`
+        to use the semantic classifier alone. `short_circuit=True` skips the
+        semantic pass once the keyword classifier already matched something,
+        trading completeness for latency (see HybridClassifier). Requires the
+        `ml` extra.
+        """
+        from nsa.enforcement import KeywordClassifier, PolicyEngine
+        from nsa.semantic_classifier import HybridClassifier, ZeroShotSemanticClassifier
+
+        semantic = semantic_classifier or ZeroShotSemanticClassifier.from_policy(policy, **semantic_kwargs)
+        classifiers = [KeywordClassifier(policy.classifier_patterns()), semantic] if include_keyword else [semantic]
+        return PolicyEngine(policy, HybridClassifier(classifiers, short_circuit=short_circuit))
