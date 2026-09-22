@@ -1,11 +1,12 @@
 import asyncio
 
 from nsa.cce import AsyncCognitiveLoop, AsyncCognitiveTransactionEngine
+from nsa.core.state import CanonicalState
 from nsa.cognition.interfaces import ActionCandidate, Prediction
 
 
 def test_async_loop_commits_after_effect():
-    engine = AsyncCognitiveTransactionEngine()
+    engine = AsyncCognitiveTransactionEngine(CanonicalState())
 
     async def effect(action, state):
         await asyncio.sleep(0)
@@ -27,7 +28,7 @@ def test_async_loop_commits_after_effect():
 
 
 def test_async_loop_records_prediction_error():
-    engine = AsyncCognitiveTransactionEngine()
+    engine = AsyncCognitiveTransactionEngine(CanonicalState())
 
     class Predictor:
         def predict(self, belief, horizon=1):

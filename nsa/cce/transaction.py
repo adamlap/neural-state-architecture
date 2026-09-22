@@ -74,7 +74,8 @@ class CognitiveTransactionEngine:
             if not decision.allowed: return False, f"capability constraint rejected: {decision.reason}", ()
             ok, reason = self.capability_authority.verify_capability(token, action.action_id, self._required_tier(action), time())
             if not ok: return False, reason, ()
-            verified.append(token)
+            # one token may cover several required capabilities; it must be reserved/consumed once
+            if all(t.nonce != token.nonce for t in verified): verified.append(token)
         return True, "capabilities verified", tuple(verified)
 
     def _consume_capabilities(self, tokens, action):
@@ -83,8 +84,11 @@ class CognitiveTransactionEngine:
             ok, reason = self.capability_authority.verify_capability(token, action.action_id, self._required_tier(action), time())
             if not ok: return False, reason
         for token in tokens:
-            ok, reason = self.capability_authority.consume_capability(token)
-            if not ok: return False, reason
+            # A max_calls token is renewable: it stays valid (subject to expiry and
+            # its own rate limit) instead of being burned by its first use.
+            if not token.is_rate_limited:
+                ok, reason = self.capability_authority.consume_capability(token)
+                if not ok: return False, reason
             self.constraint_evaluator.record_use(token, action, context=self._constraint_context(action))
         return True, "capabilities consumed"
 
@@ -93,10 +97,11 @@ class CognitiveTransactionEngine:
         source = state_digest(state)
         return TransitionReceipt(proposal.action_id, source, source, proposal_digest(proposal), False, reason, time(), state.step)
 
-    def _reject(self, proposal, selected, policy_allowed, reason, events, effect_receipt=None):
+    def _reject(self, proposal, selected, policy_allowed, reason, events, effect_receipt=None, *, executed=False, execution_result=None):
+        """Reject without committing state. ``executed`` records an effect that already ran."""
         receipt = self._proposal_receipt(self.state, proposal, reason)
         events.append(self._event(EventKind.ROLLBACK, {"reason": reason})); self.trajectory.append(self.state, receipt=receipt, events=events)
-        return CognitiveTransaction(self.state, proposal, selected, policy_allowed, reason, False, None, receipt, tuple(events), effect_receipt)
+        return CognitiveTransaction(self.state, proposal, selected, policy_allowed, reason, executed, execution_result, receipt, tuple(events), effect_receipt)
 
     def tick(self, *, action_candidates=(), observation=None, semantic_update=None, soft_updates=None, hard_transition=None,
              action_id="cognitive_tick", reason="CCE state transition", provenance_source=None, evidence_id=None, metadata=None,

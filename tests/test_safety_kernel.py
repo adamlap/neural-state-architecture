@@ -95,7 +95,6 @@ def test_safety_kernel_clearance_rejection():
         user_clearance_limit=0.5,
         predicted_self_error=0.10,
         proposed_action_risk=0.50,
-        valid_capability_supplied=False,
     )
     assert res_reject.verdict == KernelVerdict.REJECT
     assert any(not inv.passed and inv.invariant_id == "I_1_AUTHORITY_MONOTONICITY" for inv in res_reject.invariant_results)

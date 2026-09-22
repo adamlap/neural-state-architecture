@@ -14,7 +14,10 @@ SCHEMA_VERSION = "nsa.canonical-state.v1"
 def _jsonable(value: Any) -> Any:
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
-    if isinstance(value, (tuple, list, set, frozenset)):
+    if isinstance(value, (set, frozenset)):
+        # sets have no defined order; sort by canonical encoding for a reproducible payload
+        return sorted((_jsonable(v) for v in value), key=lambda v: json.dumps(v, sort_keys=True, default=str))
+    if isinstance(value, (tuple, list)):
         return [_jsonable(v) for v in value]
     if isinstance(value, Mapping):
         return {str(k): _jsonable(v) for k, v in value.items()}

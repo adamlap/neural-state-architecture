@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import enum
 import hashlib
+import math
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 import torch
@@ -40,7 +41,7 @@ class ImmutableSafetyKernel:
     """
     def __init__(self, capability_authority: Optional[CapabilityAuthority] = None,
                  fatal_error_threshold: float = 1.50, max_verification_risk_ratio: float = 0.50) -> None:
-        self.capability_authority = capability_authority or CapabilityAuthority()
+        self.capability_authority = capability_authority or CapabilityAuthority.ephemeral()
         self.fatal_error_threshold = fatal_error_threshold
         self.max_verification_risk_ratio = max_verification_risk_ratio
 
@@ -54,7 +55,6 @@ class ImmutableSafetyKernel:
                             is_verification_action: bool = False,
                             target_action_risk: float = 1.0,
                             supplied_capability: Optional[CapabilityToken] = None,
-                            valid_capability_supplied: bool = False,
                             current_time: Optional[float] = None,
                             consume_capability: bool = True) -> KernelEvaluationResult:
         if required_tier is None:
@@ -65,7 +65,8 @@ class ImmutableSafetyKernel:
             user_clearance_tier = TrustTier(int(min(4, max(0, round(ucl * 4.0)))))
         invariants: List[InvariantResult] = []
 
-        if predicted_self_error >= self.fatal_error_threshold:
+        # a non-finite self-error is unmeasurable, so it fails closed like an over-threshold one
+        if not math.isfinite(predicted_self_error) or predicted_self_error >= self.fatal_error_threshold:
             invariants.append(InvariantResult("I_4_COGNITIVE_HEALTH", "Cognitive Health Stability Bound", False,
                 f"Prediction error {predicted_self_error:.3f} >= fatal threshold {self.fatal_error_threshold:.3f}"))
             return KernelEvaluationResult(KernelVerdict.ROLLBACK, False, invariants,
@@ -86,10 +87,7 @@ class ImmutableSafetyKernel:
                 f"Cognitive health stable; trust ceiling is {max_allowed_tier.name}."))
 
         if required_tier > user_clearance_tier:
-            if valid_capability_supplied:
-                invariants.append(InvariantResult("I_1_AUTHORITY_MONOTONICITY", "Authority Monotonicity & Capability Verification", True,
-                    "Capability verified by upstream transaction gate."))
-            elif supplied_capability is None:
+            if supplied_capability is None:
                 invariants.append(InvariantResult("I_1_AUTHORITY_MONOTONICITY", "Authority Monotonicity & Clearance Boundary", False,
                     f"Action requires {required_tier.name} > user clearance {user_clearance_tier.name} without capability."))
             else:

@@ -42,11 +42,12 @@ class TwoPhaseExecutor:
         try:
             result = self.effect.commit(prepared)
         except Exception as exc:
+            reason = f"effect commit failed: {type(exc).__name__}: {exc}"
             try:
                 self.effect.abort(prepared)
-            finally:
-                return EffectReceipt(effect_id, action.action_id, True, False,
-                                     reason=f"effect commit failed: {type(exc).__name__}: {exc}")
+            except Exception as abort_exc:  # never let abort mask the commit failure
+                reason += f"; abort failed: {type(abort_exc).__name__}: {abort_exc}"
+            return EffectReceipt(effect_id, action.action_id, True, False, reason=reason)
         return EffectReceipt(effect_id, action.action_id, True, True, result=result)
 
     def compensate(self, receipt: EffectReceipt) -> EffectReceipt:

@@ -37,8 +37,11 @@ class PyTorchTransformersBackend(InferenceBackend):
         enable_remote_download: bool = False,
         use_mock_fallback: bool = True,
         d_model: int = 64,
+        trust_remote_code: bool = False,
     ) -> None:
         self.model_name = model_name
+        # Executes code shipped in the model repository; opt in only for models you trust.
+        self.trust_remote_code = trust_remote_code
         if mode is not None:
             self.mode = BackendMode(mode) if isinstance(mode, str) else mode
         elif enable_remote_download:
@@ -86,14 +89,14 @@ class PyTorchTransformersBackend(InferenceBackend):
             local_only = self.mode == BackendMode.CACHED
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
-                trust_remote_code=True,
+                trust_remote_code=self.trust_remote_code,
                 local_files_only=local_only,
             )
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 torch_dtype=self.torch_dtype,
                 device_map=self.device if self.device.type != "cpu" else None,
-                trust_remote_code=True,
+                trust_remote_code=self.trust_remote_code,
                 local_files_only=local_only,
             )
             if self.device.type == "cpu":

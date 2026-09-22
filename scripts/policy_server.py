@@ -113,6 +113,8 @@ def main(argv: list[str] | None = None) -> int:
         _install_policy(runtime, policy, engine)
 
     NSAHTTPHandler.runtime = runtime
+    from nsa.server.proxy import warn_if_exposed
+    warn_if_exposed("0.0.0.0")
     server = ThreadingHTTPServer(("0.0.0.0", args.port), NSAHTTPHandler)
     print(f"NSA server listening on http://0.0.0.0:{args.port}")
     print(f"Backend: {args.backend} | Model: {args.model} | CCE: {not args.no_cce}")

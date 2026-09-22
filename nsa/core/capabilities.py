@@ -1,11 +1,15 @@
 """NSA capability-theoretic authorization and trust hierarchy."""
 from __future__ import annotations
 import enum
+import functools
 import hashlib
 import hmac
 import json
 import os
+import secrets
+import threading
 import time
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Set, Tuple
 
@@ -28,6 +32,17 @@ class CapabilityToken:
     constraints: Dict[str, Any] = field(default_factory=dict)
     def is_expired(self, current_time: Optional[float] = None) -> bool:
         return (current_time if current_time is not None else time.time()) > self.expiry_timestamp
+    @property
+    def is_rate_limited(self) -> bool:
+        """A token minted with a ``max_calls`` constraint is renewable.
+
+        It is verified and rate-limited on every use (see
+        CapabilityConstraintEvaluator) instead of being burned by the first
+        consumption, since a one-shot nonce and a repeat-use quota are
+        contradictory: the nonce would never let a second call arrive at
+        all, making ``max_calls`` unreachable.
+        """
+        return "max_calls" in self.constraints
 
 @dataclass
 class TrustThermodynamicsVector:
@@ -50,6 +65,14 @@ def _payload(token: CapabilityToken) -> str:
     return ":".join((token.principal, token.action_id, token.scope, str(token.target_tier.value),
                      token.nonce, f"{token.expiry_timestamp:.3f}", _canonical_constraints(token.constraints)))
 
+def _locked(method):
+    """Run an authority method under the instance lock (replay state is check-then-act)."""
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapper
+
 class CapabilityAuthority:
     """External authority capable of minting and validating capabilities.
 
@@ -60,10 +83,23 @@ class CapabilityAuthority:
     """
     DEMO_SECRET = b"nsa-tcb-master-secret-key-3.0"
     def __init__(self, master_secret_key: Optional[bytes] = None) -> None:
+        if master_secret_key is None:
+            warnings.warn(
+                "CapabilityAuthority is using the built-in demo secret, which is public: anyone can forge "
+                "tokens. Pass master_secret_key or use CapabilityAuthority.from_environment().",
+                RuntimeWarning, stacklevel=2)
         self._master_secret = master_secret_key if master_secret_key is not None else self.DEMO_SECRET
         if not self._master_secret: raise ValueError("master_secret_key must be non-empty")
+        # replay/reservation state is check-then-act; serialise it so a one-shot token
+        # cannot be consumed twice by concurrent callers
+        self._lock = threading.RLock()
         self._consumed_nonces: Set[str] = set()
         self._reserved_nonces: Dict[str, str] = {}
+
+    @classmethod
+    def ephemeral(cls) -> "CapabilityAuthority":
+        """Authority with a fresh random secret: tokens are only valid inside this process."""
+        return cls(secrets.token_bytes(32))
 
     @classmethod
     def from_environment(cls, variable: str = "NSA_CAPABILITY_MASTER_SECRET") -> "CapabilityAuthority":
@@ -76,12 +112,13 @@ class CapabilityAuthority:
                         validity_duration_sec: float = 60.0, nonce: Optional[str] = None,
                         constraints: Optional[Dict[str, Any]] = None) -> CapabilityToken:
         if validity_duration_sec <= 0: raise ValueError("validity_duration_sec must be positive")
-        nonce_val = nonce or hashlib.sha256(f"{time.time()}:{action_id}:{principal}".encode()).hexdigest()[:16]
+        nonce_val = nonce or secrets.token_hex(16)
         expiry = time.time() + validity_duration_sec
         token = CapabilityToken(principal, action_id, scope, target_tier, nonce_val, expiry, "", dict(constraints or {}))
         signature = hmac.new(self._master_secret, _payload(token).encode(), hashlib.sha256).hexdigest()
         return CapabilityToken(principal, action_id, scope, target_tier, nonce_val, expiry, signature, token.constraints)
 
+    @_locked
     def verify_capability(self, token: CapabilityToken, action_id: str, required_tier: TrustTier,
                           current_time: Optional[float] = None) -> Tuple[bool, str]:
         if token.nonce in self._consumed_nonces: return False, "Capability replay attack detected: nonce already consumed."
@@ -93,6 +130,7 @@ class CapabilityAuthority:
         if not hmac.compare_digest(token.signature, expected_sig): return False, "Cryptographic capability signature forgery detected."
         return True, "Capability verified successfully."
 
+    @_locked
     def reserve_capability(self, token: CapabilityToken, action_id: str, required_tier: TrustTier,
                            reservation_id: Optional[str] = None, current_time: Optional[float] = None) -> Tuple[bool, str, str | None]:
         ok, reason = self.verify_capability(token, action_id, required_tier, current_time)
@@ -102,6 +140,7 @@ class CapabilityAuthority:
         self._reserved_nonces[token.nonce] = rid
         return True, "Capability reserved successfully.", rid
 
+    @_locked
     def release_capability(self, token: CapabilityToken, reservation_id: str) -> Tuple[bool, str]:
         current = self._reserved_nonces.get(token.nonce)
         if current is None:
@@ -111,7 +150,15 @@ class CapabilityAuthority:
         del self._reserved_nonces[token.nonce]
         return True, "Capability reservation released successfully."
 
-    def consume_reserved_capability(self, token: CapabilityToken, reservation_id: str) -> Tuple[bool, str]:
+    @_locked
+    def consume_reserved_capability(self, token: CapabilityToken, reservation_id: str, *, burn: bool = True) -> Tuple[bool, str]:
+        """Release a reservation after a successful effect.
+
+        ``burn=False`` (used for a ``max_calls`` renewable token) releases the
+        reservation without adding the nonce to the permanently-consumed set,
+        so the same token can be verified and reserved again on its next use,
+        subject to CapabilityConstraintEvaluator's own rate limit.
+        """
         current = self._reserved_nonces.get(token.nonce)
         if current != reservation_id:
             return False, "Capability reservation mismatch."
@@ -119,15 +166,18 @@ class CapabilityAuthority:
             del self._reserved_nonces[token.nonce]
             return False, "Capability replay attack detected: nonce already consumed."
         del self._reserved_nonces[token.nonce]
-        self._consumed_nonces.add(token.nonce)
+        if burn:
+            self._consumed_nonces.add(token.nonce)
         return True, "Reserved capability consumed successfully."
 
+    @_locked
     def consume_capability(self, token: CapabilityToken) -> Tuple[bool, str]:
         if token.nonce in self._consumed_nonces: return False, "Capability replay attack detected: nonce already consumed."
         if token.nonce in self._reserved_nonces: return False, "Capability is currently reserved by another transaction."
         self._consumed_nonces.add(token.nonce)
         return True, "Capability consumed successfully."
 
+    @_locked
     def verify_and_consume_capability(self, token: CapabilityToken, action_id: str, required_tier: TrustTier,
                                       current_time: Optional[float] = None) -> Tuple[bool, str]:
         ok, reason = self.verify_capability(token, action_id, required_tier, current_time)

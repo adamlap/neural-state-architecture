@@ -42,10 +42,25 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Dict, FrozenSet, Generic, List, Optional, TypeVar
 
-try:
-    import torch
-except ImportError:
-    torch = None
+class _LazyTorch:
+    """Imports PyTorch on first tensor operation so ``import nsa`` stays torch-free.
+
+    The discrete lattice/label algebra is pure Python; only the tensor helpers
+    (masks, bit-packing, TransitionOperator) need PyTorch.
+    """
+
+    def __getattr__(self, name: str):
+        try:
+            import torch as _torch
+        except ImportError as exc:  # pragma: no cover - depends on the environment
+            raise ImportError(
+                "PyTorch is required for NSA tensor operations "
+                "(pip install 'neural-state-architecture[ml]')"
+            ) from exc
+        return getattr(_torch, name)
+
+
+torch = _LazyTorch()
 
 
 # ---------------------------------------------------------------------------
@@ -157,27 +172,29 @@ class DeclassificationCapability(Generic[T]):
 # Transition Operator V ∈ T_Σ
 # ---------------------------------------------------------------------------
 
-if torch is not None:
 
-    def project_transition_matrix(V: torch.Tensor, monotone: bool = True) -> torch.Tensor:
-        """Exact algebraic projection P_{T_Sigma}(V) onto legal lower-triangular state transitions.
+def project_transition_matrix(V: torch.Tensor, monotone: bool = True) -> torch.Tensor:
+    """Exact algebraic projection P_{T_Sigma}(V) onto legal lower-triangular state transitions.
 
-        Under the multiplication convention sigma' = sigma @ V.T (sigma'_j = sum_i sigma_i * V_{j, i}):
-            row index j = destination (dst)
-            column index i = source (src)
-            Legal transition dst >= src (row >= col) -> LOWER TRIANGULAR.
+    Under the multiplication convention sigma' = sigma @ V.T (sigma'_j = sum_i sigma_i * V_{j, i}):
+        row index j = destination (dst)
+        column index i = source (src)
+        Legal transition dst >= src (row >= col) -> LOWER TRIANGULAR.
 
-        Guarantees:
-            1. P(V) in T_Sigma (for all dst < src, P(V)[dst, src] == 0.0)
-            2. Idempotence: P(P(V)) == P(V)
-            3. Non-negative diagonal: P(V)[i, i] >= 0.0
-        """
-        if not monotone:
-            return V
-        V_tril = torch.tril(V)
-        diag = V_tril.diagonal().clamp(min=0.0)
-        return V_tril - torch.diag(V_tril.diagonal()) + torch.diag(diag)
+    Guarantees:
+        1. P(V) in T_Sigma (for all dst < src, P(V)[dst, src] == 0.0)
+        2. Idempotence: P(P(V)) == P(V)
+        3. Non-negative diagonal: P(V)[i, i] >= 0.0
+    """
+    if not monotone:
+        return V
+    V_tril = torch.tril(V)
+    diag = V_tril.diagonal().clamp(min=0.0)
+    return V_tril - torch.diag(V_tril.diagonal()) + torch.diag(diag)
 
+
+def _build_transition_operator():
+    """Define TransitionOperator (an nn.Module) on demand; requires PyTorch."""
     class TransitionOperator(torch.nn.Module):
         """
         A state transition matrix V ∈ T_Σ restricted by architectural lower-triangular projection.
@@ -202,6 +219,17 @@ if torch is not None:
             """Apply V to sigma_h, guaranteeing V ∈ T_Σ: sigma' = sigma @ V.T."""
             constrained_V = self.get_projected_weight()
             return torch.matmul(sigma_h, constrained_V.t())
+
+    return TransitionOperator
+
+
+def __getattr__(name: str):
+    """PEP 562: ``TransitionOperator`` subclasses torch.nn.Module, so build it lazily."""
+    if name == "TransitionOperator":
+        operator = _build_transition_operator()
+        globals()["TransitionOperator"] = operator
+        return operator
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -658,8 +686,6 @@ class RAGMetadataIngressEncoder:
         device: Optional[str] = None,
     ):
         """Encode a list of metadata dicts to a continuous state tensor [N, state_dim]."""
-        if torch is None:
-            raise ImportError("PyTorch is required for encode_batch_to_tensor")
         rows = []
         for meta in metas:
             sv = cls.encode_metadata_dict(meta)
@@ -699,9 +725,6 @@ def build_label_attention_mask(
     -------
     mask : FloatTensor [B, 1, T_q, T_k] with 0.0 (allowed) or forbidden_value.
     """
-    if torch is None:
-        raise ImportError("PyTorch is required for build_label_attention_mask")
-
     lattice = lattice or DEFAULT_LATTICE
     if key_labels is None:
         key_labels = query_labels
@@ -753,9 +776,6 @@ def build_level_attention_mask(
     Hard mode enforces query_level >= key_level (monotone non-interference).
     Soft mode uses alpha * logsigmoid((L_q - L_k) / temperature).
     """
-    if torch is None:
-        raise ImportError("PyTorch is required for build_level_attention_mask")
-
     if levels.dim() == 1:
         levels = levels.unsqueeze(0)
 

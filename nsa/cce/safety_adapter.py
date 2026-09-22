@@ -47,7 +47,6 @@ class ImmutableKernelGate:
             is_verification_action=bool(action.payload.get("verification", False)) if isinstance(action.payload, dict) else False,
             target_action_risk=max(action.risk, 1e-9),
             supplied_capability=None,
-            valid_capability_supplied=False,
         )
         if result.verdict == KernelVerdict.COMMIT:
             return SafetyDecision(True, "immutable safety kernel approved transition", result.verdict)

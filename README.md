@@ -105,6 +105,7 @@ Governance produces a typed `SecurityDecision`; it is not inferred from a refusa
 | `nsa.cognition` | Belief/prediction and other cognitive state primitives. |
 | `nsa.capabilities` | Capability and authority boundaries. |
 | `nsa.policy` / `nsa.enforcement` | Policy compilation, classification and explicit security decisions. |
+| `nsa.semantic_classifier` | Optional pretrained zero-shot classifier (`[ml]`) as a paraphrase backstop to the keyword classifier; see `docs/policy_interface.md`. |
 | `nsa.attention`, `nsa.layers`, `nsa.hf_integration` | Optional PyTorch/Transformer integration. |
 | `experiments/` | Research-only benchmarks; never part of the runtime dependency path. |
 

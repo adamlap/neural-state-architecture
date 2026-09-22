@@ -10,8 +10,20 @@ from typing import Any, Mapping, Optional
 from nsa.core.state import CanonicalState, StateTransition
 
 
+def _canonical_default(value: Any) -> Any:
+    """Deterministic fallback for values JSON cannot encode natively.
+
+    Set iteration order depends on the per-process hash seed, so sets are
+    serialised in sorted order; otherwise the digest of the same state would
+    differ between processes and journal verification would fail after a restart.
+    """
+    if isinstance(value, (set, frozenset)):
+        return sorted(value, key=_stable)
+    return str(value)
+
+
 def _stable(value: Any) -> str:
-    return json.dumps(value, sort_keys=True, default=str, separators=(",", ":"))
+    return json.dumps(value, sort_keys=True, default=_canonical_default, separators=(",", ":"))
 
 
 def _canonical_payload(state: CanonicalState) -> dict[str, Any]:

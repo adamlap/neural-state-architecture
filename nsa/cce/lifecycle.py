@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -58,9 +60,19 @@ class StateCheckpointStore:
     def save(self, state: dict[str, Any]) -> CheckpointEnvelope:
         envelope = CheckpointEnvelope.create(state)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.path.with_suffix(self.path.suffix + ".tmp")
-        temporary.write_text(json.dumps(asdict(envelope), indent=2, sort_keys=True), encoding="utf-8")
-        temporary.replace(self.path)
+        # unique temp file: concurrent saves must not share (and corrupt) one ".tmp" name
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile("w", dir=str(self.path.parent), suffix=".tmp", delete=False, encoding="utf-8") as handle:
+                temporary = handle.name
+                handle.write(json.dumps(asdict(envelope), indent=2, sort_keys=True))
+                handle.flush()
+                os.fsync(handle.fileno())  # durable before the rename publishes it
+            os.replace(temporary, self.path)
+        except BaseException:
+            if temporary is not None and os.path.exists(temporary):
+                os.unlink(temporary)
+            raise
         return envelope
 
     def load(self) -> CheckpointEnvelope:

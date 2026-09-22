@@ -6,6 +6,8 @@ execution code should never infer authority from generated text.
 """
 from __future__ import annotations
 
+import re
+import unicodedata
 from dataclasses import dataclass
 from typing import FrozenSet, Optional, Protocol, Sequence
 
@@ -19,6 +21,21 @@ class PolicyClassifier(Protocol):
         """Return semantic policy categories detected in text."""
 
 
+_WHITESPACE = re.compile(r"\s+")
+
+
+def normalize_text(text: str) -> str:
+    """Fold case, width, whitespace and invisible format characters.
+
+    Prevents trivial evasions of substring rules such as full-width letters,
+    zero-width joiners inside a keyword, non-breaking spaces or newlines
+    between the words of a multi-word pattern.
+    """
+    text = unicodedata.normalize("NFKC", text)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
+    return _WHITESPACE.sub(" ", text).casefold().strip()
+
+
 class KeywordClassifier:
     """Small deterministic reference classifier for demos and tests.
 
@@ -28,11 +45,11 @@ class KeywordClassifier:
     """
 
     def __init__(self, patterns: dict[str, Sequence[str]]) -> None:
-        self.patterns = {category: tuple(p.lower() for p in values) for category, values in patterns.items()}
+        self.patterns = {category: tuple(normalize_text(p) for p in values if normalize_text(p)) for category, values in patterns.items()}
 
     def classify(self, text: str) -> Sequence[str]:
-        lowered = text.lower()
-        return tuple(category for category, patterns in self.patterns.items() if any(p in lowered for p in patterns))
+        normalized = normalize_text(text)
+        return tuple(category for category, patterns in self.patterns.items() if any(p in normalized for p in patterns))
 
 
 @dataclass(frozen=True)
@@ -63,22 +80,37 @@ class PolicyEngine:
 
         matched = []
         hard = set()
+        deny_reason: Optional[str] = None
+        escalate_reason: Optional[str] = None
         for category in categories:
             rule = self.policy.rule_for(category)
             if rule is None:
+                # A category the policy does not describe is governed by unknown_policy.
+                if self.policy.unknown_policy == "deny":
+                    hard.add("policy:unknown:" + category)
+                    deny_reason = deny_reason or f"unrecognised semantic category {category!r}"
+                elif self.policy.unknown_policy == "escalate":
+                    hard.add("policy:unknown:" + category)
+                    escalate_reason = escalate_reason or f"unrecognised semantic category {category!r}"
                 continue
             matched.append(category)
             hard.add("policy:" + category)
             if rule.mode == "deny":
-                return SecurityDecision(
-                    Decision.DENY, self.policy.name, rule.reason or "prohibited semantic category",
-                    tuple(matched), frozenset(hard), uncertainty=ctx.uncertainty, risk=max(ctx.risk, 1.0),
-                )
-            if rule.mode == "escalate":
-                return SecurityDecision(
-                    Decision.ESCALATE, self.policy.name, rule.reason or "policy requires review",
-                    tuple(matched), frozenset(hard), uncertainty=max(ctx.uncertainty, 0.5), risk=max(ctx.risk, 0.5),
-                )
+                deny_reason = deny_reason or rule.reason or "prohibited semantic category"
+            elif rule.mode == "escalate":
+                escalate_reason = escalate_reason or rule.reason or "policy requires review"
+        # Every matched category is evaluated and the most restrictive outcome wins:
+        # an earlier escalate must never mask a later deny.
+        if deny_reason is not None:
+            return SecurityDecision(
+                Decision.DENY, self.policy.name, deny_reason,
+                tuple(matched), frozenset(hard), uncertainty=ctx.uncertainty, risk=max(ctx.risk, 1.0),
+            )
+        if escalate_reason is not None:
+            return SecurityDecision(
+                Decision.ESCALATE, self.policy.name, escalate_reason,
+                tuple(matched), frozenset(hard), uncertainty=max(ctx.uncertainty, 0.5), risk=max(ctx.risk, 0.5),
+            )
 
         required = set(ctx.capabilities) & set(self.policy.restricted_actions)
         if required:

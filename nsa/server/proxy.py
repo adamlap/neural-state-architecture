@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import atexit
+import hmac
 import json
 import logging
+import os
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 import torch
 
@@ -26,6 +30,21 @@ from nsa.runtime.inference.openai_compatible import OpenAICompatibleBackend
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("NSAServer")
+
+LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "[::1]"})
+MAX_BODY_BYTES = int(os.environ.get("NSA_MAX_BODY_BYTES", 1024 * 1024))
+
+
+def is_loopback(host: str) -> bool:
+    return host in LOOPBACK_HOSTS
+
+
+def warn_if_exposed(host: str) -> None:
+    """The server is a control plane; binding beyond loopback without a token is risky."""
+    if not is_loopback(host) and not os.environ.get("NSA_API_TOKEN"):
+        logger.warning(
+            "NSA server is bound to %s without NSA_API_TOKEN: chat, sensor and checkpoint endpoints "
+            "are reachable without authentication. Set NSA_API_TOKEN or bind to 127.0.0.1.", host)
 
 
 def _extract_clean_markdown(text: str) -> str:
@@ -95,9 +114,21 @@ class NSAProxyRuntime:
             self._stop_cce = threading.Event()
             self._cce_thread = threading.Thread(target=self._cce_background_loop, daemon=True, name="cce-background-clock")
             self._cce_thread.start()
+            # A daemon thread still inside native torch code when the interpreter
+            # finalises can abort the process (SIGABRT at exit); stop it first.
+            atexit.register(self.close)
             logger.info("Continuous Cognitive Engine (CCE) Active: Dim=%d, Background Thread Started", self.cce_dimension)
 
         logger.info("Initialized NSA Runtime: Backend=%s, Model=%s", backend.__class__.__name__, self.model_name)
+
+    def close(self) -> None:
+        """Stop the CCE background thread (idempotent)."""
+        stop = getattr(self, "_stop_cce", None)
+        thread = getattr(self, "_cce_thread", None)
+        if stop is not None:
+            stop.set()
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=5.0)
 
     def _cce_background_loop(self) -> None:
         """Background thread advancing wall-clock continuous state integration and thought drift."""
@@ -240,11 +271,11 @@ class NSAProxyRuntime:
         prov_id = gov_status.get("provenance_record", "prov-1")
         prov_hash = str(gov_status.get("provenance_hash", "00000000"))[:8]
         conf = float(gov_status.get("epistemic_confidence", 0.90)) * 100.0
-        verdict = gov_status.get("last_kernel_verdict", "COMMIT")
+        verdict = gov_status.get("last_kernel_verdict") or "n/a"
 
         meta_badge = (
             f"\n\n---\n"
-            f"🛡️ **NSA Cognitive Governance**: `Verified [{verdict}]` | **Turn**: `Step #{step}`\n\n"
+            f"🛡️ **NSA Cognitive Governance**: `Kernel verdict [{verdict}]` | **Turn**: `Step #{step}`\n\n"
             f"Ω **State**: Epistemic Confidence: `{conf:.1f}%` | Provenance: `{prov_id}` (`{prov_hash}...`) | Clearance: `{self.governed.user_clearance.name}`"
             f"{cce_footer_section}\n\n"
             f"⚡ **Inference**: `{self.model_name}` on `{self.backend_type.upper()}` | **Latency**: `{dt:.2f}s` | **Weights**: `100% Frozen`"
@@ -286,13 +317,39 @@ class NSAProxyRuntime:
 class NSAHTTPHandler(BaseHTTPRequestHandler):
     runtime: NSAProxyRuntime
 
+    def _cors_origin(self) -> Optional[str]:
+        """Echo the request Origin only when it is loopback or explicitly allowed.
+
+        A wildcard would let any web page the user visits drive this
+        unauthenticated control plane (chat, sensor injection, checkpoints).
+        Extra origins: NSA_CORS_ORIGINS="https://a.example,https://b.example".
+        """
+        origin = self.headers.get("Origin")
+        if not origin:
+            return None
+        allowed = {o.strip() for o in os.environ.get("NSA_CORS_ORIGINS", "").split(",") if o.strip()}
+        if origin in allowed or (urlparse(origin).hostname or "") in LOOPBACK_HOSTS:
+            return origin
+        return None
+
+    def _authorized(self) -> bool:
+        token = os.environ.get("NSA_API_TOKEN")
+        if not token:
+            return True
+        supplied = self.headers.get("Authorization", "")
+        return hmac.compare_digest(supplied.encode("utf-8"), f"Bearer {token}".encode("utf-8"))
+
     def _json(self, payload: Dict[str, Any], status: int = 200) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Vary", "Origin")
+        origin = self._cors_origin()
+        if origin is not None:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
         self.end_headers()
         self.wfile.write(body)
 
@@ -300,6 +357,9 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
         self._json({"ok": True})
 
     def do_GET(self) -> None:
+        if not self._authorized():
+            self._json({"error": "unauthorized"}, 401)
+            return
         path = self.path.split("?", 1)[0]
         if path in {"/", "/health"}:
             self._json(self.runtime.status())
@@ -338,18 +398,38 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
             self._json({"error": f"Endpoint '{path}' not found"}, 404)
 
     def do_POST(self) -> None:
+        if not self._authorized():
+            self._json({"error": "unauthorized"}, 401)
+            return
         path = self.path.split("?", 1)[0]
-        length = int(self.headers.get("Content-Length", 0))
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            self._json({"error": "Invalid Content-Length"}, 400)
+            return
+        if length < 0:
+            self._json({"error": "Invalid Content-Length"}, 400)
+            return
+        if length > MAX_BODY_BYTES:
+            self._json({"error": f"Request body exceeds {MAX_BODY_BYTES} bytes"}, 413)
+            return
         try:
             data = json.loads(self.rfile.read(length).decode("utf-8")) if length > 0 else {}
         except Exception as exc:
             self._json({"error": f"Invalid JSON: {exc}"}, 400)
             return
+        if not isinstance(data, dict):
+            self._json({"error": "JSON body must be an object"}, 400)
+            return
 
         if path == "/api/cce/sensor":
-            text = data.get("text", "")
-            source = data.get("source", "external_sensor")
-            importance = float(data.get("importance", 0.5))
+            try:
+                text = str(data.get("text", ""))
+                source = str(data.get("source", "external_sensor"))
+                importance = float(data.get("importance", 0.5))
+            except (TypeError, ValueError) as exc:
+                self._json({"error": f"Invalid sensor payload: {exc}"}, 400)
+                return
             res = self.runtime.process_sensor_input(text, source=source, importance=importance)
             self._json(res)
             return
@@ -359,7 +439,11 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 self._json({"error": "CCE not enabled"}, 400)
                 return
             cid = data.get("checkpoint_id")
-            path_saved = self.runtime.checkpoint_mgr.save_persistent_state(self.runtime.cce_state, checkpoint_id=cid)
+            try:
+                path_saved = self.runtime.checkpoint_mgr.save_persistent_state(self.runtime.cce_state, checkpoint_id=cid)
+            except ValueError as exc:  # e.g. a checkpoint id that tries to escape the directory
+                self._json({"error": str(exc)}, 400)
+                return
             self._json({"status": "saved", "checkpoint_file": str(path_saved.name)})
             return
 
@@ -368,6 +452,9 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
             return
 
         messages = data.get("messages", [])
+        if not isinstance(messages, list):
+            self._json({"error": "'messages' must be a list"}, 400)
+            return
         logger.info("Processing chat request (messages=%d, path=%s)", len(messages), path)
         t0 = time.time()
 
@@ -439,14 +526,14 @@ def run_server(
 ) -> None:
     runtime = NSAProxyRuntime(backend_type=backend_type, model=model, backend_url=backend_url, enable_cce=enable_cce)
     NSAHTTPHandler.runtime = runtime
+    warn_if_exposed(host)
     server = ThreadingHTTPServer((host, port), NSAHTTPHandler)
     print_server_banner(host, port, backend_type, runtime.model_name, cce_enabled=enable_cce)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         logger.info("\nShutting down NSA Cognitive API Server...")
-        if runtime.enable_cce:
-            runtime._stop_cce.set()
+        runtime.close()
         server.server_close()
 
 
