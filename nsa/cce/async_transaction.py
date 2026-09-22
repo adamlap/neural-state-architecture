@@ -129,6 +129,12 @@ class AsyncCognitiveTransactionEngine(CognitiveTransactionEngine):
                 reason_text = f"execution failed: {type(exc).__name__}: {exc}"
                 events.append(self._event(EventKind.ERROR, {"reason": reason_text}))
                 return self._reject(proposal, selected, True, reason_text, events)
+            except BaseException:
+                # Cancellation (asyncio.CancelledError) must not leave the one-shot
+                # capability reserved forever; release it, then let the cancel propagate.
+                for token, rid in reservations:
+                    self.capability_authority.release_capability(token, rid)
+                raise
 
         if reservations:
             for token, rid in reservations:
@@ -138,7 +144,9 @@ class AsyncCognitiveTransactionEngine(CognitiveTransactionEngine):
                         if other_token.nonce != token.nonce:
                             self.capability_authority.release_capability(other_token, other_rid)
                     events.append(self._event(EventKind.ERROR, {"reason": consume_reason}))
-                    return self._reject(proposal, selected, True, consume_reason, events)
+                    # the effect already ran: the audit record must say so
+                    return self._reject(proposal, selected, True, consume_reason, events,
+                                        executed=executed, execution_result=execution_result)
                 self.constraint_evaluator.record_use(token, selected, context=self._constraint_context(selected))
             events.append(self._event(EventKind.CAPABILITY, {
                 "allowed": True,

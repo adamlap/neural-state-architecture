@@ -80,7 +80,7 @@ class NSALocalRuntime:
             vocab_size=100, d_model=d_model, state_dim=state_dim, num_layers=2, num_heads=2, max_seq_len=16
         )
         self.epistemic_engine = EpistemicGroundingEngine(d_model=d_model, state_dim=state_dim)
-        self.authority = CapabilityAuthority()
+        self.authority = CapabilityAuthority.ephemeral()
         self.safety_kernel = ImmutableSafetyKernel(capability_authority=self.authority)
         self.governor = EpistemicGovernor()
 
