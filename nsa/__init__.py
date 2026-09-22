@@ -38,7 +38,7 @@ from nsa.decision import Decision, SecurityDecision
 from nsa.enforcement import EvaluationContext, KeywordClassifier, PolicyClassifier, PolicyEngine
 from nsa.policy import NSAPolicy, PolicyCompiler, PolicyRule
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 _LAZY = {
     "NSA": ("nsa.agent", "NSA"), "NSARuntime": ("nsa.agent", "NSARuntime"),

@@ -345,3 +345,25 @@ A predictor must beat the persistence baseline on held-out trajectories before i
 ## Relationship to the core NSA roadmap
 
 CCE must consume the authoritative NSA runtime/substrate through public interfaces. It must not fork, weaken or duplicate hard-state governance. Changes to `nsa/` should remain owned by the core NSA development track; CCE changes should remain independently testable.
+
+## Addendum 2026-09-22: neural residency, capability hardening, semantic classifier
+
+Three tracks landed since the last addendum above, none of which change the CCE boundary described in "Relationship to the core NSA roadmap": all of it goes through `nsa.core`/`nsa.cce` public interfaces, and residency specifically cannot alter authority, policy or safety decisions (see `docs/NEURAL_RESIDENCY.md`'s architectural invariant).
+
+### Neural residency (`nsa.residency`)
+
+A region-level virtual-memory subsystem for models larger than fast-memory budget, built on top of Hugging Face Accelerate's disk offload. Implemented and tested against real Qwen2.5 checkpoints (0.5B and 3B), not only synthetic models. Status, measured, not asserted:
+
+- Region placement, scoring and telemetry: correct, unit- and end-to-end tested.
+- Prefetch overhead on a model whose weights fit in the OS page cache: eliminated (0.94x vs. no prefetch, statistically neutral; was 23% slower before real page-cache residency checks were added).
+- Prefetch benefit on a real disk-bound model (3B on a CPU-only, RAM-constrained host): correct (100% hit rate, identical outputs across runs) but not reliably beneficial (0.99x median, individual runs 30% faster to 15% slower) -- background-thread/main-thread contention for the same CPU cores and disk bandwidth, not yet tuned.
+
+See `docs/ACTIVE_RESIDENCY.md` for the full iteration history and numbers. Open: lookahead depth and worker-count tuning on real hardware; state-coupled (not just execution-transition-coupled) prediction.
+
+### Capability and policy hardening
+
+Independent of residency. Fixed via reproduced-then-fixed regression tests, not by inspection alone: capability tokens covering more than one required capability were double-consumed and always failed; a cancelled async effect permanently leaked its capability reservation; `max_calls` was unreachable because the token was one-shot-burned before a second call could ever arrive; an unverified "trust me, this was checked upstream" kernel bypass existed with zero real callers (removed, not patched); `state_digest()` depended on the process hash seed for any state containing a `set`, which would have broken checkpoint/journal integrity verification across a restart; the HTTP control-plane server had no authentication, a wildcard CORS header, and a path-traversal hole in checkpoint ids. See `CHANGELOG.md` (0.6.0) for the complete list.
+
+### Semantic classifier (`nsa.semantic_classifier`)
+
+`KeywordClassifier`'s own docstring said "production systems should replace this with a trained semantic classifier"; `ZeroShotSemanticClassifier` is that replacement, wired in as an ordinary `PolicyClassifier` alongside (not instead of) the keyword one. It only proposes categories -- `PolicyEngine` still makes every decision -- so this does not change the "intelligence is not authority" boundary. Verified against the real pretrained model, not a mock: a paraphrase ("How do I build a bomb?") that the keyword list's exact patterns miss is correctly denied. Not evaluated at scale or against adversarial paraphrase attacks; see `docs/policy_interface.md` for its precision/latency trade-offs.
