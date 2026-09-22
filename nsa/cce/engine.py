@@ -48,6 +48,7 @@ class ContinuousCognitiveEngine(Generic[S]):
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be > 0")
         self._state = state
+        self._version = 0  # bumped by set_state so an in-flight step cannot overwrite it
         self._step = step
         self._interval = float(interval_seconds)
         self._enabled = bool(enabled)
@@ -70,6 +71,7 @@ class ContinuousCognitiveEngine(Generic[S]):
         """Replace scheduler state without executing a transition."""
         with self._lock:
             self._state = state
+            self._version += 1
 
     def set_enabled(self, enabled: bool) -> None:
         """Enable/disable future ticks; disabling also stops a running loop."""
@@ -97,6 +99,7 @@ class ContinuousCognitiveEngine(Generic[S]):
                 if not self._enabled:
                     return False
                 current = self._state
+                version = self._version
             try:
                 next_state = self._step(current)
             except Exception as exc:
@@ -107,6 +110,8 @@ class ContinuousCognitiveEngine(Generic[S]):
                         self._stop.set()
                 return False
             with self._lock:
+                if self._version != version:
+                    return False  # state was replaced mid-step; the stale result must not clobber it
                 self._state = next_state
                 self._tick_count += 1
                 self._last_tick = monotonic()
@@ -136,9 +141,12 @@ class ContinuousCognitiveEngine(Generic[S]):
         if thread is not None and thread is not current_thread():
             thread.join(timeout=timeout)
         with self._lock:
-            self._running = False
-            if self._thread is thread:
-                self._thread = None
+            # A timed-out join leaves the loop thread alive: keep reporting it as
+            # running so start() cannot spawn a second loop or clear its stop flag.
+            if thread is None or thread is current_thread() or not thread.is_alive():
+                self._running = False
+                if self._thread is thread:
+                    self._thread = None
         return was_running
 
     def _run(self) -> None:

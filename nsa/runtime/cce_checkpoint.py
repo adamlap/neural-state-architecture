@@ -15,12 +15,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
+import re
 import tempfile
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Sequence
 
 import torch
 
@@ -49,6 +49,19 @@ class CheckpointMetadata:
         return asdict(self)
 
 
+_CHECKPOINT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+
+
+def validate_checkpoint_id(checkpoint_id: str) -> str:
+    """Checkpoint ids become file names, so they must never contain path separators."""
+    if not isinstance(checkpoint_id, str) or not _CHECKPOINT_ID.fullmatch(checkpoint_id) or ".." in checkpoint_id:
+        raise ValueError(
+            f"invalid checkpoint id {checkpoint_id!r}: use 1-128 characters from A-Z a-z 0-9 . _ - "
+            "starting with a letter or digit"
+        )
+    return checkpoint_id
+
+
 class CCECheckpointManager:
     """Manages persistent lifecycle, atomic saving, loading, and forking of CCE states."""
 
@@ -66,7 +79,7 @@ class CCECheckpointManager:
     ) -> Path:
         """Atomically persist a PersistentCognitiveState to disk with SHA-256 integrity."""
         snapshot = state.snapshot()
-        cid = checkpoint_id or f"cce_ckpt_{int(time.time() * 1000)}"
+        cid = validate_checkpoint_id(checkpoint_id) if checkpoint_id else f"cce_ckpt_{int(time.time() * 1000)}"
 
         working_list = [float(x) for x in snapshot.working.tolist()]
         self_state_list = [float(x) for x in snapshot.self_state.tolist()]
@@ -160,6 +173,7 @@ class CCECheckpointManager:
         tags: Sequence[str] = ("fork",),
     ) -> Tuple[PersistentCognitiveState, Path]:
         """Fork an existing state into a new independent lineage with parent tracking."""
+        validate_checkpoint_id(new_checkpoint_id)
         source_path = self.save_persistent_state(source_state, tags=("parent_source",))
         parent_id = source_path.stem
 
@@ -212,22 +226,29 @@ class CCECheckpointManager:
         p = Path(path_or_id)
         if p.is_file() or p.suffix == ".json":
             return p
-        return self.checkpoint_dir / f"{path_or_id}.json"
+        return self.checkpoint_dir / f"{validate_checkpoint_id(str(path_or_id))}.json"
 
     def _atomic_write_json(self, destination: Path, data: Dict[str, Any]) -> None:
         """Write JSON data to a temporary file in the destination folder, then atomically rename."""
         destination.parent.mkdir(parents=True, exist_ok=True)
         # Use tempfile in the same filesystem directory to guarantee atomic rename
-        with tempfile.NamedTemporaryFile("w", dir=str(destination.parent), delete=False, encoding="utf-8") as tf:
-            json.dump(data, tf, indent=2)
-            temp_name = tf.name
-        
-        # Atomic rename (replace destination)
-        shutil.move(temp_name, str(destination))
+        temp_name = None
+        try:
+            with tempfile.NamedTemporaryFile("w", dir=str(destination.parent), delete=False, encoding="utf-8") as tf:
+                temp_name = tf.name
+                json.dump(data, tf, indent=2)
+                tf.flush()
+                os.fsync(tf.fileno())  # data must be durable before the rename makes it visible
+            os.replace(temp_name, destination)  # atomic on POSIX and Windows
+        except BaseException:
+            if temp_name is not None and os.path.exists(temp_name):
+                os.unlink(temp_name)  # never leave orphaned partial files behind
+            raise
 
 
 __all__ = [
     "CHECKPOINT_SCHEMA_VERSION",
+    "validate_checkpoint_id",
     "CheckpointMetadata",
     "CCECheckpointManager",
 ]
