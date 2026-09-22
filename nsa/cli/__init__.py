@@ -1,1 +1,1 @@
-"""NSA CLI tools."""\n
+"""NSA CLI tools."""
