@@ -19,19 +19,44 @@ class LocalModelSpec:
     def resolve_path(self, environ: Mapping[str, str] | None = None) -> str:
         values = environ if environ is not None else os.environ
         configured = values.get(self.env_var)
-        return str(Path(configured or self.default_path).expanduser())
+        if configured:
+            return str(Path(configured).expanduser())
+        # Honour the Hugging Face cache overrides for the default cache location.
+        hub_prefix = "~/.cache/huggingface/hub/"
+        if self.default_path.startswith(hub_prefix):
+            hub = values.get("HF_HUB_CACHE") or (
+                str(Path(values["HF_HOME"]) / "hub") if values.get("HF_HOME") else None
+            )
+            if hub:
+                return str(Path(hub).expanduser() / self.default_path[len(hub_prefix):])
+        return str(Path(self.default_path).expanduser())
 
     def is_local(self, environ: Mapping[str, str] | None = None) -> bool:
-        return Path(self.resolve_path(environ)).exists()
+        """True when the resolved location holds a usable checkpoint (has a config.json)."""
+        return (Path(self.checkpoint_path(environ)) / "config.json").is_file()
 
     def checkpoint_path(self, environ: Mapping[str, str] | None = None) -> str:
+        """Resolve a Hugging Face cache dir to its active snapshot directory.
+
+        Prefers the snapshot named by ``refs/main``, then the most recently
+        modified complete snapshot (one containing ``config.json``), then any
+        snapshot. A plain checkpoint directory is returned unchanged.
+        """
         path = Path(self.resolve_path(environ))
         snapshots = path / "snapshots"
-        if snapshots.is_dir():
-            candidates = sorted(p for p in snapshots.iterdir() if p.is_dir())
-            if candidates:
-                return str(candidates[-1])
-        return str(path)
+        if not snapshots.is_dir():
+            return str(path)
+        candidates = [p for p in snapshots.iterdir() if p.is_dir()]
+        if not candidates:
+            return str(path)
+        ref = path / "refs" / "main"
+        if ref.is_file():
+            pinned = snapshots / ref.read_text(encoding="utf-8").strip()
+            if pinned.is_dir() and (pinned / "config.json").is_file():
+                return str(pinned)
+        complete = [p for p in candidates if (p / "config.json").is_file()]
+        pool = complete or candidates
+        return str(max(pool, key=lambda p: (p.stat().st_mtime, p.name)))
 
 
 LOCAL_MODELS: dict[str, LocalModelSpec] = {

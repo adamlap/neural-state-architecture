@@ -11,6 +11,7 @@ from nsa.runtime.inference.action_parser import ActionParser
 from nsa.runtime.inference.base import BackendMode, InferenceBackend, LLMGenerationOutput
 from nsa.residency import ActiveResidencyController, MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers, cognitive_state_features, ResidencyTrace
 from nsa.residency.accelerate_prefetch import AccelerateDiskPrefetcher
+from nsa.residency.sizing import layer_sizes
 
 class SelectiveStorageTransformersBackend(InferenceBackend):
     """Disk-backed Transformers inference with NSA residency planning."""
@@ -30,42 +31,85 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
     def __init__(self, model_name: str="Qwen/Qwen2.5-3B-Instruct", model_path: Optional[str]=None,
                  mode: Union[BackendMode,str]=BackendMode.CACHED, device: str="cuda",
                  vram_budget_gb: float=4.0, ram_budget_gb: float=8.0,
-                 prefetch: bool=True, hot_layers: int=2, warm_layers: int=2, no_split_module_classes: Optional[List[str]]=None) -> None:
+                 prefetch: bool=True, hot_layers: int=2, warm_layers: int=2, no_split_module_classes: Optional[List[str]]=None,
+                 dtype: str="auto", offload_folder: Optional[str]=None, trust_remote_code: bool=False) -> None:
         self.model_name=model_name
         self.model_path=model_path or model_name
         self.mode=BackendMode(mode) if isinstance(mode,str) else mode
-        import torch
-        self.device=torch.device(device if device!="auto" and torch.cuda.is_available() else "cpu")
+        self.device=self._resolve_device(device)
+        self.dtype=dtype
+        self.trust_remote_code=trust_remote_code
         self.prefetch=prefetch
         self.hot_layers=max(0,hot_layers)
         self.warm_layers=max(0,warm_layers)
         self.no_split_module_classes=no_split_module_classes or ["Qwen2DecoderLayer","Qwen3DecoderLayer"]
+        self.offload_folder=offload_folder or os.path.join(
+            os.path.expanduser("~/.cache/nsa"),"residency",self.model_name.replace("/","_").replace(":","_"))
         self.model=None
         self.tokenizer=None
         self._loaded=False
+        self.prefetcher: Optional[AccelerateDiskPrefetcher]=None
+        self.residency_controller: Optional[ActiveResidencyController]=None
+        self._active_residency_state: Mapping[str, object] = {"tags": []}
         self.trace=ResidencyTrace()
         self.residency=NeuralResidencyManager(ResidencyPolicy(
             vram_budget_bytes=int(vram_budget_gb*1024**3),
             ram_budget_bytes=int(ram_budget_gb*1024**3),
         ))
+        self.residency.trace = self.trace
 
-    def _build_regions(self, config: Any) -> list[NeuralRegion]:
-        layers=int(getattr(config,"num_hidden_layers",0))
-        hidden=int(getattr(config,"hidden_size",0))
-        intermediate=int(getattr(config,"intermediate_size",hidden*4))
-        per_layer=int((4*hidden*hidden+4*hidden*intermediate+4*hidden)*2)
+    @staticmethod
+    def _resolve_device(device: str) -> str:
+        """Return 'cpu' or a 'cuda[:n]' string; CUDA is only used when present."""
+        wanted = str(device or "cpu").lower()
+        if wanted == "cpu" or not (wanted == "auto" or wanted.startswith("cuda")):
+            return "cpu"
+        try:
+            import torch
+            cuda = torch.cuda.is_available()
+        except ImportError:
+            cuda = False
+        if not cuda:
+            return "cpu"
+        return "cuda" if wanted == "auto" else wanted
+
+    def _accelerate_device(self) -> Union[int, str]:
+        """Accelerate device_map spelling of the fast device."""
+        if self.device.startswith("cuda"):
+            return int(self.device.split(":")[1]) if ":" in self.device else 0
+        return "cpu"
+
+    def _resolve_dtype(self, config: Any) -> Any:
+        import torch
+        if self.dtype not in (None, "auto"):
+            return getattr(torch, str(self.dtype))
+        declared = getattr(config, "dtype", None) or getattr(config, "torch_dtype", None)
+        if isinstance(declared, str):
+            declared = getattr(torch, declared, None)
+        if declared is not None:
+            return declared
+        return torch.bfloat16 if self.device.startswith("cuda") else torch.float32
+
+    def _local_checkpoint(self) -> str:
+        """A local checkpoint directory (downloads only when the mode allows it)."""
+        if os.path.isdir(self.model_path):
+            return self.model_path
+        from huggingface_hub import snapshot_download
+        return snapshot_download(repo_id=self.model_path, local_files_only=self.mode==BackendMode.CACHED)
+
+    def _build_regions(self, config: Any, checkpoint_dir: Optional[str]=None, bytes_per_param: int=2) -> list[NeuralRegion]:
+        sizes=layer_sizes(config,checkpoint_dir,bytes_per_param)
         return [NeuralRegion(
             region_id=f"layer.{i}",
             parameter_prefixes=(f"model.layers.{i}.",),
-            size_bytes=per_layer, layer_index=i,
-            semantic_tags=("transformer",),
+            size_bytes=size, layer_index=i,
             dependencies=(f"layer.{i-1}",) if i else (),
-        ) for i in range(layers)]
+        ) for i,size in enumerate(sizes)]
 
-    def _selective_device_map(self, layer_count: int) -> dict[str, str]:
+    def _selective_device_map(self, layer_count: int) -> dict[str, Union[int, str]]:
         """Construct an explicit VRAM/RAM/disk map for decoder regions."""
-        device = str(self.device)
-        mapping = {"model.embed_tokens": device, "model.norm": device, "lm_head": device}
+        device = self._accelerate_device()
+        mapping: dict[str, Union[int, str]] = {"model.embed_tokens": device, "model.norm": device, "lm_head": device}
         hot = set(range(min(self.hot_layers, layer_count)))
         hot.update(range(max(0, layer_count - self.hot_layers), layer_count))
         warm = set(range(self.hot_layers, min(layer_count, self.hot_layers + self.warm_layers)))
@@ -73,6 +117,16 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         for i in range(layer_count):
             mapping[f"model.layers.{i}"] = device if i in hot else ("cpu" if i in warm else "disk")
         return mapping
+
+    def _record_static_placement(self, device_map: Mapping[str, Union[int, str]]) -> None:
+        """Record where Accelerate physically placed each region at dispatch time."""
+        for rid, region in self.residency.regions.items():
+            target = device_map.get(f"model.layers.{region.layer_index}")
+            if target == "disk" or target is None:
+                continue
+            tier = MemoryTier.RAM if target == "cpu" else MemoryTier.VRAM
+            self.residency.record_resident(rid, tier, reason="device-map")
+
     def load_model(self) -> bool:
         if self._loaded: return True
         try:
@@ -80,28 +134,40 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
         except ImportError as exc:
             raise RuntimeError("Selective storage requires: pip install 'neural-state-architecture[ml-residency]'") from exc
+        import torch
+        from transformers.utils import is_torch_available
+        if not is_torch_available():
+            raise RuntimeError(
+                f"transformers cannot use the installed torch ({torch.__version__}); "
+                "transformers>=5 requires torch>=2.5. Upgrade torch or install transformers<5."
+            )
+        checkpoint=self._local_checkpoint()
         local_only=self.mode==BackendMode.CACHED
-        config=AutoConfig.from_pretrained(self.model_path,local_files_only=local_only)
-        self.tokenizer=AutoTokenizer.from_pretrained(self.model_path,local_files_only=local_only,trust_remote_code=True)
+        config=AutoConfig.from_pretrained(checkpoint,local_files_only=local_only,trust_remote_code=self.trust_remote_code)
+        self.tokenizer=AutoTokenizer.from_pretrained(checkpoint,local_files_only=local_only,trust_remote_code=self.trust_remote_code)
+        dtype=self._resolve_dtype(config)
         with init_empty_weights():
-            model=AutoModelForCausalLM.from_config(config,trust_remote_code=True)
-        offload_folder=os.path.join(os.path.expanduser("~/.cache/nsa"),"residency",
-                                    self.model_name.replace("/","_").replace(":","_"))
-        os.makedirs(offload_folder,exist_ok=True)
-        device_map=self._selective_device_map(int(getattr(config,"num_hidden_layers",0)))
+            model=AutoModelForCausalLM.from_config(config,trust_remote_code=self.trust_remote_code)
+            # the skeleton defaults to float32; without this Accelerate upcasts every weight
+            model=model.to(dtype)
+        # Tied embeddings (Qwen2.5 1.5B/3B) must be tied on the skeleton, otherwise
+        # lm_head stays on the meta device and dispatch fails.
+        model.tie_weights()
+        os.makedirs(self.offload_folder,exist_ok=True)
+        layer_count=int(getattr(config,"num_hidden_layers",0))
+        device_map=self._selective_device_map(layer_count)
         model=load_checkpoint_and_dispatch(
-            model,checkpoint=self.model_path,device_map=device_map,
+            model,checkpoint=checkpoint,device_map=device_map,dtype=dtype,
             no_split_module_classes=self.no_split_module_classes,
-            offload_folder=offload_folder,offload_state_dict=True,
+            offload_folder=self.offload_folder,offload_state_dict=True,
         )
         model.eval()
         self.model=model
         self._loaded=True
-        self.residency.register(self._build_regions(config))
-        self.residency.trace = self.trace
-        self._active_residency_state: Mapping[str, object] = {"tags": []}
+        self.residency.register(self._build_regions(config,checkpoint,int(dtype.itemsize)))
+        self._record_static_placement(device_map)
         self.prefetcher = AccelerateDiskPrefetcher(
-            offload_folder,
+            self.offload_folder,
             {region.region_id: region.parameter_prefixes for region in self.residency.regions.values()},
         ) if self.prefetch else None
         self.residency_controller = ActiveResidencyController(
@@ -109,6 +175,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             load_fn=self._unsupported_physical_prefetch,
             lookahead=2,
             prefetch_fn=(self.prefetcher.prefetch if self.prefetcher is not None else None),
+            prefetch_eligible=(self.prefetcher.covers if self.prefetcher is not None else None),
         )
         instrument_decoder_layers(
             self.model,
@@ -125,11 +192,8 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         )
 
     def _on_region_execute(self, region_id: str) -> None:
-        if getattr(self, "residency_controller", None) is not None:
+        if self.residency_controller is not None:
             self.residency_controller.prefetch_async(self._active_residency_state)
-
-    def _state_tags(self,prompt:str)->Mapping[str,object]:
-        return {"tags":[w.lower() for w in prompt.split() if len(w)>4][:8]}
 
     def generate(self,prompt:str,max_tokens:int=256,temperature:float=0.7,
                  extract_hidden:bool=False,state:Optional[Mapping[str,object]]=None)->LLMGenerationOutput:
@@ -138,12 +202,15 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         if not self._loaded: self.load_model()
         import torch
         assert self.model is not None and self.tokenizer is not None
-        self._active_residency_state = cognitive_state_features(state) if state is not None else self._state_tags(prompt)
+        # Residency features come from NSA cognitive state only; prompt text is
+        # deliberately not turned into residency tags.
+        self._active_residency_state = cognitive_state_features(state)
         decisions=self.residency.plan(self._active_residency_state)
         for decision in decisions: self.residency.scores[decision.region_id]=decision.score
         inputs=self.tokenizer(prompt,return_tensors="pt")
         input_device=next(self.model.parameters()).device
-        inputs={k:v.to(input_device) for k,v in inputs.items()}
+        # causal-LM generate() rejects extras such as token_type_ids on some transformers versions
+        inputs={k:v.to(input_device) for k,v in inputs.items() if k in ("input_ids","attention_mask")}
         kwargs={"max_new_tokens":max_tokens,"do_sample":temperature>0,"return_dict_in_generate":True,"output_hidden_states":extract_hidden}
         if temperature>0: kwargs["temperature"]=max(0.01,temperature)
         with torch.no_grad(): outputs=self.model.generate(**inputs,**kwargs)
@@ -153,13 +220,13 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             text=text,tokens=generated.tolist(),
             hidden_states=(outputs.hidden_states[-1][-1] if extract_hidden and outputs.hidden_states else None),
             confidence_estimate=0.90,
-            raw_response={"residency":self.residency.snapshot().__dict__},
+            raw_response={"residency":self.residency.snapshot().to_dict()},
         )
 
     def close(self) -> None:
-        controller = getattr(self, "residency_controller", None)
-        if controller is not None:
-            controller.shutdown(wait=True)
+        if self.residency_controller is not None:
+            self.residency_controller.shutdown(wait=True)
+        self.trace.close()
 
     def propose_action(self,system_context:str,task_instruction:str,
                        available_tools:List[Dict[str,Any]],fallback_action:str="probe_service_config")->Dict[str,Any]:
