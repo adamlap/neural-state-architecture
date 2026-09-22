@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install torch pytest
+      - run: pip install -e ".[dev,research]"
       - run: PYTHONPATH=. pytest -q tests/test_cce_governed_feedback.py
       - run: mkdir -p results/ci/cce && PYTHONPATH=. python experiments/cce_governed_feedback_runtime.py --output results/ci/cce/governed_feedback.json
       - uses: actions/upload-artifact@v4
