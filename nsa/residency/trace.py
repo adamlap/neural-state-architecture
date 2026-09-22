@@ -23,14 +23,23 @@ class ResidencyTrace:
         self._events: deque[ResidencyEvent] = deque(maxlen=self.max_events)
         self._lock = Lock()
         self.jsonl_path = Path(jsonl_path).expanduser() if jsonl_path else None
+        self._handle = None
 
     def record(self, event: ResidencyEvent) -> None:
         with self._lock:
             self._events.append(event)
             if self.jsonl_path is not None:
-                self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
-                with self.jsonl_path.open("a", encoding="utf-8") as handle:
-                    handle.write(json.dumps(asdict(event), default=self._json_default) + "\n")
+                if self._handle is None:
+                    self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+                    self._handle = self.jsonl_path.open("a", encoding="utf-8", buffering=1)
+                self._handle.write(json.dumps(asdict(event), default=self._json_default) + "\n")
+
+    def close(self) -> None:
+        """Flush and release the JSONL handle (recording again reopens it)."""
+        with self._lock:
+            if self._handle is not None:
+                self._handle.close()
+                self._handle = None
 
     def extend(self, events: Iterable[ResidencyEvent]) -> None:
         for event in events:
@@ -45,24 +54,59 @@ class ResidencyTrace:
             self._events.clear()
 
     def metrics(self) -> dict[str, float | int]:
-        events = self.events()
-        prefetch = [e for e in events if e.action == "prefetch"]
-        execute = [e for e in events if e.action == "execute"]
-        transfers = [e for e in events if e.action in {"resident", "evict", "prefetch", "prefetch-complete"}]
-        completed = {e.region_id: e.timestamp for e in events if e.action == "prefetch-complete"}
-        hits = sum(1 for e in execute if completed.get(e.region_id, -1) <= e.timestamp)
-        bytes_moved = sum(e.bytes_moved for e in transfers)
+        events = sorted(self.events(), key=lambda e: e.timestamp)
+        prefetches = [e for e in events if e.action == "prefetch"]
+        executions = [e for e in events if e.action == "execute"]
+        completions = [e for e in events if e.action == "prefetch-complete"]
+        skipped = [e for e in events if e.action == "prefetch-skipped"]
+        errors = [e for e in events if e.action == "prefetch-error"]
+        # Placement transfers only. Page-cache prefetch is reported separately
+        # because it warms a cache; it does not move a region between tiers.
+        transfers = [e for e in events if e.action in {"resident", "evict"}]
+        hits = self._prefetch_hits(events)
         return {
             "events": len(events),
-            "prefetches": len(prefetch),
+            "prefetches": len(prefetches),
+            "prefetch_completed": len(completions),
+            "prefetch_skipped": len(skipped),
+            "prefetch_errors": len(errors),
             "prefetch_hits": hits,
-            "prefetch_hit_rate": hits / len(prefetch) if prefetch else 0.0,
-            "executions": len(execute),
+            # fraction of issued prefetches later consumed by an execution
+            "prefetch_hit_rate": min(1.0, hits / len(prefetches)) if prefetches else 0.0,
+            # fraction of executions that had a completed prefetch waiting
+            "prefetch_coverage": hits / len(executions) if executions else 0.0,
+            "bytes_prefetched": sum(e.bytes_moved for e in completions),
+            "executions": len(executions),
             "transfer_events": len(transfers),
-            "bytes_moved": bytes_moved,
+            "bytes_moved": sum(e.bytes_moved for e in transfers),
             "latency_ms_total": sum(e.latency_ms for e in events),
             "latency_ms_avg": sum(e.latency_ms for e in events) / len(events) if events else 0.0,
         }
+
+    @staticmethod
+    def _prefetch_hits(events: list[ResidencyEvent]) -> int:
+        """Count completed prefetches that finished before an execution began.
+
+        ``execute`` events are stamped when the region finishes, so its start is
+        ``timestamp - latency``. Each completed prefetch can serve at most one
+        subsequent execution of the same region.
+        """
+        pending: dict[str, list[float]] = {}
+        hits = 0
+        ordered = sorted(
+            (e for e in events if e.action in {"prefetch-complete", "execute"}),
+            key=lambda e: e.timestamp - (e.latency_ms / 1000.0 if e.action == "execute" else 0.0),
+        )
+        for event in ordered:
+            if event.action == "prefetch-complete":
+                pending.setdefault(event.region_id, []).append(event.timestamp)
+                continue
+            started = event.timestamp - event.latency_ms / 1000.0
+            queue = pending.get(event.region_id)
+            if queue and queue[0] <= started:
+                queue.pop(0)
+                hits += 1
+        return hits
 
     def by_tier(self, tier: MemoryTier) -> tuple[ResidencyEvent, ...]:
         return tuple(

@@ -9,10 +9,13 @@ from nsa.residency.types import MemoryTier, ResidencyEvent
 def instrument_decoder_layers(model: Any, manager: NeuralResidencyManager, on_region: Optional[Callable[[str], None]] = None) -> int:
     """Wrap decoder layer forwards so actual region execution feeds the predictor.
 
-    Accelerate's disk hooks run before the wrapped forward, so the event is
-    emitted at the point where the region is about to execute. This does not
-    fabricate a residency transition: it records execution against the
-    region-level control plane while Accelerate owns tensor materialization.
+    The wrapper is installed around ``layer.forward`` *after* Accelerate has
+    dispatched the model, so it encloses Accelerate's pre-forward hook. The
+    recorded ``execute`` latency therefore includes any weight loading the hook
+    performs, and the event is stamped when the region finishes (its start is
+    ``timestamp - latency``). No residency transition is fabricated: this only
+    records execution against the region-level control plane while Accelerate
+    owns tensor materialization.
     """
     layers = getattr(getattr(model, "model", None), "layers", None)
     if layers is None:

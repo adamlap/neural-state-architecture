@@ -1,11 +1,12 @@
 """Neural virtual-memory manager."""
 from __future__ import annotations
+from collections import deque
 from dataclasses import dataclass, field
-from time import monotonic
 from typing import Any, Mapping, Sequence
+from time import monotonic
 from nsa.residency.cache import CacheEntry, ResidencyCache
 from nsa.residency.policy import ResidencyDecision, ResidencyPolicy
-from nsa.residency.predictor import HeuristicResidencyPredictor, ResidencyPredictor
+from nsa.residency.predictor import HeuristicResidencyPredictor, ResidencyPredictor, state_tags
 from nsa.residency.types import MemoryTier, NeuralRegion, ResidencyEvent, ResidencySnapshot, ResidencyState
 
 @dataclass
@@ -13,14 +14,17 @@ class NeuralResidencyManager:
     policy: ResidencyPolicy
     predictor: ResidencyPredictor = field(default_factory=HeuristicResidencyPredictor)
     trace: Any = field(default=None, repr=False)
+    max_events: int = 10_000
     def __post_init__(self) -> None:
         self.regions: dict[str, NeuralRegion] = {}
         self.states: dict[str, ResidencyState] = {}
         self.tiers: dict[str, MemoryTier] = {}
         self.scores: dict[str, float] = {}
-        self.events: list[ResidencyEvent] = []
+        self.events: deque[ResidencyEvent] = deque(maxlen=max(1, self.max_events))
         self.vram_cache = ResidencyCache(self.policy.vram_budget_bytes)
         self.ram_cache = ResidencyCache(self.policy.ram_budget_bytes)
+        # Last region observed *executing*. Residency transfers never change it,
+        # otherwise a prefetch would corrupt the execution-transition statistics.
         self.current_region: str | None = None
 
     def record_event(self, event: ResidencyEvent) -> None:
@@ -40,31 +44,52 @@ class NeuralResidencyManager:
             self.scores[region.region_id] = decision.score
             decisions.append(decision)
         return sorted(decisions, key=lambda d:d.score, reverse=True)
-    def _relevance(self, region: NeuralRegion, state: Mapping[str, object]) -> float:
-        tags = state.get("tags", ())
-        if not tags: return 0.0
-        tag_set = {str(t) for t in tags}
-        return min(1.0, sum(t in tag_set for t in region.semantic_tags) / max(len(region.semantic_tags),1))
+    def _relevance(self, region: NeuralRegion, state: Mapping[str, object]) -> float | None:
+        """Tag overlap in [0, 1], or None when there is no tag evidence either way."""
+        tags = {str(t) for t in state_tags(state)}
+        if not tags or not region.semantic_tags: return None
+        return min(1.0, sum(t in tags for t in region.semantic_tags) / len(region.semantic_tags))
     def _dependency_probability(self, region: NeuralRegion, probabilities: Mapping[str,float]) -> float:
         return max((probabilities.get(dep,0.0) for dep in region.dependencies), default=0.0)
-    def record_resident(self, region_id: str, tier: MemoryTier, reason: str = "") -> None:
+    def _cache_for(self, tier: MemoryTier) -> ResidencyCache | None:
+        if tier == MemoryTier.VRAM: return self.vram_cache
+        if tier == MemoryTier.RAM: return self.ram_cache
+        return None
+    def record_resident(self, region_id: str, tier: MemoryTier, reason: str = "", latency_ms: float = 0.0) -> bool:
+        """Record that a backend actually placed a region in ``tier``.
+
+        Returns False when the region cannot be resident there (larger than the
+        tier's whole budget); in that case the prior placement is left intact.
+        """
         region = self.regions[region_id]
+        cache = self._cache_for(tier)
+        if cache is None:
+            self.record_evicted(region_id, reason=reason or "demoted-to-nvme")
+            return True
         source = self.tiers.get(region_id, MemoryTier.NVME)
-        started = monotonic()
-        cache = self.vram_cache if tier == MemoryTier.VRAM else self.ram_cache
-        evicted = cache.put(CacheEntry(region,tier,region.size_bytes))
+        if not cache.fits(region.size_bytes):
+            self.record_event(ResidencyEvent(monotonic(), region_id, "reject", source, tier, 0, 0.0, "exceeds-tier-capacity"))
+            return False
+        already_there = self.states.get(region_id) == ResidencyState.RESIDENT and source == tier
+        other = self._cache_for(source) if source != tier else None
+        if other is not None:
+            other.remove(region_id)
+        evicted = cache.put(CacheEntry(region, tier, region.size_bytes))
         self.states[region_id] = ResidencyState.RESIDENT
         self.tiers[region_id] = tier
-        self.current_region = region_id
-        self.record_event(ResidencyEvent(monotonic(),region_id,"resident",source,tier,region.size_bytes,(monotonic()-started)*1000,reason))
-        for victim in evicted: self.record_evicted(victim.region.region_id, reason="capacity")
+        self.record_event(ResidencyEvent(monotonic(), region_id, "resident", source, tier, 0 if already_there else region.size_bytes, latency_ms, reason))
+        for victim in evicted:
+            self.record_evicted(victim.region.region_id, reason="capacity")
+        return True
     def record_evicted(self, region_id: str, reason: str = "") -> None:
         tier = self.tiers.get(region_id)
-        if tier == MemoryTier.VRAM: self.vram_cache.remove(region_id)
-        elif tier == MemoryTier.RAM: self.ram_cache.remove(region_id)
+        was_resident = self.states.get(region_id) == ResidencyState.RESIDENT
+        cache = self._cache_for(tier) if tier is not None else None
+        if cache is not None: cache.remove(region_id)
         self.states[region_id] = ResidencyState.COLD
         self.tiers[region_id] = MemoryTier.NVME
-        self.record_event(ResidencyEvent(monotonic(),region_id,"evict",tier,MemoryTier.NVME,self.regions[region_id].size_bytes,0.0,reason))
+        size = self.regions[region_id].size_bytes if was_resident else 0
+        self.record_event(ResidencyEvent(monotonic(),region_id,"evict",tier,MemoryTier.NVME,size,0.0,reason))
     def snapshot(self) -> ResidencySnapshot:
         bytes_by_tier = {MemoryTier.VRAM:0,MemoryTier.RAM:0,MemoryTier.NVME:0}
         for rid,state in self.states.items():

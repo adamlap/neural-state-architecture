@@ -48,3 +48,12 @@ class ResidencySnapshot:
     bytes_by_tier: Dict[MemoryTier, int] = field(default_factory=dict)
     def resident_regions(self, tier: Optional[MemoryTier] = None) -> list[str]:
         return [rid for rid,state in self.states.items() if state == ResidencyState.RESIDENT and (tier is None or self.tiers.get(rid) == tier)]
+    def to_dict(self) -> dict:
+        """JSON-serialisable view (enum keys and values flattened to strings)."""
+        return {
+            "timestamp": self.timestamp,
+            "states": {rid: state.value for rid, state in self.states.items()},
+            "tiers": {rid: tier.value for rid, tier in self.tiers.items()},
+            "scores": dict(self.scores),
+            "bytes_by_tier": {tier.value: int(size) for tier, size in self.bytes_by_tier.items()},
+        }

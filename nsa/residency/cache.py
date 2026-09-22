@@ -18,19 +18,31 @@ class ResidencyCache:
     @property
     def bytes_used(self) -> int: return self._bytes
     def contains(self, region_id: str) -> bool: return region_id in self._entries
+    def fits(self, size_bytes: int) -> bool:
+        """Whether an entry of this size could ever be resident in this cache."""
+        return size_bytes <= self.capacity_bytes
     def touch(self, region_id: str) -> None:
         if region_id in self._entries: self._entries.move_to_end(region_id)
     def put(self, entry: CacheEntry) -> list[CacheEntry]:
-        evicted = []
-        old = self._entries.pop(entry.region.region_id, None)
-        if old: self._bytes -= old.bytes_resident
-        self._entries[entry.region.region_id] = entry
-        self._bytes += entry.bytes_resident
-        while self._bytes > self.capacity_bytes and self._entries:
-            rid,victim = self._entries.popitem(last=False)
+        """Insert an entry, evicting least-recently-used entries to make room.
+
+        An entry larger than the whole cache is rejected: it is returned as the
+        sole "evicted" item and the existing contents are left untouched, rather
+        than flushing the cache for something that can never be resident.
+        """
+        region_id = entry.region.region_id
+        old = self._entries.pop(region_id, None)
+        if old:
+            self._bytes -= old.bytes_resident
+        if not self.fits(entry.bytes_resident):
+            return [entry]
+        evicted: list[CacheEntry] = []
+        while self._bytes + entry.bytes_resident > self.capacity_bytes and self._entries:
+            _, victim = self._entries.popitem(last=False)
             self._bytes -= victim.bytes_resident
             evicted.append(victim)
-            if rid == entry.region.region_id: break
+        self._entries[region_id] = entry
+        self._bytes += entry.bytes_resident
         return evicted
     def remove(self, region_id: str) -> CacheEntry | None:
         entry = self._entries.pop(region_id, None)
