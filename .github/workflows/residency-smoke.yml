@@ -1,0 +1,73 @@
+name: residency-smoke
+
+on:
+  pull_request:
+    paths:
+      - "nsa/residency/**"
+      - "nsa/runtime/inference/**"
+      - "experiments/residency/**"
+      - "scripts/residency_smoke_test.py"
+      - "scripts/run_residency_experiments.sh"
+      - "tests/test_residency*.py"
+      - "tests/test_active_residency*.py"
+      - "tests/test_accelerate_prefetch.py"
+      - "tests/test_resident_backend.py"
+      - "tests/tiny_qwen.py"
+      - "Makefile"
+      - "pyproject.toml"
+      - ".github/workflows/residency-smoke.yml"
+  push:
+    branches:
+      - feature/neural-residency-architecture
+  workflow_dispatch:
+
+jobs:
+  smoke-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and test dependencies
+        run: python -m pip install -e ".[dev,ml-residency]"
+
+      - name: Residency smoke test (through the Makefile entrypoint)
+        run: make residency-smoke PYTHON=python
+
+      - name: Residency unit and end-to-end tests
+        # Includes the tiny-Qwen2 end-to-end tests, which are skipped (not
+        # silently passed) when torch/transformers/accelerate are unusable.
+        run: >
+          python -m pytest -q -rs
+          tests/test_residency.py
+          tests/test_active_residency.py
+          tests/test_active_residency_async.py
+          tests/test_residency_trace.py
+          tests/test_residency_sizing.py
+          tests/test_accelerate_prefetch.py
+          tests/test_resident_backend.py
+          tests/test_residency_benchmark.py
+
+      - name: Fail if the end-to-end tests were skipped
+        run: >
+          python -m pytest -q -rs tests/test_resident_backend.py tests/test_residency_benchmark.py
+          | tee /tmp/e2e.txt; ! grep -q skipped /tmp/e2e.txt
+
+      - name: Compile residency experiment harness
+        run: >
+          python -m compileall -q
+          nsa/residency
+          nsa/runtime/inference
+          experiments/residency
+          scripts/residency_smoke_test.py
+
+      - name: Validate experiment CLI
+        run: >
+          python -m experiments.residency.benchmark_matrix
+          --help
+
+      - name: Validate experiment runner
+        run: bash -n scripts/run_residency_experiments.sh

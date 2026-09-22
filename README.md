@@ -107,6 +107,7 @@ Governance produces a typed `SecurityDecision`; it is not inferred from a refusa
 | `nsa.policy` / `nsa.enforcement` | Policy compilation, classification and explicit security decisions. |
 | `nsa.semantic_classifier` | Optional pretrained zero-shot classifier (`[ml]`) as a paraphrase backstop to the keyword classifier; see `docs/policy_interface.md`. |
 | `nsa.attention`, `nsa.layers`, `nsa.hf_integration` | Optional PyTorch/Transformer integration. |
+| `nsa.residency` | Experimental neural virtual memory: region-level weight placement, prediction and NVMe prefetch for disk-offloaded models (`[ml-residency]`; see `docs/NEURAL_RESIDENCY.md`). |
 | `experiments/` | Research-only benchmarks; never part of the runtime dependency path. |
 
 The central design principle is:

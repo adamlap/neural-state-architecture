@@ -35,9 +35,10 @@ OLLAMA_HOST ?= 127.0.0.1:11434
 
 .PHONY: help install install-dev test test-core test-cce build clean \
         demo serve serve-cce serve-ollama serve-lmstudio serve-cce-policy \
-		serve-ollama-policy serve-lmstudio-policy chat-ollama \
+        serve-ollama-policy serve-lmstudio-policy chat-ollama \
         benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama \
-		benchmark-nsa64-ollama benchmark-nsa64-ollama-smoke \
+        benchmark-nsa64-ollama benchmark-nsa64-ollama-smoke \
+        residency residency-smoke residency-benchmark \
         benchmark-live evidence research
 
 help: ## Show the supported developer commands
@@ -134,6 +135,32 @@ benchmark-nsa64-ollama-smoke: ## Run a small live Ollama smoke test before the f
 		TRIALS=2 DEV_SEEDS="7" HELDOUT_SEEDS="101" HYPOTHESES="2" NOISE="0.0 0.3" \
 		OUT=results/nsa64/ollama-smoke
 
+
+
+
+# =========================================
+# -------- Neural residency ---------------
+# =========================================
+RESIDENCY_MODEL ?= 1.5b
+RESIDENCY_MODEL_PATH ?=
+RESIDENCY_RUNS ?= 3
+RESIDENCY_MAX_TOKENS ?= 64
+RESIDENCY_PREFETCH ?= both
+RESIDENCY_PYTHON ?= $(if $(wildcard $(UV_PYTHON)),$(UV_PYTHON),$(PYTHON))
+
+residency: residency-smoke ## Run the residency smoke experiment
+
+residency-smoke: ## Run the fast residency smoke experiment
+	PYTHON="$(RESIDENCY_PYTHON)" bash scripts/run_residency_experiments.sh smoke
+
+residency-benchmark: ## Run the local residency benchmark matrix; downloads the selected model when no path is supplied
+	PYTHON="$(RESIDENCY_PYTHON)" \
+	MODEL="$(RESIDENCY_MODEL)" \
+	MODEL_PATH="$(RESIDENCY_MODEL_PATH)" \
+	RUNS="$(RESIDENCY_RUNS)" \
+	MAX_TOKENS="$(RESIDENCY_MAX_TOKENS)" \
+	PREFETCH="$(RESIDENCY_PREFETCH)" \
+	bash scripts/run_residency_experiments.sh benchmark "$(RESIDENCY_MODEL)" "$(RESIDENCY_MODEL_PATH)"
 
 
 # =========================================
