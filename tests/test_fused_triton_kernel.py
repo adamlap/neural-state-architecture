@@ -14,6 +14,7 @@ import torch
 
 from nsa.algebra import StateLabel
 from nsa.triton_kernel import (
+    HAS_TRITON,
     TRITON_KERNEL_DEFINED,
     TritonFusedStateAwareAttention,
     triton_fused_state_attention,
@@ -31,6 +32,7 @@ class TestTrueFusedTritonKernel(unittest.TestCase):
         self.head_dim = 8
         self.state_dim = 8
 
+    @unittest.skipUnless(HAS_TRITON, "triton is not installed (CPU-only torch); the SDPA fallback is tested below")
     def test_triton_kernel_defined(self):
         """Verify that the @triton.jit kernel is syntactically defined and imported."""
         self.assertTrue(TRITON_KERNEL_DEFINED, "True fused Triton JIT kernel was not defined!")
