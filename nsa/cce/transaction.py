@@ -84,8 +84,11 @@ class CognitiveTransactionEngine:
             ok, reason = self.capability_authority.verify_capability(token, action.action_id, self._required_tier(action), time())
             if not ok: return False, reason
         for token in tokens:
-            ok, reason = self.capability_authority.consume_capability(token)
-            if not ok: return False, reason
+            # A max_calls token is renewable: it stays valid (subject to expiry and
+            # its own rate limit) instead of being burned by its first use.
+            if not token.is_rate_limited:
+                ok, reason = self.capability_authority.consume_capability(token)
+                if not ok: return False, reason
             self.constraint_evaluator.record_use(token, action, context=self._constraint_context(action))
         return True, "capabilities consumed"
 

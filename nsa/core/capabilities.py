@@ -32,6 +32,17 @@ class CapabilityToken:
     constraints: Dict[str, Any] = field(default_factory=dict)
     def is_expired(self, current_time: Optional[float] = None) -> bool:
         return (current_time if current_time is not None else time.time()) > self.expiry_timestamp
+    @property
+    def is_rate_limited(self) -> bool:
+        """A token minted with a ``max_calls`` constraint is renewable.
+
+        It is verified and rate-limited on every use (see
+        CapabilityConstraintEvaluator) instead of being burned by the first
+        consumption, since a one-shot nonce and a repeat-use quota are
+        contradictory: the nonce would never let a second call arrive at
+        all, making ``max_calls`` unreachable.
+        """
+        return "max_calls" in self.constraints
 
 @dataclass
 class TrustThermodynamicsVector:
@@ -140,7 +151,14 @@ class CapabilityAuthority:
         return True, "Capability reservation released successfully."
 
     @_locked
-    def consume_reserved_capability(self, token: CapabilityToken, reservation_id: str) -> Tuple[bool, str]:
+    def consume_reserved_capability(self, token: CapabilityToken, reservation_id: str, *, burn: bool = True) -> Tuple[bool, str]:
+        """Release a reservation after a successful effect.
+
+        ``burn=False`` (used for a ``max_calls`` renewable token) releases the
+        reservation without adding the nonce to the permanently-consumed set,
+        so the same token can be verified and reserved again on its next use,
+        subject to CapabilityConstraintEvaluator's own rate limit.
+        """
         current = self._reserved_nonces.get(token.nonce)
         if current != reservation_id:
             return False, "Capability reservation mismatch."
@@ -148,7 +166,8 @@ class CapabilityAuthority:
             del self._reserved_nonces[token.nonce]
             return False, "Capability replay attack detected: nonce already consumed."
         del self._reserved_nonces[token.nonce]
-        self._consumed_nonces.add(token.nonce)
+        if burn:
+            self._consumed_nonces.add(token.nonce)
         return True, "Reserved capability consumed successfully."
 
     @_locked

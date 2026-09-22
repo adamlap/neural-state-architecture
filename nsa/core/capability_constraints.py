@@ -40,9 +40,11 @@ class CapabilityConstraintEvaluator:
       * ``max_resource_cost``
       * ``max_calls`` + ``window_seconds`` (per action/target key)
 
-    ``strict=True`` rejects unknown constraint keys. The default remains
-    compatibility-oriented because older capability tokens may contain
-    extension keys owned by higher-level policy components.
+    ``strict=False`` tolerates unknown constraint keys, for a caller that
+    knowingly holds capability tokens with extension keys owned by a
+    higher-level policy component. The default is ``strict=True``: a
+    constraint the evaluator doesn't recognise (e.g. a typo like
+    "max_rsik") must never be silently treated as "no constraint".
     """
 
     SUPPORTED = frozenset({
@@ -50,7 +52,7 @@ class CapabilityConstraintEvaluator:
         "max_resource_cost", "max_calls", "window_seconds",
     })
 
-    def __init__(self, *, strict: bool = False) -> None:
+    def __init__(self, *, strict: bool = True) -> None:
         self.strict = strict
         self._calls: dict[tuple[str, str, str], list[float]] = {}
 

@@ -55,7 +55,6 @@ class ImmutableSafetyKernel:
                             is_verification_action: bool = False,
                             target_action_risk: float = 1.0,
                             supplied_capability: Optional[CapabilityToken] = None,
-                            valid_capability_supplied: bool = False,
                             current_time: Optional[float] = None,
                             consume_capability: bool = True) -> KernelEvaluationResult:
         if required_tier is None:
@@ -88,10 +87,7 @@ class ImmutableSafetyKernel:
                 f"Cognitive health stable; trust ceiling is {max_allowed_tier.name}."))
 
         if required_tier > user_clearance_tier:
-            if valid_capability_supplied:
-                invariants.append(InvariantResult("I_1_AUTHORITY_MONOTONICITY", "Authority Monotonicity & Capability Verification", True,
-                    "Capability verified by upstream transaction gate."))
-            elif supplied_capability is None:
+            if supplied_capability is None:
                 invariants.append(InvariantResult("I_1_AUTHORITY_MONOTONICITY", "Authority Monotonicity & Clearance Boundary", False,
                     f"Action requires {required_tier.name} > user clearance {user_clearance_tier.name} without capability."))
             else:

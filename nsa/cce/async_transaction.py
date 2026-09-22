@@ -138,7 +138,9 @@ class AsyncCognitiveTransactionEngine(CognitiveTransactionEngine):
 
         if reservations:
             for token, rid in reservations:
-                consumed, consume_reason = self.capability_authority.consume_reserved_capability(token, rid)
+                consumed, consume_reason = self.capability_authority.consume_reserved_capability(
+                    token, rid, burn=not token.is_rate_limited
+                )
                 if not consumed:
                     for other_token, other_rid in reservations:
                         if other_token.nonce != token.nonce:
