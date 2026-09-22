@@ -119,6 +119,7 @@ def _run_once(
     device: str,
     hot_layers: int,
     warm_layers: int,
+    lookahead: int,
     cold_cache: bool,
 ) -> dict[str, Any]:
     backend = SelectiveStorageTransformersBackend(
@@ -130,6 +131,7 @@ def _run_once(
         device=device,
         hot_layers=hot_layers,
         warm_layers=warm_layers,
+        lookahead=lookahead,
     )
     try:
         load_start = time.perf_counter()
@@ -233,6 +235,7 @@ def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb
                 device=args.device,
                 hot_layers=args.hot_layers,
                 warm_layers=args.warm_layers,
+                lookahead=args.lookahead,
                 cold_cache=args.cold_cache,
             )
             row.update({"model": args.model, "model_path": str(Path(model_path).expanduser()),
@@ -258,6 +261,7 @@ def main() -> None:
     parser.add_argument("--device", default="auto", help="auto|cpu|cuda|cuda:N (default: auto)")
     parser.add_argument("--hot-layers", type=int, default=2)
     parser.add_argument("--warm-layers", type=int, default=2)
+    parser.add_argument("--lookahead", type=int, default=2, help="predicted regions the background prefetch controller may have in flight at once")
     parser.add_argument("--prefetch", choices=["on", "off", "both"], default="both")
     parser.add_argument("--cold-cache", action=argparse.BooleanOptionalAction, default=True,
                         help="drop the OS page cache for weight files before decoding (default: on)")
@@ -295,6 +299,7 @@ def main() -> None:
             "device": args.device,
             "hot_layers": args.hot_layers,
             "warm_layers": args.warm_layers,
+            "lookahead": args.lookahead,
             "vram_gb": vram_gb,
             "ram_gb": ram_gb,
             "prompt": args.prompt,

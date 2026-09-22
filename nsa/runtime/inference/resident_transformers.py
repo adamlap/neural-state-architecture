@@ -32,7 +32,8 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
                  mode: Union[BackendMode,str]=BackendMode.CACHED, device: str="cuda",
                  vram_budget_gb: float=4.0, ram_budget_gb: float=8.0,
                  prefetch: bool=True, hot_layers: int=2, warm_layers: int=2, no_split_module_classes: Optional[List[str]]=None,
-                 dtype: str="auto", offload_folder: Optional[str]=None, trust_remote_code: bool=False) -> None:
+                 dtype: str="auto", offload_folder: Optional[str]=None, trust_remote_code: bool=False,
+                 lookahead: int=2) -> None:
         self.model_name=model_name
         self.model_path=model_path or model_name
         self.mode=BackendMode(mode) if isinstance(mode,str) else mode
@@ -42,6 +43,9 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         self.prefetch=prefetch
         self.hot_layers=max(0,hot_layers)
         self.warm_layers=max(0,warm_layers)
+        # how many predicted regions the background controller may have in
+        # flight at once; also its ThreadPoolExecutor's worker count
+        self.lookahead=max(1,lookahead)
         self.no_split_module_classes=no_split_module_classes or ["Qwen2DecoderLayer","Qwen3DecoderLayer"]
         self.offload_folder=offload_folder or os.path.join(
             os.path.expanduser("~/.cache/nsa"),"residency",self.model_name.replace("/","_").replace(":","_"))
@@ -173,7 +177,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         self.residency_controller = ActiveResidencyController(
             self.residency,
             load_fn=self._unsupported_physical_prefetch,
-            lookahead=2,
+            lookahead=self.lookahead,
             prefetch_fn=(self.prefetcher.prefetch if self.prefetcher is not None else None),
             prefetch_eligible=(self._prefetch_eligible if self.prefetcher is not None else None),
         )

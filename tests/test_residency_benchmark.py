@@ -54,7 +54,7 @@ def test_matrix_end_to_end_alternates_order_and_compares_outputs(tmp_path, monke
     root = make_tiny_qwen(tmp_path / "model")
     args = argparse.Namespace(
         model="1.5b", prompt="explain how persistent cognitive state", max_tokens=6, prefetch="both", runs=2,
-        device="cpu", hot_layers=1, warm_layers=1, cold_cache=True,
+        device="cpu", hot_layers=1, warm_layers=1, lookahead=2, cold_cache=True,
     )
     rows = bm.run_matrix(args, str(root), 1.0, 1.0)
     assert [r["prefetch"] for r in rows] == [True, False, False, True]  # counterbalanced
@@ -73,3 +73,23 @@ def test_matrix_end_to_end_alternates_order_and_compares_outputs(tmp_path, monke
     # bytes_already_resident legitimately staying at 0 (and the resulting
     # "touched no bytes" note) is the intended optimum here, not a failure;
     # this is a toy/fast model, not the meaningful case for that heuristic.
+
+
+def test_run_once_passes_lookahead_through_to_the_backend(tmp_path, monkeypatch):
+    import experiments.residency.benchmark_matrix as bm
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(bm, "get_local_model", lambda key: SimpleNamespace(model_id="tiny/qwen"))
+    root = make_tiny_qwen(tmp_path / "model")
+    seen = {}
+    from nsa.runtime.inference.resident_transformers import SelectiveStorageTransformersBackend
+    original_init = SelectiveStorageTransformersBackend.__init__
+
+    def recording_init(self, *args, **kwargs):
+        seen["lookahead"] = kwargs.get("lookahead")
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(SelectiveStorageTransformersBackend, "__init__", recording_init)
+    bm._run_once(model_key="1.5b", model_path=str(root), prompt="explain how persistent cognitive state",
+                max_tokens=2, prefetch=True, vram_gb=1.0, ram_gb=1.0, device="cpu",
+                hot_layers=1, warm_layers=1, lookahead=5, cold_cache=False)
+    assert seen["lookahead"] == 5

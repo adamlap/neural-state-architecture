@@ -38,6 +38,12 @@ def test_remote_code_is_not_trusted_by_default():
     assert SelectiveStorageTransformersBackend(mode="mock").trust_remote_code is False
 
 
+def test_lookahead_is_configurable_and_bounded_below_by_one():
+    assert SelectiveStorageTransformersBackend(mode="mock").lookahead == 2
+    assert SelectiveStorageTransformersBackend(mode="mock", lookahead=4).lookahead == 4
+    assert SelectiveStorageTransformersBackend(mode="mock", lookahead=0).lookahead == 1
+
+
 needs_stack = pytest.mark.skipif(not torch_backend_usable(), reason="needs a working torch + transformers + accelerate stack")
 
 

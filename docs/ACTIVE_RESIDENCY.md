@@ -27,7 +27,19 @@ This is real I/O prefetch. It is **not** the same as making a layer GPU-resident
 2. **mincore, one mmap per check**: correctly detected "already resident" and skipped the actual read, but `mmap()`/`munmap()` is itself a real syscall pair, done per tensor per decoder step. Measured **21-38% slower** than no prefetch -- the check cost more than the read it was avoiding.
 3. **mincore, one mmap per file, reused** (`PageCacheProbe`) **plus a synchronous pre-check gating whether to schedule a background task at all** (`prefetch_eligible` now calls `needs_warming()`, not just `covers()`): for an already-resident region, nothing is scheduled -- no lock, no `ThreadPoolExecutor` handoff, no telemetry write. Measured decode time statistically indistinguishable from prefetch disabled (0.94x, i.e. no measurable cost; stdevs overlap).
 
-On a real, disk-bound model (Qwen2.5-3B-Instruct on this CPU-only, 7.8 GB RAM host, ~85% of layers never fitting in the RAM/VRAM tiers) the same final design measured a 0.99x median (statistically neutral) across 3 alternated runs each way, with individual runs ranging from 30% faster to 15% slower than no-prefetch. The mechanism is correct here (100% prefetch hit rate, identical outputs every run) but not reliably beneficial: the background prefetch thread and the main compute thread compete for the same limited CPU cores and disk bandwidth on this host, so whether the prefetch wins its race against Accelerate's own synchronous read varies run to run. A machine with cores/disk bandwidth to spare for the prefetch thread, or a larger `lookahead` (more predicted regions in flight, more total time budget to win the race), would be the next thing to test -- not yet done.
+On a real, disk-bound model (Qwen2.5-3B-Instruct on this CPU-only, 7.8 GB RAM host, ~85% of layers never fitting in the RAM/VRAM tiers) the same final design measured a 0.99x median (statistically neutral) across 3 alternated runs each way, with individual runs ranging from 30% faster to 15% slower than no-prefetch. The mechanism is correct here (100% prefetch hit rate, identical outputs every run) but not reliably beneficial: the background prefetch thread and the main compute thread compete for the same limited CPU cores and disk bandwidth on this host, so whether the prefetch wins its race against Accelerate's own synchronous read varies run to run.
+
+### Lookahead: tested, default is already near-optimal
+
+`lookahead` (`SelectiveStorageTransformersBackend`/`--lookahead`) controls both how many predicted regions can be in flight at once and the background `ThreadPoolExecutor`'s worker count. More lookahead was the obvious next thing to try -- more regions in flight gives the prefetch thread more total time budget to win its race. Tested on the same 3B model/host (2 runs each, prefetch on, `--max-tokens 16`), against a 22.4s (stdev 0.02s) no-prefetch baseline:
+
+| `lookahead` | decode median | decode stdev |
+|---|---|---|
+| 1 | 26.8s (20% slower than baseline) | 2.06s |
+| **2 (default)** | **23.0s (statistically at baseline)** | 2.02s |
+| 4 | 24.5s (9% slower than baseline) | **0.21s** |
+
+`lookahead=1` is worse on both counts (fewer regions in flight means the single background worker becomes a serial bottleneck rather than overlapping I/O). `lookahead=4` is not faster on average but is far more *consistent* run to run -- worth considering if predictable latency matters more than average throughput. Neither beats the current default of 2. **Not changing the default** based on this; n=2 per value is not a strong sample, but there's no signal here to act on.
 
 ## Runtime flow
 
