@@ -60,6 +60,11 @@ class LocalModelSpec:
 
 
 LOCAL_MODELS: dict[str, LocalModelSpec] = {
+    "0.5b": LocalModelSpec(
+        "0.5b", "Qwen/Qwen2.5-0.5B-Instruct", "NSA_QWEN_0_5B_PATH",
+        "~/.cache/huggingface/hub/models--Qwen--Qwen2.5-0.5B-Instruct",
+        1.0, 2.0,
+    ),
     "1.5b": LocalModelSpec(
         "1.5b", "Qwen/Qwen2.5-1.5B-Instruct", "NSA_QWEN_1_5B_PATH",
         "~/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct",

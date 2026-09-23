@@ -1,0 +1,29 @@
+{
+  "benchmark": "jev_system_one_and_bonsai_ternary_comparative",
+  "system_one_vs_deliberation": {
+    "system_one_per_decision_ms": 0.0083,
+    "system_two_per_decision_ms": 0.002,
+    "speedup_factor": 0.24,
+    "decisions_per_sec": 119971.83
+  },
+  "ternary_vs_quantized_storage": {
+    "dimensions": "2048x2048 (4,194,304 parameters)",
+    "memory_footprints": {
+      "fp16_mb": 8.0,
+      "int8_mb": 4.0,
+      "int4_mb": 2.0,
+      "bonsai_ternary_mb": 1.0
+    },
+    "compression_ratios_vs_fp16": {
+      "int8": 2.0,
+      "int4": 4.0,
+      "bonsai_ternary": 8.0
+    },
+    "compression_vs_int8": 4.0,
+    "execution_time_50_evals_sec": {
+      "int8_dequant_matmul": 0.129,
+      "int4_dequant_matmul": 0.3781,
+      "bonsai_ternary_add_kernel": 0.7839
+    }
+  }
+}

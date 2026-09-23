@@ -6,6 +6,140 @@ NSA wraps a replaceable language model with **persistent explicit state, cogniti
 
 > **Research status:** NSA is experimental research software. The repository contains validated security/state primitives and live-model experiments, but benchmark results do not establish AGI, consciousness, or universal safety.
 
+## Architectural Foundations of Safe AGI
+
+### The Flaw of "Model-Centric" AGI
+
+The prevailing paradigm assumes that scaling raw parameters and autoregressive token generation inside a single transformer weights matrix will yield reliable agency, safety, and continuous thought. It cannot, for fundamental reasons:
+
+* **The Turn-Based Trap**: A model that only exists during token generation is fundamentally reactive, not continuously conscious. It cannot anticipate, reflect, or monitor its environment while idle.
+* **The "Alignment via Weights" Fallacy**: Attempting to make an intelligence safe by fine-tuning weights (RLHF, DPO) creates a probabilistic optimizer that can always suffer jailbreaks, prompt injections, or goal drift under distribution shift. *Optimization cannot police itself.*
+* **Memory Amorphy**: Without structural separation between working memory, episodic traces, and semantic world models, models suffer context window saturation and catastrophic forgetting.
+
+### Where the NSA Architecture Stands Today
+
+The Neural State Architecture solves these issues through structural, non-bypassable architectural invariants:
+
+```text
+                       +----------------------------------------+
+                       |        EXTERNAL WORLD / SENSORS        |
+                       +-------------------+--------------------+
+                                           |
+                                           v
+                       +----------------------------------------+
+                       |      Continuous Cognitive Loop         |
+                       |  (Latent Cognitive Field: 10Hz-50Hz)   |
+                       +-------------------+--------------------+
+                                           |
+                              Deliberation Trigger (ΔE > τ)
+                                           |
+                                           v
++--------------------------------------------------------------------------------------+
+|                                 NSA GOVERNANCE SHELL                                 |
+|                                                                                      |
+|   +--------------------------+                 +---------------------------------+   |
+|   |   Cognitive Substrate    |                 |   Counterfactual Simulator      |   |
+|   |   (Dense / MoE LLM)      | --------------> |   - Speculative State Forking   |   |
+|   |   - Resident Prefetch    |                 |   - Mental Sandbox Dynamics     |   |
+|   +--------------------------+                 +----------------+----------------+   |
+|                                                                 |                    |
+|                                                                 v                    |
+|                                                +---------------------------------+   |
+|                                                |   Security Automaton & Kernel   |   |
+|                                                |   - Hard Non-Interference       |   |
+|                                                |   - Cryptographic Provenance    |   |
+|                                                |   - Cryptographic Capabilities  |   |
+|                                                +----------------+----------------+   |
++-----------------------------------------------------------------|--------------------+
+                                                                  | Verified Action
+                                                                  v
+                                                 +---------------------------------+
+                                                 |        Two-Phase Actuator       |
+                                                 +----------------+----------------+
+                                                                  |
+                                                                  v
+                                                 +---------------------------------+
+                                                 | Offline Memory Consolidation    |
+                                                 | (Sleep Replay -> Semantic Rules)|
+                                                 +---------------------------------+
+```
+
+1. **Complete Mediation ("Optimization Never Implies Authority")**: The neural network is treated as an untrusted heuristic generator. No matter how capable, creative, or deceptive the underlying weights become, the model *never* possesses direct execution authority. Every action proposal must pass through the deterministic `SecurityAutomaton` and `CapabilityAuthority`.
+2. **Continuous Activity without Compute Waste**: Through the **Latent Cognitive Field**, NSA runs continuous sub-inference dynamics at negligible compute cost, reserving heavy token generation for moments of high epistemic uncertainty or explicit external interaction.
+3. **Anticipatory Safety through Mental Simulation**: Through the **Closed-Loop Counterfactual Simulator**, the system tests actions in an internal sandboxed state space. Dangerous consequences and invariant violations are pruned before the external world is touched.
+4. **Lifelong Stability through Sleep Consolidation**: Through the **Memory Consolidator**, episodic trajectories are regularly digested into semantic knowledge and predictive priors during idle/sleep cycles, ensuring the system remains bounded in memory consumption over arbitrary operational lifetimes.
+
+---
+
+### Core Pillars & System Status
+
+```text
+                       +-----------------------------------------------+
+                       |           CONTINUOUS COGNITION (CCE)          |
+                       |       wall-clock ticks, autonomous loops      |
+                       +-----------------------+-----------------------+
+                                               |
+                   +---------------------------+---------------------------+
+                   |                                                       |
+                   v                                                       v
++------------------------------------+                   +------------------------------------+
+|         SAFETY & GOVERNANCE        |                   |      DYNAMIC NEURAL SUBSTRATE      |
+|    SecurityAutomaton & Invariants  |                   |  MoE specialists, selective memory |
+| "Optimization is never Authority"  |                   |  Parameter decoupling, sublayers   |
++------------------+-----------------+                   +-----------------+------------------+
+                   |                                                       |
+                   +---------------------------+---------------------------+
+                                               |
+                                               v
+                       +-----------------------------------------------+
+                       |            CANONICAL COGNITIVE STATE          |
+                       |   Semantic, Hard, Soft, Provenance, Goals     |
+                       +-----------------------------------------------+
+```
+
+#### Pillar I: Safety Through Complete Mediation & Invariants
+*Current Status: Highly Mature (~85%)*
+
+The industry's dominant approach to AI safety is "alignment through fine-tuning" (RLHF, DPO, system prompts). This has been repeatedly falsified: any model aligned only by weights can be jailbroken, prompt-injected, or deceived under distribution shift.
+
+NSA solves this by making safety architectural and external to the neural weights:
+* **Complete Mediation**: Every action proposal from the model must pass through the deterministic `SecurityAutomaton`, `PolicyEngine`, and `CapabilityAuthority`.
+* **"Optimization is never Authority"**: The model can generate whatever it wants; it can predict that an action or a weight is useful, but it cannot grant itself permissions or mutate hard state.
+* **Renewable, Leased Capabilities**: Capabilities cannot be stolen, leaked across async effects, or retained indefinitely.
+* **Cryptographic Provenance**: Every state advancement is bound to a deterministic digest and lineage trail (`CanonicalState.provenance`).
+
+> **Verdict**: NSA already has one of the most mathematically rigorous reference-monitor safety architectures in open research.
+
+#### Pillar II: Continuous Activity & Autonomous Cognition (CCE)
+*Current Status: Solid Foundation, Active Research (~60%)*
+
+Standard LLMs are passive: dead until a human presses "Enter", and frozen the millisecond the last token is generated. An AGI cannot be a stateless prompt-response engine.
+
+NSA's Continuous Cognitive Engine (CCE) changes this:
+* **Wall-Clock Driven**: The agent ticks autonomously on its own internal clock, processing observations, updating beliefs, and generating thoughts even when no user prompt is arriving.
+* **Fail-Closed Execution**: If an authoritative transition fails or detects an invariant violation, CCE freezes safely rather than hallucinating wildly.
+* **Empirical Grounding**: In [`LIVE_CAPABILITY_BENCHMARK.md`](LIVE_CAPABILITY_BENCHMARK.md), we proved that persistent CCE state outperforms stateless LLM prompting across multiple model families (Qwen, Llama).
+
+*Where the research frontier is*: As documented in the 4-way benchmark, while persistent cognitive state is universally robust, predictive extrapolation can sometimes cause weaker models to double-extrapolate drift or sign-flip numbers. Disciplining prompt phrasing and self-model calibration is the active milestone.
+
+#### Pillar III: Efficiency & The Governed Neural Substrate
+*Current Status: Working Foundation & Verified (~70%)*
+
+Neural residency decouples the physical hardware memory boundary from model scale:
+* **Decoupling Parameters from Silicon**: Sparse MoE models no longer need to fit all 14B or 100B parameters in fast VRAM. The system dynamically pages only the $k$ active specialists per token.
+* **Dense Sublayer Pipelining**: Dense models pipeline Attention and MLP sublayers, doubling the time window to hide I/O behind compute.
+* **Zero-Lag Early Routing**: The model router's early activations feed directly into prefetch schedules.
+* **Adaptive Precision (INT8/INT4)**: Cold regions take 50%–75% less bandwidth, solving the disk-to-compute transfer race.
+
+> **Verdict**: The "Virtual Neural Machine" concept is now concrete code, tested and measured on real hardware.
+
+#### Pillar IV: Predictive Self-Modeling & Metacognition
+*Current Status: Early Experimental (~40%)*
+
+For an agent to be truly general and safe, it must possess epistemic humility: it must know what it knows and what it does not know.
+
+NSA has implemented the predictive self-model (`nsa/predictive_self_model.py`) and trajectory collection. The goal is for the soft state (`uncertainty`, `risk`, `resource_pressure`) to reflect mathematically calibrated prediction errors rather than the model's textual self-report.
+
 ## Install
 
 Core NSA has no mandatory ML framework dependency:

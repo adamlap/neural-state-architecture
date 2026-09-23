@@ -30,12 +30,7 @@ def blend_evidence(
     transition_weight: float,
     tag_weight: float,
 ) -> dict[str, float]:
-    """Mix the evidence sources that actually exist into per-region probabilities.
-
-    Weights are renormalised over the sources that are present, so a fully
-    deterministic transition history yields probability 1.0 rather than being
-    capped at its nominal weight. Missing evidence never dilutes present evidence.
-    """
+    """Mix the evidence sources that actually exist into per-region probabilities."""
     scores = {rid: 0.0 for rid in region_ids}
     sources: list[tuple[float, dict[str, float]]] = []
     transitions = normalize_counts(transition_row)
@@ -67,6 +62,7 @@ class ResidencyPredictor:
 class HeuristicResidencyPredictor(ResidencyPredictor):
     transition_counts: dict[str, dict[str, float]] = field(default_factory=lambda: defaultdict(dict))
     tag_affinity: dict[str, dict[str, float]] = field(default_factory=lambda: defaultdict(dict))
+    active_routing: dict[str, float] = field(default_factory=dict)
     transition_weight: float = 0.65
     tag_weight: float = 0.35
 
@@ -81,9 +77,20 @@ class HeuristicResidencyPredictor(ResidencyPredictor):
             row = self.tag_affinity.setdefault(str(tag), {})
             row[region_id] = row.get(region_id, 0.0) + 1.0
 
+    def observe_routing(self, regions: Sequence[str], probabilities: Sequence[float]) -> None:
+        """Register immediate routing decisions from MoE router hooks or dense sublayer signals."""
+        for rid, prob in zip(regions, probabilities):
+            self.active_routing[rid] = max(self.active_routing.get(rid, 0.0), float(prob))
+
     def predict(self, regions: Sequence[NeuralRegion], state: Mapping[str, object], current_region: str | None = None) -> dict[str, float]:
         transition_row = self.transition_counts.get(current_region, {}) if current_region is not None else {}
         tag_rows = [self.tag_affinity[tag] for tag in state_tags(state) if tag in self.tag_affinity]
-        return blend_evidence(
+        scores = blend_evidence(
             (r.region_id for r in regions), transition_row, tag_rows, self.transition_weight, self.tag_weight
         )
+        # Apply active routing overrides with highest confidence
+        if self.active_routing:
+            for rid in list(self.active_routing.keys()):
+                if rid in scores:
+                    scores[rid] = max(scores[rid], self.active_routing.pop(rid))
+        return scores

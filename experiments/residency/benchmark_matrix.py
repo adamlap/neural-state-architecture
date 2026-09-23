@@ -31,7 +31,7 @@ import torch
 from huggingface_hub import snapshot_download
 
 from nsa.runtime.inference.resident_transformers import SelectiveStorageTransformersBackend
-from nsa.runtime.inference.model_registry import get_local_model
+from nsa.runtime.inference.model_registry import LOCAL_MODELS, get_local_model
 
 
 def _gpu_stats() -> dict[str, Any]:
@@ -251,7 +251,7 @@ def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--model", choices=["1.5b", "3b"], required=True)
+    parser.add_argument("--model", choices=sorted(LOCAL_MODELS), required=True)
     parser.add_argument("--model-path", default=None,
                         help="Local checkpoint path. If omitted, download/reuse the Hugging Face checkpoint.")
     parser.add_argument("--runs", type=int, default=3)

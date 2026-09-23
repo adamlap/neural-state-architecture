@@ -1,5 +1,4 @@
-"""Typed persistent memory primitives for NSA."""
-
 from .model import MemoryItem, MemoryStore
+from .consolidation import MemoryConsolidator, ConsolidationReport, ConsolidatedRule
 
-__all__ = ["MemoryItem", "MemoryStore"]
+__all__ = ["MemoryItem", "MemoryStore", "MemoryConsolidator", "ConsolidationReport", "ConsolidatedRule"]

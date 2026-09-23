@@ -1,0 +1,145 @@
+{
+  "experiment": "nsa_selective_storage_matrix",
+  "timestamp_utc": "2026-09-23T12:39:39Z",
+  "host": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.31",
+    "python": "3.12.13",
+    "torch": "2.14.0+cu130"
+  },
+  "config": {
+    "model": "3b",
+    "model_id": "Qwen/Qwen2.5-3B-Instruct",
+    "model_path": "/home/adam/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1",
+    "downloaded_automatically": true,
+    "runs": 1,
+    "max_tokens": 8,
+    "prefetch": "both",
+    "cold_cache": true,
+    "device": "auto",
+    "hot_layers": 2,
+    "warm_layers": 2,
+    "lookahead": 2,
+    "vram_gb": 4.0,
+    "ram_gb": 8.0,
+    "prompt": "Explain how persistent cognitive state can improve an agent's reasoning."
+  },
+  "summary": {
+    "prefetch_on": {
+      "runs": 1,
+      "decode_sec_median": 28.2415543430252,
+      "decode_sec_mean": 28.2415543430252,
+      "decode_sec_stdev": 0.0,
+      "tokens_per_sec_median": 0.28327052763566307,
+      "load_sec_median": 59.383656882011564,
+      "bytes_prefetched_median": 28853611008,
+      "bytes_already_resident_median": 1360569856,
+      "prefetch_hit_rate_median": 0.8571428571428571,
+      "prefetch_coverage_median": 0.5833333333333334
+    },
+    "prefetch_off": {
+      "runs": 1,
+      "decode_sec_median": 25.67237551699509,
+      "decode_sec_mean": 25.67237551699509,
+      "decode_sec_stdev": 0.0,
+      "tokens_per_sec_median": 0.311619000536355,
+      "load_sec_median": 25.137758731027134,
+      "bytes_prefetched_median": 0,
+      "bytes_already_resident_median": 0,
+      "prefetch_hit_rate_median": 0.0,
+      "prefetch_coverage_median": 0.0
+    },
+    "decode_speedup_on_vs_off": 0.9090284197950096,
+    "outputs_identical_across_runs": true,
+    "notes": []
+  },
+  "runs": [
+    {
+      "load_sec": 59.383656882011564,
+      "decode_sec": 28.2415543430252,
+      "tokens": 8,
+      "tokens_per_sec": 0.28327052763566307,
+      "output_chars": 48,
+      "output": " Persistent cognitive states, such as attention,",
+      "output_sha256": "fe6fc76846ffc12c14a6eaa8e0287adede63edbdbe3fa2499dd8621213b1ff5f",
+      "placement_bytes": {
+        "vram": 0,
+        "ram": 1233231872,
+        "nvme": 4316311552
+      },
+      "region_count": 36,
+      "trace": {
+        "events": 688,
+        "prefetches": 196,
+        "prefetch_completed": 196,
+        "prefetch_skipped": 0,
+        "prefetch_errors": 0,
+        "prefetch_hits": 168,
+        "prefetch_hit_rate": 0.8571428571428571,
+        "prefetch_coverage": 0.5833333333333334,
+        "bytes_prefetched": 28853611008,
+        "executions": 288,
+        "transfer_events": 8,
+        "bytes_moved": 1233231872,
+        "latency_ms_total": 53802.13156744139,
+        "latency_ms_avg": 78.20077262709505
+      },
+      "bytes_already_resident": 1360569856,
+      "page_cache_files_dropped": 345,
+      "rss_bytes": 2759639040,
+      "gpu": {
+        "cuda": false,
+        "peak_allocated_bytes": 0,
+        "peak_reserved_bytes": 0
+      },
+      "model": "3b",
+      "model_path": "/home/adam/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "prefetch": true,
+      "run": 1,
+      "pid": 1442901
+    },
+    {
+      "load_sec": 25.137758731027134,
+      "decode_sec": 25.67237551699509,
+      "tokens": 8,
+      "tokens_per_sec": 0.311619000536355,
+      "output_chars": 48,
+      "output": " Persistent cognitive states, such as attention,",
+      "output_sha256": "fe6fc76846ffc12c14a6eaa8e0287adede63edbdbe3fa2499dd8621213b1ff5f",
+      "placement_bytes": {
+        "vram": 0,
+        "ram": 1233231872,
+        "nvme": 4316311552
+      },
+      "region_count": 36,
+      "trace": {
+        "events": 296,
+        "prefetches": 0,
+        "prefetch_completed": 0,
+        "prefetch_skipped": 0,
+        "prefetch_errors": 0,
+        "prefetch_hits": 0,
+        "prefetch_hit_rate": 0.0,
+        "prefetch_coverage": 0.0,
+        "bytes_prefetched": 0,
+        "executions": 288,
+        "transfer_events": 8,
+        "bytes_moved": 1233231872,
+        "latency_ms_total": 25011.72869472066,
+        "latency_ms_avg": 84.49908342811034
+      },
+      "bytes_already_resident": 0,
+      "page_cache_files_dropped": 345,
+      "rss_bytes": 2828017664,
+      "gpu": {
+        "cuda": false,
+        "peak_allocated_bytes": 0,
+        "peak_reserved_bytes": 0
+      },
+      "model": "3b",
+      "model_path": "/home/adam/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "prefetch": false,
+      "run": 1,
+      "pid": 1442901
+    }
+  ]
+}
