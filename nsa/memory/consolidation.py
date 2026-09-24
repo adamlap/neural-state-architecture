@@ -124,11 +124,12 @@ class MemoryConsolidator:
 
         demoted_count = 0
         if residency_manager is not None:
-            # Demote resident regions that were not accessed recently
-            recent_regions: Set[str] = set()
-            for rec in records[-10:]:
-                if rec.receipt and rec.receipt.action_id:
-                    recent_regions.add(rec.receipt.action_id)
+            # Action IDs are not neural region IDs. Use actual execution telemetry.
+            recent_regions: Set[str] = {
+                event.region_id
+                for event in list(residency_manager.events)[-256:]
+                if event.action == "execute"
+            }
             for rid, tier in list(residency_manager.tiers.items()):
                 if tier == MemoryTier.VRAM and rid not in recent_regions and rid != residency_manager.current_region:
                     residency_manager.record_resident(rid, MemoryTier.RAM, reason="consolidation-demoted")
