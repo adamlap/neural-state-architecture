@@ -14,7 +14,7 @@ from typing import Any, Mapping, Optional, Sequence
 from nsa.core.state import CanonicalState
 from nsa.core.substrate_governance import GovernedSubstrateGovernor, SubstrateState
 from nsa.residency.manager import NeuralResidencyManager
-from nsa.residency.policy import ResidencyDecision
+from nsa.residency.policy import ResidencyDecision, ResidencyPolicy
 from nsa.residency.types import MemoryTier, ResidencySnapshot
 
 
@@ -77,8 +77,9 @@ class NeuralSubstrateCoordinator:
     ) -> None:
         self.governor = governor or GovernedSubstrateGovernor(state or CanonicalState())
         self.residency = residency or NeuralResidencyManager(
-            policy=__import__("nsa.residency.policy", fromlist=["ResidencyPolicy"]).ResidencyPolicy(
-                vram_budget_bytes=0, ram_budget_bytes=0
+            policy=ResidencyPolicy(
+                vram_budget_bytes=1024**3,
+                ram_budget_bytes=4 * 1024**3,
             )
         )
         self.precision_by_tier = dict(precision_by_tier or {
