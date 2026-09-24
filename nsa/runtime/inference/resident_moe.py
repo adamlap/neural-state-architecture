@@ -108,12 +108,25 @@ class SubstrateTransformersBackend(InferenceBackend):
             regions = build_moe_regions(config, self.model_path, spec=self.moe_spec)
         else:
             sizes = layer_sizes(config, self.model_path)
-            regions = [NeuralRegion(
-                region_id=f"layer.{i}",
-                parameter_prefixes=(f"model.layers.{i}.",),
-                size_bytes=size, layer_index=i,
-                dependencies=(f"layer.{i-1}",) if i else (),
-            ) for i, size in enumerate(sizes)]
+            regions = []
+            for i, size in enumerate(sizes):
+                half = max(1, int(size // 2))
+                regions.extend((
+                    NeuralRegion(
+                        region_id=f"layer.{i}.attn",
+                        parameter_prefixes=(f"model.layers.{i}.self_attn.",),
+                        size_bytes=half,
+                        layer_index=i,
+                        dependencies=(f"layer.{i-1}.mlp",) if i else (),
+                    ),
+                    NeuralRegion(
+                        region_id=f"layer.{i}.mlp",
+                        parameter_prefixes=(f"model.layers.{i}.mlp.",),
+                        size_bytes=size - half,
+                        layer_index=i,
+                        dependencies=(f"layer.{i}.attn",),
+                    ),
+                ))
 
         self.residency.register(regions)
 
@@ -123,11 +136,27 @@ class SubstrateTransformersBackend(InferenceBackend):
             skeleton = AutoModelForCausalLM.from_config(config, trust_remote_code=self.trust_remote_code)
         skeleton.tie_weights()
 
-        # Place shared/hot layers on execution device, cold on disk
+        # MoE uses fine-grained child mappings so router/shared weights can stay
+        # executable while cold experts are independently disk-backed. Dense
+        # models retain whole-layer placement for residual safety.
         layer_count = int(getattr(config, "num_hidden_layers", 0))
         device_map = {"model.embed_tokens": self.device, "model.norm": self.device, "lm_head": self.device}
-        for i in range(layer_count):
-            device_map[f"model.layers.{i}"] = self.device if i < self.hot_layers else "disk"
+        if self.is_moe:
+            for i in range(layer_count):
+                hot = i < self.hot_layers
+                tier = self.device if hot else "disk"
+                device_map[f"model.layers.{i}.self_attn"] = tier
+                device_map[f"model.layers.{i}.input_layernorm"] = tier
+                device_map[f"model.layers.{i}.post_attention_layernorm"] = tier
+                container = "block_sparse_moe" if "block_sparse_moe" in (self.moe_spec.expert_pattern if self.moe_spec else "") else "mlp"
+                gate = f"model.layers.{i}.{container}.gate"
+                device_map[gate] = tier
+                expert_container = f"model.layers.{i}.{container}.experts"
+                for expert in range(self.moe_spec.num_experts if self.moe_spec else 0):
+                    device_map[f"{expert_container}.{expert}"] = tier
+        else:
+            for i in range(layer_count):
+                device_map[f"model.layers.{i}"] = self.device if i < self.hot_layers else "disk"
 
         model = load_checkpoint_and_dispatch(
             skeleton, checkpoint=self.model_path, device_map=device_map,
