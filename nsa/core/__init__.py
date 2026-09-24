@@ -10,6 +10,7 @@ from nsa.core.heterogeneous_algebra import (
 )
 from nsa.core.state import CanonicalState, GoalState, HardState, ProvenanceState, SemanticState, SoftState, StateKind, StateTransition
 from nsa.core.substrate_governance import GovernedSubstrateGovernor, SubstrateState
+from nsa.core.substrate_coordinator import NeuralSubstrateCoordinator, ComputationCandidate, ResourceAllocation, SubstrateTransition
 from nsa.core.transition import TransitionProposal, TransitionReceipt, TransitionValidator, state_digest
 from nsa.core.transition_cone import TransitionCone, TransitionDirection
 from nsa.core.capabilities import CapabilityAuthority, CapabilityToken, TrustThermodynamicsVector, TrustTier
@@ -19,7 +20,7 @@ from nsa.core.state_codec import SCHEMA_VERSION, decode_state, dumps_state, enco
 __all__ = [
     "BooleanDomain", "CapabilityDomain", "ConstraintSetDomain", "EnumDomain", "HeterogeneousState", "NumericRangeDomain",
     "ProbabilityInterval", "ProbabilityIntervalDomain", "TemporalWindow", "TemporalWindowDomain", "TransitionCone",
-    "TransitionDirection", "CanonicalState", "SubstrateState", "GovernedSubstrateGovernor", "GoalState", "HardState", "ProvenanceState", "SemanticState", "SoftState",
+    "TransitionDirection", "CanonicalState", "SubstrateState", "GovernedSubstrateGovernor", "NeuralSubstrateCoordinator", "ComputationCandidate", "ResourceAllocation", "SubstrateTransition", "GoalState", "HardState", "ProvenanceState", "SemanticState", "SoftState",
     "StateKind", "StateTransition", "TransitionProposal", "TransitionReceipt", "TransitionValidator", "state_digest",
     "CapabilityAuthority", "CapabilityToken", "TrustThermodynamicsVector", "TrustTier",
     "CapabilityConstraintEvaluator", "ConstraintContext", "ConstraintDecision",
