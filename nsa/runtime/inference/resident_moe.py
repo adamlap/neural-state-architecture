@@ -157,7 +157,8 @@ class SubstrateTransformersBackend(InferenceBackend):
                 device_map[f"model.layers.{i}.post_attention_layernorm"] = shared_tier
                 router_path = self.moe_spec.router_path if self.moe_spec else "mlp.gate"
                 device_map[f"model.layers.{i}.{router_path}"] = shared_tier
-                expert_container = f"model.layers.{i}.{self.moe_spec.expert_container if self.moe_spec else "mlp.experts"}"
+                expert_path = self.moe_spec.expert_container if self.moe_spec else "mlp.experts"
+                expert_container = f"model.layers.{i}.{expert_path}"
                 for expert in range(self.moe_spec.num_experts if self.moe_spec else 0):
                     device_map[f"{expert_container}.{expert}"] = expert_tier
         else:
