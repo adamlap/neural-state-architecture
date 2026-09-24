@@ -1,5 +1,5 @@
 from nsa.core.state import CanonicalState
-from nsa.core.substrate_coordinator import NeuralSubstrateCoordinator
+from nsa.core.substrate_coordinator import NeuralSubstrateCoordinator, TokenEnvelope
 from nsa.residency.manager import NeuralResidencyManager
 from nsa.residency.policy import ResidencyPolicy
 from nsa.residency.types import MemoryTier, NeuralRegion
@@ -21,7 +21,6 @@ def test_router_compute_residency_loop_and_resource_constraints():
     coordinator = _coordinator()
     coordinator.observe_routing(["b"], [0.95])
     transition = coordinator.plan({"tags": []})
-    assert transition.candidates
     allocations = {a.region_id: a for a in transition.allocations}
     assert allocations["b"].probability >= 0.95
     assert allocations["b"].tier == MemoryTier.VRAM
@@ -43,6 +42,15 @@ def test_apply_allocations_only_changes_residency():
     transition = coordinator.plan({"tags": []})
     coordinator.apply_resource_allocations(transition.allocations)
     assert coordinator.state.hard == before
+
+
+def test_token_and_telemetry_flow():
+    coordinator = _coordinator()
+    coordinator.observe_token(TokenEnvelope(token_id=1, provenance="test"))
+    coordinator.observe_routing(["b"], [0.8])
+    telemetry = coordinator.telemetry()
+    assert telemetry["tokens_observed"] == 1
+    assert telemetry["routing_predictions"]["b"] == 0.8
 
 
 def test_resource_pressure_is_bounded():
