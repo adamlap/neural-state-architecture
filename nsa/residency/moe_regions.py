@@ -59,6 +59,8 @@ def detect_moe_spec(config: Any) -> Optional[MoEArchitectureSpec]:
         num_experts_per_tok=num_experts_per_tok,
         expert_pattern=pattern,
         has_shared_expert=has_shared,
+        expert_container="block_sparse_moe.experts" if "block_sparse_moe" in pattern else "mlp.experts",
+        router_path="block_sparse_moe.gate" if "block_sparse_moe" in pattern else "mlp.gate",
     )
 
 
