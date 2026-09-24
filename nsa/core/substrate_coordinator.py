@@ -19,6 +19,15 @@ from nsa.residency.types import MemoryTier, ResidencySnapshot
 
 
 @dataclass(frozen=True)
+class TokenEnvelope:
+    token_id: int | str
+    cognitive_state: Mapping[str, object] = field(default_factory=dict)
+    provenance: str = ""
+    authority: tuple[str, ...] = ()
+    priority: float = 1.0
+
+
+@dataclass(frozen=True)
 class ComputationCandidate:
     region_id: str
     probability: float
@@ -79,10 +88,36 @@ class NeuralSubstrateCoordinator:
         })
         self.history: list[SubstrateTransition] = []
         self._last_routing: dict[str, float] = {}
+        self._tokens: list[TokenEnvelope] = []
 
     @property
     def state(self) -> CanonicalState:
         return self.governor.state
+
+    def observe_token(self, token: TokenEnvelope) -> None:
+        """Record token-flow context without changing authority."""
+        self._tokens.append(token)
+        if len(self._tokens) > 1024:
+            self._tokens.pop(0)
+
+    def evaluate_counterfactuals(self, simulator: Any, candidates: Sequence[Any]) -> Any:
+        """Evaluate candidate actions before resource allocation or execution."""
+        return simulator.evaluate(self.state, candidates)
+
+    def consolidate_memory(self, consolidator: Any, trajectory: Any) -> Any:
+        """Run episodic-to-semantic consolidation through the existing memory subsystem."""
+        return consolidator.consolidate(trajectory, self.state, residency_manager=self.residency)
+
+    def telemetry(self) -> Mapping[str, Any]:
+        snapshot = self.residency.snapshot()
+        return {
+            "state_step": self.state.step,
+            "tokens_observed": len(self._tokens),
+            "active_region": self.residency.current_region,
+            "routing_predictions": dict(self._last_routing),
+            "residency": snapshot.to_dict(),
+            "history_steps": len(self.history),
+        }
 
     def observe_routing(
         self,
