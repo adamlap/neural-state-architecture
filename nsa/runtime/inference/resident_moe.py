@@ -146,16 +146,18 @@ class SubstrateTransformersBackend(InferenceBackend):
         if self.is_moe:
             for i in range(layer_count):
                 hot = i < self.hot_layers
-                tier = self.device if hot else "disk"
-                device_map[f"model.layers.{i}.self_attn"] = tier
-                device_map[f"model.layers.{i}.input_layernorm"] = tier
-                device_map[f"model.layers.{i}.post_attention_layernorm"] = tier
+                warm = i < self.hot_layers + self.warm_layers
+                shared_tier = self.device if hot else ("cpu" if warm else "cpu")
+                expert_tier = self.device if hot else "disk"
+                device_map[f"model.layers.{i}.self_attn"] = shared_tier
+                device_map[f"model.layers.{i}.input_layernorm"] = shared_tier
+                device_map[f"model.layers.{i}.post_attention_layernorm"] = shared_tier
                 container = "block_sparse_moe" if "block_sparse_moe" in (self.moe_spec.expert_pattern if self.moe_spec else "") else "mlp"
                 gate = f"model.layers.{i}.{container}.gate"
-                device_map[gate] = tier
+                device_map[gate] = shared_tier
                 expert_container = f"model.layers.{i}.{container}.experts"
                 for expert in range(self.moe_spec.num_experts if self.moe_spec else 0):
-                    device_map[f"{expert_container}.{expert}"] = tier
+                    device_map[f"{expert_container}.{expert}"] = expert_tier
         else:
             for i in range(layer_count):
                 device_map[f"model.layers.{i}"] = self.device if i < self.hot_layers else "disk"
