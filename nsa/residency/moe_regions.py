@@ -24,6 +24,8 @@ class MoEArchitectureSpec:
     expert_pattern: str  # regex pattern with named groups (?P<layer>\d+) and (?P<expert>\d+)
     shared_layer_pattern: str = r"^model\.layers\.(?P<layer>\d+)\.(?!.*experts\.\d+)"
     has_shared_expert: bool = False
+    expert_container: str = "mlp.experts"
+    router_path: str = "mlp.gate"
 
 
 # Known MoE architecture layouts
@@ -58,6 +60,51 @@ def detect_moe_spec(config: Any) -> Optional[MoEArchitectureSpec]:
         expert_pattern=pattern,
         has_shared_expert=has_shared,
     )
+
+
+def infer_moe_spec_from_model(config: Any, model: Any) -> Optional[MoEArchitectureSpec]:
+    """Derive MoE module paths from the instantiated model skeleton.
+
+    Configurations identify expert counts, but the module tree is authoritative
+    for router/expert placement. This keeps residency compatible with new
+    Transformers MoE architectures without model-name conditionals.
+    """
+    base = detect_moe_spec(config)
+    if base is None:
+        return None
+    layers = getattr(getattr(model, "model", None), "layers", None)
+    if layers is None:
+        return base
+
+    for layer in layers:
+        for name, module in layer.named_modules():
+            if not name.lower().endswith("experts"):
+                continue
+            indexed = [child for child, _ in module.named_children() if str(child).isdigit()]
+            if len(indexed) < 2:
+                continue
+            container = name
+            parent = container.rsplit(".experts", 1)[0]
+            router_path = base.router_path
+            owner = getattr(layer, parent.split(".")[0], None)
+            for candidate in ("gate", "router"):
+                if owner is not None and hasattr(owner, candidate):
+                    router_path = parent.split(".")[0] + "." + candidate
+                    break
+            pattern = (
+                r"^model\.layers\.(?P<layer>\d+)\."
+                + re.escape(container)
+                + r"\.(?P<expert>\d+)\."
+            )
+            return MoEArchitectureSpec(
+                num_experts=base.num_experts,
+                num_experts_per_tok=base.num_experts_per_tok,
+                expert_pattern=pattern,
+                has_shared_expert=base.has_shared_expert,
+                expert_container=container,
+                router_path=router_path,
+            )
+    return base
 
 
 def moe_expert_bytes_from_checkpoint(
