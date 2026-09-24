@@ -74,6 +74,17 @@ class LatentCognitiveField:
             timestamp=monotonic(),
         )
 
+    @staticmethod
+    def _fit_vector(value: torch.Tensor, dimension: int) -> torch.Tensor:
+        value = value.detach().to(dtype=torch.float32).reshape(-1)
+        if value.numel() == dimension:
+            return value
+        if value.numel() == 0:
+            return torch.zeros(dimension, dtype=torch.float32)
+        return torch.nn.functional.interpolate(
+            value.view(1, 1, -1), size=dimension, mode="linear", align_corners=False
+        ).reshape(-1)
+
     def tick(
         self,
         sensory_input: Optional[torch.Tensor] = None,
@@ -91,14 +102,8 @@ class LatentCognitiveField:
         rec = torch.matmul(self._W_rec, self._current_vec)
 
         # Sensory integration
-        input_term = sensory_input if sensory_input is not None else torch.zeros_like(self._current_vec)
-        if input_term.shape[-1] != self.d:
-            # Simple linear adapter if dimension doesn't match
-            input_term = torch.nn.functional.adaptive_avg_pool1d(
-                input_term.unsqueeze(0), self.d
-            ).squeeze(0)
-
-        drift_term = drift if drift is not None else torch.zeros_like(self._current_vec)
+        input_term = self._fit_vector(sensory_input, self.d) if sensory_input is not None else torch.zeros_like(self._current_vec)
+        drift_term = self._fit_vector(drift, self.d) if drift is not None else torch.zeros_like(self._current_vec)
 
         # Dynamical integration step
         updated = (1.0 - alpha - decay) * self._current_vec + alpha * (rec + input_term) + drift_term
@@ -138,11 +143,8 @@ class LatentCognitiveField:
 
     def inject_thought_perturbation(self, perturbation: torch.Tensor) -> None:
         """Inject a targeted thought or goal shift into the latent field."""
-        if perturbation.shape[-1] != self.d:
-            perturbation = torch.nn.functional.adaptive_avg_pool1d(
-                perturbation.unsqueeze(0), self.d
-            ).squeeze(0)
-        self._current_vec = self._current_vec + perturbation.detach()
+        perturbation = self._fit_vector(perturbation, self.d)
+        self._current_vec = self._current_vec + perturbation
         norm = torch.linalg.norm(self._current_vec)
         if norm > self.config.max_norm:
             self._current_vec = (self._current_vec / norm) * self.config.max_norm
