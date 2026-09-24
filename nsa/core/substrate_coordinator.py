@@ -151,7 +151,13 @@ class NeuralSubstrateCoordinator:
 
         candidates = []
         for decision in decisions:
-            probability = self.residency.scores.get(decision.region_id, 0.0)
+            # Router evidence is first-class in the closed loop: when a live
+            # router has observed a region, its probability becomes the lower
+            # bound for the computation candidate instead of being discarded
+            # by the independent residency score.
+            residency_probability = self.residency.scores.get(decision.region_id, 0.0)
+            routing_probability = self._last_routing.get(decision.region_id, 0.0)
+            probability = max(residency_probability, routing_probability)
             candidates.append(
                 ComputationCandidate(
                     region_id=decision.region_id,
