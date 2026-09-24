@@ -27,6 +27,7 @@ from nsa.residency.router_interceptor import MoERouterHook, RoutingPrediction, i
 from nsa.residency.sizing import layer_sizes
 from nsa.runtime.inference.action_parser import ActionParser
 from nsa.runtime.inference.base import BackendMode, InferenceBackend, LLMGenerationOutput
+from nsa.core.substrate_coordinator import NeuralSubstrateCoordinator
 
 
 class SubstrateTransformersBackend(InferenceBackend):
@@ -84,6 +85,7 @@ class SubstrateTransformersBackend(InferenceBackend):
         self.prefetcher: Optional[AccelerateDiskPrefetcher] = None
         self.residency_controller: Optional[ActiveResidencyController] = None
         self.router_hooks: List[MoERouterHook] = []
+        self.coordinator = NeuralSubstrateCoordinator(residency=self.residency)
 
     @staticmethod
     def _resolve_device(device: str) -> str:
@@ -209,8 +211,7 @@ class SubstrateTransformersBackend(InferenceBackend):
 
     def _on_moe_route_predicted(self, pred: RoutingPrediction) -> None:
         """Feed early router predictions directly into prefetch scheduler."""
-        if hasattr(self.residency.predictor, "observe_routing"):
-            self.residency.predictor.observe_routing(pred.selected_regions, pred.probabilities)
+        self.coordinator.observe_routing(pred.selected_regions, pred.probabilities)
         if self.residency_controller is not None:
             self.residency_controller.prefetch_async(self._active_residency_state)
 
@@ -240,9 +241,11 @@ class SubstrateTransformersBackend(InferenceBackend):
 
         assert self.model is not None and self.tokenizer is not None
         self._active_residency_state = cognitive_state_features(state)
-        decisions = self.residency.plan(self._active_residency_state)
-        for d in decisions:
-            self.residency.scores[d.region_id] = d.score
+        token_context = dict(self._active_residency_state)
+        token_context["prompt"] = prompt[:512]
+        self.coordinator.observe_token(__import__("nsa.core.substrate_coordinator", fromlist=["TokenEnvelope"]).TokenEnvelope(token_id=self.residency.current_region or 0, cognitive_state=token_context))
+        transition = self.coordinator.plan(self._active_residency_state, reason="generation-start")
+        self.coordinator.apply_resource_allocations(transition.allocations)
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
         input_device = next(self.model.parameters()).device
@@ -258,6 +261,7 @@ class SubstrateTransformersBackend(InferenceBackend):
         generated = outputs.sequences[0][inputs["input_ids"].shape[1]:]
         text = self.tokenizer.decode(generated, skip_special_tokens=True)
 
+        self.coordinator.commit_execution([self.residency.current_region] if self.residency.current_region else (), reason="generation-complete")
         return LLMGenerationOutput(
             text=text,
             tokens=generated.tolist(),
