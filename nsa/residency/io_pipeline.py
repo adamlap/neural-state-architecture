@@ -110,7 +110,8 @@ class AsyncMaterializationPipeline:
         # Stage 2: Dequantization / Unpacking (if applicable)
         if self.quantized_store is not None and self.quantized_store.contains(rid):
             dequant_start = monotonic()
-            tensors = self.quantized_store.load_region(rid)
+            dequant_future = self._dequant_executor.submit(self.quantized_store.load_region, rid)
+            tensors = dequant_future.result()
             dequant_latency = (monotonic() - dequant_start) * 1000
             if tensors is not None:
                 with self._lock:
