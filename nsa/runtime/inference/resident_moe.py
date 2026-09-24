@@ -21,7 +21,7 @@ from nsa.residency import (
 )
 from nsa.residency.accelerate_prefetch import AccelerateDiskPrefetcher
 from nsa.residency.io_pipeline import AsyncMaterializationPipeline
-from nsa.residency.moe_regions import build_moe_regions, detect_moe_spec
+from nsa.residency.moe_regions import build_moe_regions, detect_moe_spec, infer_moe_spec_from_model
 from nsa.residency.quantized_storage import QuantizedRegionStore
 from nsa.residency.router_interceptor import MoERouterHook, RoutingPrediction, instrument_dense_sublayers
 from nsa.residency.sizing import layer_sizes
@@ -102,7 +102,13 @@ class SubstrateTransformersBackend(InferenceBackend):
 
         config = AutoConfig.from_pretrained(self.model_path, trust_remote_code=self.trust_remote_code)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=self.trust_remote_code)
-        self.moe_spec = detect_moe_spec(config)
+
+        # Build the empty skeleton first: the module tree is authoritative for
+        # MoE expert/router paths, while config remains authoritative for counts.
+        with init_empty_weights():
+            skeleton = AutoModelForCausalLM.from_config(config, trust_remote_code=self.trust_remote_code)
+        skeleton.tie_weights()
+        self.moe_spec = infer_moe_spec_from_model(config, skeleton)
         self.is_moe = self.moe_spec is not None
 
         # Build regions: MoE granular regions or dense layer regions
@@ -134,9 +140,6 @@ class SubstrateTransformersBackend(InferenceBackend):
 
         # Dispatch via accelerate
         os.makedirs(self.offload_folder, exist_ok=True)
-        with init_empty_weights():
-            skeleton = AutoModelForCausalLM.from_config(config, trust_remote_code=self.trust_remote_code)
-        skeleton.tie_weights()
 
         # MoE uses fine-grained child mappings so router/shared weights can stay
         # executable while cold experts are independently disk-backed. Dense
@@ -152,10 +155,10 @@ class SubstrateTransformersBackend(InferenceBackend):
                 device_map[f"model.layers.{i}.self_attn"] = shared_tier
                 device_map[f"model.layers.{i}.input_layernorm"] = shared_tier
                 device_map[f"model.layers.{i}.post_attention_layernorm"] = shared_tier
-                container = "block_sparse_moe" if "block_sparse_moe" in (self.moe_spec.expert_pattern if self.moe_spec else "") else "mlp"
-                gate = f"model.layers.{i}.{container}.gate"
-                device_map[gate] = shared_tier
-                expert_container = f"model.layers.{i}.{container}.experts"
+                router_path = self.moe_spec.router_path if self.moe_spec else "mlp.gate"
+                device_map[f"model.layers.{i}.{router_path}"] = shared_tier
+                expert_path = self.moe_spec.expert_container if self.moe_spec else "mlp.experts"
+                expert_container = f"model.layers.{i}.{expert_path}"
                 for expert in range(self.moe_spec.num_experts if self.moe_spec else 0):
                     device_map[f"{expert_container}.{expert}"] = expert_tier
         else:
@@ -200,7 +203,15 @@ class SubstrateTransformersBackend(InferenceBackend):
             return
 
         for idx, layer in enumerate(layers):
-            gate = getattr(getattr(layer, "mlp", None), "gate", None) or getattr(getattr(layer, "block_sparse_moe", None), "gate", None)
+            gate = None
+            if self.moe_spec is not None:
+                owner = layer
+                parts = self.moe_spec.router_path.split(".")
+                for part in parts:
+                    owner = getattr(owner, part, None)
+                    if owner is None:
+                        break
+                gate = owner
             if gate is not None:
                 hook = MoERouterHook(
                     layer_index=idx,
@@ -250,7 +261,7 @@ class SubstrateTransformersBackend(InferenceBackend):
         self.coordinator.apply_resource_allocations(transition.allocations)
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
-        input_device = next(self.model.parameters()).device
+        input_device = torch.device(self.device)
         inputs = {k: v.to(input_device) for k, v in inputs.items() if k in ("input_ids", "attention_mask")}
 
         kwargs = {"max_new_tokens": max_tokens, "do_sample": temperature > 0, "return_dict_in_generate": True}

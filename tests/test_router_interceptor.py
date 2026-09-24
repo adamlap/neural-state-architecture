@@ -93,3 +93,21 @@ def test_dense_sublayer_instrumentation():
     # Check residency events recorded
     event_actions = [e.action for e in manager.events]
     assert "execute" in event_actions
+
+
+def test_moe_router_hook_uses_final_token_for_batched_logits():
+    class BatchedRouter(nn.Module):
+        def forward(self, x):
+            # Deliberately return [batch, sequence, experts].
+            out = torch.zeros(x.shape[0], x.shape[1], 4)
+            out[:, -1, 2] = 7.0
+            out[:, -1, 1] = 5.0
+            return out
+
+    routed = []
+    hook = MoERouterHook(layer_index=2, gate_module=BatchedRouter(), num_experts_per_tok=2, on_route=routed.append)
+    hook.install()
+    _ = hook.gate_module(torch.ones(2, 3, 8))
+    hook.remove()
+
+    assert routed[0].selected_regions == ("layer.2.expert.2", "layer.2.expert.1")

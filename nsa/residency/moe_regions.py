@@ -24,6 +24,8 @@ class MoEArchitectureSpec:
     expert_pattern: str  # regex pattern with named groups (?P<layer>\d+) and (?P<expert>\d+)
     shared_layer_pattern: str = r"^model\.layers\.(?P<layer>\d+)\.(?!.*experts\.\d+)"
     has_shared_expert: bool = False
+    expert_container: str = "mlp.experts"
+    router_path: str = "mlp.gate"
 
 
 # Known MoE architecture layouts
@@ -57,7 +59,54 @@ def detect_moe_spec(config: Any) -> Optional[MoEArchitectureSpec]:
         num_experts_per_tok=num_experts_per_tok,
         expert_pattern=pattern,
         has_shared_expert=has_shared,
+        expert_container="block_sparse_moe.experts" if "block_sparse_moe" in pattern else "mlp.experts",
+        router_path="block_sparse_moe.gate" if "block_sparse_moe" in pattern else "mlp.gate",
     )
+
+
+def infer_moe_spec_from_model(config: Any, model: Any) -> Optional[MoEArchitectureSpec]:
+    """Derive MoE module paths from the instantiated model skeleton.
+
+    Configurations identify expert counts, but the module tree is authoritative
+    for router/expert placement. This keeps residency compatible with new
+    Transformers MoE architectures without model-name conditionals.
+    """
+    base = detect_moe_spec(config)
+    if base is None:
+        return None
+    layers = getattr(getattr(model, "model", None), "layers", None)
+    if layers is None:
+        return base
+
+    for layer in layers:
+        for name, module in layer.named_modules():
+            if not name.lower().endswith("experts"):
+                continue
+            indexed = [child for child, _ in module.named_children() if str(child).isdigit()]
+            if len(indexed) < 2:
+                continue
+            container = name
+            parent = container.rsplit(".experts", 1)[0]
+            router_path = base.router_path
+            owner = getattr(layer, parent.split(".")[0], None)
+            for candidate in ("gate", "router"):
+                if owner is not None and hasattr(owner, candidate):
+                    router_path = parent.split(".")[0] + "." + candidate
+                    break
+            pattern = (
+                r"^model\.layers\.(?P<layer>\d+)\."
+                + re.escape(container)
+                + r"\.(?P<expert>\d+)\."
+            )
+            return MoEArchitectureSpec(
+                num_experts=base.num_experts,
+                num_experts_per_tok=base.num_experts_per_tok,
+                expert_pattern=pattern,
+                has_shared_expert=base.has_shared_expert,
+                expert_container=container,
+                router_path=router_path,
+            )
+    return base
 
 
 def moe_expert_bytes_from_checkpoint(
@@ -154,7 +203,9 @@ def build_moe_regions(
     est_shared_size = estimate_moe_shared_bytes(config, bytes_per_param)
 
     regions: List[NeuralRegion] = []
-    is_block_sparse = moe_spec and "block_sparse_moe" in moe_spec.expert_pattern
+    expert_container = moe_spec.expert_container if moe_spec else "mlp.experts"
+    parent_container = expert_container.rsplit(".experts", 1)[0]
+    router_path = moe_spec.router_path if moe_spec else "mlp.gate"
 
     for layer_idx in range(num_layers):
         shared_id = f"layer.{layer_idx}.shared"
@@ -162,7 +213,7 @@ def build_moe_regions(
             f"model.layers.{layer_idx}.input_layernorm.",
             f"model.layers.{layer_idx}.post_attention_layernorm.",
             f"model.layers.{layer_idx}.self_attn.",
-            f"model.layers.{layer_idx}.block_sparse_moe.gate." if is_block_sparse else f"model.layers.{layer_idx}.mlp.gate.",
+            f"model.layers.{layer_idx}.{router_path}.",
         )
         if moe_spec and moe_spec.has_shared_expert:
             shared_prefixes = shared_prefixes + (
@@ -181,10 +232,7 @@ def build_moe_regions(
 
         for expert_idx in range(num_experts):
             expert_id = f"layer.{layer_idx}.expert.{expert_idx}"
-            if is_block_sparse:
-                prefix = f"model.layers.{layer_idx}.block_sparse_moe.experts.{expert_idx}."
-            else:
-                prefix = f"model.layers.{layer_idx}.mlp.experts.{expert_idx}."
+            prefix = f"model.layers.{layer_idx}.{expert_container}.{expert_idx}."
 
             actual_size = expert_sizes.get((layer_idx, expert_idx), est_expert_size)
             regions.append(NeuralRegion(

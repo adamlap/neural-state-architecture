@@ -59,8 +59,12 @@ class MoERouterHook:
                 return
 
             with torch.no_grad():
-                # Extract top-k indices for the last token in sequence
-                last_token_logits = logits[-1] if logits.dim() == 2 else logits[0, -1]
+                # Routers commonly emit [batch, seq, experts], but some
+                # implementations collapse batch/sequence. Flatten all
+                # leading dimensions and consistently inspect the final token.
+                if logits.dim() < 2:
+                    return
+                last_token_logits = logits.reshape(-1, logits.shape[-1])[-1]
                 scores = torch.softmax(last_token_logits, dim=-1)
                 top_k_scores, top_k_indices = torch.topk(scores, k=min(self.num_experts_per_tok, scores.shape[-1]))
 
