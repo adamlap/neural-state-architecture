@@ -201,7 +201,9 @@ def build_moe_regions(
     est_shared_size = estimate_moe_shared_bytes(config, bytes_per_param)
 
     regions: List[NeuralRegion] = []
-    is_block_sparse = moe_spec and "block_sparse_moe" in moe_spec.expert_pattern
+    expert_container = moe_spec.expert_container if moe_spec else "mlp.experts"
+    parent_container = expert_container.rsplit(".experts", 1)[0]
+    router_path = moe_spec.router_path if moe_spec else "mlp.gate"
 
     for layer_idx in range(num_layers):
         shared_id = f"layer.{layer_idx}.shared"
@@ -209,7 +211,7 @@ def build_moe_regions(
             f"model.layers.{layer_idx}.input_layernorm.",
             f"model.layers.{layer_idx}.post_attention_layernorm.",
             f"model.layers.{layer_idx}.self_attn.",
-            f"model.layers.{layer_idx}.block_sparse_moe.gate." if is_block_sparse else f"model.layers.{layer_idx}.mlp.gate.",
+            f"model.layers.{layer_idx}.{router_path}.",
         )
         if moe_spec and moe_spec.has_shared_expert:
             shared_prefixes = shared_prefixes + (
@@ -228,10 +230,7 @@ def build_moe_regions(
 
         for expert_idx in range(num_experts):
             expert_id = f"layer.{layer_idx}.expert.{expert_idx}"
-            if is_block_sparse:
-                prefix = f"model.layers.{layer_idx}.block_sparse_moe.experts.{expert_idx}."
-            else:
-                prefix = f"model.layers.{layer_idx}.mlp.experts.{expert_idx}."
+            prefix = f"model.layers.{layer_idx}.{expert_container}.{expert_idx}."
 
             actual_size = expert_sizes.get((layer_idx, expert_idx), est_expert_size)
             regions.append(NeuralRegion(
