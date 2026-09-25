@@ -1,9 +1,4 @@
-"""Checkpoint-index inspection without loading model weights.
-
-The planner understands the public Safetensors index format and converts tensor
-metadata into logical residency records. It intentionally performs no I/O
-against the tensor payloads, making it suitable for very large checkpoints.
-"""
+"""Checkpoint-index inspection without loading model weights."""
 
 from __future__ import annotations
 
@@ -47,19 +42,20 @@ def _dtype_size(dtype: str) -> int:
 
 
 def _tensor_region(name: str) -> str:
-    if name.startswith("model.embed_tokens."):
+    if ".embed_tokens." in name or name.startswith("model.embed_tokens."):
         return "embeddings"
     if ".layers." in name:
         tail = name.split(".layers.", 1)[1]
         index = tail.split(".", 1)[0]
-        return f"layer.{index}"
-    if name.startswith("model.norm.") or name.startswith("model.rotary_emb."):
+        if index.isdigit():
+            return f"layer.{index}"
+    if ".language_model.norm." in name or name.startswith("model.norm."):
         return "model_state"
     if name.startswith("lm_head."):
         return "lm_head"
-    if name.startswith("visual."):
+    if name.startswith("visual.") or name.startswith("model.visual."):
         return "vision"
-    if name.startswith("mtp."):
+    if name.startswith("mtp.") or name.startswith("model.mtp."):
         return "mtp"
     return "other"
 
@@ -72,22 +68,18 @@ def load_safetensors_index(path: str | Path) -> WeightIndex:
     if not isinstance(weight_map, dict):
         raise ValueError("missing weight_map in safetensors index")
 
-    tensors: list[TensorRegion] = []
-    for name, shard in weight_map.items():
-        # The index records dtype/shape in some exporters, but not all.  When
-        # absent we retain a zero-byte placeholder rather than guessing.
-        metadata = data.get("metadata", {})
-        _ = metadata
-        tensors.append(TensorRegion(
+    tensors = tuple(
+        TensorRegion(
             name=name,
             shard=str(shard),
             parameter_bytes=0,
             shape=(),
             dtype="unknown",
             region=_tensor_region(name),
-        ))
-
-    return WeightIndex(tuple(tensors), {})
+        )
+        for name, shard in weight_map.items()
+    )
+    return WeightIndex(tensors, {})
 
 
 def from_tensor_metadata(
