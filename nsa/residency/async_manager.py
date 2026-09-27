@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Any, Awaitable, Callable, Mapping
+from typing import Any, Callable, Mapping
 
 from .residency_policy import NextUseEvictionPolicy, ResidentEntry
 
@@ -17,8 +18,10 @@ class ResidencyMetrics:
     misses: int = 0
     prefetches: int = 0
     cancelled_prefetches: int = 0
+    failed_prefetches: int = 0
     evictions: int = 0
     bytes_loaded: int = 0
+    load_errors: int = 0
     load_seconds: float = 0.0
 
     @property
@@ -34,17 +37,12 @@ class _Resident:
     next_use: int | None = None
 
 
-Loader = Callable[[str], Awaitable[Any] | Any]
+Loader = Callable[[str], Any]
 Sizer = Callable[[str], int]
 
 
 class AsyncResidencyManager:
-    """Coordinate loading, caching, prefetching and eviction.
-
-    The manager owns policy and lifecycle only. A loader may use filesystem,
-    NVMe, DMA, GPU APIs, NPU APIs, or another transport without changing this
-    component.
-    """
+    """Coordinate loading, caching, prefetching and eviction."""
 
     def __init__(
         self,
@@ -74,35 +72,38 @@ class AsyncResidencyManager:
 
     def _entries(self) -> Mapping[str, ResidentEntry]:
         return {
-            name: ResidentEntry(
-                name,
-                item.size_bytes,
-                item.next_use,
-                item.priority,
-            )
+            name: ResidentEntry(name, item.size_bytes, item.next_use, item.priority)
             for name, item in self._resident.items()
         }
 
     async def _load(self, region: str) -> Any:
         async with self._load_slots:
             started = perf_counter()
-            result = self.loader(region)
-            if asyncio.iscoroutine(result) or isinstance(result, Awaitable):
-                result = await result
-            self.metrics.load_seconds += perf_counter() - started
-            self.metrics.bytes_loaded += self.size_of(region)
-            return result
+            try:
+                result = self.loader(region)
+                if inspect.isawaitable(result):
+                    result = await result
+                self.metrics.bytes_loaded += self.size_of(region)
+                return result
+            except Exception:
+                self.metrics.load_errors += 1
+                raise
+            finally:
+                self.metrics.load_seconds += perf_counter() - started
 
     async def _ensure_capacity(self, required: int, protected: set[str]) -> None:
+        if required > self.capacity_bytes:
+            raise MemoryError(
+                f"region requires {required} bytes but residency budget is "
+                f"{self.capacity_bytes} bytes"
+            )
         while self.resident_bytes + required > self.capacity_bytes:
             candidates = {
                 name: entry
                 for name, entry in self._entries().items()
                 if name not in protected
             }
-            victim = self.policy.choose_victim(
-                candidates, required, self.capacity_bytes
-            )
+            victim = self.policy.choose_victim(candidates, required, self.capacity_bytes)
             if victim is None:
                 raise MemoryError(
                     f"cannot admit region requiring {required} bytes into "
@@ -111,13 +112,7 @@ class AsyncResidencyManager:
             self._resident.pop(victim, None)
             self.metrics.evictions += 1
 
-    async def get(
-        self,
-        region: str,
-        *,
-        priority: float = 0.0,
-        next_use: int | None = None,
-    ) -> Any:
+    async def get(self, region: str, *, priority: float = 0.0, next_use: int | None = None) -> Any:
         async with self._lock:
             self.metrics.requests += 1
             cached = self._resident.get(region)
@@ -127,7 +122,6 @@ class AsyncResidencyManager:
                 self.metrics.hits += 1
                 return cached.value
             self.metrics.misses += 1
-
             task = self._inflight.get(region)
             if task is None:
                 task = asyncio.create_task(self._load(region))
@@ -135,8 +129,6 @@ class AsyncResidencyManager:
 
         try:
             value = await task
-        except asyncio.CancelledError:
-            raise
         finally:
             async with self._lock:
                 if self._inflight.get(region) is task:
@@ -164,9 +156,10 @@ class AsyncResidencyManager:
                     async with self._lock:
                         await self._ensure_capacity(size, set())
                         self._resident[name] = _Resident(value, size)
-                except (asyncio.CancelledError, MemoryError):
-                    if pending.cancelled():
-                        self.metrics.cancelled_prefetches += 1
+                except asyncio.CancelledError:
+                    self.metrics.cancelled_prefetches += 1
+                except Exception:
+                    self.metrics.failed_prefetches += 1
                 finally:
                     async with self._lock:
                         if self._inflight.get(name) is pending:
@@ -176,11 +169,15 @@ class AsyncResidencyManager:
 
     async def evict(self, region: str) -> bool:
         async with self._lock:
-            return self._resident.pop(region, None) is not None
+            removed = self._resident.pop(region, None)
+            if removed is None:
+                return False
+            self.metrics.evictions += 1
+            return True
 
     async def clear(self) -> None:
         async with self._lock:
-            for task in self._inflight.values():
+            for task in tuple(self._inflight.values()):
                 task.cancel()
             self._inflight.clear()
             self._resident.clear()
