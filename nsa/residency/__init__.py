@@ -15,8 +15,12 @@ from nsa.residency.execution_graph import ExecutionGraph, ExecutionGraphRunner, 
 from nsa.residency.model_execution import compile_execution_graph, compile_residency_regions
 from nsa.residency.model_plan import ModelResidencyPlan, build_model_residency_plan
 from nsa.residency.model_streaming import ModelStreamingExecutor, StreamingRunMetrics
+from nsa.residency.model_analysis import ResidencyAnalysis, analyze_plan, qwen3_5_residency_summary
 from nsa.residency.async_manager import AsyncResidencyManager, ResidencyMetrics
-from nsa.residency.quantization import QuantizationSpec, QuantizedTensor, QuantizedMaterializer
+from nsa.residency.quantization import (
+    QuantizationSpec, QuantizedTensor, QuantizedMaterializer,
+    QuantizationRegistry, quantization_spec_from_config,
+)
 from nsa.residency.admission import AdmissionDecision, ResidencyAdmission
 from nsa.residency.safetensors_metadata import inspect_safetensors_metadata
 from nsa.residency.tiered_store import RegionSource, TieredRegionStore, WeightIndexSource
@@ -31,7 +35,9 @@ __all__ = [
     "ExecutionGraph", "ExecutionGraphRunner", "ExecutionMetrics", "ExecutionOp",
     "compile_execution_graph", "compile_residency_regions", "ModelResidencyPlan", "build_model_residency_plan",
     "ModelStreamingExecutor", "StreamingRunMetrics",
+    "ResidencyAnalysis", "analyze_plan", "qwen3_5_residency_summary",
     "AsyncResidencyManager", "ResidencyMetrics", "QuantizationSpec", "QuantizedTensor",
-    "QuantizedMaterializer", "AdmissionDecision", "ResidencyAdmission",
+    "QuantizedMaterializer", "QuantizationRegistry", "quantization_spec_from_config",
+    "AdmissionDecision", "ResidencyAdmission",
     "inspect_safetensors_metadata", "RegionSource", "TieredRegionStore", "WeightIndexSource",
 ]
