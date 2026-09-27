@@ -13,6 +13,7 @@ from nsa.residency.accelerate_prefetch import AccelerateDiskPrefetcher
 from nsa.residency.execution_backend import CpuBackend, DeviceBuffer, DeviceInfo, ExecutionBackend, TransferMetrics, value_nbytes
 from nsa.residency.execution_graph import ExecutionGraph, ExecutionGraphRunner, ExecutionMetrics, ExecutionOp
 from nsa.residency.model_execution import compile_execution_graph, compile_residency_regions
+from nsa.residency.model_plan import ModelResidencyPlan, build_model_residency_plan
 from nsa.residency.async_manager import AsyncResidencyManager, ResidencyMetrics
 from nsa.residency.quantization import QuantizationSpec, QuantizedTensor, QuantizedMaterializer
 from nsa.residency.admission import AdmissionDecision, ResidencyAdmission
@@ -27,7 +28,8 @@ __all__ = [
     "OnlineResidencyPredictor", "ResidencyTrace", "AccelerateDiskPrefetcher",
     "CpuBackend", "DeviceBuffer", "DeviceInfo", "ExecutionBackend", "TransferMetrics", "value_nbytes",
     "ExecutionGraph", "ExecutionGraphRunner", "ExecutionMetrics", "ExecutionOp",
-    "compile_execution_graph", "compile_residency_regions", "AsyncResidencyManager", "ResidencyMetrics",
-    "QuantizationSpec", "QuantizedTensor", "QuantizedMaterializer", "AdmissionDecision", "ResidencyAdmission",
+    "compile_execution_graph", "compile_residency_regions", "ModelResidencyPlan", "build_model_residency_plan",
+    "AsyncResidencyManager", "ResidencyMetrics", "QuantizationSpec", "QuantizedTensor",
+    "QuantizedMaterializer", "AdmissionDecision", "ResidencyAdmission",
     "inspect_safetensors_metadata", "RegionSource", "TieredRegionStore", "WeightIndexSource",
 ]
