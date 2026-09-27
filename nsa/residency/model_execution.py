@@ -16,8 +16,20 @@ def _layer_types(config: Mapping[str, Any]) -> list[str]:
     count = int(text.get("num_hidden_layers", 0))
     interval = int(text.get("full_attention_interval", 0))
     if interval > 0:
-        return ["full_attention" if (i + 1) % interval == 0 else "linear_attention" for i in range(count)]
+        return [
+            "full_attention" if (i + 1) % interval == 0 else "linear_attention"
+            for i in range(count)
+        ]
     return ["transformer"] * count
+
+
+def _kind(layer_type: str) -> str:
+    lowered = layer_type.lower()
+    if "linear" in lowered or "deltanet" in lowered:
+        return "linear_attention"
+    if "full" in lowered or "attention" in lowered:
+        return "full_attention"
+    return "transformer"
 
 
 def compile_residency_regions(
@@ -42,42 +54,36 @@ def compile_residency_regions(
             semantic_tags=("embedding",),
         )
     ]
+
     for index, layer_type in enumerate(layer_types):
-        kind = "linear_attention" if "linear" in layer_type.lower() or "deltanet" in layer_type.lower() else (
-            "full_attention" if "full" in layer_type.lower() else "transformer"
-        )
+        kind = _kind(layer_type)
         weight_id = f"layer.{index}.weights"
-        state_id = f"layer.{index}.state"
         regions.append(
             NeuralRegion(
                 weight_id,
-                parameter_prefixes=(f"model.layers.{index}", f"model.language_model.layers.{index}"),
+                parameter_prefixes=(
+                    f"model.layers.{index}",
+                    f"model.language_model.layers.{index}",
+                ),
                 size_bytes=int(sizes.get(weight_id, 0)),
                 layer_index=index,
                 semantic_tags=(kind, "weights"),
                 dependencies=((f"layer.{index - 1}.weights",) if index else ()),
             )
         )
-        if kind == "linear_attention":
+        if kind in {"linear_attention", "full_attention"}:
+            state_id = f"layer.{index}.state"
+            state_tag = "persistent_state" if kind == "linear_attention" else "kv_state"
             regions.append(
                 NeuralRegion(
                     state_id,
                     size_bytes=int(sizes.get(state_id, 0)),
                     layer_index=index,
-                    semantic_tags=("linear_attention", "persistent_state"),
+                    semantic_tags=(kind, state_tag),
                     dependencies=(weight_id,),
                 )
             )
-        elif kind == "full_attention":
-            regions.append(
-                NeuralRegion(
-                    state_id,
-                    size_bytes=int(sizes.get(state_id, 0)),
-                    layer_index=index,
-                    semantic_tags=("full_attention", "kv_state"),
-                    dependencies=(weight_id,),
-                )
-            )
+
     regions.append(
         NeuralRegion(
             "lm_head",
@@ -103,7 +109,7 @@ def compile_residency_regions(
                 parameter_prefixes=("mtp", "model.mtp"),
                 size_bytes=int(sizes.get("mtp", 0)),
                 semantic_tags=("mtp",),
-                dependencies=(("lm_head",) if "lm_head" in {r.region_id for r in regions} else ()),
+                dependencies=(("lm_head",) if layer_types else ()),
             )
         )
     return tuple(regions)
@@ -113,34 +119,40 @@ def compile_execution_graph(config: Mapping[str, Any]) -> ExecutionGraph:
     """Compile one decoder-token execution path from model configuration."""
     layer_types = _layer_types(config)
     graph = ExecutionGraph()
-    previous = None
-
-    graph.add(ExecutionOp(
-        "embed",
-        "embedding",
-        output="hidden",
-        required_regions=("embeddings",),
-        metadata={"architecture": config.get("model_type", "")},
-    ))
     previous = "embed"
 
+    graph.add(
+        ExecutionOp(
+            "embed",
+            "embedding",
+            output="hidden",
+            required_regions=("embeddings",),
+            metadata={"architecture": config.get("model_type", "")},
+        )
+    )
+
     for index, layer_type in enumerate(layer_types):
+        kind = _kind(layer_type)
         weight = f"layer.{index}.weights"
-        state = f"layer.{index}.state"
-        op_id = f"layer.{index}"
+        required = [weight]
+        persistent: list[str] = []
+        if kind in {"linear_attention", "full_attention"}:
+            state = f"layer.{index}.state"
+            required.append(state)
+            persistent.append(state)
         graph.add(
             ExecutionOp(
-                op_id,
-                "linear_attention" if "linear" in layer_type.lower() or "deltanet" in layer_type.lower() else "attention",
+                f"layer.{index}",
+                kind,
                 inputs=("hidden",),
                 output="hidden",
-                required_regions=(weight, state),
-                persistent_regions=(state,),
+                required_regions=tuple(required),
+                persistent_regions=tuple(persistent),
                 depends_on=(previous,),
                 metadata={"layer_index": index, "layer_type": layer_type},
             )
         )
-        previous = op_id
+        previous = f"layer.{index}"
 
     graph.add(
         ExecutionOp(
@@ -149,7 +161,7 @@ def compile_execution_graph(config: Mapping[str, Any]) -> ExecutionGraph:
             inputs=("hidden",),
             output="logits",
             required_regions=("lm_head",),
-            depends_on=((previous,) if previous else ("embed",)),
+            depends_on=(previous,),
         )
     )
     return graph
