@@ -25,4 +25,7 @@ def test_hardware_plan_is_independent_of_model_architecture():
 
     assert result.requires_streaming is True
     assert result.supported_quantization == "int4"
-    assert result.analysis.fits_peak_budget is False
+    # Peak execution residency is the largest operation requirement (20B),
+    # which fits inside the 25B hot-memory budget even though the full model
+    # (62B) does not.
+    assert result.analysis.fits_peak_budget is True
