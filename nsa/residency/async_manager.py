@@ -63,6 +63,7 @@ class AsyncResidencyManager:
         self.metrics = ResidencyMetrics()
         self._resident: dict[str, _Resident] = {}
         self._inflight: dict[str, asyncio.Task[Any]] = {}
+        self._background: set[asyncio.Task[Any]] = set()
         self._lock = asyncio.Lock()
         self._load_slots = asyncio.Semaphore(max_concurrent_loads)
 
@@ -140,6 +141,22 @@ class AsyncResidencyManager:
             self._resident[region] = _Resident(value, size, priority, next_use)
         return value
 
+    async def _finish_prefetch(self, name: str, pending: asyncio.Task[Any]) -> None:
+        try:
+            value = await pending
+            size = self.size_of(name)
+            async with self._lock:
+                await self._ensure_capacity(size, set())
+                self._resident[name] = _Resident(value, size)
+        except asyncio.CancelledError:
+            self.metrics.cancelled_prefetches += 1
+        except Exception:
+            self.metrics.failed_prefetches += 1
+        finally:
+            async with self._lock:
+                if self._inflight.get(name) is pending:
+                    self._inflight.pop(name, None)
+
     async def prefetch(self, regions: list[str]) -> None:
         for region in regions:
             async with self._lock:
@@ -148,24 +165,15 @@ class AsyncResidencyManager:
                 task = asyncio.create_task(self._load(region))
                 self._inflight[region] = task
                 self.metrics.prefetches += 1
+                background = asyncio.create_task(self._finish_prefetch(region, task))
+                self._background.add(background)
+                background.add_done_callback(self._background.discard)
 
-            async def finish(name: str, pending: asyncio.Task[Any]) -> None:
-                try:
-                    value = await pending
-                    size = self.size_of(name)
-                    async with self._lock:
-                        await self._ensure_capacity(size, set())
-                        self._resident[name] = _Resident(value, size)
-                except asyncio.CancelledError:
-                    self.metrics.cancelled_prefetches += 1
-                except Exception:
-                    self.metrics.failed_prefetches += 1
-                finally:
-                    async with self._lock:
-                        if self._inflight.get(name) is pending:
-                            self._inflight.pop(name, None)
-
-            asyncio.create_task(finish(region, task))
+    async def drain_prefetches(self) -> None:
+        """Wait for currently scheduled prefetches to settle."""
+        tasks = tuple(self._background)
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     async def evict(self, region: str) -> bool:
         async with self._lock:
@@ -177,7 +185,16 @@ class AsyncResidencyManager:
 
     async def clear(self) -> None:
         async with self._lock:
-            for task in tuple(self._inflight.values()):
+            tasks = tuple(self._inflight.values())
+            for task in tasks:
                 task.cancel()
             self._inflight.clear()
             self._resident.clear()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        background = tuple(self._background)
+        for task in background:
+            task.cancel()
+        if background:
+            await asyncio.gather(*background, return_exceptions=True)
+        self._background.clear()
