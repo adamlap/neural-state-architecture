@@ -18,15 +18,15 @@ class StreamingRunMetrics:
     operation_seconds: float = 0.0
     region_seconds: float = 0.0
     explicit_evictions: int = 0
+    device_moves: int = 0
 
 
 class ModelStreamingExecutor:
     """Run a model plan while keeping only the graph working set resident.
 
     The executor deliberately knows nothing about CPU/GPU/NPU mechanics. It
-    delegates computation to an ExecutionBackend and residency to a bounded
-    store. Non-persistent regions are released after their last use, allowing
-    the same model plan to run under different hardware memory budgets.
+    delegates storage to a bounded residency store and computation/transfers
+    to an ExecutionBackend.
     """
 
     def __init__(
@@ -76,7 +76,11 @@ class ModelStreamingExecutor:
                 )
                 self.metrics.region_seconds += perf_counter() - region_started
                 self.metrics.region_requests += len(op.required_regions)
-                regions = dict(zip(op.required_regions, loaded))
+                regions = {}
+                for region, value in zip(op.required_regions, loaded):
+                    moved = self.backend.move(value, self.device)
+                    self.metrics.device_moves += 1
+                    regions[region] = moved
             else:
                 regions = {}
 
