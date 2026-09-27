@@ -27,8 +27,8 @@ jobs:
       matrix:
         seed: [1, 7, 21, 42]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: pip install -e '.[dev,research]'
@@ -61,7 +61,7 @@ jobs:
         run: |
           echo '## Transition-level cost — seed ${{ matrix.seed }}' >> "$GITHUB_STEP_SUMMARY"
           cat results/transition-cost-${{ matrix.seed }}.json >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: transition-cost-seed-${{ matrix.seed }}
           path: results/transition-cost-${{ matrix.seed }}.json
