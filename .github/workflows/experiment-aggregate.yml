@@ -15,8 +15,8 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: pip install -e '.[dev,research]'
@@ -44,7 +44,7 @@ jobs:
         run: |
           PYTHONPATH=. python -m experiments.common.aggregate results/recovery --output results/recovery-aggregate.json
       - name: Upload aggregate results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nsa-recovery-aggregate
           path: results/recovery-aggregate.json
