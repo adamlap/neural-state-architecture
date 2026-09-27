@@ -75,13 +75,24 @@ def compile_residency_regions(
                     dependencies=(weight_id,),
                 )
             )
+
+    last_weight = f"layer.{len(layer_types) - 1}.weights" if layer_types else "embeddings"
+    regions.append(
+        NeuralRegion(
+            "model_state",
+            ("model.norm", "model.language_model.norm"),
+            int(sizes.get("model_state", 0)),
+            semantic_tags=("model_state",),
+            dependencies=(last_weight,),
+        )
+    )
     regions.append(
         NeuralRegion(
             "lm_head",
             ("lm_head", "model.lm_head"),
             int(sizes.get("lm_head", 0)),
             semantic_tags=("output",),
-            dependencies=((f"layer.{len(layer_types) - 1}.weights",) if layer_types else ()),
+            dependencies=("model_state",),
         )
     )
     if "vision_config" in config:
@@ -92,6 +103,10 @@ def compile_residency_regions(
         regions.append(
             NeuralRegion("mtp", ("mtp", "model.mtp"), int(sizes.get("mtp", 0)),
                          semantic_tags=("mtp",), dependencies=("lm_head",))
+        )
+    if int(sizes.get("other", 0)):
+        regions.append(
+            NeuralRegion("other", size_bytes=int(sizes["other"]), semantic_tags=("auxiliary",))
         )
     return tuple(regions)
 
@@ -124,6 +139,6 @@ def compile_execution_graph(config: Mapping[str, Any]) -> ExecutionGraph:
         previous = f"layer.{index}"
     graph.add(
         ExecutionOp("lm_head", "lm_head", inputs=("hidden",), output="logits",
-                    required_regions=("lm_head",), depends_on=(previous,))
+                    required_regions=("model_state", "lm_head"), depends_on=(previous,))
     )
     return graph
