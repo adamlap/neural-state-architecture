@@ -19,6 +19,8 @@ from nsa.residency.model_analysis import ResidencyAnalysis, analyze_plan, qwen3_
 from nsa.residency.hardware_planner import HardwarePlan, HardwareProfile, plan_for_hardware
 from nsa.residency.materialization import MaterializationMetrics, RegionMaterializer
 from nsa.residency.checkpoint import load_checkpoint_plan
+from nsa.residency.range_store import ByteRangeSource, LocalRangeSource, MmapRangeSource, HttpRangeSource, TensorRangeStore
+from nsa.residency.packed_kernels import unpack_unsigned, unpack_signed, unpack_ternary, int4_linear_reference
 from nsa.residency.async_manager import AsyncResidencyManager, ResidencyMetrics
 from nsa.residency.quantization import (
     QuantizationSpec, QuantizedTensor, QuantizedMaterializer,
@@ -41,6 +43,8 @@ __all__ = [
     "ResidencyAnalysis", "analyze_plan", "qwen3_5_residency_summary",
     "HardwarePlan", "HardwareProfile", "plan_for_hardware",
     "MaterializationMetrics", "RegionMaterializer", "load_checkpoint_plan",
+    "ByteRangeSource", "LocalRangeSource", "MmapRangeSource", "HttpRangeSource", "TensorRangeStore",
+    "unpack_unsigned", "unpack_signed", "unpack_ternary", "int4_linear_reference",
     "AsyncResidencyManager", "ResidencyMetrics", "QuantizationSpec", "QuantizedTensor",
     "QuantizedMaterializer", "QuantizationRegistry", "quantization_spec_from_config",
     "AdmissionDecision", "ResidencyAdmission",
