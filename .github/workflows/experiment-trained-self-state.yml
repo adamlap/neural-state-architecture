@@ -23,8 +23,8 @@ jobs:
       matrix:
         seed: [1, 7, 21, 42]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: pip install -e '.[dev,research]'
@@ -57,7 +57,7 @@ jobs:
           echo '```json' >> "$GITHUB_STEP_SUMMARY"
           cat results/trained-self-state-${{ matrix.seed }}.json >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: trained-self-state-seed-${{ matrix.seed }}
           path: results/trained-self-state-${{ matrix.seed }}.json
@@ -65,8 +65,8 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: pip install -e '.[dev,research]'
