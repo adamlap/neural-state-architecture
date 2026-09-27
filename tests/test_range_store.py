@@ -12,7 +12,7 @@ def test_local_range_store_reads_only_tensor_payload(tmp_path):
         TensorRegion("a", path.name, 4, (4,), "U8", "layer.0", 6),
         TensorRegion("b", path.name, 6, (6,), "U8", "layer.0", 10),
     ), {path.name: path.stat().st_size})
-    store = TensorRangeStore(index, LocalRangeSource())
+    store = TensorRangeStore(index, LocalRangeSource(tmp_path))
 
     loaded = asyncio.run(store.load_region_bytes("layer.0"))
 
@@ -25,6 +25,6 @@ def test_mmap_range_store_reads_exact_range(tmp_path):
     index = WeightIndex((
         TensorRegion("a", path.name, 3, (3,), "U8", "layer.0", 4),
     ), {path.name: 10})
-    store = TensorRangeStore(index, MmapRangeSource())
+    store = TensorRangeStore(index, MmapRangeSource(tmp_path))
 
     assert asyncio.run(store.load_tensor_bytes(index.tensors[0])) == b"456"
