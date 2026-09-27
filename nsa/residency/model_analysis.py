@@ -46,19 +46,35 @@ def analyze_plan(
     )
 
 
+def _layer_types_for_summary(text: Mapping[str, Any]) -> list[str]:
+    explicit = text.get("layer_types")
+    if explicit:
+        return [str(x) for x in explicit]
+
+    count = int(text.get("num_hidden_layers", 0))
+    interval = int(text.get("full_attention_interval", 0))
+    if interval > 0:
+        return [
+            "full_attention" if (index + 1) % interval == 0 else "linear_attention"
+            for index in range(count)
+        ]
+    return ["transformer"] * count
+
+
 def qwen3_5_residency_summary(
     config: Mapping[str, Any],
     plan: ModelResidencyPlan,
 ) -> dict[str, Any]:
     """Return architecture facts without making Qwen-specific runtime decisions."""
     text = config.get("text_config", config)
-    layers = int(text.get("num_hidden_layers", 0))
+    layer_types = _layer_types_for_summary(text)
+    layers = int(text.get("num_hidden_layers", len(layer_types)))
     linear = sum(
-        1 for x in text.get("layer_types", [])
+        1 for x in layer_types
         if "linear" in str(x).lower() or "deltanet" in str(x).lower()
     )
     full = sum(
-        1 for x in text.get("layer_types", [])
+        1 for x in layer_types
         if "full" in str(x).lower() or "attention" in str(x).lower()
     )
     return {
