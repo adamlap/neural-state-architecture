@@ -75,7 +75,8 @@ def qwen3_5_residency_summary(
     )
     full = sum(
         1 for x in layer_types
-        if "full" in str(x).lower() or "attention" in str(x).lower()
+        if "full" in str(x).lower()
+        or ("attention" in str(x).lower() and "linear" not in str(x).lower() and "deltanet" not in str(x).lower())
     )
     return {
         "model_type": config.get("model_type", text.get("model_type", "")),
