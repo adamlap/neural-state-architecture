@@ -30,6 +30,13 @@ class WeightIndex:
     def regions(self) -> tuple[str, ...]:
         return tuple(dict.fromkeys(t.region for t in self.tensors))
 
+    def region_sizes(self) -> dict[str, int]:
+        """Aggregate exact tensor bytes by logical region."""
+        sizes: dict[str, int] = {}
+        for tensor in self.tensors:
+            sizes[tensor.region] = sizes.get(tensor.region, 0) + tensor.parameter_bytes
+        return sizes
+
 
 def _dtype_size(dtype: str) -> int:
     sizes = {
@@ -62,12 +69,10 @@ def _tensor_region(name: str) -> str:
 
 def load_safetensors_index(path: str | Path) -> WeightIndex:
     """Parse model.safetensors.index.json without opening any weight shard."""
-
     data: dict[str, Any] = json.loads(Path(path).read_text(encoding="utf-8"))
     weight_map = data.get("weight_map")
     if not isinstance(weight_map, dict):
         raise ValueError("missing weight_map in safetensors index")
-
     tensors = tuple(
         TensorRegion(
             name=name,
@@ -88,14 +93,13 @@ def from_tensor_metadata(
     shard_sizes: dict[str, int] | None = None,
 ) -> WeightIndex:
     """Build a complete index when tensor header metadata is available."""
-
     weight_map = index_data.get("weight_map", {})
     tensors: list[TensorRegion] = []
     for name, shard in weight_map.items():
         meta = tensor_metadata.get(name, {})
-        dtype = str(meta.get("dtype", "unknown"))
+        dtype = str(meta.get("dtype", "unknown")).upper()
         shape = tuple(int(v) for v in meta.get("shape", ()))
-        if dtype == "unknown":
+        if dtype == "UNKNOWN":
             size = int(meta.get("parameter_bytes", 0))
         else:
             size = 1
@@ -103,11 +107,7 @@ def from_tensor_metadata(
                 size *= dimension
             size *= _dtype_size(dtype)
         tensors.append(TensorRegion(
-            name=name,
-            shard=str(shard),
-            parameter_bytes=size,
-            shape=shape,
-            dtype=dtype,
-            region=_tensor_region(name),
+            name=name, shard=str(shard), parameter_bytes=size, shape=shape,
+            dtype=dtype, region=_tensor_region(name),
         ))
     return WeightIndex(tuple(tensors), dict(shard_sizes or {}))
