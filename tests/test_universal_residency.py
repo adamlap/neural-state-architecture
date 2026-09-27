@@ -37,7 +37,7 @@ def test_profile_model_topology_is_ordered_and_bounded():
     ]
     assert plan.storage_bytes > 0
     assert plan.working_set_bytes == max(r.parameter_bytes for r in plan.regions)
-    assert plan.regions[2].dependencies == ("layer.1",)
+    assert plan.regions[2].dependencies == ("layer.0",)
 
 
 def test_streaming_executor_never_exceeds_region_budget():
