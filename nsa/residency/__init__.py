@@ -10,7 +10,7 @@ from nsa.residency.cognitive import cognitive_state_features
 from nsa.residency.learned import OnlineResidencyPredictor
 from nsa.residency.trace import ResidencyTrace
 from nsa.residency.accelerate_prefetch import AccelerateDiskPrefetcher
-from nsa.residency.execution_backend import CpuBackend, DeviceInfo, ExecutionBackend
+from nsa.residency.execution_backend import CpuBackend, DeviceBuffer, DeviceInfo, ExecutionBackend, TransferMetrics, value_nbytes
 from nsa.residency.execution_graph import ExecutionGraph, ExecutionGraphRunner, ExecutionMetrics, ExecutionOp
 from nsa.residency.model_execution import compile_execution_graph, compile_residency_regions
 from nsa.residency.async_manager import AsyncResidencyManager, ResidencyMetrics
@@ -23,8 +23,8 @@ __all__ = [
     "HeuristicResidencyPredictor", "NeuralResidencyManager", "instrument_decoder_layers",
     "ActiveResidencyController", "PrefetchTask", "cognitive_state_features",
     "OnlineResidencyPredictor", "ResidencyTrace", "AccelerateDiskPrefetcher",
-    "CpuBackend", "DeviceInfo", "ExecutionBackend", "ExecutionGraph", "ExecutionGraphRunner",
-    "ExecutionMetrics", "ExecutionOp", "compile_execution_graph", "compile_residency_regions",
-    "AsyncResidencyManager", "ResidencyMetrics", "QuantizationSpec", "QuantizedTensor",
-    "QuantizedMaterializer", "AdmissionDecision", "ResidencyAdmission",
+    "CpuBackend", "DeviceBuffer", "DeviceInfo", "ExecutionBackend", "TransferMetrics", "value_nbytes",
+    "ExecutionGraph", "ExecutionGraphRunner", "ExecutionMetrics", "ExecutionOp",
+    "compile_execution_graph", "compile_residency_regions", "AsyncResidencyManager", "ResidencyMetrics",
+    "QuantizationSpec", "QuantizedTensor", "QuantizedMaterializer", "AdmissionDecision", "ResidencyAdmission",
 ]
