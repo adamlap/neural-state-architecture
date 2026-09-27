@@ -58,11 +58,7 @@ class ModelStreamingExecutor:
                 uses[region] = uses.get(region, 0) + 1
         return uses
 
-    async def _prefetch_next(
-        self,
-        operations: tuple[Any, ...],
-        index: int,
-    ) -> None:
+    async def _prefetch_next(self, operations: tuple[Any, ...], index: int) -> None:
         if self.prefetcher is None or index + 1 >= len(operations):
             return
         current = operations[index]
@@ -76,10 +72,7 @@ class ModelStreamingExecutor:
                 self.prefetcher.observe(previous, decision.region)
             await self.residency.prefetch([decision.region for decision in decisions])
 
-    async def run(
-        self,
-        values: Mapping[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    async def run(self, values: Mapping[str, Any] | None = None) -> dict[str, Any]:
         state = dict(values or {})
         operations = self.plan.execution_graph.topological_order()
         remaining = self._remaining_uses(operations)
@@ -123,8 +116,12 @@ class ModelStreamingExecutor:
 
             await self._prefetch_next(operations, index)
 
-        if self.prefetcher is not None:
-            drain = getattr(self.residency, "residency", None)
-            if drain is not None and hasattr(drain, "drain_prefetches"):
-                await drain.drain_prefetches()
+        drain = getattr(self.residency, "drain_prefetches", None)
+        if callable(drain):
+            await drain()
+        else:
+            inner = getattr(self.residency, "residency", None)
+            drain_inner = getattr(inner, "drain_prefetches", None)
+            if callable(drain_inner):
+                await drain_inner()
         return state
