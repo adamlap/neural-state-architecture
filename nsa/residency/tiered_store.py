@@ -11,14 +11,11 @@ from .safetensors_store import SafetensorsRegionStore
 class RegionSource(Protocol):
     def load_region(self, region: str) -> Any:
         ...
-
     def size_of(self, region: str) -> int:
         ...
 
 
 class WeightIndexSource:
-    """Adapt a safetensors store to the region-source contract."""
-
     def __init__(self, store: SafetensorsRegionStore):
         self.store = store
 
@@ -30,13 +27,7 @@ class WeightIndexSource:
 
 
 class TieredRegionStore:
-    """Durable source + bounded hot residency.
-
-    The durable source can be safetensors today and another object store or
-    accelerator-specific source later. The hot tier is deliberately owned by
-    AsyncResidencyManager so admission, deduplication, prefetch and eviction
-    remain one implementation.
-    """
+    """Durable source + bounded hot residency."""
 
     def __init__(
         self,
@@ -66,6 +57,9 @@ class TieredRegionStore:
 
     async def prefetch(self, regions: list[str]) -> None:
         await self.residency.prefetch(regions)
+
+    async def drain_prefetches(self) -> None:
+        await self.residency.drain_prefetches()
 
     async def evict(self, region: str) -> bool:
         return await self.residency.evict(region)
