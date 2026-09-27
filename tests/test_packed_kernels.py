@@ -15,7 +15,7 @@ def test_unpack_signed_int4():
 
 
 def test_unpack_ternary_matches_five_trits_per_byte():
-    assert unpack_ternary(bytes([121]), 5) == [0, 0, 0, 0, -1]
+    assert unpack_ternary(bytes([120]), 5) == [0, 0, 0, 0, -1]
 
 
 def test_int4_reference_linear():
