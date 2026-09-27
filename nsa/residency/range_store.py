@@ -19,11 +19,14 @@ class ByteRangeSource(Protocol):
 class LocalRangeSource:
     """Read only the requested payload range from a local shard."""
 
+    def __init__(self, root: str | Path = "."):
+        self.root = Path(root)
+
     async def read(self, shard: str, start: int, end: int) -> bytes:
-        return await asyncio.to_thread(self._read, shard, start, end)
+        return await asyncio.to_thread(self._read, self.root / shard, start, end)
 
     @staticmethod
-    def _read(path: str, start: int, end: int) -> bytes:
+    def _read(path: str | Path, start: int, end: int) -> bytes:
         with open(path, "rb") as handle:
             handle.seek(start)
             data = handle.read(end - start)
@@ -35,11 +38,14 @@ class LocalRangeSource:
 class MmapRangeSource:
     """Zero-copy-oriented local range source backed by memory mapping."""
 
+    def __init__(self, root: str | Path = "."):
+        self.root = Path(root)
+
     async def read(self, shard: str, start: int, end: int) -> bytes:
-        return await asyncio.to_thread(self._read, shard, start, end)
+        return await asyncio.to_thread(self._read, self.root / shard, start, end)
 
     @staticmethod
-    def _read(path: str, start: int, end: int) -> bytes:
+    def _read(path: str | Path, start: int, end: int) -> bytes:
         length = end - start
         with open(path, "rb") as handle:
             with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as mapped:
