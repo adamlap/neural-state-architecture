@@ -48,6 +48,7 @@ async def test_model_streaming_respects_bounded_hot_memory():
         "layer.1": 4,
         "layer.2": 4,
         "lm_head": 3,
+        "model_state": 0,
     }
     plan = build_model_residency_plan(config, region_size_bytes=sizes)
     source = FakeSource({
@@ -58,6 +59,7 @@ async def test_model_streaming_respects_bounded_hot_memory():
         "layer.1.state": 0,
         "layer.2.weights": 4,
         "layer.2.state": 0,
+        "model_state": 0,
         "lm_head": 3,
     })
     store = TieredRegionStore(source, capacity_bytes=7)
@@ -84,12 +86,13 @@ async def test_model_streaming_rejects_budget_smaller_than_region():
     }
     plan = build_model_residency_plan(
         config,
-        region_size_bytes={"embeddings": 2, "layer.0": 8, "lm_head": 1},
+        region_size_bytes={"embeddings": 2, "layer.0": 8, "model_state": 0, "lm_head": 1},
     )
     source = FakeSource({
         "embeddings": 2,
         "layer.0.weights": 8,
         "layer.0.state": 0,
+        "model_state": 0,
         "lm_head": 1,
     })
     store = TieredRegionStore(source, capacity_bytes=4)
