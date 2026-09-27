@@ -29,42 +29,70 @@ def _kind(layer_type: str) -> str:
     return "transformer"
 
 
-def compile_residency_regions(config: Mapping[str, Any], *, region_size_bytes: Mapping[str, int] | None = None) -> tuple[NeuralRegion, ...]:
+def _size(sizes: Mapping[str, int], logical: str, legacy: str | None = None) -> int:
+    return int(sizes.get(logical, sizes.get(legacy, 0) if legacy else 0))
+
+
+def compile_residency_regions(
+    config: Mapping[str, Any],
+    *,
+    region_size_bytes: Mapping[str, int] | None = None,
+) -> tuple[NeuralRegion, ...]:
     """Create logical weight/state regions without loading model weights."""
     sizes = region_size_bytes or {}
     text = config.get("text_config", config)
     layer_types = _layer_types(config)
     regions: list[NeuralRegion] = [
-        NeuralRegion("embeddings", ("model.embed_tokens", "model.language_model.embed_tokens"),
-                      int(sizes.get("embeddings", 0)), semantic_tags=("embedding",))
+        NeuralRegion(
+            "embeddings",
+            ("model.embed_tokens", "model.language_model.embed_tokens"),
+            int(sizes.get("embeddings", 0)),
+            semantic_tags=("embedding",),
+        )
     ]
     for index, layer_type in enumerate(layer_types):
         kind = _kind(layer_type)
         weight_id = f"layer.{index}.weights"
-        regions.append(NeuralRegion(
-            weight_id,
-            (f"model.layers.{index}", f"model.language_model.layers.{index}"),
-            int(sizes.get(weight_id, 0)), index, (kind, "weights"),
-            ((f"layer.{index - 1}.weights",) if index else ()),
-        ))
+        regions.append(
+            NeuralRegion(
+                weight_id,
+                (f"model.layers.{index}", f"model.language_model.layers.{index}"),
+                _size(sizes, weight_id, f"layer.{index}"),
+                index,
+                (kind, "weights"),
+                ((f"layer.{index - 1}.weights",) if index else ()),
+            )
+        )
         if kind in {"linear_attention", "full_attention"}:
             state_id = f"layer.{index}.state"
             state_tag = "persistent_state" if kind == "linear_attention" else "kv_state"
-            regions.append(NeuralRegion(
-                state_id, size_bytes=int(sizes.get(state_id, 0)), layer_index=index,
-                semantic_tags=(kind, state_tag), dependencies=(weight_id,)
-            ))
-    regions.append(NeuralRegion(
-        "lm_head", ("lm_head", "model.lm_head"), int(sizes.get("lm_head", 0)),
-        semantic_tags=("output",),
-        dependencies=((f"layer.{len(layer_types) - 1}.weights",) if layer_types else ()),
-    ))
+            regions.append(
+                NeuralRegion(
+                    state_id,
+                    size_bytes=int(sizes.get(state_id, 0)),
+                    layer_index=index,
+                    semantic_tags=(kind, state_tag),
+                    dependencies=(weight_id,),
+                )
+            )
+    regions.append(
+        NeuralRegion(
+            "lm_head",
+            ("lm_head", "model.lm_head"),
+            int(sizes.get("lm_head", 0)),
+            semantic_tags=("output",),
+            dependencies=((f"layer.{len(layer_types) - 1}.weights",) if layer_types else ()),
+        )
+    )
     if "vision_config" in config:
-        regions.append(NeuralRegion("vision", ("visual", "model.visual"),
-                                     int(sizes.get("vision", 0)), semantic_tags=("vision",)))
+        regions.append(
+            NeuralRegion("vision", ("visual", "model.visual"), int(sizes.get("vision", 0)), semantic_tags=("vision",))
+        )
     if int(text.get("mtp_num_hidden_layers", 0)):
-        regions.append(NeuralRegion("mtp", ("mtp", "model.mtp"), int(sizes.get("mtp", 0)),
-                                     semantic_tags=("mtp",), dependencies=("lm_head",)))
+        regions.append(
+            NeuralRegion("mtp", ("mtp", "model.mtp"), int(sizes.get("mtp", 0)),
+                         semantic_tags=("mtp",), dependencies=("lm_head",))
+        )
     return tuple(regions)
 
 
@@ -73,8 +101,10 @@ def compile_execution_graph(config: Mapping[str, Any]) -> ExecutionGraph:
     layer_types = _layer_types(config)
     graph = ExecutionGraph()
     previous = "embed"
-    graph.add(ExecutionOp("embed", "embedding", output="hidden", required_regions=("embeddings",),
-                          metadata={"architecture": config.get("model_type", "")}))
+    graph.add(
+        ExecutionOp("embed", "embedding", output="hidden", required_regions=("embeddings",),
+                    metadata={"architecture": config.get("model_type", "")})
+    )
     for index, layer_type in enumerate(layer_types):
         kind = _kind(layer_type)
         weight = f"layer.{index}.weights"
@@ -84,13 +114,16 @@ def compile_execution_graph(config: Mapping[str, Any]) -> ExecutionGraph:
             state = f"layer.{index}.state"
             required.append(state)
             persistent.append(state)
-        graph.add(ExecutionOp(
-            f"layer.{index}", kind, inputs=("hidden",), output="hidden",
-            required_regions=tuple(required), persistent_regions=tuple(persistent),
-            depends_on=(previous,),
-            metadata={"layer_index": index, "layer_type": layer_type},
-        ))
+        graph.add(
+            ExecutionOp(
+                f"layer.{index}", kind, inputs=("hidden",), output="hidden",
+                required_regions=tuple(required), persistent_regions=tuple(persistent),
+                depends_on=(previous,), metadata={"layer_index": index, "layer_type": layer_type},
+            )
+        )
         previous = f"layer.{index}"
-    graph.add(ExecutionOp("lm_head", "lm_head", inputs=("hidden",), output="logits",
-                          required_regions=("lm_head",), depends_on=(previous,)))
+    graph.add(
+        ExecutionOp("lm_head", "lm_head", inputs=("hidden",), output="logits",
+                    required_regions=("lm_head",), depends_on=(previous,))
+    )
     return graph
