@@ -22,8 +22,8 @@ jobs:
         seed: [1, 7, 21, 42]
         attack: [1, 10, 100]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: pip install -e '.[dev,research]'
@@ -55,7 +55,7 @@ jobs:
           echo '```json' >> "$GITHUB_STEP_SUMMARY"
           cat results/result.json >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: hard-state-${{ matrix.seed }}-${{ matrix.attack }}
           path: results/result.json
