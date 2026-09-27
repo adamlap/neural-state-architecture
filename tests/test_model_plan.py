@@ -35,6 +35,8 @@ def test_model_plan_combines_index_and_execution_graph():
     assert by_id["layer.0.weights"].size_bytes == 32
     assert by_id["layer.3.weights"].size_bytes == 32
     assert by_id["lm_head"].size_bytes == 80
+    assert by_id["model_state"].size_bytes == 0
     assert plan.storage_bytes == index.total_bytes
-    assert plan.region_count == 10
+    assert plan.region_count == 11
     assert len(plan.execution_graph.operations) == 6
+    assert plan.execution_graph.operations[-1].required_regions == ("model_state", "lm_head")
