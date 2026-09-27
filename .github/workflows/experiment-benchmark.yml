@@ -16,15 +16,17 @@ on:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         seed: [1, 7, 21, 42]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+          cache: pip
       - name: Install benchmark dependencies
         run: |
           python -m pip install --upgrade pip
@@ -39,7 +41,9 @@ jobs:
         run: |
           PYTHONPATH=. python experiments/self_state/perturbation_recovery.py --seed ${{ matrix.seed }} > recovery-${{ matrix.seed }}.json
       - name: Upload seed results
-        uses: actions/upload-artifact@v4
+        env:
+          ACTIONS_ARTIFACT_UPLOAD_TIMEOUT_MS: "120000"
+        uses: actions/upload-artifact@v6
         with:
           name: nsa-benchmark-seed-${{ matrix.seed }}
           path: '*.json'
