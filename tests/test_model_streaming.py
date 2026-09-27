@@ -10,6 +10,12 @@ class FakeBackend:
     def device_info(self):
         return DeviceInfo("fake", "cpu", 7, 1, frozenset())
 
+    def move(self, value, device):
+        return value
+
+    def release(self, value):
+        pass
+
     def execute(self, operation, inputs, *, regions=None, persistent_regions=(), metadata=None):
         if operation == "embedding":
             return 1
@@ -70,6 +76,7 @@ async def test_model_streaming_respects_bounded_hot_memory():
     assert result["logits"] == 40
     assert store.resident_bytes <= 7
     assert runner.metrics.operations == 5
+    assert runner.metrics.device_moves == 9
     assert runner.metrics.explicit_evictions >= 4
     assert source.loads.count("layer.0.weights") == 1
     assert source.loads.count("layer.1.weights") == 1
