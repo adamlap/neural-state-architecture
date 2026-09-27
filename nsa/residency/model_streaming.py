@@ -9,6 +9,7 @@ from typing import Any, Mapping
 
 from .execution_backend import DeviceInfo, ExecutionBackend
 from .model_plan import ModelResidencyPlan
+from .prefetch import SequentialPrefetcher
 
 
 @dataclass
@@ -20,6 +21,7 @@ class StreamingRunMetrics:
     explicit_evictions: int = 0
     device_moves: int = 0
     device_releases: int = 0
+    prefetch_decisions: int = 0
 
 
 class ModelStreamingExecutor:
@@ -31,11 +33,13 @@ class ModelStreamingExecutor:
         backend: ExecutionBackend,
         residency: Any,
         device: DeviceInfo | None = None,
+        prefetcher: SequentialPrefetcher | None = None,
     ) -> None:
         self.plan = plan
         self.backend = backend
         self.residency = residency
         self.device = device or backend.device_info()
+        self.prefetcher = prefetcher
         self.metrics = StreamingRunMetrics()
 
     def _check_capabilities(self, op: Any) -> None:
@@ -54,6 +58,24 @@ class ModelStreamingExecutor:
                 uses[region] = uses.get(region, 0) + 1
         return uses
 
+    async def _prefetch_next(
+        self,
+        operations: tuple[Any, ...],
+        index: int,
+    ) -> None:
+        if self.prefetcher is None or index + 1 >= len(operations):
+            return
+        current = operations[index]
+        next_op = operations[index + 1]
+        candidates = list(next_op.required_regions)
+        previous = current.required_regions[-1] if current.required_regions else current.op_id
+        decisions = self.prefetcher.predict(previous, candidates, top_k=len(candidates))
+        self.metrics.prefetch_decisions += len(decisions)
+        if decisions:
+            for decision in decisions:
+                self.prefetcher.observe(previous, decision.region)
+            await self.residency.prefetch([decision.region for decision in decisions])
+
     async def run(
         self,
         values: Mapping[str, Any] | None = None,
@@ -62,7 +84,7 @@ class ModelStreamingExecutor:
         operations = self.plan.execution_graph.topological_order()
         remaining = self._remaining_uses(operations)
 
-        for op in operations:
+        for index, op in enumerate(operations):
             self._check_capabilities(op)
             started = perf_counter()
             moved_regions: dict[str, Any] = {}
@@ -76,8 +98,6 @@ class ModelStreamingExecutor:
                 for region, value in zip(op.required_regions, loaded):
                     moved_regions[region] = self.backend.move(value, self.device)
                     self.metrics.device_moves += 1
-            else:
-                moved_regions = {}
 
             inputs = tuple(state[name] for name in op.inputs)
             result = self.backend.execute(
@@ -95,11 +115,16 @@ class ModelStreamingExecutor:
 
             for region in op.required_regions:
                 remaining[region] -= 1
-                if remaining[region] == 0:
-                    if region not in op.persistent_regions:
-                        if await self.residency.evict(region):
-                            self.metrics.explicit_evictions += 1
-                        self.backend.release(moved_regions[region])
-                        self.metrics.device_releases += 1
+                if remaining[region] == 0 and region not in op.persistent_regions:
+                    if await self.residency.evict(region):
+                        self.metrics.explicit_evictions += 1
+                    self.backend.release(moved_regions[region])
+                    self.metrics.device_releases += 1
 
+            await self._prefetch_next(operations, index)
+
+        if self.prefetcher is not None:
+            drain = getattr(self.residency, "residency", None)
+            if drain is not None and hasattr(drain, "drain_prefetches"):
+                await drain.drain_prefetches()
         return state
