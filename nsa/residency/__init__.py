@@ -16,6 +16,7 @@ from nsa.residency.model_execution import compile_execution_graph, compile_resid
 from nsa.residency.model_plan import ModelResidencyPlan, build_model_residency_plan
 from nsa.residency.model_streaming import ModelStreamingExecutor, StreamingRunMetrics
 from nsa.residency.model_analysis import ResidencyAnalysis, analyze_plan, qwen3_5_residency_summary
+from nsa.residency.hardware_planner import HardwarePlan, HardwareProfile, plan_for_hardware
 from nsa.residency.materialization import MaterializationMetrics, RegionMaterializer
 from nsa.residency.checkpoint import load_checkpoint_plan
 from nsa.residency.async_manager import AsyncResidencyManager, ResidencyMetrics
@@ -38,6 +39,7 @@ __all__ = [
     "compile_execution_graph", "compile_residency_regions", "ModelResidencyPlan", "build_model_residency_plan",
     "ModelStreamingExecutor", "StreamingRunMetrics",
     "ResidencyAnalysis", "analyze_plan", "qwen3_5_residency_summary",
+    "HardwarePlan", "HardwareProfile", "plan_for_hardware",
     "MaterializationMetrics", "RegionMaterializer", "load_checkpoint_plan",
     "AsyncResidencyManager", "ResidencyMetrics", "QuantizationSpec", "QuantizedTensor",
     "QuantizedMaterializer", "QuantizationRegistry", "quantization_spec_from_config",
