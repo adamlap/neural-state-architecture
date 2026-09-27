@@ -16,6 +16,8 @@ from nsa.residency.model_execution import compile_execution_graph, compile_resid
 from nsa.residency.async_manager import AsyncResidencyManager, ResidencyMetrics
 from nsa.residency.quantization import QuantizationSpec, QuantizedTensor, QuantizedMaterializer
 from nsa.residency.admission import AdmissionDecision, ResidencyAdmission
+from nsa.residency.safetensors_metadata import inspect_safetensors_metadata
+from nsa.residency.tiered_store import RegionSource, TieredRegionStore, WeightIndexSource
 
 __all__ = [
     "MemoryTier", "ResidencyState", "NeuralRegion", "ResidencyEvent", "ResidencySnapshot",
@@ -27,4 +29,5 @@ __all__ = [
     "ExecutionGraph", "ExecutionGraphRunner", "ExecutionMetrics", "ExecutionOp",
     "compile_execution_graph", "compile_residency_regions", "AsyncResidencyManager", "ResidencyMetrics",
     "QuantizationSpec", "QuantizedTensor", "QuantizedMaterializer", "AdmissionDecision", "ResidencyAdmission",
+    "inspect_safetensors_metadata", "RegionSource", "TieredRegionStore", "WeightIndexSource",
 ]
