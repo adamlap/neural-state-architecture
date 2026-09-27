@@ -19,15 +19,11 @@ class StreamingRunMetrics:
     region_seconds: float = 0.0
     explicit_evictions: int = 0
     device_moves: int = 0
+    device_releases: int = 0
 
 
 class ModelStreamingExecutor:
-    """Run a model plan while keeping only the graph working set resident.
-
-    The executor deliberately knows nothing about CPU/GPU/NPU mechanics. It
-    delegates storage to a bounded residency store and computation/transfers
-    to an ExecutionBackend.
-    """
+    """Run a model plan while keeping only the graph working set resident."""
 
     def __init__(
         self,
@@ -69,6 +65,7 @@ class ModelStreamingExecutor:
         for op in operations:
             self._check_capabilities(op)
             started = perf_counter()
+            moved_regions: dict[str, Any] = {}
             if op.required_regions:
                 region_started = perf_counter()
                 loaded = await asyncio.gather(
@@ -76,19 +73,17 @@ class ModelStreamingExecutor:
                 )
                 self.metrics.region_seconds += perf_counter() - region_started
                 self.metrics.region_requests += len(op.required_regions)
-                regions = {}
                 for region, value in zip(op.required_regions, loaded):
-                    moved = self.backend.move(value, self.device)
+                    moved_regions[region] = self.backend.move(value, self.device)
                     self.metrics.device_moves += 1
-                    regions[region] = moved
             else:
-                regions = {}
+                moved_regions = {}
 
             inputs = tuple(state[name] for name in op.inputs)
             result = self.backend.execute(
                 op.operation,
                 inputs,
-                regions=regions,
+                regions=moved_regions,
                 persistent_regions=op.persistent_regions,
                 metadata=dict(op.metadata),
             )
@@ -100,8 +95,11 @@ class ModelStreamingExecutor:
 
             for region in op.required_regions:
                 remaining[region] -= 1
-                if remaining[region] == 0 and region not in op.persistent_regions:
-                    if await self.residency.evict(region):
-                        self.metrics.explicit_evictions += 1
+                if remaining[region] == 0:
+                    if region not in op.persistent_regions:
+                        if await self.residency.evict(region):
+                            self.metrics.explicit_evictions += 1
+                        self.backend.release(moved_regions[region])
+                        self.metrics.device_releases += 1
 
         return state
