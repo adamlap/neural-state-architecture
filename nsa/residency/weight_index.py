@@ -16,6 +16,7 @@ class TensorRegion:
     shape: tuple[int, ...]
     dtype: str
     region: str
+    data_offset: int | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,16 @@ class WeightIndex:
     @property
     def total_bytes(self) -> int:
         return sum(t.parameter_bytes for t in self.tensors)
+
+    @property
+    def shard_payload_bytes(self) -> int:
+        """Total raw tensor payload bytes represented by the index."""
+        return self.total_bytes
+
+    @property
+    def storage_bytes(self) -> int:
+        """Total on-disk bytes for the indexed shards, including headers."""
+        return sum(self.shard_sizes.values())
 
     def regions(self) -> tuple[str, ...]:
         return tuple(dict.fromkeys(t.region for t in self.tensors))
@@ -42,6 +53,8 @@ def _dtype_size(dtype: str) -> int:
     sizes = {
         "F64": 8, "F32": 4, "F16": 2, "BF16": 2,
         "I64": 8, "I32": 4, "I16": 2, "I8": 1, "U8": 1, "BOOL": 1,
+        "F8_E4M3": 1, "F8_E5M2": 1, "F8_E4M3FN": 1, "F8_E4M3FNUZ": 1,
+        "F8_E5M2FNUZ": 1,
     }
     if dtype not in sizes:
         raise ValueError(f"unsupported or unknown dtype {dtype!r}")
@@ -99,15 +112,33 @@ def from_tensor_metadata(
         meta = tensor_metadata.get(name, {})
         dtype = str(meta.get("dtype", "unknown")).upper()
         shape = tuple(int(v) for v in meta.get("shape", ()))
-        if dtype == "UNKNOWN":
+        offsets = meta.get("data_offsets")
+        if offsets is not None:
+            if not isinstance(offsets, (list, tuple)) or len(offsets) != 2:
+                raise ValueError(f"invalid data_offsets for {name!r}")
+            start, end = (int(offsets[0]), int(offsets[1]))
+            if start < 0 or end < start:
+                raise ValueError(f"invalid data_offsets for {name!r}")
+            size = end - start
+            data_offset = start
+        elif dtype == "UNKNOWN":
             size = int(meta.get("parameter_bytes", 0))
+            data_offset = None
         else:
             size = 1
             for dimension in shape:
+                if dimension < 0:
+                    raise ValueError(f"invalid tensor shape for {name!r}")
                 size *= dimension
             size *= _dtype_size(dtype)
+            data_offset = None
         tensors.append(TensorRegion(
-            name=name, shard=str(shard), parameter_bytes=size, shape=shape,
-            dtype=dtype, region=_tensor_region(name),
+            name=name,
+            shard=str(shard),
+            parameter_bytes=size,
+            shape=shape,
+            dtype=dtype,
+            region=_tensor_region(name),
+            data_offset=data_offset,
         ))
     return WeightIndex(tuple(tensors), dict(shard_sizes or {}))
