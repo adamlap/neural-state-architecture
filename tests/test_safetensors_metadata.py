@@ -5,9 +5,9 @@ from nsa.residency.safetensors_metadata import inspect_safetensors_metadata
 from nsa.residency.weight_index import load_safetensors_index
 
 
-def _write_fake_safetensors(path, header):
+def _write_fake_safetensors(path, header, payload=b"payload"):
     encoded = json.dumps(header).encode("utf-8")
-    path.write_bytes(struct.pack("<Q", len(encoded)) + encoded + b"payload")
+    path.write_bytes(struct.pack("<Q", len(encoded)) + encoded + payload)
 
 
 def test_metadata_inspection_reads_headers_without_tensor_payload(tmp_path):
@@ -39,6 +39,7 @@ def test_metadata_inspection_reads_headers_without_tensor_payload(tmp_path):
             },
             "__metadata__": {"format": "pt"},
         },
+        payload=b"x" * 96,
     )
 
     index = load_safetensors_index(index_path)
@@ -47,4 +48,34 @@ def test_metadata_inspection_reads_headers_without_tensor_payload(tmp_path):
     assert inspected.tensors[0].parameter_bytes == 64
     assert inspected.tensors[1].parameter_bytes == 32
     assert inspected.region_sizes() == {"layer.0": 64, "lm_head": 32}
+    assert inspected.shard_payload_bytes == 96
     assert inspected.shard_sizes[shard] == (tmp_path / shard).stat().st_size
+    assert inspected.storage_bytes == (tmp_path / shard).stat().st_size
+
+
+def test_metadata_uses_offsets_for_packed_or_unknown_dtypes(tmp_path):
+    shard = "packed.safetensors"
+    index_path = tmp_path / "model.safetensors.index.json"
+    index_path.write_text(
+        json.dumps({"weight_map": {"model.layers.0.q_proj.weight": shard}}),
+        encoding="utf-8",
+    )
+    _write_fake_safetensors(
+        tmp_path / shard,
+        {
+            "model.layers.0.q_proj.weight": {
+                "dtype": "F4_PACKED",
+                "shape": [100, 100],
+                "data_offsets": [0, 37],
+            }
+        },
+        payload=b"x" * 37,
+    )
+
+    inspected = inspect_safetensors_metadata(
+        tmp_path, load_safetensors_index(index_path)
+    )
+
+    assert inspected.tensors[0].dtype == "F4_PACKED"
+    assert inspected.tensors[0].parameter_bytes == 37
+    assert inspected.tensors[0].data_offset == 0
