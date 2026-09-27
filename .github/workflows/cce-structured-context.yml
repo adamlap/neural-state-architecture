@@ -33,7 +33,7 @@ jobs:
       - name: Install Ollama
         run: curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://ollama.com/install.sh | sh
       - name: Cache Ollama model store
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.ollama
           key: ollama-${{ runner.os }}-${{ env.CCE_MODEL }}
