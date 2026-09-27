@@ -58,7 +58,21 @@ jobs:
           mkdir -p results/ci/cce
           PYTHONPATH=. python experiments/cce_structured_context_runtime.py --model "$CCE_MODEL" --output results/ci/cce/structured_context.json
       - name: Validate structured context evidence
-        run: echo "validation deferred to experiment output"
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("results/ci/cce/structured_context.json").read_text())
+          assert result["backend_mode"] == "ollama"
+          assert result["context_read_only"] is True
+          assert result["prompt_contains_structured_state"] is True
+          assert result["state_unchanged_by_response"] is True
+          assert result["response_nonempty"] is True
+          assert result["response_is_observation"] is True
+          assert result["initial_state_different"] is True
+          assert result["uncertainty_finite"] is True
+          print("CCE structured-state context evidence validation passed")
+          PY
       - name: Upload structured context evidence
         uses: actions/upload-artifact@v6
         with:
