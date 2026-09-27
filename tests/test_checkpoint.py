@@ -37,7 +37,9 @@ def test_checkpoint_plan_never_loads_tensor_payload(tmp_path):
     plan = load_checkpoint_plan(tmp_path)
 
     assert plan.storage_bytes == 77
-    assert plan.region_count == 5
+    # Four physical tensor groups are mapped into four logical residency
+    # regions: embeddings, the transformer layer, model state (norm), and head.
+    assert plan.region_count == 4
     assert plan.execution_graph.operations[-1].required_regions == (
         "model_state", "lm_head"
     )
