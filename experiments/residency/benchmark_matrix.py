@@ -256,6 +256,12 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             str(lookahead): _summarize([r for r in rows if int(r.get("lookahead", 0)) == lookahead])
             for lookahead in lookaheads
         }
+    cache_modes = sorted({str(r.get("cache_mode", "cold")) for r in rows})
+    if len(cache_modes) > 1:
+        summary["by_cache_mode"] = {
+            cache_mode: _summarize([r for r in rows if str(r.get("cache_mode", "cold")) == cache_mode])
+            for cache_mode in cache_modes
+        }
     return summary
 
 
@@ -263,33 +269,43 @@ def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb
     conditions = [True, False] if args.prefetch == "both" else [args.prefetch == "on"]
     rows: list[dict[str, Any]] = []
     lookaheads = getattr(args, "lookaheads", None) or [args.lookahead]
-    for lookahead in lookaheads:
-        for run in range(1, args.runs + 1):
-            order = conditions if run % 2 else list(reversed(conditions))  # counterbalance
-            for prefetch in order:
-                row = _run_once(
-                model_key=args.model,
-                model_path=model_path,
-                prompt=args.prompt,
-                max_tokens=args.max_tokens,
-                prefetch=prefetch,
-                vram_gb=vram_gb,
-                ram_gb=ram_gb,
-                device=args.device,
-                hot_layers=args.hot_layers,
-                warm_layers=args.warm_layers,
-                    lookahead=lookahead,
-                    cold_cache=args.cold_cache,
-                )
-                row.update({"model": args.model, "model_path": str(Path(model_path).expanduser()),
-                            "prefetch": prefetch, "lookahead": lookahead, "run": run, "pid": os.getpid()})
-                rows.append(row)
-                print(
-                    f"lookahead={lookahead} run={run}/{args.runs} prefetch={prefetch!s:5} decode={row['decode_sec']:.3f}s "
-                    f"tok/s={row['tokens_per_sec']:.2f} prefetched={row['trace']['bytes_prefetched']}B "
-                    f"hit_rate={row['trace']['prefetch_hit_rate']:.3f} coverage={row['trace']['prefetch_coverage']:.3f} "
-                    f"lead_ms={row['trace']['prefetch_lead_ms_avg']:.1f}"
-                )
+    cache_modes = getattr(args, "cache_modes", None) or ["cold"]
+    for cache_mode in cache_modes:
+        cold_cache = cache_mode == "cold"
+        for lookahead in lookaheads:
+            for run in range(1, args.runs + 1):
+                order = conditions if run % 2 else list(reversed(conditions))  # counterbalance
+                for prefetch in order:
+                    row = _run_once(
+                        model_key=args.model,
+                        model_path=model_path,
+                        prompt=args.prompt,
+                        max_tokens=args.max_tokens,
+                        prefetch=prefetch,
+                        vram_gb=vram_gb,
+                        ram_gb=ram_gb,
+                        device=args.device,
+                        hot_layers=args.hot_layers,
+                        warm_layers=args.warm_layers,
+                        lookahead=lookahead,
+                        cold_cache=cold_cache,
+                    )
+                    row.update({
+                        "model": args.model,
+                        "model_path": str(Path(model_path).expanduser()),
+                        "prefetch": prefetch,
+                        "lookahead": lookahead,
+                        "cache_mode": cache_mode,
+                        "run": run,
+                        "pid": os.getpid(),
+                    })
+                    rows.append(row)
+                    print(
+                        f"cache={cache_mode} lookahead={lookahead} run={run}/{args.runs} prefetch={prefetch!s:5} decode={row['decode_sec']:.3f}s "
+                        f"tok/s={row['tokens_per_sec']:.2f} prefetched={row['trace']['bytes_prefetched']}B "
+                        f"hit_rate={row['trace']['prefetch_hit_rate']:.3f} coverage={row['trace']['prefetch_coverage']:.3f} "
+                        f"lead_ms={row['trace']['prefetch_lead_ms_avg']:.1f}"
+                    )
     return rows
 
 
@@ -310,7 +326,9 @@ def main() -> None:
                         help="comma-separated lookahead grid, e.g. 1,2,4; runs each value with the same counterbalanced prefetch conditions")
     parser.add_argument("--prefetch", choices=["on", "off", "both"], default="both")
     parser.add_argument("--cold-cache", action=argparse.BooleanOptionalAction, default=True,
-                        help="drop the OS page cache for weight files before decoding (default: on)")
+                        help="legacy single-mode switch; ignored when --cache-modes is supplied")
+    parser.add_argument("--cache-modes", default=None,
+                        help="comma-separated cache states, e.g. cold,warm; cold drops weight-file page cache before decode")
     parser.add_argument("--prompt", default="Explain how persistent cognitive state can improve an agent's reasoning.")
     parser.add_argument("--output", type=Path, default=Path("results/residency/matrix.json"))
     args = parser.parse_args()
@@ -322,6 +340,12 @@ def main() -> None:
         parser.error(f"--lookaheads must be a comma-separated list of integers: {exc}")
     if not args.lookaheads or any(value < 1 for value in args.lookaheads):
         parser.error("--lookaheads values must be positive")
+    if args.cache_modes:
+        args.cache_modes = [value.strip().lower() for value in args.cache_modes.split(",")]
+    else:
+        args.cache_modes = ["cold" if args.cold_cache else "warm"]
+    if not args.cache_modes or any(value not in {"cold", "warm"} for value in args.cache_modes):
+        parser.error("--cache-modes values must be cold or warm")
 
     spec = get_local_model(args.model)
     model_path = _resolve_model_path(args.model, args.model_path)
@@ -348,6 +372,7 @@ def main() -> None:
             "max_tokens": args.max_tokens,
             "prefetch": args.prefetch,
             "cold_cache": args.cold_cache,
+            "cache_modes": args.cache_modes,
             "device": args.device,
             "hot_layers": args.hot_layers,
             "warm_layers": args.warm_layers,
