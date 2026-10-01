@@ -38,7 +38,7 @@ OLLAMA_HOST ?= 127.0.0.1:11434
         serve-ollama-policy serve-lmstudio-policy chat-ollama \
         benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama \
         benchmark-nsa64-ollama benchmark-nsa64-ollama-smoke \
-        residency residency-smoke residency-benchmark \
+        residency residency-smoke residency-benchmark residency-full \
         benchmark-live evidence research
 
 help: ## Show the supported developer commands
@@ -160,6 +160,18 @@ residency-benchmark: ## Run the local residency benchmark matrix; downloads the 
 	RUNS="$(RESIDENCY_RUNS)" \
 	MAX_TOKENS="$(RESIDENCY_MAX_TOKENS)" \
 	PREFETCH="$(RESIDENCY_PREFETCH)" \
+	bash scripts/run_residency_experiments.sh benchmark "$(RESIDENCY_MODEL)" "$(RESIDENCY_MODEL_PATH)"
+
+residency-full: ## Run the complete resident/selective/disk residency evaluation matrix
+	EXECUTION_MODES="${EXECUTION_MODES:-resident,selective,disk}" \
+	LOOKAHEADS="${LOOKAHEADS:-1,2,4}" \
+	CACHE_MODES="${CACHE_MODES:-cold,warm}" \
+	BUDGETS="${BUDGETS:-2:4,4:8}" \
+	LEARNED_PREDICTOR="${LEARNED_PREDICTOR:-0}" \
+	PREFETCH="${PREFETCH:-both}" \
+	RUNS="${RUNS:-3}" \
+	MAX_TOKENS="${MAX_TOKENS:-64}" \
+	PYTHON="$(RESIDENCY_PYTHON)" \
 	bash scripts/run_residency_experiments.sh benchmark "$(RESIDENCY_MODEL)" "$(RESIDENCY_MODEL_PATH)"
 
 
