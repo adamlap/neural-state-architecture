@@ -219,6 +219,7 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "bytes_already_resident_median": statistics.median(r.get("bytes_already_resident", 0) for r in subset),
             "prefetch_hit_rate_median": statistics.median(r["trace"]["prefetch_hit_rate"] for r in subset),
             "prefetch_coverage_median": statistics.median(r["trace"]["prefetch_coverage"] for r in subset),
+            "prefetch_lead_ms_median": statistics.median(r["trace"]["prefetch_lead_ms_avg"] for r in subset),
             "slowest_regions": _aggregate_slowest_regions(subset),
         }
     notes = []
@@ -275,7 +276,7 @@ def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb
             print(
                 f"run={run}/{args.runs} prefetch={prefetch!s:5} decode={row['decode_sec']:.3f}s "
                 f"tok/s={row['tokens_per_sec']:.2f} prefetched={row['trace']['bytes_prefetched']}B "
-                f"hit_rate={row['trace']['prefetch_hit_rate']:.3f} coverage={row['trace']['prefetch_coverage']:.3f}"
+                f"hit_rate={row['trace']['prefetch_hit_rate']:.3f} coverage={row['trace']['prefetch_coverage']:.3f} "f"lead_ms={row['trace']['prefetch_lead_ms_avg']:.1f}"
             )
     return rows
 
