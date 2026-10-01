@@ -63,7 +63,8 @@ class ResidencyTrace:
         # Placement transfers only. Page-cache prefetch is reported separately
         # because it warms a cache; it does not move a region between tiers.
         transfers = [e for e in events if e.action in {"resident", "evict"}]
-        hits = self._prefetch_hits(events)
+        prefetch_stats = self._prefetch_timing(events)
+        hits = prefetch_stats["hits"]
         execution_by_region: dict[str, dict[str, float | int]] = {}
         for event in executions:
             stats = execution_by_region.setdefault(event.region_id, {"count": 0, "latency_ms_total": 0.0, "latency_ms_max": 0.0})
@@ -84,6 +85,9 @@ class ResidencyTrace:
             "prefetch_hit_rate": min(1.0, hits / len(prefetches)) if prefetches else 0.0,
             # fraction of executions that had a completed prefetch waiting
             "prefetch_coverage": hits / len(executions) if executions else 0.0,
+            "prefetch_lead_ms_avg": prefetch_stats["lead_ms_avg"],
+            "prefetch_lead_ms_min": prefetch_stats["lead_ms_min"],
+            "prefetch_lead_ms_max": prefetch_stats["lead_ms_max"],
             "bytes_prefetched": sum(e.bytes_moved for e in completions),
             "executions": len(executions),
             "execution_by_region": execution_by_region,
@@ -94,15 +98,10 @@ class ResidencyTrace:
         }
 
     @staticmethod
-    def _prefetch_hits(events: list[ResidencyEvent]) -> int:
-        """Count completed prefetches that finished before an execution began.
-
-        ``execute`` events are stamped when the region finishes, so its start is
-        ``timestamp - latency``. Each completed prefetch can serve at most one
-        subsequent execution of the same region.
-        """
+    def _prefetch_timing(events: list[ResidencyEvent]) -> dict[str, float | int]:
+        """Match completed prefetches to executions and measure their lead time."""
         pending: dict[str, list[float]] = {}
-        hits = 0
+        leads_ms: list[float] = []
         ordered = sorted(
             (e for e in events if e.action in {"prefetch-complete", "execute"}),
             key=lambda e: e.timestamp - (e.latency_ms / 1000.0 if e.action == "execute" else 0.0),
@@ -114,9 +113,19 @@ class ResidencyTrace:
             started = event.timestamp - event.latency_ms / 1000.0
             queue = pending.get(event.region_id)
             if queue and queue[0] <= started:
-                queue.pop(0)
-                hits += 1
-        return hits
+                completed = queue.pop(0)
+                leads_ms.append((started - completed) * 1000.0)
+        return {
+            "hits": len(leads_ms),
+            "lead_ms_avg": sum(leads_ms) / len(leads_ms) if leads_ms else 0.0,
+            "lead_ms_min": min(leads_ms) if leads_ms else 0.0,
+            "lead_ms_max": max(leads_ms) if leads_ms else 0.0,
+        }
+
+    @staticmethod
+    def _prefetch_hits(events: list[ResidencyEvent]) -> int:
+        """Backward-compatible hit-count helper."""
+        return int(ResidencyTrace._prefetch_timing(events)["hits"])
 
     def by_tier(self, tier: MemoryTier) -> tuple[ResidencyEvent, ...]:
         return tuple(

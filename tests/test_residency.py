@@ -149,6 +149,28 @@ class TestResidencyTrace(unittest.TestCase):
         self.assertEqual(metrics["execution_by_region"]["layer.1"]["count"], 2)
         self.assertEqual(metrics["execution_by_region"]["layer.1"]["latency_ms_max"], 20.0)
         self.assertAlmostEqual(metrics["execution_by_region"]["layer.1"]["latency_ms_avg"], 15.0)
+    def test_metrics_measure_prefetch_lead_time(self):
+        from nsa.residency.trace import ResidencyTrace
+        from nsa.residency.types import ResidencyEvent
+        trace=ResidencyTrace()
+        trace.record(ResidencyEvent(1.0, "layer.0", "prefetch-complete", MemoryTier.NVME, MemoryTier.RAM, 100, 5.0, "prefetch"))
+        # Execution timestamp is completion time; 10 ms execution means start at 1.010.
+        trace.record(ResidencyEvent(1.020, "layer.0", "execute", MemoryTier.RAM, MemoryTier.RAM, 0, 10.0, "execute"))
+        metrics=trace.metrics()
+        self.assertEqual(metrics["prefetch_hits"], 1)
+        self.assertAlmostEqual(metrics["prefetch_lead_ms_avg"], 10.0)
+        self.assertAlmostEqual(metrics["prefetch_lead_ms_min"], 10.0)
+        self.assertAlmostEqual(metrics["prefetch_lead_ms_max"], 10.0)
+
+    def test_late_prefetch_is_not_counted_as_a_hit(self):
+        from nsa.residency.trace import ResidencyTrace
+        from nsa.residency.types import ResidencyEvent
+        trace=ResidencyTrace()
+        trace.record(ResidencyEvent(1.015, "layer.0", "prefetch-complete", MemoryTier.NVME, MemoryTier.RAM, 100, 5.0, "prefetch"))
+        trace.record(ResidencyEvent(1.020, "layer.0", "execute", MemoryTier.RAM, MemoryTier.RAM, 0, 10.0, "execute"))
+        metrics=trace.metrics()
+        self.assertEqual(metrics["prefetch_hits"], 0)
+        self.assertEqual(metrics["prefetch_lead_ms_avg"], 0.0)
 
 class TestBenchmarkTelemetry(unittest.TestCase):
     def test_slowest_regions_are_sorted_by_median_latency(self):
