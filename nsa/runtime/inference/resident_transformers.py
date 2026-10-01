@@ -12,6 +12,7 @@ from nsa.runtime.inference.base import BackendMode, InferenceBackend, LLMGenerat
 from nsa.residency import ActiveResidencyController, MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers, cognitive_state_features, ResidencyTrace
 from nsa.residency.accelerate_prefetch import AccelerateDiskPrefetcher
 from nsa.residency.sizing import layer_sizes
+from nsa.residency.predictor import HeuristicResidencyPredictor
 
 class SelectiveStorageTransformersBackend(InferenceBackend):
     """Disk-backed Transformers inference with NSA residency planning."""
@@ -69,7 +70,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
                 vram_budget_bytes=int(vram_budget_gb*1024**3),
                 ram_budget_bytes=int(ram_budget_gb*1024**3),
             ),
-            predictor=predictor or __import__("nsa.residency.predictor", fromlist=["HeuristicResidencyPredictor"]).HeuristicResidencyPredictor(),
+            predictor=predictor or HeuristicResidencyPredictor(),
         )
         self.residency.trace = self.trace
 
@@ -121,9 +122,11 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             dependencies=(f"layer.{i-1}",) if i else (),
         ) for i,size in enumerate(sizes)]
 
-    def _selective_device_map(self, layer_sizes_bytes: list[int]) -> dict[str, Union[int, str]]:
+    def _selective_device_map(self, layer_sizes_bytes: list[int] | int) -> dict[str, Union[int, str]]:
         """Construct a budget-aware VRAM/RAM/disk map for decoder regions."""
         device = self._accelerate_device()
+        if isinstance(layer_sizes_bytes, int):
+            layer_sizes_bytes = [1] * layer_sizes_bytes
         layer_count = len(layer_sizes_bytes)
         mapping: dict[str, Union[int, str]] = {"model.embed_tokens": device, "model.norm": device, "lm_head": device}
         if self.storage_mode == "resident":
