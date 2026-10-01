@@ -65,6 +65,22 @@ def test_drop_page_cache_counts_files(tmp_path):
     assert _drop_page_cache(tmp_path, tmp_path / "missing") == 2
 
 
+def test_summary_groups_cache_modes():
+    from experiments.residency.benchmark_matrix import _summarize
+
+    cold_on = _row(True, 1.0, 100)
+    cold_off = _row(False, 2.0, 0)
+    warm_on = _row(True, 0.8, 100)
+    warm_off = _row(False, 1.6, 0)
+    for row, mode in ((cold_on, "cold"), (cold_off, "cold"), (warm_on, "warm"), (warm_off, "warm")):
+        row["cache_mode"] = mode
+
+    summary = _summarize([cold_on, cold_off, warm_on, warm_off])
+    assert set(summary["by_cache_mode"]) == {"cold", "warm"}
+    assert summary["by_cache_mode"]["cold"]["decode_speedup_on_vs_off"] == pytest.approx(2.0)
+    assert summary["by_cache_mode"]["warm"]["decode_speedup_on_vs_off"] == pytest.approx(2.0)
+
+
 def test_matrix_end_to_end_alternates_order_and_compares_outputs(tmp_path, monkeypatch):
     import experiments.residency.benchmark_matrix as bm
     monkeypatch.setenv("HOME", str(tmp_path))  # offload folder lives under ~/.cache/nsa
