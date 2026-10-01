@@ -134,6 +134,22 @@ class TestPrefetchReachesThreshold(unittest.TestCase):
             self.assertTrue(decisions["layer.1"].prefetch,decisions["layer.1"])
             self.assertFalse(decisions["layer.2"].prefetch)
 
+class TestResidencyTrace(unittest.TestCase):
+    def test_metrics_expose_per_region_execution_timings(self):
+        from nsa.residency.trace import ResidencyTrace
+        from nsa.residency.types import ResidencyEvent
+        trace=ResidencyTrace()
+        trace.record(ResidencyEvent(1.0, "layer.0", "execute", MemoryTier.NVME, MemoryTier.NVME, 0, 12.0, "test"))
+        trace.record(ResidencyEvent(2.0, "layer.1", "execute", MemoryTier.NVME, MemoryTier.NVME, 0, 20.0, "test"))
+        trace.record(ResidencyEvent(3.0, "layer.1", "execute", MemoryTier.NVME, MemoryTier.NVME, 0, 10.0, "test"))
+        metrics=trace.metrics()
+        self.assertEqual(metrics["executions"], 3)
+        self.assertEqual(metrics["execution_by_region"]["layer.0"]["count"], 1)
+        self.assertEqual(metrics["execution_by_region"]["layer.0"]["latency_ms_total"], 12.0)
+        self.assertEqual(metrics["execution_by_region"]["layer.1"]["count"], 2)
+        self.assertEqual(metrics["execution_by_region"]["layer.1"]["latency_ms_max"], 20.0)
+        self.assertAlmostEqual(metrics["execution_by_region"]["layer.1"]["latency_ms_avg"], 15.0)
+
 class TestSelectiveBackend(unittest.TestCase):
     def test_mock_backend_does_not_require_transformers(self):
         from nsa.runtime.inference.resident_transformers import SelectiveStorageTransformersBackend
