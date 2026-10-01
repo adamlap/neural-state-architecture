@@ -38,6 +38,17 @@ def test_remote_code_is_not_trusted_by_default():
     assert SelectiveStorageTransformersBackend(mode="mock").trust_remote_code is False
 
 
+def test_storage_modes_and_budget_aware_map():
+    resident = SelectiveStorageTransformersBackend(mode="mock", device="cpu", storage_mode="resident")
+    assert all(resident._selective_device_map([1, 1, 1]) [f"model.layers.{i}"] == "cpu" for i in range(3))
+    disk = SelectiveStorageTransformersBackend(mode="mock", device="cpu", storage_mode="disk")
+    assert all(disk._selective_device_map([1, 1, 1]) [f"model.layers.{i}"] == "disk" for i in range(3))
+    constrained = SelectiveStorageTransformersBackend(mode="mock", device="cpu", storage_mode="selective", hot_layers=2, warm_layers=2,
+                                                     vram_budget_gb=0.000001, ram_budget_gb=0.000001)
+    mapping = constrained._selective_device_map([10_000_000] * 4)
+    assert all(mapping[f"model.layers.{i}"] == "disk" for i in range(4))
+
+
 def test_lookahead_is_configurable_and_bounded_below_by_one():
     assert SelectiveStorageTransformersBackend(mode="mock").lookahead == 2
     assert SelectiveStorageTransformersBackend(mode="mock", lookahead=4).lookahead == 4
