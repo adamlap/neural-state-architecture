@@ -219,7 +219,7 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "bytes_already_resident_median": statistics.median(r.get("bytes_already_resident", 0) for r in subset),
             "prefetch_hit_rate_median": statistics.median(r["trace"]["prefetch_hit_rate"] for r in subset),
             "prefetch_coverage_median": statistics.median(r["trace"]["prefetch_coverage"] for r in subset),
-            "prefetch_lead_ms_median": statistics.median(r["trace"]["prefetch_lead_ms_avg"] for r in subset),
+            "prefetch_lead_ms_median": statistics.median(r["trace"].get("prefetch_lead_ms_avg", 0.0) for r in subset),
             "slowest_regions": _aggregate_slowest_regions(subset),
         }
     notes = []
