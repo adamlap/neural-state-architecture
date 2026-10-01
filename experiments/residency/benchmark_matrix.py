@@ -157,6 +157,17 @@ def _run_once(
             "placement_bytes": {tier.value: int(size) for tier, size in snapshot.bytes_by_tier.items()},
             "region_count": len(backend.residency.regions),
             "trace": backend.trace.metrics(),
+            "slowest_regions": sorted(
+                (
+                    {
+                        "region_id": region_id,
+                        **stats,
+                    }
+                    for region_id, stats in backend.trace.metrics().get("execution_by_region", {}).items()
+                ),
+                key=lambda item: item["latency_ms_total"],
+                reverse=True,
+            )[:8],
             # bytes the prefetcher found already page-cache resident (so correctly
             # read nothing) -- distinct from bytes_prefetched, which it actually read
             "bytes_already_resident": backend.prefetcher.bytes_already_resident if backend.prefetcher else 0,
@@ -169,6 +180,25 @@ def _run_once(
         del backend
         gc.collect()
         _reset_gpu_stats()
+
+
+def _aggregate_slowest_regions(rows: list[dict[str, Any]], limit: int = 8) -> list[dict[str, Any]]:
+    aggregate: dict[str, list[float]] = {}
+    for row in rows:
+        for region_id, stats in row.get("trace", {}).get("execution_by_region", {}).items():
+            aggregate.setdefault(region_id, []).append(float(stats["latency_ms_avg"]))
+    return [
+        {
+            "region_id": region_id,
+            "latency_ms_avg_median": statistics.median(values),
+            "samples": len(values),
+        }
+        for region_id, values in sorted(
+            aggregate.items(),
+            key=lambda item: statistics.median(item[1]),
+            reverse=True,
+        )[:limit]
+    ]
 
 
 def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -189,6 +219,7 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "bytes_already_resident_median": statistics.median(r.get("bytes_already_resident", 0) for r in subset),
             "prefetch_hit_rate_median": statistics.median(r["trace"]["prefetch_hit_rate"] for r in subset),
             "prefetch_coverage_median": statistics.median(r["trace"]["prefetch_coverage"] for r in subset),
+            "slowest_regions": _aggregate_slowest_regions(subset),
         }
     notes = []
     on, off = summary.get("prefetch_on"), summary.get("prefetch_off")
