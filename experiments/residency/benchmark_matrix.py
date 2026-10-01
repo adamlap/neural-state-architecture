@@ -274,32 +274,38 @@ def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb
         cold_cache = cache_mode == "cold"
         for lookahead in lookaheads:
             for run in range(1, args.runs + 1):
-            order = conditions if run % 2 else list(reversed(conditions))  # counterbalance
-            for prefetch in order:
-                row = _run_once(
-                model_key=args.model,
-                model_path=model_path,
-                prompt=args.prompt,
-                max_tokens=args.max_tokens,
-                prefetch=prefetch,
-                vram_gb=vram_gb,
-                ram_gb=ram_gb,
-                device=args.device,
-                hot_layers=args.hot_layers,
-                warm_layers=args.warm_layers,
-                    lookahead=lookahead,
-                    cold_cache=cold_cache,
-                )
-                row.update({"model": args.model, "model_path": str(Path(model_path).expanduser()),
-                            "prefetch": prefetch, "lookahead": lookahead, "cache_mode": cache_mode,
-                            "run": run, "pid": os.getpid()})
-                rows.append(row)
-                print(
-                    f"cache={cache_mode} lookahead={lookahead} run={run}/{args.runs} prefetch={prefetch!s:5} decode={row['decode_sec']:.3f}s "
-                    f"tok/s={row['tokens_per_sec']:.2f} prefetched={row['trace']['bytes_prefetched']}B "
-                    f"hit_rate={row['trace']['prefetch_hit_rate']:.3f} coverage={row['trace']['prefetch_coverage']:.3f} "
-                    f"lead_ms={row['trace']['prefetch_lead_ms_avg']:.1f}"
-                )
+                order = conditions if run % 2 else list(reversed(conditions))  # counterbalance
+                for prefetch in order:
+                    row = _run_once(
+                        model_key=args.model,
+                        model_path=model_path,
+                        prompt=args.prompt,
+                        max_tokens=args.max_tokens,
+                        prefetch=prefetch,
+                        vram_gb=vram_gb,
+                        ram_gb=ram_gb,
+                        device=args.device,
+                        hot_layers=args.hot_layers,
+                        warm_layers=args.warm_layers,
+                        lookahead=lookahead,
+                        cold_cache=cold_cache,
+                    )
+                    row.update({
+                        "model": args.model,
+                        "model_path": str(Path(model_path).expanduser()),
+                        "prefetch": prefetch,
+                        "lookahead": lookahead,
+                        "cache_mode": cache_mode,
+                        "run": run,
+                        "pid": os.getpid(),
+                    })
+                    rows.append(row)
+                    print(
+                        f"cache={cache_mode} lookahead={lookahead} run={run}/{args.runs} prefetch={prefetch!s:5} decode={row['decode_sec']:.3f}s "
+                        f"tok/s={row['tokens_per_sec']:.2f} prefetched={row['trace']['bytes_prefetched']}B "
+                        f"hit_rate={row['trace']['prefetch_hit_rate']:.3f} coverage={row['trace']['prefetch_coverage']:.3f} "
+                        f"lead_ms={row['trace']['prefetch_lead_ms_avg']:.1f}"
+                    )
     return rows
 
 
