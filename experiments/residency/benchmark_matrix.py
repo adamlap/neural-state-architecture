@@ -393,15 +393,15 @@ def main() -> None:
         except (ValueError, IndexError) as exc:
             parser.error(f"--budgets must use VRAM:RAM pairs in GB, e.g. 2:4,4:8: {exc}")
     else:
-        args.budget_grid = [(args.vram_gb if args.vram_gb is not None else spec.vram_budget_gb,
-                             args.ram_gb if args.ram_gb is not None else spec.ram_budget_gb)]
-    if any(vram <= 0 or ram <= 0 for vram, ram in args.budget_grid):
+        args.budget_grid = None
         parser.error("--budgets values must be positive")
 
     spec = get_local_model(args.model)
     model_path = _resolve_model_path(args.model, args.model_path)
     vram_gb = args.vram_gb if args.vram_gb is not None else spec.vram_budget_gb
     ram_gb = args.ram_gb if args.ram_gb is not None else spec.ram_budget_gb
+    if args.budget_grid is None:
+        args.budget_grid = [(vram_gb, ram_gb)]
 
     rows = run_matrix(args, model_path, vram_gb, ram_gb)
     summary = _summarize(rows)
