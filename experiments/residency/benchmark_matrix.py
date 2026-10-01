@@ -314,7 +314,7 @@ def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb
                                 lookahead=lookahead,
                                 cold_cache=cold_cache,
                                 storage_mode=storage_mode,
-                                learned_predictor=args.learned_predictor,
+                                learned_predictor=getattr(args, "learned_predictor", False),
                             )
                             row.update({
                                 "model": args.model,
