@@ -192,10 +192,19 @@ class AccelerateDiskPrefetcher:
             extents = self._region_extents(region_id)
         return any(not self._already_resident(extent) for extent in extents)
 
-    def _warm(self, extent: Extent, buffer: bytearray) -> int:
-        """Read an extent through the page cache, discarding the data."""
+    def _warm(self, extent: Extent, buffer: bytearray, handle=None) -> int:
+        """Read an extent through the page cache, discarding the data.
+
+        A file handle can be reused across extents. Real transformer layers
+        typically contain many tensors in the same shard/offload file, so
+        avoiding open/close for every tensor materially reduces prefetch
+        overhead without changing the bytes read.
+        """
         read_total = 0
-        with open(extent.path, "rb", buffering=0) as handle:
+        owned_handle = handle is None
+        if owned_handle:
+            handle = open(extent.path, "rb", buffering=0)
+        try:
             fadvise = getattr(os, "posix_fadvise", None)
             if fadvise is not None:
                 try:
@@ -211,7 +220,10 @@ class AccelerateDiskPrefetcher:
                     break
                 read_total += got
                 remaining -= got
-        return read_total
+            return read_total
+        finally:
+            if owned_handle:
+                handle.close()
 
     def _already_resident(self, extent: Extent) -> bool:
         if not self.skip_if_resident:
@@ -234,15 +246,30 @@ class AccelerateDiskPrefetcher:
         buffer = bytearray(self.chunk_bytes)
         total = 0
         skipped = 0
+        # Group extents by backing file so a decoder layer with many tensors
+        # reuses one descriptor instead of opening the shard repeatedly.
+        grouped: dict[Path, list[Extent]] = {}
         for extent in extents:
-            if self._already_resident(extent):
-                skipped += extent.length
-                continue
+            grouped.setdefault(extent.path, []).append(extent)
+        for path, file_extents in grouped.items():
+            handle = None
             try:
-                total += self._warm(extent, buffer)
+                handle = open(path, "rb", buffering=0)
+                for extent in file_extents:
+                    if self._already_resident(extent):
+                        skipped += extent.length
+                        continue
+                    try:
+                        total += self._warm(extent, buffer, handle)
+                    except OSError:
+                        with self._lock:
+                            self.read_errors += 1
             except OSError:
                 with self._lock:
                     self.read_errors += 1
+            finally:
+                if handle is not None:
+                    handle.close()
         with self._lock:
             self.bytes_prefetched += total
             self.bytes_already_resident += skipped

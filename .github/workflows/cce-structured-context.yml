@@ -11,26 +11,29 @@ on:
         default: qwen2.5:0.5b
 
 env:
-  CCE_MODEL: qwen2.5:0.5b
+  CCE_MODEL: ${{ inputs.model || 'qwen2.5:0.5b' }}
+
+permissions:
+  contents: read
 
 jobs:
   structured-context:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+          cache: pip
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[research]"
       - name: Install Ollama
-        run: |
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://ollama.com/install.sh | sh
+        run: curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL https://ollama.com/install.sh | sh
       - name: Cache Ollama model store
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.ollama
           key: ollama-${{ runner.os }}-${{ env.CCE_MODEL }}
@@ -53,9 +56,7 @@ jobs:
       - name: Run structured persistent-state context experiment
         run: |
           mkdir -p results/ci/cce
-          PYTHONPATH=. python experiments/cce_structured_context_runtime.py \
-            --model "$CCE_MODEL" \
-            --output results/ci/cce/structured_context.json
+          PYTHONPATH=. python experiments/cce_structured_context_runtime.py --model "$CCE_MODEL" --output results/ci/cce/structured_context.json
       - name: Validate structured context evidence
         run: |
           PYTHONPATH=. python - <<'PY'
@@ -73,7 +74,7 @@ jobs:
           print("CCE structured-state context evidence validation passed")
           PY
       - name: Upload structured context evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cce-structured-context-results
           path: results/ci/cce/structured_context.json

@@ -26,8 +26,8 @@ jobs:
   deterministic-cognitive-benchmark:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install benchmark test dependencies
@@ -82,7 +82,7 @@ jobs:
         run: python -m pytest -q tests/test_cognitive_benchmark.py tests/test_dynamic_cognitive_benchmark.py tests/test_state_compression_benchmark.py tests/test_sufficient_state_dynamics_benchmark.py tests/test_governance_temptation_benchmark.py tests/test_cognitive_kalman_estimators.py
       - name: Upload research artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cce-cognitive-benchmarks
           path: |

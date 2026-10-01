@@ -13,18 +13,22 @@ on:
         default: "2"
 
 env:
-  CCE_MODEL: qwen2.5:0.5b
-  CCE_TICKS: "2"
+  CCE_MODEL: ${{ inputs.model || 'qwen2.5:0.5b' }}
+  CCE_TICKS: ${{ inputs.ticks || '2' }}
+
+permissions:
+  contents: read
 
 jobs:
   live-cce:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+          cache: pip
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
@@ -39,7 +43,7 @@ jobs:
           done
           exit 1
       - name: Cache Ollama model store
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.ollama
           key: ollama-${{ runner.os }}-${{ env.CCE_MODEL }}
@@ -69,20 +73,15 @@ jobs:
         run: |
           PYTHONPATH=. python experiments/live/cce_ollama_continuous_smoke.py --model "$CCE_MODEL" --ticks "$CCE_TICKS" --interval 1.0 --output results/ci/cce/continuous.json
       - name: Run predictive continuous-state benchmark
-        run: |
-          PYTHONPATH=. python experiments/live/cce_predictive_dynamics.py --epochs 250 --samples 128 --output results/ci/cce/predictive_dynamics.json
+        run: PYTHONPATH=. python experiments/live/cce_predictive_dynamics.py --epochs 250 --samples 128 --output results/ci/cce/predictive_dynamics.json
       - name: Run adaptive salience runtime experiment
-        run: |
-          PYTHONPATH=. python experiments/cce_salience_runtime.py --steps 64 --seed 42 --output results/ci/cce/salience.json
+        run: PYTHONPATH=. python experiments/cce_salience_runtime.py --steps 64 --seed 42 --output results/ci/cce/salience.json
       - name: Run closed-loop salience-gated Ollama invocation
-        run: |
-          PYTHONPATH=. python experiments/cce_closed_loop_runtime.py --model "$CCE_MODEL" --steps 16 --seed 42 --mode ollama --output results/ci/cce/closed_loop.json
+        run: PYTHONPATH=. python experiments/cce_closed_loop_runtime.py --model "$CCE_MODEL" --steps 16 --seed 42 --mode ollama --output results/ci/cce/closed_loop.json
       - name: Run event-driven versus fixed-rate Ollama experiment
-        run: |
-          PYTHONPATH=. python experiments/live/cce_event_vs_fixed_rate.py --model "$CCE_MODEL" --steps 8 --interval 0.25 --max-tokens 32 --seed 42 --output results/ci/cce/event_vs_fixed.json
+        run: PYTHONPATH=. python experiments/live/cce_event_vs_fixed_rate.py --model "$CCE_MODEL" --steps 8 --interval 0.25 --max-tokens 32 --seed 42 --output results/ci/cce/event_vs_fixed.json
       - name: Run persistent cognitive-state wall-clock experiment
-        run: |
-          PYTHONPATH=. python experiments/cce_persistent_state_runtime.py --dimension 4 --settle-seconds 0.5 --observations 4 --output results/ci/cce/persistent_state.json
+        run: PYTHONPATH=. python experiments/cce_persistent_state_runtime.py --dimension 4 --settle-seconds 0.5 --observations 4 --output results/ci/cce/persistent_state.json
       - name: Validate collected CCE evidence
         run: |
           PYTHONPATH=. python - <<'PY'
@@ -106,7 +105,7 @@ jobs:
           print("Manual CCE live + predictive + salience + closed-loop + event/fixed + persistent-state evidence validation passed")
           PY
       - name: Upload CCE/Ollama results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cce-live-ollama-results
           path: results/ci/cce/
