@@ -44,10 +44,10 @@ class NeuralResidencyManager:
         """Feed observed execution back into the active predictor without fabricating residency."""
         active = state if isinstance(state, Mapping) else self.active_state
         previous = self.current_region
-        if hasattr(self.predictor, "observe_transition"):
-            self.predictor.observe_transition(previous, region_id)
-        elif hasattr(self.predictor, "observe"):
+        if hasattr(self.predictor, "observe"):
             self.predictor.observe(previous, region_id, active)
+        elif hasattr(self.predictor, "observe_transition"):
+            self.predictor.observe_transition(previous, region_id)
         self.current_region = region_id
 
     def plan(self, state: Mapping[str, object]) -> list[ResidencyDecision]:
