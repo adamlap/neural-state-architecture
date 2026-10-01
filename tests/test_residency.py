@@ -80,6 +80,20 @@ class TestResidencyManager(unittest.TestCase):
         s=m.snapshot()
         self.assertEqual(s.states["a"],ResidencyState.RESIDENT); self.assertEqual(s.tiers["a"],MemoryTier.VRAM)
         self.assertEqual(s.bytes_by_tier[MemoryTier.VRAM],80)
+    def test_execution_feedback_carries_active_state_into_online_predictor(self):
+        predictor = OnlineResidencyPredictor()
+        m = NeuralResidencyManager(
+            ResidencyPolicy(vram_budget_bytes=1024, ram_budget_bytes=4096),
+            predictor=predictor,
+        )
+        m.register([NeuralRegion("a"), NeuralRegion("b")])
+        m.set_active_state({"tags": ["code"]})
+        m.record_execution("a")
+        m.record_execution("b")
+        self.assertEqual(predictor.observations, 2)
+        self.assertEqual(predictor.state_counts["code"]["a"], 1.0)
+        self.assertEqual(predictor.state_counts["code"]["b"], 1.0)
+        self.assertEqual(m.current_region, "b")
     def test_plan_uses_state_tags(self):
         m=NeuralResidencyManager(ResidencyPolicy(vram_budget_bytes=1024,ram_budget_bytes=4096))
         m.register([NeuralRegion("python",size_bytes=100,semantic_tags=("python",)),NeuralRegion("vision",size_bytes=100,semantic_tags=("vision",))])
