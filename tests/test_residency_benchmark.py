@@ -65,6 +65,18 @@ def test_drop_page_cache_counts_files(tmp_path):
     assert _drop_page_cache(tmp_path, tmp_path / "missing") == 2
 
 
+def test_summary_groups_storage_modes_and_budgets():
+    from experiments.residency.benchmark_matrix import _summarize
+    rows = []
+    for mode, budget, decode in (("resident", (8.0, 16.0), 1.0), ("disk", (2.0, 4.0), 3.0)):
+        row = _row(False, decode, 0)
+        row["storage_mode"] = mode
+        row["vram_gb"], row["ram_gb"] = budget
+        rows.append(row)
+    summary = _summarize(rows)
+    assert set(summary["by_storage_mode"]) == {"resident", "disk"}
+    assert set(summary["by_budget"]) == {"2vram/4ram", "8vram/16ram"}
+
 def test_summary_groups_cache_modes():
     from experiments.residency.benchmark_matrix import _summarize
 
