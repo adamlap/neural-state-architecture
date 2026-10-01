@@ -250,7 +250,7 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     summary["outputs_identical_across_runs"] = len(hashes) == 1
     if len(hashes) != 1:
         notes.append("generated tokens differ between runs; prefetch must never change outputs.")
-    if not any(r["page_cache_files_dropped"] for r in rows):
+    if any(str(r.get("storage_mode", "selective")) != "resident" for r in rows) and not any(r["page_cache_files_dropped"] for r in rows):
         notes.append("page cache was not dropped: runs are warm-cache and prefetch benefit is understated.")
     summary["notes"] = notes
 
