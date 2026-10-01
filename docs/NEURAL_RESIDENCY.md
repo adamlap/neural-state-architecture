@@ -65,9 +65,7 @@ The three storage modes deliberately provide matched controls:
 * `disk + prefetch=on` measures NSA's page-cache intervention on the same disk-backed model.
 * `selective` measures the intended tiered policy under explicit VRAM/RAM budgets.
 
-The ML extras require `torch>=2.5`. Cached mode never downloads weights; the benchmark downloads only when no checkpoint path is given.
-
-The ML extras require `torch>=2.5` (transformers 5 refuses to use older torch); the backend raises a clear error if the installed torch is too old. Cached mode never downloads weights; the benchmark downloads only when no checkpoint path is given.
+The ML extras require `torch>=2.5` (Transformers 5 refuses to use older torch); the backend raises a clear error if the installed torch is too old. Cached mode never downloads weights; the benchmark downloads only when no checkpoint path is given.
 
 ## Development phases
 
