@@ -147,6 +147,11 @@ RESIDENCY_RUNS ?= 3
 RESIDENCY_MAX_TOKENS ?= 64
 RESIDENCY_PREFETCH ?= both
 RESIDENCY_PYTHON ?= $(if $(wildcard $(UV_PYTHON)),$(UV_PYTHON),$(PYTHON))
+RESIDENCY_EXECUTION_MODES ?= resident,selective,disk
+RESIDENCY_LOOKAHEADS ?= 1,2,4
+RESIDENCY_CACHE_MODES ?= cold,warm
+RESIDENCY_BUDGETS ?= 2:4,4:8
+RESIDENCY_LEARNED_PREDICTOR ?= 0
 
 residency: residency-smoke ## Run the residency smoke experiment
 
@@ -163,14 +168,14 @@ residency-benchmark: ## Run the local residency benchmark matrix; downloads the 
 	bash scripts/run_residency_experiments.sh benchmark "$(RESIDENCY_MODEL)" "$(RESIDENCY_MODEL_PATH)"
 
 residency-full: ## Run the complete resident/selective/disk residency evaluation matrix
-	EXECUTION_MODES="${EXECUTION_MODES:-resident,selective,disk}" \
-	LOOKAHEADS="${LOOKAHEADS:-1,2,4}" \
-	CACHE_MODES="${CACHE_MODES:-cold,warm}" \
-	BUDGETS="${BUDGETS:-2:4,4:8}" \
-	LEARNED_PREDICTOR="${LEARNED_PREDICTOR:-0}" \
-	PREFETCH="${PREFETCH:-both}" \
-	RUNS="${RUNS:-3}" \
-	MAX_TOKENS="${MAX_TOKENS:-64}" \
+	EXECUTION_MODES="$(RESIDENCY_EXECUTION_MODES)" \
+	LOOKAHEADS="$(RESIDENCY_LOOKAHEADS)" \
+	CACHE_MODES="$(RESIDENCY_CACHE_MODES)" \
+	BUDGETS="$(RESIDENCY_BUDGETS)" \
+	LEARNED_PREDICTOR="$(RESIDENCY_LEARNED_PREDICTOR)" \
+	PREFETCH="$(RESIDENCY_PREFETCH)" \
+	RUNS="$(RESIDENCY_RUNS)" \
+	MAX_TOKENS="$(RESIDENCY_MAX_TOKENS)" \
 	PYTHON="$(RESIDENCY_PYTHON)" \
 	bash scripts/run_residency_experiments.sh benchmark "$(RESIDENCY_MODEL)" "$(RESIDENCY_MODEL_PATH)"
 
