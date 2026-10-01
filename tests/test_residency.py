@@ -150,6 +150,24 @@ class TestResidencyTrace(unittest.TestCase):
         self.assertEqual(metrics["execution_by_region"]["layer.1"]["latency_ms_max"], 20.0)
         self.assertAlmostEqual(metrics["execution_by_region"]["layer.1"]["latency_ms_avg"], 15.0)
 
+class TestBenchmarkTelemetry(unittest.TestCase):
+    def test_slowest_regions_are_sorted_by_median_latency(self):
+        from experiments.residency.benchmark_matrix import _aggregate_slowest_regions
+        rows=[
+            {"trace":{"execution_by_region":{
+                "layer.0":{"latency_ms_avg":30.0},
+                "layer.1":{"latency_ms_avg":10.0},
+            }}},
+            {"trace":{"execution_by_region":{
+                "layer.0":{"latency_ms_avg":20.0},
+                "layer.1":{"latency_ms_avg":12.0},
+            }}},
+        ]
+        result=_aggregate_slowest_regions(rows)
+        self.assertEqual([item["region_id"] for item in result],["layer.0","layer.1"])
+        self.assertEqual(result[0]["latency_ms_avg_median"],25.0)
+        self.assertEqual(result[1]["latency_ms_avg_median"],11.0)
+
 class TestSelectiveBackend(unittest.TestCase):
     def test_mock_backend_does_not_require_transformers(self):
         from nsa.runtime.inference.resident_transformers import SelectiveStorageTransformersBackend
