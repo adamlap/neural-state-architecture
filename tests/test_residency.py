@@ -93,6 +93,7 @@ class TestResidencyManager(unittest.TestCase):
         self.assertEqual(predictor.observations, 2)
         self.assertEqual(predictor.state_counts["code"]["a"], 1.0)
         self.assertEqual(predictor.state_counts["code"]["b"], 1.0)
+        self.assertEqual(predictor.transition_counts["a"]["b"], 1.0)
         self.assertEqual(m.current_region, "b")
     def test_plan_uses_state_tags(self):
         m=NeuralResidencyManager(ResidencyPolicy(vram_budget_bytes=1024,ram_budget_bytes=4096))
