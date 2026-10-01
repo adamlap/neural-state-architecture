@@ -29,12 +29,7 @@ def instrument_decoder_layers(model: Any, manager: NeuralResidencyManager, on_re
         @wraps(original)
         def wrapped(*args, __original=original, __rid=region_id, **kwargs):
             started = monotonic()
-            previous = manager.current_region
-            if hasattr(manager.predictor, "observe_transition"):
-                manager.predictor.observe_transition(previous, __rid)
-            elif hasattr(manager.predictor, "observe"):
-                manager.predictor.observe(previous, __rid)
-            manager.current_region = __rid
+            manager.record_execution(__rid, manager.active_state)
             if on_region is not None:
                 on_region(__rid)
             result = __original(*args, **kwargs)
