@@ -26,6 +26,7 @@ class NeuralResidencyManager:
         # Last region observed *executing*. Residency transfers never change it,
         # otherwise a prefetch would corrupt the execution-transition statistics.
         self.current_region: str | None = None
+        self.active_state: Mapping[str, object] = {"tags": []}
 
     def record_event(self, event: ResidencyEvent) -> None:
         self.events.append(event)
@@ -36,6 +37,19 @@ class NeuralResidencyManager:
             self.regions[region.region_id] = region
             self.states.setdefault(region.region_id, ResidencyState.COLD)
             self.tiers.setdefault(region.region_id, MemoryTier.NVME)
+    def set_active_state(self, state: Mapping[str, object] | None) -> None:
+        self.active_state = state if isinstance(state, Mapping) else {"tags": []}
+
+    def record_execution(self, region_id: str, state: Mapping[str, object] | None = None) -> None:
+        """Feed observed execution back into the active predictor without fabricating residency."""
+        active = state if isinstance(state, Mapping) else self.active_state
+        previous = self.current_region
+        if hasattr(self.predictor, "observe_transition"):
+            self.predictor.observe_transition(previous, region_id)
+        elif hasattr(self.predictor, "observe"):
+            self.predictor.observe(previous, region_id, active)
+        self.current_region = region_id
+
     def plan(self, state: Mapping[str, object]) -> list[ResidencyDecision]:
         probabilities = self.predictor.predict(tuple(self.regions.values()), state, self.current_region)
         decisions = []
