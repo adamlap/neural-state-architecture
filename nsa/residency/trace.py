@@ -64,6 +64,15 @@ class ResidencyTrace:
         # because it warms a cache; it does not move a region between tiers.
         transfers = [e for e in events if e.action in {"resident", "evict"}]
         hits = self._prefetch_hits(events)
+        execution_by_region: dict[str, dict[str, float | int]] = {}
+        for event in executions:
+            stats = execution_by_region.setdefault(event.region_id, {"count": 0, "latency_ms_total": 0.0, "latency_ms_max": 0.0})
+            stats["count"] += 1
+            stats["latency_ms_total"] += event.latency_ms
+            stats["latency_ms_max"] = max(stats["latency_ms_max"], event.latency_ms)
+        for stats in execution_by_region.values():
+            stats["latency_ms_avg"] = stats["latency_ms_total"] / stats["count"]
+
         return {
             "events": len(events),
             "prefetches": len(prefetches),
@@ -77,6 +86,7 @@ class ResidencyTrace:
             "prefetch_coverage": hits / len(executions) if executions else 0.0,
             "bytes_prefetched": sum(e.bytes_moved for e in completions),
             "executions": len(executions),
+            "execution_by_region": execution_by_region,
             "transfer_events": len(transfers),
             "bytes_moved": sum(e.bytes_moved for e in transfers),
             "latency_ms_total": sum(e.latency_ms for e in events),
