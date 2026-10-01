@@ -247,16 +247,27 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     if not any(r["page_cache_files_dropped"] for r in rows):
         notes.append("page cache was not dropped: runs are warm-cache and prefetch benefit is understated.")
     summary["notes"] = notes
+
+    # A grid run keeps the same per-condition summary shape while also making
+    # lookahead effects directly comparable without requiring separate model loads.
+    lookaheads = sorted({int(r.get("lookahead", 0)) for r in rows})
+    if len(lookaheads) > 1:
+        summary["by_lookahead"] = {
+            str(lookahead): _summarize([r for r in rows if int(r.get("lookahead", 0)) == lookahead])
+            for lookahead in lookaheads
+        }
     return summary
 
 
 def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb: float) -> list[dict[str, Any]]:
     conditions = [True, False] if args.prefetch == "both" else [args.prefetch == "on"]
     rows: list[dict[str, Any]] = []
-    for run in range(1, args.runs + 1):
-        order = conditions if run % 2 else list(reversed(conditions))  # counterbalance
-        for prefetch in order:
-            row = _run_once(
+    lookaheads = getattr(args, "lookaheads", None) or [args.lookahead]
+    for lookahead in lookaheads:
+        for run in range(1, args.runs + 1):
+            order = conditions if run % 2 else list(reversed(conditions))  # counterbalance
+            for prefetch in order:
+                row = _run_once(
                 model_key=args.model,
                 model_path=model_path,
                 prompt=args.prompt,
@@ -267,17 +278,18 @@ def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb
                 device=args.device,
                 hot_layers=args.hot_layers,
                 warm_layers=args.warm_layers,
-                lookahead=args.lookahead,
-                cold_cache=args.cold_cache,
-            )
-            row.update({"model": args.model, "model_path": str(Path(model_path).expanduser()),
-                        "prefetch": prefetch, "run": run, "pid": os.getpid()})
-            rows.append(row)
-            print(
-                f"run={run}/{args.runs} prefetch={prefetch!s:5} decode={row['decode_sec']:.3f}s "
-                f"tok/s={row['tokens_per_sec']:.2f} prefetched={row['trace']['bytes_prefetched']}B "
-                f"hit_rate={row['trace']['prefetch_hit_rate']:.3f} coverage={row['trace']['prefetch_coverage']:.3f} "f"lead_ms={row['trace']['prefetch_lead_ms_avg']:.1f}"
-            )
+                    lookahead=lookahead,
+                    cold_cache=args.cold_cache,
+                )
+                row.update({"model": args.model, "model_path": str(Path(model_path).expanduser()),
+                            "prefetch": prefetch, "lookahead": lookahead, "run": run, "pid": os.getpid()})
+                rows.append(row)
+                print(
+                    f"lookahead={lookahead} run={run}/{args.runs} prefetch={prefetch!s:5} decode={row['decode_sec']:.3f}s "
+                    f"tok/s={row['tokens_per_sec']:.2f} prefetched={row['trace']['bytes_prefetched']}B "
+                    f"hit_rate={row['trace']['prefetch_hit_rate']:.3f} coverage={row['trace']['prefetch_coverage']:.3f} "
+                    f"lead_ms={row['trace']['prefetch_lead_ms_avg']:.1f}"
+                )
     return rows
 
 
@@ -293,7 +305,9 @@ def main() -> None:
     parser.add_argument("--device", default="auto", help="auto|cpu|cuda|cuda:N (default: auto)")
     parser.add_argument("--hot-layers", type=int, default=2)
     parser.add_argument("--warm-layers", type=int, default=2)
-    parser.add_argument("--lookahead", type=int, default=2, help="predicted regions the background prefetch controller may have in flight at once")
+    parser.add_argument("--lookahead", type=int, default=2, help="single lookahead value (used when --lookaheads is omitted)")
+    parser.add_argument("--lookaheads", default=None,
+                        help="comma-separated lookahead grid, e.g. 1,2,4; runs each value with the same counterbalanced prefetch conditions")
     parser.add_argument("--prefetch", choices=["on", "off", "both"], default="both")
     parser.add_argument("--cold-cache", action=argparse.BooleanOptionalAction, default=True,
                         help="drop the OS page cache for weight files before decoding (default: on)")
@@ -302,6 +316,12 @@ def main() -> None:
     args = parser.parse_args()
     if args.runs < 1 or args.max_tokens < 1:
         parser.error("--runs and --max-tokens must be positive")
+    try:
+        args.lookaheads = [int(value.strip()) for value in args.lookaheads.split(",")] if args.lookaheads else [args.lookahead]
+    except ValueError as exc:
+        parser.error(f"--lookaheads must be a comma-separated list of integers: {exc}")
+    if not args.lookaheads or any(value < 1 for value in args.lookaheads):
+        parser.error("--lookaheads values must be positive")
 
     spec = get_local_model(args.model)
     model_path = _resolve_model_path(args.model, args.model_path)
@@ -332,6 +352,7 @@ def main() -> None:
             "hot_layers": args.hot_layers,
             "warm_layers": args.warm_layers,
             "lookahead": args.lookahead,
+            "lookaheads": args.lookaheads,
             "vram_gb": vram_gb,
             "ram_gb": ram_gb,
             "prompt": args.prompt,

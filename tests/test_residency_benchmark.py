@@ -39,6 +39,24 @@ def test_summary_reports_speedup_and_flags_meaningless_comparisons():
     assert any("page cache was not dropped" in note for note in warm["notes"])
 
 
+def test_summary_groups_lookahead_grid():
+    from experiments.residency.benchmark_matrix import _summarize
+
+    rows = [
+        _row(True, 1.0, 100),
+        _row(False, 2.0, 0),
+        _row(True, 0.8, 100),
+        _row(False, 1.6, 0),
+    ]
+    rows[0]["lookahead"] = rows[1]["lookahead"] = 1
+    rows[2]["lookahead"] = rows[3]["lookahead"] = 4
+
+    summary = _summarize(rows)
+    assert set(summary["by_lookahead"]) == {"1", "4"}
+    assert summary["by_lookahead"]["1"]["decode_speedup_on_vs_off"] == pytest.approx(2.0)
+    assert summary["by_lookahead"]["4"]["decode_speedup_on_vs_off"] == pytest.approx(2.0)
+
+
 def test_drop_page_cache_counts_files(tmp_path):
     from experiments.residency.benchmark_matrix import _drop_page_cache
     (tmp_path / "a.bin").write_bytes(b"x" * 1024)
