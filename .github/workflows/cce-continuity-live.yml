@@ -1,13 +1,6 @@
 name: "[auto] Live CCE continuity integrity"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - "nsa/runtime/**"
-      - "experiments/live/cce_continuity_integrity.py"
-      - "tests/test_continuous_runtime_supervisor.py"
-      - ".github/workflows/cce-continuity-live.yml"
   workflow_dispatch:
     inputs:
       model:
@@ -18,14 +11,6 @@ on:
         description: "Wall-clock test duration in seconds"
         required: true
         default: "6"
-
-concurrency:
-  group: live-cce-continuity-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
-env:
-  CCE_MODEL: ${{ github.event.inputs.model || 'qwen2.5:0.5b' }}
-  CCE_DURATION: ${{ github.event.inputs.duration || '6' }}
 
 jobs:
   continuity:
