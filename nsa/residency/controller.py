@@ -22,19 +22,45 @@ class PrefetchTask:
     reason: str
 
 class ActiveResidencyController:
-    """Turn NSA residency plans into backend load/evict operations."""
-    def __init__(self, manager: NeuralResidencyManager, load_fn: LoadFn, evict_fn: Optional[EvictFn] = None, lookahead: int = 2, prefetch_fn: Optional[PrefetchFn] = None, prefetch_eligible: Optional[Callable[[str], bool]] = None) -> None:
+    """Turn NSA residency plans into backend load/evict operations.
+
+    Adaptive lookahead changes only speculative page-cache concurrency.
+    """
+    def __init__(
+        self,
+        manager: NeuralResidencyManager,
+        load_fn: LoadFn,
+        evict_fn: Optional[EvictFn] = None,
+        lookahead: int = 2,
+        prefetch_fn: Optional[PrefetchFn] = None,
+        prefetch_eligible: Optional[Callable[[str], bool]] = None,
+        adaptive_lookahead: bool = False,
+        min_lookahead: int = 1,
+        max_lookahead: Optional[int] = None,
+        adaptation_interval: int = 16,
+    ) -> None:
         self.manager = manager
         self.load_fn = load_fn
         self.evict_fn = evict_fn
         self.prefetch_fn = prefetch_fn
-        # regions this prefetcher can actually warm (e.g. only disk-offloaded ones)
         self.prefetch_eligible = prefetch_eligible
         self.lookahead = max(0, lookahead)
+        self.adaptive_lookahead = bool(adaptive_lookahead)
+        self.min_lookahead = max(0, min_lookahead)
+        self.max_lookahead = max(
+            self.min_lookahead,
+            max_lookahead if max_lookahead is not None else (max(8, self.lookahead) if self.adaptive_lookahead else max(1, self.lookahead)),
+        )
+        self.lookahead = min(max(self.lookahead, self.min_lookahead), self.max_lookahead)
+        self.adaptation_interval = max(1, adaptation_interval)
+        self._executions_since_adaptation = 0
         self._lock = Lock()
         self._inflight: set[str] = set()
         self._closed = False
-        self._executor = ThreadPoolExecutor(max_workers=max(1, lookahead), thread_name_prefix="nsa-residency")
+        self._executor = ThreadPoolExecutor(
+            max_workers=max(1, self.max_lookahead),
+            thread_name_prefix="nsa-residency",
+        )
         self._futures: dict[str, Future[None]] = {}
 
     def _tasks(self, decisions: Sequence[ResidencyDecision]) -> list[PrefetchTask]:
@@ -48,8 +74,65 @@ class ActiveResidencyController:
         self.manager.record_resident(task.region_id, task.tier, reason="predictive-prefetch", latency_ms=(monotonic()-started)*1000)
         self.manager.record_event(ResidencyEvent(monotonic(), task.region_id, "prefetch-complete", MemoryTier.NVME, task.tier, self.manager.regions[task.region_id].size_bytes, (monotonic()-started)*1000, "predictive-prefetch"))
 
+    def _adapt_from_recent_trace(self) -> None:
+        """Adapt speculative depth from observed overlap, not assumptions."""
+        if not self.adaptive_lookahead:
+            return
+        events = list(self.manager.events)[-256:]
+        prefetches = [e for e in events if e.action == "prefetch"]
+        executions = [e for e in events if e.action == "execute"]
+        errors = [e for e in events if e.action == "prefetch-error"]
+        if not prefetches or not executions:
+            return
+
+        pending: dict[str, list[float]] = {}
+        hits = 0
+        leads: list[float] = []
+        ordered = sorted(
+            (e for e in events if e.action in {"prefetch-complete", "execute"}),
+            key=lambda e: e.timestamp - (e.latency_ms / 1000.0 if e.action == "execute" else 0.0),
+        )
+        for event in ordered:
+            if event.action == "prefetch-complete":
+                pending.setdefault(event.region_id, []).append(event.timestamp)
+                continue
+            started = event.timestamp - event.latency_ms / 1000.0
+            queue = pending.get(event.region_id)
+            if queue and queue[0] <= started:
+                leads.append((started - queue.pop(0)) * 1000.0)
+                hits += 1
+
+        hit_rate = hits / len(prefetches)
+        coverage = hits / len(executions)
+        error_rate = len(errors) / len(prefetches)
+        lead_ms = sum(leads) / len(leads) if leads else 0.0
+        previous = self.lookahead
+
+        if error_rate > 0.10 or (hit_rate < 0.20 and coverage < 0.20):
+            self.lookahead = max(self.min_lookahead, self.lookahead - 1)
+        elif coverage >= 0.60 and lead_ms >= 2.0:
+            self.lookahead = min(self.max_lookahead, self.lookahead + 1)
+
+        if self.lookahead != previous:
+            self.manager.record_event(ResidencyEvent(
+                monotonic(),
+                "*",
+                "adapt-lookahead",
+                None,
+                None,
+                0,
+                0.0,
+                f"{previous}->{self.lookahead} hit_rate={hit_rate:.3f} coverage={coverage:.3f} "
+                f"lead_ms={lead_ms:.1f} error_rate={error_rate:.3f}",
+            ))
+
     def prefetch_async(self, state: Mapping[str, object]) -> list[PrefetchTask]:
         """Warm predicted regions without claiming they are resident."""
+        if self.adaptive_lookahead:
+            self._executions_since_adaptation += 1
+            if self._executions_since_adaptation >= self.adaptation_interval:
+                self._executions_since_adaptation = 0
+                self._adapt_from_recent_trace()
         tasks = self._tasks(self.manager.plan(state))
         if self.prefetch_fn is None or self._closed:
             return tasks
@@ -145,3 +228,4 @@ class ActiveResidencyController:
                 self.evict_fn(region_id, tier)
             self.manager.record_evicted(region_id, reason="policy")
         return retained
+
