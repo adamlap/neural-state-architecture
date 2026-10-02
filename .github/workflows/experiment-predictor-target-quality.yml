@@ -2,18 +2,6 @@ name: NSA Predictor Target Quality
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'nsa/**'
-      - 'experiments/self_state/predictor_target_quality.py'
-      - 'tests/test_predictor_target_quality.py'
-      - '.github/workflows/experiment-predictor-target-quality.yml'
-  push:
-    paths:
-      - 'nsa/**'
-      - 'experiments/self_state/predictor_target_quality.py'
-      - 'tests/test_predictor_target_quality.py'
-      - '.github/workflows/experiment-predictor-target-quality.yml'
 
 jobs:
   target-quality:

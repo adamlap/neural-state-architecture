@@ -11,16 +11,6 @@ on:
         description: "Episode horizon"
         required: false
         default: "60"
-  pull_request:
-    paths:
-      - "experiments/cognitive/**"
-      - "tests/test_cognitive_benchmark.py"
-      - "tests/test_dynamic_cognitive_benchmark.py"
-      - "tests/test_state_compression_benchmark.py"
-      - "tests/test_sufficient_state_dynamics_benchmark.py"
-      - "tests/test_governance_temptation_benchmark.py"
-      - "tests/test_cognitive_kalman_estimators.py"
-      - "docs/COGNITIVE_ARCHITECTURE_EXPERIMENT.md"
 
 jobs:
   deterministic-cognitive-benchmark:

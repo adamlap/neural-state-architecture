@@ -1,13 +1,6 @@
 name: Live Ollama multi-run CCE evidence
 
 on:
-  pull_request:
-    paths:
-      - "nsa/**"
-      - "experiments/live/**"
-      - "experiments/self_model/**"
-      - "tests/**"
-      - ".github/workflows/**"
   workflow_dispatch:
     inputs:
       model:
@@ -18,6 +11,7 @@ on:
         description: Independent repeated runs (not random seeds)
         required: false
         default: "3"
+
 
 jobs:
   live-multirun:

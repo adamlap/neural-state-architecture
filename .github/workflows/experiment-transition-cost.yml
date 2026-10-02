@@ -2,22 +2,6 @@ name: NSA Transition Cost Benchmark
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'nsa/transitions/**'
-      - 'nsa/core/heterogeneous_algebra.py'
-      - 'nsa/core/transition_cone.py'
-      - 'experiments/transitions/**'
-      - 'tests/test_capability_cost.py'
-      - '.github/workflows/experiment-transition-cost.yml'
-  push:
-    paths:
-      - 'nsa/transitions/**'
-      - 'nsa/core/heterogeneous_algebra.py'
-      - 'nsa/core/transition_cone.py'
-      - 'experiments/transitions/**'
-      - 'tests/test_capability_cost.py'
-      - '.github/workflows/experiment-transition-cost.yml'
 
 jobs:
   benchmark:
