@@ -228,3 +228,4 @@ class ActiveResidencyController:
                 self.evict_fn(region_id, tier)
             self.manager.record_evicted(region_id, reason="policy")
         return retained
+
