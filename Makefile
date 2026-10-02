@@ -38,7 +38,7 @@ OLLAMA_HOST ?= 127.0.0.1:11434
         serve-ollama-policy serve-lmstudio-policy chat-ollama \
         benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama \
         benchmark-nsa64-ollama benchmark-nsa64-ollama-smoke \
-        residency residency-smoke residency-benchmark \
+        residency residency-smoke residency-benchmark residency-full \
         benchmark-live evidence research
 
 help: ## Show the supported developer commands
@@ -147,6 +147,11 @@ RESIDENCY_RUNS ?= 3
 RESIDENCY_MAX_TOKENS ?= 64
 RESIDENCY_PREFETCH ?= both
 RESIDENCY_PYTHON ?= $(if $(wildcard $(UV_PYTHON)),$(UV_PYTHON),$(PYTHON))
+RESIDENCY_EXECUTION_MODES ?= resident,selective,disk
+RESIDENCY_LOOKAHEADS ?= 1,2,4
+RESIDENCY_CACHE_MODES ?= cold,warm
+RESIDENCY_BUDGETS ?= 2:4,4:8
+RESIDENCY_LEARNED_PREDICTOR ?= 0
 
 residency: residency-smoke ## Run the residency smoke experiment
 
@@ -160,6 +165,18 @@ residency-benchmark: ## Run the local residency benchmark matrix; downloads the 
 	RUNS="$(RESIDENCY_RUNS)" \
 	MAX_TOKENS="$(RESIDENCY_MAX_TOKENS)" \
 	PREFETCH="$(RESIDENCY_PREFETCH)" \
+	bash scripts/run_residency_experiments.sh benchmark "$(RESIDENCY_MODEL)" "$(RESIDENCY_MODEL_PATH)"
+
+residency-full: ## Run the complete resident/selective/disk residency evaluation matrix
+	EXECUTION_MODES="$(RESIDENCY_EXECUTION_MODES)" \
+	LOOKAHEADS="$(RESIDENCY_LOOKAHEADS)" \
+	CACHE_MODES="$(RESIDENCY_CACHE_MODES)" \
+	BUDGETS="$(RESIDENCY_BUDGETS)" \
+	LEARNED_PREDICTOR="$(RESIDENCY_LEARNED_PREDICTOR)" \
+	PREFETCH="$(RESIDENCY_PREFETCH)" \
+	RUNS="$(RESIDENCY_RUNS)" \
+	MAX_TOKENS="$(RESIDENCY_MAX_TOKENS)" \
+	PYTHON="$(RESIDENCY_PYTHON)" \
 	bash scripts/run_residency_experiments.sh benchmark "$(RESIDENCY_MODEL)" "$(RESIDENCY_MODEL_PATH)"
 
 

@@ -20,7 +20,15 @@ case "${1:-help}" in
     RUNS="${RUNS:-3}"
     MAX_TOKENS="${MAX_TOKENS:-64}"
     PREFETCH="${PREFETCH:-both}"
-    ARGS=(--model "$MODEL" --runs "$RUNS" --max-tokens "$MAX_TOKENS" --prefetch "$PREFETCH")
+    EXECUTION_MODES="${EXECUTION_MODES:-selective}"
+    LOOKAHEADS="${LOOKAHEADS:-2}"
+    CACHE_MODES="${CACHE_MODES:-cold}"
+    BUDGETS="${BUDGETS:-}"
+    LEARNED_PREDICTOR="${LEARNED_PREDICTOR:-0}"
+    ARGS=(--model "$MODEL" --runs "$RUNS" --max-tokens "$MAX_TOKENS" --prefetch "$PREFETCH" \
+          --execution-modes "$EXECUTION_MODES" --lookaheads "$LOOKAHEADS" --cache-modes "$CACHE_MODES")
+    if [ -n "$BUDGETS" ]; then ARGS+=(--budgets "$BUDGETS"); fi
+    if [ "$LEARNED_PREDICTOR" = "1" ]; then ARGS+=(--learned-predictor); fi
     if [ "${COLD_CACHE:-1}" = "0" ]; then ARGS+=(--no-cold-cache); fi
     if [ -n "$MODEL_PATH" ]; then ARGS+=(--model-path "$MODEL_PATH"); fi
     "$PY" -m experiments.residency.benchmark_matrix "${ARGS[@]}"
@@ -38,7 +46,12 @@ Environment:
   RUNS=3
   MAX_TOKENS=64
   PREFETCH=both|on|off
-  COLD_CACHE=1          (0 keeps the OS page cache warm)
+  COLD_CACHE=1          (0 keeps the OS page cache warm; legacy single-mode switch)
+  EXECUTION_MODES=selective   (resident|selective|disk, comma-separated)
+  LOOKAHEADS=2            (comma-separated, e.g. 1,2,4)
+  CACHE_MODES=cold        (cold|warm, comma-separated)
+  BUDGETS=                (VRAM:RAM pairs in GB, e.g. 2:4,4:8)
+  LEARNED_PREDICTOR=0     (1 enables the online state-aware predictor)
   PYTHON=<interpreter>  (default: python3)
 EOF
     exit 2

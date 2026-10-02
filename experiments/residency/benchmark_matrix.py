@@ -121,6 +121,8 @@ def _run_once(
     warm_layers: int,
     lookahead: int,
     cold_cache: bool,
+    storage_mode: str = "selective",
+    learned_predictor: bool = False,
 ) -> dict[str, Any]:
     backend = SelectiveStorageTransformersBackend(
         model_name=get_local_model(model_key).model_id,
@@ -132,6 +134,8 @@ def _run_once(
         hot_layers=hot_layers,
         warm_layers=warm_layers,
         lookahead=lookahead,
+        storage_mode=storage_mode,
+        learned_predictor=learned_predictor,
     )
     try:
         load_start = time.perf_counter()
@@ -174,6 +178,8 @@ def _run_once(
             "page_cache_files_dropped": files_dropped,
             "rss_bytes": _rss_bytes(),
             "gpu": _gpu_stats(),
+            "storage_mode": storage_mode,
+            "learned_predictor": learned_predictor,
         }
     finally:
         backend.close()
@@ -244,7 +250,7 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     summary["outputs_identical_across_runs"] = len(hashes) == 1
     if len(hashes) != 1:
         notes.append("generated tokens differ between runs; prefetch must never change outputs.")
-    if not any(r["page_cache_files_dropped"] for r in rows):
+    if any(str(r.get("storage_mode", "selective")) != "resident" for r in rows) and not any(r["page_cache_files_dropped"] for r in rows):
         notes.append("page cache was not dropped: runs are warm-cache and prefetch benefit is understated.")
     summary["notes"] = notes
 
@@ -262,52 +268,75 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             cache_mode: _summarize([r for r in rows if str(r.get("cache_mode", "cold")) == cache_mode])
             for cache_mode in cache_modes
         }
+    storage_modes = sorted({str(r.get("storage_mode", "selective")) for r in rows})
+    if len(storage_modes) > 1:
+        summary["by_storage_mode"] = {
+            mode: _summarize([r for r in rows if str(r.get("storage_mode", "selective")) == mode])
+            for mode in storage_modes
+        }
+    budgets = sorted({(float(r.get("vram_gb", 0.0)), float(r.get("ram_gb", 0.0))) for r in rows})
+    if len(budgets) > 1:
+        summary["by_budget"] = {
+            f"{vram:g}vram/{ram:g}ram": _summarize([
+                r for r in rows if (float(r.get("vram_gb", 0.0)), float(r.get("ram_gb", 0.0))) == (vram, ram)
+            ])
+            for vram, ram in budgets
+        }
     return summary
 
 
 def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb: float) -> list[dict[str, Any]]:
-    conditions = [True, False] if args.prefetch == "both" else [args.prefetch == "on"]
     rows: list[dict[str, Any]] = []
     lookaheads = getattr(args, "lookaheads", None) or [args.lookahead]
     cache_modes = getattr(args, "cache_modes", None) or ["cold"]
-    for cache_mode in cache_modes:
-        cold_cache = cache_mode == "cold"
-        for lookahead in lookaheads:
-            for run in range(1, args.runs + 1):
-                order = conditions if run % 2 else list(reversed(conditions))  # counterbalance
-                for prefetch in order:
-                    row = _run_once(
-                        model_key=args.model,
-                        model_path=model_path,
-                        prompt=args.prompt,
-                        max_tokens=args.max_tokens,
-                        prefetch=prefetch,
-                        vram_gb=vram_gb,
-                        ram_gb=ram_gb,
-                        device=args.device,
-                        hot_layers=args.hot_layers,
-                        warm_layers=args.warm_layers,
-                        lookahead=lookahead,
-                        cold_cache=cold_cache,
-                    )
-                    row.update({
-                        "model": args.model,
-                        "model_path": str(Path(model_path).expanduser()),
-                        "prefetch": prefetch,
-                        "lookahead": lookahead,
-                        "cache_mode": cache_mode,
-                        "run": run,
-                        "pid": os.getpid(),
-                    })
-                    rows.append(row)
-                    print(
-                        f"cache={cache_mode} lookahead={lookahead} run={run}/{args.runs} prefetch={prefetch!s:5} decode={row['decode_sec']:.3f}s "
-                        f"tok/s={row['tokens_per_sec']:.2f} prefetched={row['trace']['bytes_prefetched']}B "
-                        f"hit_rate={row['trace']['prefetch_hit_rate']:.3f} coverage={row['trace']['prefetch_coverage']:.3f} "
-                        f"lead_ms={row['trace']['prefetch_lead_ms_avg']:.1f}"
-                    )
+    storage_modes = getattr(args, "storage_modes", None) or ["selective"]
+    budget_grid = getattr(args, "budget_grid", None) or [(vram_gb, ram_gb)]
+    for budget_vram, budget_ram in budget_grid:
+        for storage_mode in storage_modes:
+            conditions = [False] if storage_mode == "resident" else ([True, False] if args.prefetch == "both" else [args.prefetch == "on"])
+            for cache_mode in cache_modes:
+                cold_cache = cache_mode == "cold"
+                for lookahead in lookaheads:
+                    for run in range(1, args.runs + 1):
+                        order = conditions if run % 2 else list(reversed(conditions))
+                        for prefetch in order:
+                            row = _run_once(
+                                model_key=args.model,
+                                model_path=model_path,
+                                prompt=args.prompt,
+                                max_tokens=args.max_tokens,
+                                prefetch=prefetch,
+                                vram_gb=budget_vram,
+                                ram_gb=budget_ram,
+                                device=args.device,
+                                hot_layers=args.hot_layers,
+                                warm_layers=args.warm_layers,
+                                lookahead=lookahead,
+                                cold_cache=cold_cache,
+                                storage_mode=storage_mode,
+                                learned_predictor=getattr(args, "learned_predictor", False),
+                            )
+                            row.update({
+                                "model": args.model,
+                                "model_path": str(Path(model_path).expanduser()),
+                                "prefetch": prefetch,
+                                "lookahead": lookahead,
+                                "cache_mode": cache_mode,
+                                "storage_mode": storage_mode,
+                                "vram_gb": budget_vram,
+                                "ram_gb": budget_ram,
+                                "run": run,
+                                "pid": os.getpid(),
+                            })
+                            rows.append(row)
+                            print(
+                                f"mode={storage_mode} budget={budget_vram:g}/{budget_ram:g}GB cache={cache_mode} "
+                                f"lookahead={lookahead} run={run}/{args.runs} prefetch={prefetch!s:5} "
+                                f"decode={row['decode_sec']:.3f}s tok/s={row['tokens_per_sec']:.2f} "
+                                f"prefetched={row['trace']['bytes_prefetched']}B hit_rate={row['trace']['prefetch_hit_rate']:.3f} "
+                                f"coverage={row['trace']['prefetch_coverage']:.3f} lead_ms={row['trace']['prefetch_lead_ms_avg']:.1f}"
+                            )
     return rows
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -329,6 +358,12 @@ def main() -> None:
                         help="legacy single-mode switch; ignored when --cache-modes is supplied")
     parser.add_argument("--cache-modes", default=None,
                         help="comma-separated cache states, e.g. cold,warm; cold drops weight-file page cache before decode")
+    parser.add_argument("--execution-modes", default="selective",
+                        help="comma-separated storage modes: resident,selective,disk")
+    parser.add_argument("--budgets", default=None,
+                        help="comma-separated VRAM/RAM budget pairs in GB, e.g. 2:4,4:8")
+    parser.add_argument("--learned-predictor", action="store_true",
+                        help="use the online state-aware residency predictor instead of the heuristic predictor")
     parser.add_argument("--prompt", default="Explain how persistent cognitive state can improve an agent's reasoning.")
     parser.add_argument("--output", type=Path, default=Path("results/residency/matrix.json"))
     args = parser.parse_args()
@@ -346,11 +381,28 @@ def main() -> None:
         args.cache_modes = ["cold" if args.cold_cache else "warm"]
     if not args.cache_modes or any(value not in {"cold", "warm"} for value in args.cache_modes):
         parser.error("--cache-modes values must be cold or warm")
+    args.storage_modes = [value.strip().lower() for value in args.execution_modes.split(",") if value.strip()]
+    if not args.storage_modes or any(value not in {"resident", "selective", "disk"} for value in args.storage_modes):
+        parser.error("--execution-modes values must be resident, selective, or disk")
+    if args.budgets:
+        try:
+            args.budget_grid = [
+                (float(pair.split(":")[0]), float(pair.split(":")[1]))
+                for pair in args.budgets.split(",")
+            ]
+        except (ValueError, IndexError) as exc:
+            parser.error(f"--budgets must use VRAM:RAM pairs in GB, e.g. 2:4,4:8: {exc}")
+    else:
+        args.budget_grid = None
 
     spec = get_local_model(args.model)
     model_path = _resolve_model_path(args.model, args.model_path)
     vram_gb = args.vram_gb if args.vram_gb is not None else spec.vram_budget_gb
     ram_gb = args.ram_gb if args.ram_gb is not None else spec.ram_budget_gb
+    if args.budget_grid is None:
+        args.budget_grid = [(vram_gb, ram_gb)]
+    if any(vram <= 0 or ram <= 0 for vram, ram in args.budget_grid):
+        parser.error("--budgets values must be positive")
 
     rows = run_matrix(args, model_path, vram_gb, ram_gb)
     summary = _summarize(rows)
@@ -380,6 +432,9 @@ def main() -> None:
             "lookaheads": args.lookaheads,
             "vram_gb": vram_gb,
             "ram_gb": ram_gb,
+            "execution_modes": args.storage_modes,
+            "budget_grid": [{"vram_gb": vram, "ram_gb": ram} for vram, ram in args.budget_grid],
+            "learned_predictor": args.learned_predictor,
             "prompt": args.prompt,
         },
         "summary": summary,

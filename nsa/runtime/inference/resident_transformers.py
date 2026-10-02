@@ -12,6 +12,7 @@ from nsa.runtime.inference.base import BackendMode, InferenceBackend, LLMGenerat
 from nsa.residency import ActiveResidencyController, MemoryTier, NeuralRegion, NeuralResidencyManager, ResidencyPolicy, instrument_decoder_layers, cognitive_state_features, ResidencyTrace
 from nsa.residency.accelerate_prefetch import AccelerateDiskPrefetcher
 from nsa.residency.sizing import layer_sizes
+from nsa.residency.predictor import HeuristicResidencyPredictor
 
 class SelectiveStorageTransformersBackend(InferenceBackend):
     """Disk-backed Transformers inference with NSA residency planning."""
@@ -33,7 +34,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
                  vram_budget_gb: float=4.0, ram_budget_gb: float=8.0,
                  prefetch: bool=True, hot_layers: int=2, warm_layers: int=2, no_split_module_classes: Optional[List[str]]=None,
                  dtype: str="auto", offload_folder: Optional[str]=None, trust_remote_code: bool=False,
-                 lookahead: int=2) -> None:
+                 lookahead: int=2, storage_mode: str="selective", learned_predictor: bool=False) -> None:
         self.model_name=model_name
         self.model_path=model_path or model_name
         self.mode=BackendMode(mode) if isinstance(mode,str) else mode
@@ -46,6 +47,10 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         # how many predicted regions the background controller may have in
         # flight at once; also its ThreadPoolExecutor's worker count
         self.lookahead=max(1,lookahead)
+        if storage_mode not in {"selective", "resident", "disk"}:
+            raise ValueError("storage_mode must be selective, resident, or disk")
+        self.storage_mode = storage_mode
+        self.learned_predictor = bool(learned_predictor)
         self.no_split_module_classes=no_split_module_classes or ["Qwen2DecoderLayer","Qwen3DecoderLayer"]
         self.offload_folder=offload_folder or os.path.join(
             os.path.expanduser("~/.cache/nsa"),"residency",self.model_name.replace("/","_").replace(":","_"))
@@ -56,10 +61,17 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         self.residency_controller: Optional[ActiveResidencyController]=None
         self._active_residency_state: Mapping[str, object] = {"tags": []}
         self.trace=ResidencyTrace()
-        self.residency=NeuralResidencyManager(ResidencyPolicy(
-            vram_budget_bytes=int(vram_budget_gb*1024**3),
-            ram_budget_bytes=int(ram_budget_gb*1024**3),
-        ))
+        predictor = None
+        if self.learned_predictor:
+            from nsa.residency.learned import OnlineResidencyPredictor
+            predictor = OnlineResidencyPredictor()
+        self.residency=NeuralResidencyManager(
+            ResidencyPolicy(
+                vram_budget_bytes=int(vram_budget_gb*1024**3),
+                ram_budget_bytes=int(ram_budget_gb*1024**3),
+            ),
+            predictor=predictor or HeuristicResidencyPredictor(),
+        )
         self.residency.trace = self.trace
 
     @staticmethod
@@ -110,14 +122,47 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             dependencies=(f"layer.{i-1}",) if i else (),
         ) for i,size in enumerate(sizes)]
 
-    def _selective_device_map(self, layer_count: int) -> dict[str, Union[int, str]]:
-        """Construct an explicit VRAM/RAM/disk map for decoder regions."""
+    def _selective_device_map(self, layer_sizes_bytes: list[int] | int) -> dict[str, Union[int, str]]:
+        """Construct a budget-aware VRAM/RAM/disk map for decoder regions."""
         device = self._accelerate_device()
+        if isinstance(layer_sizes_bytes, int):
+            layer_sizes_bytes = [1] * layer_sizes_bytes
+        layer_count = len(layer_sizes_bytes)
         mapping: dict[str, Union[int, str]] = {"model.embed_tokens": device, "model.norm": device, "lm_head": device}
-        hot = set(range(min(self.hot_layers, layer_count)))
-        hot.update(range(max(0, layer_count - self.hot_layers), layer_count))
-        warm = set(range(self.hot_layers, min(layer_count, self.hot_layers + self.warm_layers)))
-        warm.update(range(max(self.hot_layers, layer_count-self.hot_layers-self.warm_layers), max(self.hot_layers, layer_count-self.hot_layers)))
+        if self.storage_mode == "resident":
+            for i in range(layer_count):
+                mapping[f"model.layers.{i}"] = device
+            return mapping
+        if self.storage_mode == "disk":
+            for i in range(layer_count):
+                mapping[f"model.layers.{i}"] = "disk"
+            return mapping
+
+        vram_budget = self.residency.policy.vram_budget_bytes
+        ram_budget = self.residency.policy.ram_budget_bytes
+        candidates = []
+        for distance in range(layer_count):
+            indices = {distance, layer_count - 1 - distance}
+            for index in indices:
+                if 0 <= index < layer_count and index not in candidates:
+                    candidates.append(index)
+        vram_used = 0
+        hot = set()
+        for index in candidates:
+            if len(hot) >= self.hot_layers * 2 or vram_used + layer_sizes_bytes[index] > vram_budget:
+                continue
+            hot.add(index)
+            vram_used += layer_sizes_bytes[index]
+
+        warm_candidates = [i for i in range(layer_count) if i not in hot]
+        warm = set()
+        ram_used = 0
+        for index in sorted(warm_candidates, key=lambda i: min((abs(i - h) for h in hot), default=i)):
+            if len(warm) >= self.warm_layers * 2 or ram_used + layer_sizes_bytes[index] > ram_budget:
+                continue
+            warm.add(index)
+            ram_used += layer_sizes_bytes[index]
+
         for i in range(layer_count):
             mapping[f"model.layers.{i}"] = device if i in hot else ("cpu" if i in warm else "disk")
         return mapping
@@ -159,7 +204,10 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         model.tie_weights()
         os.makedirs(self.offload_folder,exist_ok=True)
         layer_count=int(getattr(config,"num_hidden_layers",0))
-        device_map=self._selective_device_map(layer_count)
+        sizes = layer_sizes(config, checkpoint, int(dtype.itemsize))
+        if len(sizes) != layer_count:
+            raise RuntimeError(f"checkpoint layer sizing returned {len(sizes)} layers for config with {layer_count}")
+        device_map=self._selective_device_map(sizes)
         model=load_checkpoint_and_dispatch(
             model,checkpoint=checkpoint,device_map=device_map,dtype=dtype,
             no_split_module_classes=self.no_split_module_classes,
@@ -216,6 +264,7 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
         # Residency features come from NSA cognitive state only; prompt text is
         # deliberately not turned into residency tags.
         self._active_residency_state = cognitive_state_features(state)
+        self.residency.set_active_state(self._active_residency_state)
         decisions=self.residency.plan(self._active_residency_state)
         for decision in decisions: self.residency.scores[decision.region_id]=decision.score
         inputs=self.tokenizer(prompt,return_tensors="pt")

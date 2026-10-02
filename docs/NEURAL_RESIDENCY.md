@@ -23,24 +23,58 @@ The residency layer answers: *which weights should physically exist in the fast 
 | Sizing | `nsa.residency.sizing` | region sizes are read from the checkpoint's safetensors headers, with a config-based fallback |
 | Telemetry | `nsa.residency.trace` | bounded, thread-safe events with optional JSONL persistence and honest hit-rate metrics |
 
-Not implemented: direct control of Accelerate's parameter lifecycle, multi-step lookahead beyond the next layer, coupling the predictor to NSA cognitive state (the plumbing exists in `cognitive_state_features`, but the backend feeds only execution transitions), and MoE expert regions.
+The remaining deliberate boundary is direct control of Accelerate's parameter lifecycle: Accelerate remains the owner of actual parameter materialization. NSA controls prediction, admission/planning, execution feedback and page-cache warming. This avoids claiming that a page-cache read is equivalent to physical VRAM residency.
+
+The runtime now supports three storage modes:
+* **resident** — all decoder layers are placed on the fast execution device; this is the in-memory control condition.
+* **selective** — edge layers are admitted to the fast device and adjacent layers to host RAM subject to the configured byte budgets; the remainder is disk-backed.
+* **disk** — all decoder layers are disk-backed; this is the strongest offload condition.
+
+State-aware execution feedback is implemented through `NeuralResidencyManager.set_active_state()` and `record_execution()`. The optional `OnlineResidencyPredictor` learns transition and cognitive-tag co-occurrence evidence online without changing authority or safety policy. MoE expert/router regions are already architecture-derived and supported by the residency planner.
+
+Multi-step lookahead is implemented by the active controller's bounded worker pool and benchmark grid; the benchmark treats lookahead as an experimental variable rather than assuming that a larger value is beneficial.
 
 ## Running
 
+Install the optional ML stack and run the deterministic smoke checks first:
+
 ```bash
 pip install "neural-state-architecture[ml-residency]"
-make residency-smoke                        # no model needed
-make residency-benchmark RESIDENCY_MODEL=1.5b
+make residency-smoke
 ```
 
-The ML extras require `torch>=2.5` (transformers 5 refuses to use older torch); the backend raises a clear error if the installed torch is too old. Cached mode never downloads weights; the benchmark downloads only when no checkpoint path is given.
+For real hardware, the benchmark can now evaluate the complete matrix rather than one narrow on/off comparison:
+
+```bash
+python experiments/residency/benchmark_matrix.py \
+  --model 1.5b \
+  --execution-modes resident,selective,disk \
+  --prefetch both \
+  --cache-modes cold,warm \
+  --lookaheads 1,2,4 \
+  --budgets 2:4,4:8 \
+  --runs 3 \
+  --max-tokens 64
+```
+
+Use `--learned-predictor` to replace the heuristic predictor with the online state-aware predictor. The benchmark reports decode latency, tokens/s, page-cache bytes warmed, hit/coverage/lead-time telemetry, slowest regions, output equivalence, execution mode, cache state and budget. It does not claim a performance improvement until the measured runs establish one.
+
+The three storage modes deliberately provide matched controls:
+* `resident` is the no-offload baseline and does not run the prefetch condition.
+* `disk + prefetch=off` isolates Accelerate disk offload.
+* `disk + prefetch=on` measures NSA's page-cache intervention on the same disk-backed model.
+* `selective` measures the intended tiered policy under explicit VRAM/RAM budgets.
+
+The ML extras require `torch>=2.5` (Transformers 5 refuses to use older torch); the backend raises a clear error if the installed torch is too old. Cached mode never downloads weights; the benchmark downloads only when no checkpoint path is given.
 
 ## Development phases
 
 1. Foundation - region model, policy, predictor, cache, telemetry. **Done.**
-2. Disk residency - empty-model + disk-backed checkpoint execution. **Done** (verified end to end on a tiny Qwen2 in CI).
-3. Active residency - predictive page-cache prefetch around decoder regions. **Done, measured on real hardware; see status above.**
-4. State coupling - use NSA cognitive state instead of transition statistics alone. Planned.
-5. Learned residency - richer predictors trained from region transition traces. Planned.
-6. MoE specialization - experts as independently resident regions. Planned.
-7. Evaluation - peak VRAM/RAM, transfer bandwidth, latency, tokens/s and output quality on real checkpoints. In progress (`experiments/residency/benchmark_matrix.py`).
+2. Disk residency - empty-model + disk-backed checkpoint execution. **Done.**
+3. Active residency - predictive page-cache prefetch around decoder regions. **Done and instrumented.**
+4. State coupling - explicit cognitive-state propagation into planning and online execution feedback. **Done.**
+5. Learned residency - online transition/tag predictor with deterministic regression coverage. **Done.**
+6. MoE specialization - architecture-derived expert/router regions and device-map support. **Done.**
+7. Evaluation - controlled resident/selective/disk modes, cold/warm cache, lookahead and VRAM/RAM budget grids, per-region latency and prefetch overlap telemetry. **Implemented; empirical conclusions remain hardware/model dependent.**
+
+The research boundary remains explicit: the benchmark can establish whether a mechanism helps on a stated machine and workload, but a green CI run alone is not evidence of a speedup.
