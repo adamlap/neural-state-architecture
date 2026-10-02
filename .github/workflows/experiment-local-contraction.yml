@@ -2,19 +2,6 @@ name: NSA Local Self-State Contraction
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'nsa/**'
-      - 'experiments/self_state/local_contraction.py'
-      - 'tests/test_local_contraction.py'
-      - '.github/workflows/experiment-local-contraction.yml'
-  push:
-    paths:
-      - 'nsa/**'
-      - 'experiments/self_state/local_contraction.py'
-      - 'tests/test_local_contraction.py'
-      - '.github/workflows/experiment-local-contraction.yml'
-
 
 jobs:
   local-contraction:
