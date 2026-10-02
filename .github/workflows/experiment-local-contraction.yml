@@ -15,6 +15,7 @@ on:
       - 'tests/test_local_contraction.py'
       - '.github/workflows/experiment-local-contraction.yml'
 
+
 jobs:
   local-contraction:
     runs-on: ubuntu-latest
