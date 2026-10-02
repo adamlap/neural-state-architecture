@@ -1,9 +1,8 @@
 name: CCE perturbation and recovery
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
+
 
 jobs:
   cce-perturbation-recovery:
