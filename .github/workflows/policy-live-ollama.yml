@@ -1,34 +1,7 @@
 name: "[auto] Live Ollama policy verification"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - "nsa/policy.py"
-      - "nsa/enforcement.py"
-      - "nsa/decision.py"
-      - "scripts/policy_server.py"
-      - "examples/policies/**"
-      - "experiments/live/policy_ollama_live_test.py"
-      - ".github/workflows/policy-live-ollama.yml"
   workflow_dispatch:
-    inputs:
-      policy:
-        description: "Policy file to verify"
-        required: true
-        default: "examples/policies/safe_assistant.json"
-      model:
-        description: "Ollama model"
-        required: true
-        default: "qwen2.5:0.5b"
-
-concurrency:
-  group: live-ollama-policy-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
-env:
-  NSA_POLICY: ${{ github.event.inputs.policy || 'examples/policies/safe_assistant.json' }}
-  NSA_OLLAMA_MODEL: ${{ github.event.inputs.model || 'qwen2.5:0.5b' }}
 
 jobs:
   live-policy:
