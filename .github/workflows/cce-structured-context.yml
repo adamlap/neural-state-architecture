@@ -1,20 +1,12 @@
 name: CCE structured-state context
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       model:
         description: Ollama model to evaluate
         required: false
         default: qwen2.5:0.5b
-
-env:
-  CCE_MODEL: ${{ inputs.model || 'qwen2.5:0.5b' }}
-
-permissions:
-  contents: read
 
 jobs:
   structured-context:
