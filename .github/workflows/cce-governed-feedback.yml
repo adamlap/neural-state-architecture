@@ -1,18 +1,7 @@
 name: "[auto] CCE governed feedback"
 
 on:
-  pull_request:
-    paths:
-      - 'nsa/runtime/cce_governed_feedback.py'
-      - 'nsa/runtime/cce_persistent_state.py'
-      - 'experiments/cce_governed_feedback_runtime.py'
-      - 'tests/test_cce_governed_feedback.py'
-      - '.github/workflows/cce-governed-feedback.yml'
   workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   evidence:
