@@ -34,7 +34,8 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
                  vram_budget_gb: float=4.0, ram_budget_gb: float=8.0,
                  prefetch: bool=True, hot_layers: int=2, warm_layers: int=2, no_split_module_classes: Optional[List[str]]=None,
                  dtype: str="auto", offload_folder: Optional[str]=None, trust_remote_code: bool=False,
-                 lookahead: int=2, storage_mode: str="selective", learned_predictor: bool=False) -> None:
+                 lookahead: int=2, storage_mode: str="selective", learned_predictor: bool=False,
+                 adaptive_lookahead: bool=False, min_lookahead: int=1, max_lookahead: Optional[int]=None) -> None:
         self.model_name=model_name
         self.model_path=model_path or model_name
         self.mode=BackendMode(mode) if isinstance(mode,str) else mode
@@ -51,6 +52,9 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             raise ValueError("storage_mode must be selective, resident, or disk")
         self.storage_mode = storage_mode
         self.learned_predictor = bool(learned_predictor)
+        self.adaptive_lookahead = bool(adaptive_lookahead)
+        self.min_lookahead = max(0, int(min_lookahead))
+        self.max_lookahead = max(self.min_lookahead, int(max_lookahead)) if max_lookahead is not None else (max(self.min_lookahead, 8) if self.adaptive_lookahead else max(self.min_lookahead, self.lookahead))
         self.no_split_module_classes=no_split_module_classes or ["Qwen2DecoderLayer","Qwen3DecoderLayer"]
         self.offload_folder=offload_folder or os.path.join(
             os.path.expanduser("~/.cache/nsa"),"residency",self.model_name.replace("/","_").replace(":","_"))
@@ -226,6 +230,9 @@ class SelectiveStorageTransformersBackend(InferenceBackend):
             self.residency,
             load_fn=self._unsupported_physical_prefetch,
             lookahead=self.lookahead,
+            adaptive_lookahead=self.adaptive_lookahead,
+            min_lookahead=self.min_lookahead,
+            max_lookahead=self.max_lookahead,
             prefetch_fn=(self.prefetcher.prefetch if self.prefetcher is not None else None),
             prefetch_eligible=(self._prefetch_eligible if self.prefetcher is not None else None),
         )
