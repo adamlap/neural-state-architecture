@@ -2,17 +2,6 @@ name: NSA Self-State Regulator Gain Sweep
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'nsa/**'
-      - 'experiments/self_state/**'
-      - '.github/workflows/experiment-regulator-gain-sweep.yml'
-  push:
-    paths:
-      - 'nsa/**'
-      - 'experiments/self_state/**'
-      - '.github/workflows/experiment-regulator-gain-sweep.yml'
-
 
 jobs:
   sweep:
