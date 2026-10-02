@@ -21,6 +21,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: residency-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
