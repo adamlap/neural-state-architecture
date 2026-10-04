@@ -44,3 +44,23 @@ def test_public_cce_can_use_authoritative_transition_callback():
     assert agent.continuous_tick()
     assert seen == [0]
     assert agent.continuous_status().tick_count == 1
+
+
+def test_agent_save_load_is_lossless(tmp_path):
+    from nsa.cce import StateCheckpointStore
+    agent = NSA(EchoBackend(), checkpoint=StateCheckpointStore(tmp_path / "state.json"))
+    agent.observe({"nested": [1, 2]}, source="test", confidence=0.8)
+    before = agent.state
+    agent.save()
+    agent.observe("changed", confidence=0.2)
+    restored = agent.load_state()
+    assert restored == before
+
+
+def test_agent_trace_records_are_snapshot_only():
+    agent = NSA(EchoBackend())
+    agent.run("hello")
+    records = agent.trace_records()
+    assert records[0]["blocked"] is False
+    records[0]["prompt"] = "changed"
+    assert agent.trace[0]["prompt"] == "hello"
