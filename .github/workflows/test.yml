@@ -4,6 +4,23 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      snm_enabled:
+        description: "Enable Strategic Neural Modulation for the configuration probe"
+        required: true
+        default: true
+        type: boolean
+      snm_feedback_enabled:
+        description: "Enable SNM prediction-error feedback for the configuration probe"
+        required: true
+        default: true
+        type: boolean
+      snm_attention_enabled:
+        description: "Enable SNM attention modulation for the configuration probe"
+        required: true
+        default: true
+        type: boolean
 
 concurrency:
   group: nsa-tests-${{ github.event.pull_request.number || github.ref }}
@@ -28,6 +45,33 @@ jobs:
           python -m pip install -e ".[dev,research]"
       - name: Run test suite
         run: PYTHONPATH=. python -m pytest -q tests/
+      - name: Run focused SNM tests
+        run: >-
+          PYTHONPATH=. python -m pytest -q
+          tests/test_strategic_config.py
+          tests/test_strategic_feedback.py
+          tests/test_strategic_system_one.py
+          tests/test_strategic_torch_adapter.py
+      - name: Verify configurable SNM runtime
+        env:
+          NSA_SNM_ENABLED: ${{ github.event.inputs.snm_enabled || 'true' }}
+          NSA_SNM_FEEDBACK_ENABLED: ${{ github.event.inputs.snm_feedback_enabled || 'true' }}
+          NSA_SNM_ATTENTION_ENABLED: ${{ github.event.inputs.snm_attention_enabled || 'true' }}
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          import os
+          from nsa.strategy import StrategicConfig
+          cfg = StrategicConfig.from_env()
+          expected = {
+              "enabled": os.environ["NSA_SNM_ENABLED"].lower() == "true",
+              "feedback_enabled": os.environ["NSA_SNM_FEEDBACK_ENABLED"].lower() == "true",
+              "attention_enabled": os.environ["NSA_SNM_ATTENTION_ENABLED"].lower() == "true",
+          }
+          assert cfg.enabled is expected["enabled"]
+          assert cfg.feedback_enabled is expected["feedback_enabled"]
+          assert cfg.attention_enabled is expected["attention_enabled"]
+          print("SNM configuration:", cfg)
+          PY
       - name: Run CCE runtime invariants
         run: PYTHONPATH=. python -m pytest -q tests/test_continuous_engine.py tests/test_cce_fail_closed.py
       - name: Run self-state smoke experiment
