@@ -18,8 +18,8 @@ The roadmap deliberately separates **implemented architecture**, **empirical evi
 - [x] Replaceable `ModelBackend` protocol and Ollama adapter.
 - [x] Base package without mandatory PyTorch/Transformers dependencies.
 - [ ] Consolidate the remaining continuous/predictive CCE engines behind the public runtime.
-- [ ] Stable persistence, tracing and tool/capability APIs.
-- [ ] Versioned state schema and migration policy.
+- [x] Stable persistence, tracing and tool/capability APIs (checkpoint/journal persistence, runtime tracing, public ToolRegistry/ToolGovernor interfaces).
+- [x] Versioned state schema and migration policy (canonical-state v2 with explicit v1 migration).
 
 ### Phase 2 — Cognitive substrate — ACTIVE
 
