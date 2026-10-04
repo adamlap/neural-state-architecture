@@ -7,6 +7,7 @@ from nsa.core.state import CanonicalState
 
 from .config import StrategicConfig
 from .engine import StrategicScenarioEngine
+from .feedback import StrategicFeedback, StrategicFeedbackUpdater
 from .model import StrategyCandidate, StrategyDistribution, StrategicField
 from .modulation import StrategicAttentionModulator
 
@@ -43,8 +44,20 @@ class StrategicController:
         u = max(state.soft.risk, state.soft.uncertainty) if urgency is None else urgency
         if not 0 <= u <= 1:
             raise ValueError("urgency must be in [0, 1]")
-        f = StrategicField(d.probabilities, d.selected, d.confidence, u, risk_sensitivity, horizon, state.step)
+        f = StrategicField(
+            d.probabilities, d.selected, d.confidence, u, risk_sensitivity, horizon, state.step
+        )
         return StrategicEvaluation(d, f)
+
+    def update_candidates(
+        self,
+        candidates: Sequence[StrategyCandidate],
+        feedback: StrategicFeedback,
+        updater: StrategicFeedbackUpdater | None = None,
+    ) -> tuple[StrategyCandidate, ...]:
+        if not self.config.enabled or not self.config.feedback_enabled:
+            return tuple(candidates)
+        return (updater or StrategicFeedbackUpdater()).update(candidates, feedback)
 
     def attention_bias(
         self,
