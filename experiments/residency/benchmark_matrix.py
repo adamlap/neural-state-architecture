@@ -123,6 +123,7 @@ def _run_once(
     cold_cache: bool,
     storage_mode: str = "selective",
     learned_predictor: bool = False,
+    adaptive_lookahead: bool = False,
 ) -> dict[str, Any]:
     backend = SelectiveStorageTransformersBackend(
         model_name=get_local_model(model_key).model_id,
@@ -136,6 +137,7 @@ def _run_once(
         lookahead=lookahead,
         storage_mode=storage_mode,
         learned_predictor=learned_predictor,
+        adaptive_lookahead=adaptive_lookahead,
     )
     try:
         load_start = time.perf_counter()
@@ -315,6 +317,7 @@ def run_matrix(args: argparse.Namespace, model_path: str, vram_gb: float, ram_gb
                                 cold_cache=cold_cache,
                                 storage_mode=storage_mode,
                                 learned_predictor=getattr(args, "learned_predictor", False),
+                                adaptive_lookahead=getattr(args, "adaptive_lookahead", False),
                             )
                             row.update({
                                 "model": args.model,
@@ -364,6 +367,8 @@ def main() -> None:
                         help="comma-separated VRAM/RAM budget pairs in GB, e.g. 2:4,4:8")
     parser.add_argument("--learned-predictor", action="store_true",
                         help="use the online state-aware residency predictor instead of the heuristic predictor")
+    parser.add_argument("--adaptive-lookahead", action="store_true",
+                        help="adapt speculative prefetch depth from observed hit rate, coverage, lead time and errors")
     parser.add_argument("--prompt", default="Explain how persistent cognitive state can improve an agent's reasoning.")
     parser.add_argument("--output", type=Path, default=Path("results/residency/matrix.json"))
     args = parser.parse_args()
@@ -435,6 +440,7 @@ def main() -> None:
             "execution_modes": args.storage_modes,
             "budget_grid": [{"vram_gb": vram, "ram_gb": ram} for vram, ram in args.budget_grid],
             "learned_predictor": args.learned_predictor,
+            "adaptive_lookahead": args.adaptive_lookahead,
             "prompt": args.prompt,
         },
         "summary": summary,

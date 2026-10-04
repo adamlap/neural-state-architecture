@@ -57,7 +57,7 @@ python experiments/residency/benchmark_matrix.py \
   --max-tokens 64
 ```
 
-Use `--learned-predictor` to replace the heuristic predictor with the online state-aware predictor. The benchmark reports decode latency, tokens/s, page-cache bytes warmed, hit/coverage/lead-time telemetry, slowest regions, output equivalence, execution mode, cache state and budget. It does not claim a performance improvement until the measured runs establish one.
+Use `--learned-predictor` to replace the heuristic predictor with the online state-aware predictor. Use `--adaptive-lookahead` to let the controller adjust speculative prefetch depth from observed prefetch hit rate, execution coverage, lead time and errors. The adaptation is bounded and changes only speculative concurrency; it does not alter residency policy thresholds or claim physical VRAM placement. The benchmark reports decode latency, tokens/s, page-cache bytes warmed, hit/coverage/lead-time telemetry, slowest regions, output equivalence, execution mode, cache state and budget. It does not claim a performance improvement until the measured runs establish one.
 
 The three storage modes deliberately provide matched controls:
 * `resident` is the no-offload baseline and does not run the prefetch condition.
@@ -77,4 +77,4 @@ The ML extras require `torch>=2.5` (Transformers 5 refuses to use older torch); 
 6. MoE specialization - architecture-derived expert/router regions and device-map support. **Done.**
 7. Evaluation - controlled resident/selective/disk modes, cold/warm cache, lookahead and VRAM/RAM budget grids, per-region latency and prefetch overlap telemetry. **Implemented; empirical conclusions remain hardware/model dependent.**
 
-The research boundary remains explicit: the benchmark can establish whether a mechanism helps on a stated machine and workload, but a green CI run alone is not evidence of a speedup.
+The research boundary remains explicit: the benchmark can establish whether a mechanism helps on a stated machine and workload, but a green CI run alone is not evidence of a speedup. Adaptive lookahead is deliberately evidence-driven and should be compared against fixed lookahead on the same hardware, checkpoint and cache conditions.
