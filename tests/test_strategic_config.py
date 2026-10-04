@@ -1,11 +1,11 @@
-import os
-
 from nsa.core.state import CanonicalState
+from nsa.cognition.interfaces import PredictionError
 from nsa.strategy import (
     ScenarioOutcome,
     StrategicAttentionBias,
     StrategicConfig,
     StrategicController,
+    StrategicFeedback,
     StrategicField,
     StrategyCandidate,
 )
@@ -16,7 +16,7 @@ def _candidate():
         StrategyCandidate(
             "safe",
             (ScenarioOutcome("ok", 1.0, goal_progress=1.0),),
-            prior=1.0,
+            prior=0.5,
         ),
     )
 
@@ -30,12 +30,25 @@ def test_snm_can_be_disabled_without_evaluating_candidates():
 
 
 def test_disabled_attention_is_an_exact_zero_bias():
-    field = StrategicField({"safe": 1.0}, "safe", confidence=1.0)
     controller = StrategicController(
         config=StrategicConfig(enabled=True, attention_enabled=False)
     )
     evaluation = controller.evaluate(CanonicalState(), _candidate())
     assert controller.attention_bias(evaluation, [{"safe": 1.0}]) == (0.0,)
+
+
+def test_feedback_can_be_disabled_independently():
+    candidates = _candidate()
+    feedback = StrategicFeedback(
+        "safe",
+        PredictionError(magnitude=1.0),
+        observed_goal_progress=1.0,
+        observed_risk=0.0,
+    )
+    controller = StrategicController(
+        config=StrategicConfig(enabled=True, feedback_enabled=False)
+    )
+    assert controller.update_candidates(candidates, feedback) == candidates
 
 
 def test_environment_configuration_can_disable_snm(monkeypatch):
@@ -75,10 +88,16 @@ def test_invalid_environment_boolean_is_rejected(monkeypatch):
 
 def test_torch_adapter_can_be_disabled():
     field = StrategicField({"safe": 1.0}, "safe", confidence=1.0)
-    adapter = StrategicAttentionBias.from_config(StrategicConfig(attention_enabled=False))
+
+    adapter = StrategicAttentionBias.from_config(
+        StrategicConfig(attention_enabled=False)
+    )
+
     class FakeTensor:
         ndim = 2
+
         def new_tensor(self, values):
             return values
+
     bias = adapter.build(FakeTensor(), field, [{"safe": 1.0}])
     assert bias == [0.0]
