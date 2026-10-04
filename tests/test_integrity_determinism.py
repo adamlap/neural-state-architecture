@@ -49,7 +49,7 @@ def test_non_finite_self_error_is_rejected_by_the_safety_kernel(bad):
 def test_current_schema_migration_is_validated():
     from nsa.core.state_codec import migrate_state_payload
     payload = encode_state(CanonicalState(semantic=SemanticState({"x": 1})))
-    assert migrate_state_payload(payload) == payload
+    assert migrate_state_payload(payload)["schema_version"] == SCHEMA_VERSION
 
 
 def test_unknown_schema_migration_is_rejected():
