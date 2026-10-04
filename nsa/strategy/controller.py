@@ -24,7 +24,10 @@ class StrategicController:
     def __init__(self, engine=None, modulator=None, config: StrategicConfig | None = None):
         self.config = config or StrategicConfig()
         self.engine = engine or StrategicScenarioEngine()
-        self.modulator = modulator or StrategicAttentionModulator(self.config.max_bias)
+        self.modulator = modulator or StrategicAttentionModulator(
+            self.config.max_bias,
+            enabled=self.config.enabled and self.config.attention_enabled,
+        )
 
     def evaluate(
         self,
