@@ -95,8 +95,23 @@ def decode_state(payload: Mapping[str, Any]) -> CanonicalState:
     return state
 
 
+def migrate_state_payload(payload: Mapping[str, Any], *, target_schema: str = SCHEMA_VERSION) -> dict[str, Any]:
+    """Validate and migrate a canonical payload to the requested schema.
+
+    The current wire format is v1, so v1->v1 is a validated no-op. Future
+    incompatible formats must be added here as explicit, deterministic steps;
+    unknown schemas are rejected rather than silently coerced.
+    """
+    source = payload.get("schema_version")
+    if source == target_schema:
+        document = dict(payload)
+        decode_state(document)
+        return document
+    raise ValueError(f"no registered canonical state migration: {source!r} -> {target_schema!r}")
+
+
 def round_trip(state: CanonicalState) -> CanonicalState:
     return decode_state(encode_state(state))
 
 
-__all__ = ["SCHEMA_VERSION", "decode_state", "dumps_state", "encode_state", "round_trip"]
+__all__ = ["SCHEMA_VERSION", "decode_state", "dumps_state", "encode_state", "migrate_state_payload", "round_trip"]
