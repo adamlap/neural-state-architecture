@@ -1,3 +1,5 @@
+import pytest
+
 from nsa.core.state import CanonicalState
 from nsa.cognition.interfaces import PredictionError
 from nsa.strategy import (
@@ -78,26 +80,17 @@ def test_environment_configuration_defaults_are_enabled(monkeypatch):
 
 def test_invalid_environment_boolean_is_rejected(monkeypatch):
     monkeypatch.setenv("TEST_SNM_ENABLED", "sometimes")
-    try:
+    with pytest.raises(ValueError):
         StrategicConfig.from_env("TEST_SNM_")
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("invalid boolean should fail")
 
 
 def test_torch_adapter_can_be_disabled():
+    torch = pytest.importorskip("torch")
     field = StrategicField({"safe": 1.0}, "safe", confidence=1.0)
-
     adapter = StrategicAttentionBias.from_config(
         StrategicConfig(attention_enabled=False)
     )
-
-    class FakeTensor:
-        ndim = 2
-
-        def new_tensor(self, values):
-            return values
-
-    bias = adapter.build(FakeTensor(), field, [{"safe": 1.0}])
-    assert bias == [0.0]
+    logits = torch.zeros(1, 1, 1, 1)
+    bias = adapter.build(logits, field, [{"safe": 1.0}])
+    assert bias.shape == (1, 1, 1, 1)
+    assert float(bias.sum()) == 0.0
