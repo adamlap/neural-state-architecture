@@ -8,7 +8,8 @@ from nsa.algebra import ConfidentialityLabel, IntegrityLabel
 from nsa.core.state import CanonicalState, GoalState, HardState, ProvenanceState, SemanticState, SoftState
 from nsa.core.transition import state_digest
 
-SCHEMA_VERSION = "nsa.canonical-state.v1"
+SCHEMA_VERSION = "nsa.canonical-state.v2"
+LEGACY_SCHEMA_VERSION = "nsa.canonical-state.v1"
 
 
 def _jsonable(value: Any) -> Any:
@@ -31,6 +32,7 @@ def encode_state(state: CanonicalState) -> dict[str, Any]:
     semantic = _jsonable(state.semantic.value)
     payload = {
         "schema_version": SCHEMA_VERSION,
+        "format_revision": 2,
         "state": {
             "semantic": semantic,
             "hard": {
@@ -63,7 +65,7 @@ def dumps_state(state: CanonicalState) -> str:
 
 
 def decode_state(payload: Mapping[str, Any]) -> CanonicalState:
-    if payload.get("schema_version") != SCHEMA_VERSION:
+    if payload.get("schema_version") not in {SCHEMA_VERSION, LEGACY_SCHEMA_VERSION}:
         raise ValueError(f"unsupported canonical state schema: {payload.get('schema_version')!r}")
     raw = payload["state"]
     state = CanonicalState(
@@ -96,15 +98,15 @@ def decode_state(payload: Mapping[str, Any]) -> CanonicalState:
 
 
 def migrate_state_payload(payload: Mapping[str, Any], *, target_schema: str = SCHEMA_VERSION) -> dict[str, Any]:
-    """Validate and migrate a canonical payload to the requested schema.
-
-    The current wire format is v1, so v1->v1 is a validated no-op. Future
-    incompatible formats must be added here as explicit, deterministic steps;
-    unknown schemas are rejected rather than silently coerced.
-    """
+    """Migrate canonical state documents through explicit deterministic revisions."""
     source = payload.get("schema_version")
+    document = dict(payload)
     if source == target_schema:
-        document = dict(payload)
+        decode_state(document)
+        return document
+    if source == LEGACY_SCHEMA_VERSION and target_schema == SCHEMA_VERSION:
+        document["schema_version"] = SCHEMA_VERSION
+        document["format_revision"] = 2
         decode_state(document)
         return document
     raise ValueError(f"no registered canonical state migration: {source!r} -> {target_schema!r}")
@@ -114,4 +116,4 @@ def round_trip(state: CanonicalState) -> CanonicalState:
     return decode_state(encode_state(state))
 
 
-__all__ = ["SCHEMA_VERSION", "decode_state", "dumps_state", "encode_state", "migrate_state_payload", "round_trip"]
+__all__ = ["LEGACY_SCHEMA_VERSION", "SCHEMA_VERSION", "decode_state", "dumps_state", "encode_state", "migrate_state_payload", "round_trip"]
