@@ -60,8 +60,8 @@ def test_canonical_cce_can_use_system_one_as_selector_without_bypassing_governan
             ActionCandidate("weak", expected_utility=0.2, risk=0.2),
         ),
     ))
-    assert tx.selected is not None
-    assert tx.selected.action_id == "safe"
+    assert tx.selected_action is not None
+    assert tx.selected_action.action_id == "safe"
 
 
 def test_nsa_runtime_can_run_system_one_heartbeats_without_generation():
