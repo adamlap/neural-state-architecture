@@ -44,3 +44,17 @@ def test_non_finite_self_error_is_rejected_by_the_safety_kernel(bad):
     kernel = ImmutableSafetyKernel(CapabilityAuthority(b"k"))
     result = kernel.evaluate_transition(create_sample_omega(), "act", predicted_self_error=bad)
     assert result.verdict == KernelVerdict.ROLLBACK
+
+
+def test_current_schema_migration_is_validated():
+    from nsa.core.state_codec import SCHEMA_VERSION, migrate_state_payload
+    payload = encode_state(CanonicalState(semantic=SemanticState({"x": 1})))
+    assert migrate_state_payload(payload)["schema_version"] == SCHEMA_VERSION
+
+
+def test_unknown_schema_migration_is_rejected():
+    from nsa.core.state_codec import migrate_state_payload
+    payload = encode_state(CanonicalState())
+    payload["schema_version"] = "nsa.canonical-state.v999"
+    with pytest.raises(ValueError, match="no registered"):
+        migrate_state_payload(payload)
