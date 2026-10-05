@@ -531,6 +531,19 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 "models": [{"name": name} for name in names],
                 "nsa": self.runtime.status(),
             })
+        elif path == "/api/show":
+            name = self.path.split("?", 1)[1] if "?" in self.path else ""
+            requested = name.split("name=", 1)[1] if "name=" in name else ""
+            self._json({
+                "name": requested or f"nsa-{self.runtime.model_name}",
+                "details": {
+                    "family": "NSA",
+                    "system_one": self.runtime.system_one_model_name if self.runtime.system_one is not None else None,
+                    "system_two": self.runtime.model_name,
+                    "continuous_cognition": self.runtime.system_one is not None,
+                    "selective_memory": True,
+                },
+            })
         elif path == "/api/version":
             self._json({"version": "nsa-cognitive-server", "nsa": self.runtime.status()})
         elif path == "/api/cce/state":
@@ -575,6 +588,27 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
             return
         if not isinstance(data, dict):
             self._json({"error": "JSON body must be an object"}, 400)
+            return
+
+        if path == "/api/pull":
+            requested = str(data.get("name", ""))
+            if requested in {"nsa-system1:1.5b", "nsa-system1"} and self.runtime.system_one_generation_backend is not None:
+                try:
+                    self.runtime.system_one_generation_backend.load_model()
+                    self._json({"status": "success", "model": "nsa-system1:1.5b"})
+                except Exception as exc:
+                    self._json({"status": "error", "error": str(exc)}, 500)
+                return
+            if requested in {"nsa-system2:3b", "nsa", "nsa:latest"}:
+                try:
+                    backend = self.runtime.backend
+                    if hasattr(backend, "load_model"):
+                        backend.load_model()
+                    self._json({"status": "success", "model": "nsa-system2:3b"})
+                except Exception as exc:
+                    self._json({"status": "error", "error": str(exc)}, 500)
+                return
+            self._json({"status": "error", "error": f"Unknown NSA model: {requested}"}, 404)
             return
 
         if path == "/api/cce/sensor":
