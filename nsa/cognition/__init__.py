@@ -12,6 +12,7 @@ __all__ = [
     "DeliberationDecision", "InformationNeed", "InformationSeekingPlanner", "UncertaintyDrivenDeliberator",
     "LatentCognitiveField", "LatentFieldConfig", "LatentThoughtVector", "CounterfactualSimulator", "CounterfactualBranch", "CounterfactualEvaluation", "SystemOneDecisionEngine", "TypedDecisionSchema", "CalibratedDecision", "CognitiveContext", "CognitiveModel", "CognitiveProposal", "InformationNeedProposal", "ToolRegistry", "ToolSpec",
     "DecisionQuestion", "SystemOneDecision", "SystemOneTick", "SystemOneController", "DeterministicSystemOneBackend", "CallableSystemOneBackend", "SystemOneBackend",
+    "FrozenCausalLMLogitBackend",
     "CognitiveMetrics", "CognitiveState", "CognitiveSubstrate", "CognitiveSwitches", "IntegrationGraph",
     "PredictionState", "SelfModelState", "WorkspaceCandidate", "WorkspaceState",
 ]
