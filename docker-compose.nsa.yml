@@ -1,0 +1,32 @@
+services:
+  nsa:
+    build:
+      context: .
+      dockerfile: Dockerfile.nsa
+    ports:
+      - "11434:11434"
+    environment:
+      NSA_SYSTEM_ONE_MODEL: nsa-system1:1.5b
+      NSA_SYSTEM_TWO_MODEL: nsa-system2:3b
+      NSA_MODEL_DEVICE: auto
+      NSA_HEARTBEAT_SECONDS: "1.0"
+      HF_HOME: /models/huggingface
+    volumes:
+      - nsa-model-cache:/models
+    restart: unless-stopped
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    depends_on:
+      - nsa
+    ports:
+      - "3000:8080"
+    environment:
+      OLLAMA_BASE_URL: http://nsa:11434
+    volumes:
+      - open-webui-data:/app/backend/data
+    restart: unless-stopped
+
+volumes:
+  nsa-model-cache:
+  open-webui-data:
