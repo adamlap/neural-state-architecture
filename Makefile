@@ -34,7 +34,7 @@ OLLAMA_BIN := $(shell command -v ollama 2>/dev/null || { [ -x "$$HOME/.local/oll
 OLLAMA_HOST ?= 127.0.0.1:11434
 
 .PHONY: help install install-dev test test-core test-cce build clean \
-        demo serve serve-cce serve-ollama serve-lmstudio serve-cce-policy \
+        demo serve serve-cce serve-ollama serve-nsa-local serve-lmstudio serve-cce-policy \
         serve-ollama-policy serve-lmstudio-policy chat-ollama \
         benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama \
         benchmark-nsa64-ollama benchmark-nsa64-ollama-smoke \
@@ -83,6 +83,9 @@ serve-cce: serve-ollama ## Backwards-compatible CCE server alias
 
 serve-ollama: ## Start the existing OpenAI/Ollama-compatible NSA server
 	@if [ "$(UV_EXISTS)" = "yes" ]; then PYTHONPATH=. $(UV) run --python $(UV_PYTHON) --no-project python -m nsa.server.proxy --backend ollama --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}; else PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend ollama --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}; fi
+
+serve-nsa-local: ## Run the full local NSA cognitive server with System 1 + System 2
+	@if [ "$(UV_EXISTS)" = "yes" ]; then PYTHONPATH=. $(UV) run --python $(UV_PYTHON) --no-project python -m nsa.server.proxy --backend transformers --model ${NSA_MODEL:-Qwen/Qwen2.5-3B-Instruct} --port ${NSA_PORT:-11434}; else PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend transformers --model ${NSA_MODEL:-Qwen/Qwen2.5-3B-Instruct} --port ${NSA_PORT:-11434}; fi
 
 serve-lmstudio: ## Start the OpenAI/LMStudio-compatible NSA server
 	@if [ "$(UV_EXISTS)" = "yes" ]; then PYTHONPATH=. $(UV) run --python $(UV_PYTHON) --no-project python -m nsa.server.proxy --backend lmstudio --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}; else PYTHONPATH=. $(PYTHON) -m nsa.server.proxy --backend lmstudio --model $${NSA_MODEL:-qwen2.5:3b} --port $${NSA_PORT:-8000}; fi
