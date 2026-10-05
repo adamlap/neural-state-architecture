@@ -27,6 +27,11 @@ from nsa.runtime.inference.base import BackendMode
 from nsa.runtime.inference.governed import NSAGovernedInference
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 from nsa.runtime.inference.openai_compatible import OpenAICompatibleBackend
+from nsa.runtime.inference.transformers import PyTorchTransformersBackend
+from nsa.cognition.system_one_hf import FrozenCausalLMLogitBackend
+from nsa.cognition.system_one_runtime import SystemOneController
+from nsa.core.state import CanonicalState
+from nsa.memory.model import MemoryItem, MemoryStore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("NSAServer")
@@ -86,10 +91,22 @@ class NSAProxyRuntime:
         model: str = "qwen2.5:3b",
         backend_url: Optional[str] = None,
         enable_cce: bool = True,
+        system_one_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
+        system_one_enabled: bool = True,
+        system_one_heartbeat: float = 1.0,
     ):
         backend_type = backend_type.lower()
         if backend_type == "ollama":
             backend = OllamaInferenceBackend(model_name=model, base_url=backend_url, mode=BackendMode.OLLAMA)
+        elif backend_type in {"transformers", "local"}:
+            backend = PyTorchTransformersBackend(
+                model_name=model,
+                mode=BackendMode.REMOTE,
+                device=os.environ.get("NSA_MODEL_DEVICE", "auto"),
+                lazy_load=True,
+                enable_remote_download=True,
+                use_mock_fallback=False,
+            )
         elif backend_type in {"openai", "lmstudio"}:
             backend = OpenAICompatibleBackend(model_name=model, base_url=backend_url or "http://localhost:1234/v1")
         else:
@@ -100,6 +117,29 @@ class NSAProxyRuntime:
         self.governed = NSAGovernedInference(backend, TrustTier.T1_INFO_GATHER, self.model_name)
         self.enable_cce = enable_cce
         self.last_user_interaction_time = time.time()
+        self.system_one_enabled = bool(system_one_enabled)
+        self.system_one_heartbeat = max(0.2, float(system_one_heartbeat))
+        self.system_one_model_name = system_one_model
+        self.system_one: Optional[SystemOneController] = None
+        self.canonical_state = CanonicalState()
+        self.memory_store = MemoryStore()
+        self._system_one_last_tick = None
+        self._memory_lock = threading.Lock()
+
+        if self.system_one_enabled and backend_type in {"transformers", "local"}:
+            # System 1 is a separate frozen local model. Loading it at startup
+            # makes the wall-clock cognitive loop independent of user prompts.
+            s1 = PyTorchTransformersBackend(
+                model_name=system_one_model,
+                mode=BackendMode.REMOTE,
+                device=os.environ.get("NSA_SYSTEM_ONE_DEVICE", os.environ.get("NSA_MODEL_DEVICE", "auto")),
+                lazy_load=False,
+                enable_remote_download=True,
+                use_mock_fallback=False,
+            )
+            self.system_one = SystemOneController(
+                FrozenCausalLMLogitBackend(s1.model, s1.tokenizer)
+            )
 
         # Initialize Continuous Cognitive Engine (CCE) Subsystems
         if self.enable_cce:
@@ -140,6 +180,17 @@ class NSAProxyRuntime:
                 snap = self.cce_state.snapshot()
                 idle_drift = snap.working * 0.99
                 self.cce_state.observe(idle_drift, dt=dt)
+                if self.system_one is not None:
+                    try:
+                        self._system_one_last_tick = self.system_one.tick(
+                            self.canonical_state,
+                            observations=(self.active_cognitive_goal,),
+                            models=(self.system_one_model_name, self.model_name),
+                        )
+                        updates = self._system_one_last_tick.state_soft_updates
+                        self.canonical_state = self.canonical_state.observe(**updates)
+                    except Exception:
+                        logger.exception("System 1 heartbeat failed")
             except Exception:
                 pass
 
@@ -178,12 +229,32 @@ class NSAProxyRuntime:
     def process_chat(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         history = [f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in messages if m.get("role") in {"user", "assistant"}]
         latest = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
+        if self.system_one is not None:
+            try:
+                self._system_one_last_tick = self.system_one.tick(
+                    self.canonical_state,
+                    observations=(latest,),
+                    models=(self.system_one_model_name, self.model_name),
+                )
+                self.canonical_state = self.canonical_state.observe(**self._system_one_last_tick.state_soft_updates)
+            except Exception:
+                logger.exception("System 1 turn assessment failed")
         
         # Check if this is an OpenWebUI automated title generation prompt
         is_title_gen = "Generate a concise, 3-5 word title" in latest or "title with an emoji" in latest
 
         cce_meta_section = ""
         cce_footer_section = ""
+        system_one_meta = ""
+        if self._system_one_last_tick is not None:
+            tick = self._system_one_last_tick
+            system_one_meta = (
+                f"\n[SYSTEM 1 CONTROL PLANE]\n"
+                f"• Salience: {tick.salience:.3f} | Escalate: {tick.escalate}\n"
+                f"• Memory policy: {tick.memory_policy}\n"
+                f"• Model route: {tick.selected_model}\n"
+                f"• Backend: {tick.decisions.get('escalation').backend if 'escalation' in tick.decisions else 'n/a'}\n"
+            )
         now = time.time()
         idle_duration = max(0.0, now - self.last_user_interaction_time)
         self.last_user_interaction_time = now
@@ -228,12 +299,14 @@ class NSAProxyRuntime:
 
             full_system = system_directive + ("\n" + cce_meta_section if cce_meta_section else "")
             prompt = (
-                f"[SYSTEM DIRECTIVE]\n{full_system}\n\n"
+                f"[SYSTEM DIRECTIVE]\n{full_system}\n{system_one_meta}\n"
+                f"[SELECTED NSA MEMORY]\n{self._selected_memory_text()}\n\n"
                 f"[CONVERSATION HISTORY]\n{chr(10).join(history[-10:])}\n\n"
                 f"[CURRENT USER SENSORY INPUT]\n{latest}\n\n"
                 f"Respond authentically from your continuous cognitive state in natural markdown prose:"
             )
 
+        self._remember_selectively(messages, latest)
         t0 = time.time()
         raw_output = self.governed.generate_text(prompt, max_tokens=1024, temperature=0.7, system_prompt=system_directive)
         dt = time.time() - t0
@@ -290,6 +363,36 @@ class NSAProxyRuntime:
             "latency_sec": round(dt, 3),
         }
 
+    def _selected_memory_text(self, limit: int = 12) -> str:
+        with self._memory_lock:
+            items = self.memory_store.active()
+            return "\n".join(
+                f"- [{item.kind}] {item.content}" for item in reversed(items[-limit:])
+            ) or "(none)"
+
+    def _remember_selectively(self, messages: List[Dict[str, str]], latest: str) -> None:
+        policy = self._system_one_last_tick.memory_policy if self._system_one_last_tick else "working"
+        if policy == "discard":
+            return
+        candidates = [m for m in messages[-4:] if m.get("role") in {"user", "assistant"}]
+        with self._memory_lock:
+            for message in candidates:
+                content = str(message.get("content", "")).strip()
+                if not content:
+                    continue
+                memory_id = f"chat-{len(self.memory_store.items)}-{hash(content)}"
+                try:
+                    self.memory_store = self.memory_store.write(
+                        MemoryItem(
+                            memory_id=memory_id,
+                            content=content,
+                            kind=f"{policy}:{message.get('role', 'user')}",
+                            provenance_ids=("openwebui",),
+                        )
+                    )
+                except ValueError:
+                    pass
+
     def status(self) -> Dict[str, Any]:
         base_status = {
             "status": "online",
@@ -298,8 +401,31 @@ class NSAProxyRuntime:
             "active_model": self.model_name,
             "backend": self.backend_type,
             "cce_enabled": self.enable_cce,
+            "system_one_enabled": self.system_one is not None,
+            "system_one_model": self.system_one_model_name,
+            "system_one_heartbeat_seconds": self.system_one_heartbeat,
+            "selective_memory_items": len(self.memory_store.items),
             **self.governed.status(),
         }
+        if self._system_one_last_tick is not None:
+            tick = self._system_one_last_tick
+            base_status["system_one"] = {
+                "escalate": tick.escalate,
+                "salience": tick.salience,
+                "memory_policy": tick.memory_policy,
+                "selected_model": tick.selected_model,
+                "decisions": {
+                    name: {
+                        "choice": d.selected_choice,
+                        "confidence": d.confidence,
+                        "uncertainty": d.uncertainty,
+                        "risk": d.risk,
+                        "backend": d.backend,
+                    }
+                    for name, d in tick.decisions.items()
+                },
+                "canonical_state": dict(self.canonical_state.summary()),
+            }
         if self.enable_cce:
             snap = self.cce_state.snapshot()
             base_status["cce"] = {
@@ -373,11 +499,16 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                     "owned_by": "neural-state-architecture",
                 }],
             })
-        elif path in {"/api/tags", "/api/version"}:
+        elif path == "/api/tags":
+            names = [f"nsa-{self.runtime.model_name}"]
+            if self.runtime.system_one is not None:
+                names.append("nsa-system1:1.5b")
             self._json({
-                "models": [{"name": f"nsa-{self.runtime.model_name}"}],
+                "models": [{"name": name} for name in names],
                 "nsa": self.runtime.status(),
             })
+        elif path == "/api/version":
+            self._json({"version": "nsa-cognitive-server", "nsa": self.runtime.status()})
         elif path == "/api/cce/state":
             if not self.runtime.enable_cce:
                 self._json({"error": "CCE not enabled"}, 400)
@@ -524,7 +655,15 @@ def run_server(
     backend_url: Optional[str] = None,
     enable_cce: bool = True,
 ) -> None:
-    runtime = NSAProxyRuntime(backend_type=backend_type, model=model, backend_url=backend_url, enable_cce=enable_cce)
+    runtime = NSAProxyRuntime(
+        backend_type=backend_type,
+        model=model,
+        backend_url=backend_url,
+        enable_cce=enable_cce,
+        system_one_model=os.environ.get("NSA_SYSTEM_ONE_MODEL", "Qwen/Qwen2.5-1.5B-Instruct"),
+        system_one_enabled=os.environ.get("NSA_DISABLE_SYSTEM_ONE", "0") != "1",
+        system_one_heartbeat=float(os.environ.get("NSA_SYSTEM_ONE_HEARTBEAT", "1.0")),
+    )
     NSAHTTPHandler.runtime = runtime
     warn_if_exposed(host)
     server = ThreadingHTTPServer((host, port), NSAHTTPHandler)
@@ -541,12 +680,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="NSA-governed OpenAI/Ollama-compatible server with CCE")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
-    parser.add_argument("--backend", choices=["ollama", "openai", "lmstudio"], default="ollama")
+    parser.add_argument("--backend", choices=["ollama", "transformers", "local", "openai", "lmstudio"], default="transformers")
     parser.add_argument("--model", default="qwen2.5:3b")
     parser.add_argument("--backend-url", default=None)
+    parser.add_argument("--system-one-model", default=os.environ.get("NSA_SYSTEM_ONE_MODEL", "Qwen/Qwen2.5-1.5B-Instruct"))
+    parser.add_argument("--no-system-one", action="store_true", help="Disable the continuous local System 1 controller")
+    parser.add_argument("--system-one-heartbeat", type=float, default=float(os.environ.get("NSA_SYSTEM_ONE_HEARTBEAT", "1.0")))
     parser.add_argument("--no-cce", action="store_true", help="Disable CCE continuous background engine")
     args = parser.parse_args()
-    run_server(args.host, args.port, args.backend, args.model, args.backend_url, enable_cce=not args.no_cce)
+    run_server(
+        args.host, args.port, args.backend, args.model, args.backend_url,
+        enable_cce=not args.no_cce,
+    )
 
 
 if __name__ == "__main__":
