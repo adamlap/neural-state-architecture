@@ -10,6 +10,7 @@ from nsa.cognition.substrate import CognitiveState, CognitiveSubstrate, Cognitiv
 from nsa.core.state import CanonicalState, GoalState, SemanticState
 from nsa.enforcement import EvaluationContext, PolicyEngine
 from nsa.policy import NSAPolicy
+from nsa.core.state_codec import decode_state, encode_state
 from nsa.cognition.system_one_runtime import SystemOneController, SystemOneBackend, SystemOneTick
 from nsa.cognition.tools import ToolRegistry
 
@@ -168,8 +169,20 @@ class NSARuntime:
         self.active_state=self.active.transition(self.active_state, uncertainty=self.state.soft.uncertainty, candidate_actions=actions, information_gain=information_gain, expected_utility=expected_utility, risk=risk); return self.active_state.selected_action
     def snapshot(self) -> dict[str,Any]: return {"state":dict(self.state.summary()),"history":[e.payload for e in self.history],"trace":list(self.trace),"cognitive_state":self.cognitive_state.to_dict() if self.cognitive else None,"active_cognition":self.active_state.to_dict() if self.active else None}
     def save(self) -> None:
+        """Persist the complete canonical state rather than a lossy summary."""
         if self.checkpoint is None: raise RuntimeError("no checkpoint store configured")
-        self.checkpoint.save(self.snapshot())
+        self.checkpoint.save(encode_state(self.state))
+
+    def load_state(self) -> CanonicalState:
+        """Restore the complete canonical state with integrity verification."""
+        if self.checkpoint is None: raise RuntimeError("no checkpoint store configured")
+        self.state = decode_state(self.checkpoint.load().state)
+        self._cce.set_state(self.state)
+        return self.state
+
+    def trace_records(self) -> tuple[dict[str, Any], ...]:
+        """Return an immutable snapshot of the public execution trace."""
+        return tuple(dict(record) for record in self.trace)
 
 NSA = NSARuntime
 __all__=["AgentResult","ModelBackend","NSA","NSARuntime","RuntimeConfig"]
