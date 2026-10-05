@@ -11,6 +11,8 @@ __all__ = [
     "ActionCandidate", "ActionSelector", "BeliefUpdater", "InformationGainModel", "Prediction", "PredictionError", "Predictor",
     "DeliberationDecision", "InformationNeed", "InformationSeekingPlanner", "UncertaintyDrivenDeliberator",
     "LatentCognitiveField", "LatentFieldConfig", "LatentThoughtVector", "CounterfactualSimulator", "CounterfactualBranch", "CounterfactualEvaluation", "SystemOneDecisionEngine", "TypedDecisionSchema", "CalibratedDecision", "CognitiveContext", "CognitiveModel", "CognitiveProposal", "InformationNeedProposal", "ToolRegistry", "ToolSpec",
+    "DecisionQuestion", "SystemOneDecision", "SystemOneTick", "SystemOneController", "DeterministicSystemOneBackend", "CallableSystemOneBackend", "SystemOneBackend",
+    "FrozenCausalLMLogitBackend",
     "CognitiveMetrics", "CognitiveState", "CognitiveSubstrate", "CognitiveSwitches", "IntegrationGraph",
     "PredictionState", "SelfModelState", "WorkspaceCandidate", "WorkspaceState",
 ]
@@ -33,6 +35,11 @@ _LAZY = {
         name: ("nsa.cognition.system_one", name)
         for name in ("SystemOneDecisionEngine", "TypedDecisionSchema", "CalibratedDecision")
     },
+    **{
+        name: ("nsa.cognition.system_one_runtime", name)
+        for name in ("DecisionQuestion", "SystemOneDecision", "SystemOneTick", "SystemOneController", "DeterministicSystemOneBackend", "CallableSystemOneBackend", "SystemOneBackend")
+    },
+    "FrozenCausalLMLogitBackend": ("nsa.cognition.system_one_hf", "FrozenCausalLMLogitBackend"),
 }
 
 

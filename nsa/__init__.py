@@ -44,6 +44,14 @@ _LAZY = {
     "NSA": ("nsa.agent", "NSA"), "NSARuntime": ("nsa.agent", "NSARuntime"),
     "AgentResult": ("nsa.agent", "AgentResult"), "RuntimeConfig": ("nsa.agent", "RuntimeConfig"),
     "ModelBackend": ("nsa.agent", "ModelBackend"),
+    "DecisionQuestion": ("nsa.cognition.system_one_runtime", "DecisionQuestion"),
+    "SystemOneDecision": ("nsa.cognition.system_one_runtime", "SystemOneDecision"),
+    "SystemOneTick": ("nsa.cognition.system_one_runtime", "SystemOneTick"),
+    "SystemOneController": ("nsa.cognition.system_one_runtime", "SystemOneController"),
+    "DeterministicSystemOneBackend": ("nsa.cognition.system_one_runtime", "DeterministicSystemOneBackend"),
+    "CallableSystemOneBackend": ("nsa.cognition.system_one_runtime", "CallableSystemOneBackend"),
+    "SystemOneBackend": ("nsa.cognition.system_one_runtime", "SystemOneBackend"),
+    "FrozenCausalLMLogitBackend": ("nsa.cognition.system_one_hf", "FrozenCausalLMLogitBackend"),
     "StateAwareAttention": ("nsa.attention", "StateAwareAttention"),
     "FusedStateAwareAttention": ("nsa.fused_attention", "FusedStateAwareAttention"),
     "NSAConfig": ("nsa.hf_integration", "NSAConfig"), "NSAForCausalLM": ("nsa.hf_integration", "NSAForCausalLM"),
@@ -75,7 +83,10 @@ def __getattr__(name: str):
 
 
 __all__ = sorted(set([
-    "NSA", "NSARuntime", "AgentResult", "RuntimeConfig", "ModelBackend", "OllamaBackend", "EchoBackend", "CallableBackend", "BackendError",
+    "NSA", "NSARuntime", "AgentResult", "RuntimeConfig", "ModelBackend",
+    "DecisionQuestion", "SystemOneDecision", "SystemOneTick", "SystemOneController",
+    "DeterministicSystemOneBackend", "CallableSystemOneBackend", "SystemOneBackend", "FrozenCausalLMLogitBackend",
+    "OllamaBackend", "EchoBackend", "CallableBackend", "BackendError",
     "CCEStatus", "ContinuousCognitiveEngine", "CheckpointEnvelope", "StateCheckpointStore", "CognitiveInputEvent", "CognitiveInputQueue",
     "CognitiveEvent", "EventKind", "CognitiveTrajectory", "TrajectoryRecord", "TrajectoryExample", "TrajectoryLearner",
     "CognitiveTransaction", "CognitiveTransactionEngine", "AsyncCognitiveTransactionEngine", "AsyncExecutionHook", "CanonicalCCERuntime", "TickInput",
