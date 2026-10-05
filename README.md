@@ -369,3 +369,36 @@ Current focus:
 5. continue live-model research toward reproducible architectural evidence.
 
 See `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md` and `research/` for the current technical and scientific material.
+
+## Full local cognitive server
+
+NSA can also run as the model server itself, without a separate Ollama daemon. The
+server exposes the Ollama protocol shape and OpenAI-compatible chat completions,
+so Open WebUI can use it directly.
+
+Default local architecture:
+
+- System 1: Qwen2.5-1.5B-Instruct, frozen and continuously ticking without generation.
+- System 2: Qwen2.5-3B-Instruct, loaded automatically when needed for generation.
+- CCE: wall-clock continuous state dynamics.
+- Selective memory: System 1 chooses what chat state is retained.
+- Existing NSA governance, provenance and safety runtime remain in the serving path.
+
+Start it with:
+
+    pip install -e ".[server]"
+    python -m nsa.server.proxy --backend transformers --model Qwen/Qwen2.5-3B-Instruct --port 11434
+
+The first run downloads missing Hugging Face checkpoints and later runs reuse the
+local cache.
+
+Then point Open WebUI's Ollama connection at:
+
+    http://localhost:11434
+
+For a complete Docker setup:
+
+    docker compose -f docker-compose.nsa.yml up --build
+
+See docs/NSA_OLLAMA_SERVER.md for the full architecture, model controls and
+continuous cognition endpoints.
