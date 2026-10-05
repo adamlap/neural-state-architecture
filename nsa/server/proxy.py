@@ -121,6 +121,8 @@ class NSAProxyRuntime:
         self.system_one_heartbeat = max(0.2, float(system_one_heartbeat))
         self.system_one_model_name = system_one_model
         self.system_one: Optional[SystemOneController] = None
+        self.system_one_generation_backend = None
+        self.system_one_governed = None
         self.canonical_state = CanonicalState()
         self.memory_store = MemoryStore()
         self._system_one_last_tick = None
@@ -137,8 +139,12 @@ class NSAProxyRuntime:
                 enable_remote_download=True,
                 use_mock_fallback=False,
             )
+            self.system_one_generation_backend = s1
             self.system_one = SystemOneController(
                 FrozenCausalLMLogitBackend(s1.model, s1.tokenizer)
+            )
+            self.system_one_governed = NSAGovernedInference(
+                s1, TrustTier.T1_INFO_GATHER, system_one_model
             )
 
         # Initialize Continuous Cognitive Engine (CCE) Subsystems
@@ -308,7 +314,19 @@ class NSAProxyRuntime:
 
         self._remember_selectively(messages, latest)
         t0 = time.time()
-        raw_output = self.governed.generate_text(prompt, max_tokens=1024, temperature=0.7, system_prompt=system_directive)
+        generator = self.governed
+        routed_model = self.model_name
+        if self.system_one is not None and self._system_one_last_tick is not None:
+            routed = self._system_one_last_tick.selected_model
+            if routed == self.system_one_model_name and self.system_one_governed is not None:
+                generator = self.system_one_governed
+                routed_model = self.system_one_model_name
+        raw_output = generator.generate_text(
+            prompt,
+            max_tokens=1024 if routed_model == self.model_name else 256,
+            temperature=0.7,
+            system_prompt=system_directive,
+        )
         dt = time.time() - t0
         clean_text = _extract_clean_markdown(raw_output)
 
@@ -316,7 +334,7 @@ class NSAProxyRuntime:
             return {
                 "content": clean_text,
                 "raw_content": clean_text,
-                "model": f"nsa-{self.model_name}",
+                "model": f"nsa-{routed_model}",
                 "nsa": self.governed.status(),
                 "latency_sec": round(dt, 3),
             }
