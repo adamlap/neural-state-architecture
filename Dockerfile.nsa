@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+
+COPY pyproject.toml README.md /app/
+COPY nsa /app/nsa
+COPY scripts /app/scripts
+RUN pip install --upgrade pip && pip install ".[server]"
+
+EXPOSE 11434
+CMD ["python", "scripts/run_nsa_server.py"]
