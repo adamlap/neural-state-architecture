@@ -251,7 +251,7 @@ class NSAProxyRuntime:
             },
         }
 
-    def process_chat(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    def process_chat(self, messages: List[Dict[str, str]], requested_model: Optional[str] = None) -> Dict[str, Any]:
         history = [f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in messages if m.get("role") in {"user", "assistant"}]
         latest = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
         if self.system_one is not None:
@@ -335,7 +335,13 @@ class NSAProxyRuntime:
         t0 = time.time()
         generator = self.governed
         routed_model = self.model_name
-        if self.system_one is not None and self._system_one_last_tick is not None:
+        requested = str(requested_model or "").lower()
+        force_system_one = requested in {"nsa-system1", "nsa-system1:1.5b"}
+        force_system_two = requested in {"nsa-system2", "nsa-system2:3b"}
+        if force_system_one and self.system_one_governed is not None:
+            generator = self.system_one_governed
+            routed_model = self.system_one_model_name
+        elif not force_system_two and self.system_one is not None and self._system_one_last_tick is not None:
             routed = self._system_one_last_tick.selected_model
             if routed == self.system_one_model_name and self.system_one_governed is not None:
                 generator = self.system_one_governed
@@ -678,7 +684,7 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
         t0 = time.time()
 
         try:
-            result = self.runtime.process_chat(messages)
+            result = self.runtime.process_chat(messages, requested_model=str(data.get("model", "")))
         except PermissionError as exc:
             logger.warning("NSA Blocked Request: %s", exc)
             self._json({"error": "NSA_BLOCKED", "detail": str(exc)}, 403)
