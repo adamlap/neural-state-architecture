@@ -31,16 +31,12 @@ class FakeModel(torch.nn.Module):
         targets = input_ids[:, 1:]
         for i in range(seq - 1):
             target = targets[:, i]
-            logits[:, i, :] = torch.where(
+            logits[:, i, :] = 0.0
+            logits[:, i, :].scatter_(1, target.unsqueeze(-1), torch.where(
                 target.unsqueeze(-1) == 1,
                 torch.tensor(6.0, device=input_ids.device),
-                torch.tensor(0.0, device=input_ids.device),
-            )
-            logits[:, i, :] = torch.where(
-                target.unsqueeze(-1) == 2,
                 torch.tensor(1.0, device=input_ids.device),
-                logits[:, i, :],
-            )
+            ))
         return type("Output", (), {"logits": logits})()
 
 
