@@ -10,6 +10,8 @@ from nsa.cognition.substrate import CognitiveState, CognitiveSubstrate, Cognitiv
 from nsa.core.state import CanonicalState, GoalState, SemanticState
 from nsa.enforcement import EvaluationContext, PolicyEngine
 from nsa.policy import NSAPolicy
+from nsa.cognition.system_one_runtime import SystemOneController, SystemOneBackend, SystemOneTick
+from nsa.cognition.tools import ToolRegistry
 
 class ModelBackend(Protocol):
     model: str
@@ -32,6 +34,8 @@ class RuntimeConfig:
     cognitive_workspace_capacity: int = 4
     cognitive_switches: CognitiveSwitches = CognitiveSwitches()
     embodied_enabled: bool = False
+    system_one_enabled: bool = False
+    system_one_models: tuple[str, ...] = ()
     def __post_init__(self) -> None:
         if self.history_limit < 0 or self.continuous_interval_seconds <= 0 or self.cognitive_workspace_capacity < 1: raise ValueError("invalid runtime configuration")
 
@@ -39,9 +43,14 @@ class NSARuntime:
     """Single public runtime; legacy cognition remains available while canonical CCE is exposed as the governed transaction plane."""
     def __init__(self, backend: ModelBackend, *, state: Optional[CanonicalState] = None, initial_state: Optional[Mapping[str, Any]] = None,
                  policy: Optional[NSAPolicy] = None, policy_engine: Optional[PolicyEngine] = None, checkpoint: Optional[StateCheckpointStore] = None,
-                 config: Optional[RuntimeConfig] = None, continuous_transition: Optional[Callable[[CanonicalState], CanonicalState]] = None) -> None:
+                 config: Optional[RuntimeConfig] = None, continuous_transition: Optional[Callable[[CanonicalState], CanonicalState]] = None,
+                 system_one: Optional[SystemOneController] = None, system_one_backend: Optional[SystemOneBackend] = None,
+                 system_one_tools: Optional[ToolRegistry] = None) -> None:
         self.backend = backend; self.config = config or RuntimeConfig(); self.state = state or self._state_from_mapping(initial_state or {})
         self.policy_engine = policy_engine or (PolicyEngine(policy) if policy else None); self.checkpoint = checkpoint; self.history: list[CognitiveInputEvent] = []; self.trace: list[dict[str, Any]] = []
+        self.system_one = (system_one or SystemOneController(system_one_backend)) if self.config.system_one_enabled else None
+        self.system_one_tools = system_one_tools
+        self.last_system_one_tick: SystemOneTick | None = None
         self.cognitive = CognitiveSubstrate(switches=self.config.cognitive_switches, workspace_capacity=self.config.cognitive_workspace_capacity) if self.config.cognitive_enabled else None
         self.cognitive_state = CognitiveState(switches=self.config.cognitive_switches); self.active = ActiveCognition() if self.config.embodied_enabled else None; self.active_state = ActiveCognitionState()
         self._continuous_transition = continuous_transition or self._continuous_state_maintenance
@@ -79,7 +88,17 @@ class NSARuntime:
             self.active_state = self.active.transition(self.active_state, uncertainty=u, candidate_actions=("observe", "reflect", "respond"), information_gain={"observe": u, "reflect": 0.5*u, "respond": 0.1}, expected_utility={"respond": 0.5, "reflect": 0.2, "observe": 0.1}, risk={"respond": 0.1}, observation=observation, chosen_action=action)
 
     def _continuous_state_maintenance(self, state: CanonicalState) -> CanonicalState:
-        if self.cognitive is not None or self.active is not None: self._run_cognitive_transition(state.semantic.value, confidence=state.soft.confidence)
+        if self.system_one is not None:
+            self.last_system_one_tick = self.system_one.tick(
+                state,
+                observations=(state.semantic.value,),
+                tools=self.system_one_tools,
+                models=self.config.system_one_models,
+            )
+            state = replace(state, soft=replace(state.soft, **self.last_system_one_tick.state_soft_updates),
+                            provenance=state.provenance.extend(transformation="system-one.heartbeat"))
+        if self.cognitive is not None or self.active is not None:
+            self._run_cognitive_transition(state.semantic.value, confidence=state.soft.confidence)
         return replace(state, provenance=state.provenance.extend(transformation="cce.heartbeat"), step=state.step + 1)
 
     def observe(self, payload: Any, *, source: str = "text", confidence: float = 1.0, provenance: str = "local") -> None:
@@ -109,6 +128,29 @@ class NSARuntime:
     def continuous_stop(self, timeout: float | None = None) -> bool: return self._cce.stop(timeout=timeout)
     def continuous_set_enabled(self, enabled: bool) -> None: self._cce.set_enabled(enabled)
     def continuous_status(self) -> CCEStatus: return self._cce.status()
+    def system_one_tick(self) -> SystemOneTick | None:
+        """Run one generation-free System 1 heartbeat against current state."""
+        if self.system_one is None:
+            return None
+        self.last_system_one_tick = self.system_one.tick(
+            self.state,
+            observations=(self.state.semantic.value,),
+            tools=self.system_one_tools,
+            models=self.config.system_one_models,
+        )
+        self.state = replace(self.state, soft=replace(self.state.soft, **self.last_system_one_tick.state_soft_updates),
+                             step=self.state.step + 1,
+                             provenance=self.state.provenance.extend(transformation="system-one.tick"))
+        self._cce.set_state(self.state)
+        return self.last_system_one_tick
+    def system_one_select_tool(self):
+        if self.system_one is None or self.system_one_tools is None:
+            raise RuntimeError("System 1 or tool registry is not configured")
+        return self.system_one.choose_tool(self.state, self.system_one_tools)
+    def system_one_route_model(self, models: Sequence[str], *, scores: Mapping[str, float] | None = None):
+        if self.system_one is None:
+            raise RuntimeError("System 1 is not configured")
+        return self.system_one.choose_model(self.state, models, scores=scores)
     @property
     def cce(self) -> ContinuousCognitiveEngine[CanonicalState]: return self._cce
     @property
