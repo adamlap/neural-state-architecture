@@ -29,7 +29,7 @@ from nsa.runtime.inference.ollama import OllamaInferenceBackend
 from nsa.runtime.inference.openai_compatible import OpenAICompatibleBackend
 from nsa.runtime.inference.transformers import PyTorchTransformersBackend
 from nsa.cognition.system_one_hf import FrozenCausalLMLogitBackend
-from nsa.cognition.system_one_runtime import SystemOneController
+from nsa.cognition.system_one_runtime import DecisionQuestion, SystemOneController
 from nsa.core.state import CanonicalState
 from nsa.memory.model import MemoryItem, MemoryStore
 
@@ -124,7 +124,7 @@ class NSAProxyRuntime:
         self.enable_cce = enable_cce
         self.last_user_interaction_time = time.time()
         self.system_one_enabled = bool(system_one_enabled)
-        self.system_one_heartbeat = max(0.2, float(system_one_heartbeat))
+        self.system_one_heartbeat = max(1.0, float(system_one_heartbeat))
         self.system_one_model_name = system_one_model
         self.system_one: Optional[SystemOneController] = None
         self.system_one_generation_backend = None
@@ -194,13 +194,26 @@ class NSAProxyRuntime:
                 self.cce_state.observe(idle_drift, dt=dt)
                 if self.system_one is not None:
                     try:
-                        self._system_one_last_tick = self.system_one.tick(
+                        # One frozen-model forward pass per wall-clock pulse.
+                        # Rich routing/memory decisions are evaluated on events.
+                        pulse = self.system_one.decide(
+                            DecisionQuestion(
+                                "heartbeat",
+                                "should cognitive attention increase while idle?",
+                                ("maintain", "attend"),
+                                min_confidence=0.0,
+                            ),
                             self.canonical_state,
-                            observations=(self.active_cognitive_goal,),
-                            models=(self.system_one_model_name, self.model_name),
+                            features={
+                                "maintain": max(0.0, 1.0 - self.canonical_state.soft.uncertainty),
+                                "attend": self.canonical_state.soft.uncertainty,
+                            },
                         )
-                        updates = self._system_one_last_tick.state_soft_updates
-                        self.canonical_state = self.canonical_state.observe(**updates)
+                        self.canonical_state = self.canonical_state.observe(
+                            uncertainty=pulse.uncertainty,
+                            confidence=pulse.confidence,
+                            risk=pulse.risk,
+                        )
                     except Exception:
                         logger.exception("System 1 heartbeat failed")
             except Exception:
