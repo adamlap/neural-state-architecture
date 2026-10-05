@@ -10,6 +10,7 @@ from nsa.cce.async_transaction import AsyncCognitiveTransactionEngine
 from nsa.cognition.interfaces import ActionCandidate
 from nsa.core.capabilities import CapabilityAuthority, CapabilityToken
 from nsa.core.state import CanonicalState
+from nsa.cognition.system_one_runtime import SystemOneController
 
 @dataclass(frozen=True)
 class TickInput:
@@ -17,13 +18,24 @@ class TickInput:
     action_id:str="cognitive_tick";reason:str="CCE state transition";provenance_source:str|None=None;evidence_id:str|None=None;metadata:Mapping[str,Any]|None=None
 
 class CanonicalCCERuntime:
-    def __init__(self,initial_state:CanonicalState,*,selector:Callable|None=None,policy:Callable|None=None,safety_gate:Callable|None=None,executor:Callable|None=None,effect_executor:TwoPhaseExecutor|None=None,capability_authority:CapabilityAuthority|None=None,capability_tokens:Mapping[str,CapabilityToken]|None=None,journal:TrajectoryJournal|None=None,interval_seconds:float=.1,enabled:bool=False,fail_closed:bool=True)->None:
+    def __init__(self,initial_state:CanonicalState,*,selector:Callable|None=None,system_one:SystemOneController|None=None,policy:Callable|None=None,safety_gate:Callable|None=None,executor:Callable|None=None,effect_executor:TwoPhaseExecutor|None=None,capability_authority:CapabilityAuthority|None=None,capability_tokens:Mapping[str,CapabilityToken]|None=None,journal:TrajectoryJournal|None=None,interval_seconds:float=.1,enabled:bool=False,fail_closed:bool=True)->None:
+        self.system_one = system_one
+        if selector is None and system_one is not None:
+            selector = self._system_one_selector
         self.transaction_engine=CognitiveTransactionEngine(initial_state,selector=selector,policy=policy,safety_gate=safety_gate,executor=executor,effect_executor=effect_executor,capability_authority=capability_authority,capability_tokens=capability_tokens)
         self._async_transaction_engine=AsyncCognitiveTransactionEngine(initial_state,selector=selector,policy=policy,safety_gate=safety_gate,capability_authority=capability_authority,capability_tokens=capability_tokens,trajectory=self.transaction_engine.trajectory)
         self.journal=journal
         self._pending=None
         self.engine=ContinuousCognitiveEngine(initial_state,self._step,interval_seconds=interval_seconds,enabled=enabled,fail_closed=fail_closed)
         if self.journal is not None and not self.journal.records():self.journal.append(self.transaction_engine.trajectory.records[0],state=initial_state)
+    def _system_one_selector(self, state, candidates):
+        if not candidates or self.system_one is None:
+            return None
+        decision = self.system_one.choose_action(state, candidates)
+        if not decision.passed_gate:
+            return None
+        return next((candidate for candidate in candidates if candidate.action_id == decision.selected_choice), None)
+
     @property
     def state(self):return self.transaction_engine.state
     @property
