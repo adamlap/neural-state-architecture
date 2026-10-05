@@ -12,7 +12,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import torch
 
@@ -502,6 +502,20 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
         supplied = self.headers.get("Authorization", "")
         return hmac.compare_digest(supplied.encode("utf-8"), f"Bearer {token}".encode("utf-8"))
 
+    def _stream(self, chunks: List[str], *, ollama: bool = False) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-ndjson" if ollama else "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+        for chunk in chunks:
+            data = (chunk + "\n") if ollama else ("data: " + chunk + "\n\n")
+            self.wfile.write(data.encode("utf-8"))
+            self.wfile.flush()
+        if not ollama:
+            self.wfile.write(b"data: [DONE]\n\n")
+            self.wfile.flush()
+
     def _json(self, payload: Dict[str, Any], status: int = 200) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
@@ -527,14 +541,17 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
         if path in {"/", "/health"}:
             self._json(self.runtime.status())
         elif path in {"/v1/models", "/models"}:
+            names = [f"nsa-{self.runtime.model_name}", "nsa:latest"]
+            if self.runtime.system_one is not None:
+                names.append("nsa-system1:1.5b")
             self._json({
                 "object": "list",
                 "data": [{
-                    "id": f"nsa-{self.runtime.model_name}",
+                    "id": name,
                     "object": "model",
                     "created": int(time.time()),
                     "owned_by": "neural-state-architecture",
-                }],
+                } for name in dict.fromkeys(names)],
             })
         elif path == "/api/tags":
             names = [f"nsa-{self.runtime.model_name}", "nsa:latest"]
@@ -545,8 +562,8 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 "nsa": self.runtime.status(),
             })
         elif path == "/api/show":
-            name = self.path.split("?", 1)[1] if "?" in self.path else ""
-            requested = name.split("name=", 1)[1] if "name=" in name else ""
+            query = parse_qs(urlparse(self.path).query)
+            requested = query.get("name", [f"nsa-{self.runtime.model_name}"])[0]
             self._json({
                 "name": requested or f"nsa-{self.runtime.model_name}",
                 "details": {
@@ -674,18 +691,27 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
         dt = time.time() - t0
         logger.info("Completed chat response in %.2fs (length=%d chars)", dt, len(result["content"]))
 
+        stream = bool(data.get("stream", False))
         if path == "/api/chat":
-            self._json({
+            payload = {
                 "model": result["model"],
                 "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "message": {"role": "assistant", "content": result["content"]},
                 "done": True,
                 "nsa": result["nsa"],
                 "nsa_policy": result.get("nsa_policy"),
-            })
+            }
+            if stream:
+                self._stream(
+                    [json.dumps({**payload, "done": False}), json.dumps(payload)],
+                    ollama=True,
+                )
+            else:
+                self._json(payload)
         else:
-            self._json({
-                "id": f"chatcmpl-nsa-{int(time.time() * 1000)}",
+            response_id = f"chatcmpl-nsa-{int(time.time() * 1000)}"
+            payload = {
+                "id": response_id,
                 "object": "chat.completion",
                 "created": int(time.time()),
                 "model": result["model"],
@@ -696,7 +722,29 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 }],
                 "nsa": result["nsa"],
                 "nsa_policy": result.get("nsa_policy"),
-            })
+            }
+            if stream:
+                chunk = {
+                    "id": response_id,
+                    "object": "chat.completion.chunk",
+                    "created": int(time.time()),
+                    "model": result["model"],
+                    "choices": [{
+                        "index": 0,
+                        "delta": {"role": "assistant", "content": result["content"]},
+                        "finish_reason": None,
+                    }],
+                }
+                final = {
+                    "id": response_id,
+                    "object": "chat.completion.chunk",
+                    "created": int(time.time()),
+                    "model": result["model"],
+                    "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+                }
+                self._stream([json.dumps(chunk), json.dumps(final)])
+            else:
+                self._json(payload)
 
 
 def print_server_banner(host: str, port: int, backend_type: str, model_name: str, cce_enabled: bool = True) -> None:
