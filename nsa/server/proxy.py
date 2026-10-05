@@ -96,6 +96,12 @@ class NSAProxyRuntime:
         system_one_heartbeat: float = 1.0,
     ):
         backend_type = backend_type.lower()
+        if backend_type in {"transformers", "local"}:
+            model = {
+                "qwen2.5:0.5b": "Qwen/Qwen2.5-0.5B-Instruct",
+                "qwen2.5:1.5b": "Qwen/Qwen2.5-1.5B-Instruct",
+                "qwen2.5:3b": "Qwen/Qwen2.5-3B-Instruct",
+            }.get(model.lower(), model)
         if backend_type == "ollama":
             backend = OllamaInferenceBackend(model_name=model, base_url=backend_url, mode=BackendMode.OLLAMA)
         elif backend_type in {"transformers", "local"}:
@@ -518,7 +524,7 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 }],
             })
         elif path == "/api/tags":
-            names = [f"nsa-{self.runtime.model_name}"]
+            names = [f"nsa-{self.runtime.model_name}", "nsa:latest"]
             if self.runtime.system_one is not None:
                 names.append("nsa-system1:1.5b")
             self._json({
@@ -699,7 +705,7 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--backend", choices=["ollama", "transformers", "local", "openai", "lmstudio"], default="transformers")
-    parser.add_argument("--model", default="qwen2.5:3b")
+    parser.add_argument("--model", default=os.environ.get("NSA_MODEL", "Qwen/Qwen2.5-3B-Instruct"))
     parser.add_argument("--backend-url", default=None)
     parser.add_argument("--system-one-model", default=os.environ.get("NSA_SYSTEM_ONE_MODEL", "Qwen/Qwen2.5-1.5B-Instruct"))
     parser.add_argument("--no-system-one", action="store_true", help="Disable the continuous local System 1 controller")
