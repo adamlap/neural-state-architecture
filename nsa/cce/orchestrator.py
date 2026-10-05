@@ -42,11 +42,23 @@ class CognitiveOrchestrator:
 
         candidates=proposal.action_candidates or self._information_actions(context,proposal)
         if candidates:
-            selected=max(candidates,key=lambda c:(c.expected_utility-c.risk,c.reversible))
-            events.append(CognitiveEvent(EventKind.DELIBERATION,step,f"deliberation-{step}",{
-                "selected_action":selected.action_id,"candidate_count":len(candidates),
-                "expected_utility":selected.expected_utility,"risk":selected.risk,
-            },source="cognitive-model"))
+            selected = None
+            if getattr(self.runtime, "system_one", None) is not None:
+                system_one_decision = self.runtime.system_one.choose_action(self.runtime.state, candidates)
+                if system_one_decision.passed_gate:
+                    selected = next((candidate for candidate in candidates if candidate.action_id == system_one_decision.selected_choice), None)
+                events.append(CognitiveEvent(EventKind.DELIBERATION,step,f"deliberation-{step}",{
+                    "selected_action":selected.action_id if selected else None,"candidate_count":len(candidates),
+                    "system_one_confidence":system_one_decision.confidence,
+                    "system_one_uncertainty":system_one_decision.uncertainty,
+                    "system_one_backend":system_one_decision.backend,
+                },source="system-one"))
+            else:
+                selected=max(candidates,key=lambda c:(c.expected_utility-c.risk,c.reversible))
+                events.append(CognitiveEvent(EventKind.DELIBERATION,step,f"deliberation-{step}",{
+                    "selected_action":selected.action_id,"candidate_count":len(candidates),
+                    "expected_utility":selected.expected_utility,"risk":selected.risk,
+                },source="cognitive-model"))
         semantic={"belief_updates":tuple(proposal.belief_updates),"predictions":tuple(proposal.predictions),
                   "prediction_errors":tuple(proposal.prediction_errors),"information_needs":tuple(proposal.information_needs),
                   "goal_updates":tuple(proposal.goal_updates),"rationale":proposal.rationale,
