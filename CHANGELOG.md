@@ -3,6 +3,37 @@
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Versions
 before 0.6.0 were not documented here; see git history.
 
+## [0.7.0] - 2026-10-06
+
+### Added
+
+- **Real-Time Cognitive Visualization Dashboard**:
+  - Embedded real-time web dashboard accessible at `/dashboard`, `/ui`, and `/visualize`.
+  - Visualizes System 1 continuous heartbeat, decision log probability distribution, 4-D CCE latent thought-drift bars, epistemic confidence/uncertainty, live sensory ingress log, and active memory items.
+  - Interactive sensory injection console directly hitting `/api/cce/sensor` without needing external curl/REST tools.
+- **Cognitive Server Memory Endpoint**:
+  - Added `/api/memory` endpoint exposing the active working and episodic memory items from `MemoryStore`.
+- **System 1 Batched Evaluation**:
+  - Added `_batch_choice_log_probabilities()` in `FrozenCausalLMLogitBackend`, batching all candidate decision completions into a single unified forward pass instead of running $N$ sequential passes, eliminating CPU saturation on multi-option turns.
+- **ChatML Prompt Formatting & Generation Guardrails**:
+  - Chat turns now format using native ChatML `<|im_start|>{role}\n{content}<|im_end|>\n<|im_start|>assistant\n`.
+  - Registered `<|im_end|>` (151645), `<|endoftext|>` (151643), and `</s>` explicitly in `eos_token_id` to prevent runaway text generation and prompt loops on instruction-tuned models.
+- **Fast-Path Conversation Titling**:
+  - Added title generation detection for OpenWebUI and OpenAI-compatible clients with immediate fast-path resolution (instant 5ms resolution for basic greetings, lightweight 0.5B System 1 routing for conversation titles), eliminating 18s+ CPU queue delays on initial chat turns.
+- **Multi-Thread Generator Thread Safety**:
+  - Added serialization lock (`_gen_lock`) to `PyTorchTransformersBackend.generate()` to prevent concurrent PyTorch thread contention and race conditions when chat and background requests arrive simultaneously.
+- **Canonical State Persistence and Schema Migration**:
+  - Added lossless serialization, trace snapshot, and schema migration APIs (`dumps_state`, `dumps_trace_record`, `migrate_canonical_state`).
+- **Windows Host Launcher**:
+  - Added `run.bat` (and Windows desktop launcher `NSA-Server.bat`) with automatic WSL2 IP detection and browser launch.
+
+### Changed
+
+- Default System 1 model updated to `Qwen/Qwen2.5-0.5B-Instruct` (down from 1.5B) for low-overhead local edge inference.
+- Default System 1 cognitive heartbeat interval changed to 2.0s (up from 1.0s) to balance continuous attentional awareness with thermal and CPU efficiency.
+- Default cognitive proxy server port unified to `8000` to avoid collisions with native host Ollama instances (`11434`).
+- Compact cognitive governance footer badge formatted to cleanly reflect CCE wall-clock elapsed time without multi-paragraph chat disruption.
+
 ## [0.6.0] - 2026-09-22
 
 ### Breaking

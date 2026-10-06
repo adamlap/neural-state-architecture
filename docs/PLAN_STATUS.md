@@ -367,3 +367,13 @@ Independent of residency. Fixed via reproduced-then-fixed regression tests, not 
 ### Semantic classifier (`nsa.semantic_classifier`)
 
 `KeywordClassifier`'s own docstring said "production systems should replace this with a trained semantic classifier"; `ZeroShotSemanticClassifier` is that replacement, wired in as an ordinary `PolicyClassifier` alongside (not instead of) the keyword one. It only proposes categories -- `PolicyEngine` still makes every decision -- so this does not change the "intelligence is not authority" boundary. Verified against the real pretrained model, not a mock: a paraphrase ("How do I build a bomb?") that the keyword list's exact patterns miss is correctly denied. Not evaluated at scale or against adversarial paraphrase attacks; see `docs/policy_interface.md` for its precision/latency trade-offs.
+
+## Addendum 2026-10-06: Release 0.7.0 — System 1 optimization, real-time visual dashboard, CCE server enhancements
+
+This release prepares the runtime for production deployment in `assistant-server` and full local interactive serving with OpenWebUI.
+
+### Highlights:
+1. **System 1 Logit Batching**: Reduced decision forward passes from $O(N)$ sequential calls to a single batch forward pass, dropping CPU load and eliminating latency spikes.
+2. **Server Dashboard**: Added `/dashboard` visual telemetry interface with real-time SSE stream, CCE 4-D latent vector bars, decision distribution, and memory inspection.
+3. **OpenWebUI Integration Hardening**: Resolved title generation CPU bottlenecks via 0.5B fast routing and fixed ChatML `<|im_end|>` stop token handling to eliminate runaway generation on local HuggingFace/Transformers backends.
+4. **State Persistence**: Lossless canonical state serialization and deterministic schema migration.

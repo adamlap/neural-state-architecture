@@ -11,6 +11,8 @@ Supports:
 
 from __future__ import annotations
 
+
+import threading
 import json
 from typing import Any, Dict, List, Optional, Union
 
@@ -70,6 +72,7 @@ class PyTorchTransformersBackend(InferenceBackend):
         self.tokenizer = None
         self.model = None
         self._is_loaded = False
+        self._gen_lock = threading.Lock()
 
         if not lazy_load and self.mode != BackendMode.MOCK:
             self.load_model()
@@ -152,13 +155,21 @@ class PyTorchTransformersBackend(InferenceBackend):
         assert self.model is not None and self.tokenizer is not None
 
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
-        with torch.no_grad():
+        eos_ids = [self.tokenizer.eos_token_id]
+        if hasattr(self.tokenizer, "convert_tokens_to_ids"):
+            for tok_name in ["<|im_end|>", "<|endoftext|>", "</s>"]:
+                tid = self.tokenizer.convert_tokens_to_ids(tok_name)
+                if tid is not None and isinstance(tid, int) and tid != getattr(self.tokenizer, "unk_token_id", None):
+                    eos_ids.append(tid)
+
+        with self._gen_lock, torch.no_grad():
             do_sample = temperature > 0.0
             gen_kwargs = {
                 "max_new_tokens": max_tokens,
                 "do_sample": do_sample,
                 "output_hidden_states": extract_hidden,
                 "return_dict_in_generate": True,
+                "eos_token_id": list(set(eos_ids)),
             }
             if do_sample:
                 gen_kwargs["temperature"] = max(0.01, temperature)

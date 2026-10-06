@@ -1,6 +1,7 @@
 """OpenAI/Ollama-compatible HTTP server backed by real NSA-governed inference & CCE continuous dynamics."""
 
 from __future__ import annotations
+import re
 
 import argparse
 import atexit
@@ -32,6 +33,7 @@ from nsa.cognition.system_one_hf import FrozenCausalLMLogitBackend
 from nsa.cognition.system_one_runtime import DecisionQuestion, SystemOneController
 from nsa.core.state import CanonicalState
 from nsa.memory.model import MemoryItem, MemoryStore
+from nsa.server.dashboard import DASHBOARD_HTML
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("NSAServer")
@@ -91,9 +93,9 @@ class NSAProxyRuntime:
         model: str = "qwen2.5:3b",
         backend_url: Optional[str] = None,
         enable_cce: bool = True,
-        system_one_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
+        system_one_model: str = "Qwen/Qwen2.5-0.5B-Instruct",
         system_one_enabled: bool = True,
-        system_one_heartbeat: float = 1.0,
+        system_one_heartbeat: float = 2.0,
     ):
         backend_type = backend_type.lower()
         if backend_type in {"transformers", "local"}:
@@ -184,6 +186,7 @@ class NSAProxyRuntime:
 
     def _cce_background_loop(self) -> None:
         """Background thread advancing wall-clock continuous state integration and thought drift."""
+        last_neural_pulse = 0.0
         while not self._stop_cce.wait(1.0):
             try:
                 now = time.time()
@@ -192,10 +195,11 @@ class NSAProxyRuntime:
                 snap = self.cce_state.snapshot()
                 idle_drift = snap.working * 0.99
                 self.cce_state.observe(idle_drift, dt=dt)
-                if self.system_one is not None:
+                
+                # Soft state integrates at 1Hz; heavy neural forward pass evaluates every system_one_heartbeat
+                if self.system_one is not None and (now - last_neural_pulse >= self.system_one_heartbeat):
+                    last_neural_pulse = now
                     try:
-                        # One frozen-model forward pass per wall-clock pulse.
-                        # Rich routing/memory decisions are evaluated on events.
                         pulse = self.system_one.decide(
                             DecisionQuestion(
                                 "heartbeat",
@@ -264,28 +268,57 @@ class NSAProxyRuntime:
                 self.canonical_state = self.canonical_state.observe(**self._system_one_last_tick.state_soft_updates)
             except Exception:
                 logger.exception("System 1 turn assessment failed")
-        
-        # Check if this is an OpenWebUI automated title generation prompt
-        is_title_gen = "Generate a concise, 3-5 word title" in latest or "title with an emoji" in latest
+        # Check if this is an OpenWebUI automated title or summary generation prompt
+        is_title_gen = (
+            any(k in latest.lower() for k in ["3-5 word", "title with an emoji", "generate a concise", "summarize the prompt", "create a title", "chat title", "summarize the chat", "title:"])
+            or (len(messages) <= 2 and "title" in latest.lower())
+        )
 
-        cce_meta_section = ""
+        if is_title_gen:
+            # Fast-path for title generation to avoid blocking chat completion
+            title_gen = self.system_one_governed if self.system_one_governed is not None else self.governed
+            title_model = self.system_one_model_name if self.system_one_governed is not None else self.model_name
+            
+            # Simple greetings can be titled immediately with zero compute
+            chat_history_part = latest.split("### Chat History:")[-1] if "### Chat History:" in latest else latest
+            user_msg = ""
+            for line in chat_history_part.splitlines():
+                if line.strip().lower().startswith("user:"):
+                    user_msg = line.split(":", 1)[1].strip().lower()
+                    break
+            if not user_msg:
+                user_msg = chat_history_part.strip().lower()
+
+            if any(w in user_msg.split() for w in ["hello", "hi", "hey", "greetings", "howdy", "sup"]) and len(user_msg.split()) <= 4:
+                title = "Greeting 👋"
+                dt = 0.005
+            else:
+                title_prompt = f"<|im_start|>system\nYou are a title generator. Return only a 3-5 word title with an emoji.<|im_end|>\n<|im_start|>user\n{latest[:160]}<|im_end|>\n<|im_start|>assistant\n"
+                t0_title = time.time()
+                raw_title = title_gen.generate_text(title_prompt, max_tokens=12, temperature=0.2)
+                dt = time.time() - t0_title
+                title = _extract_clean_markdown(raw_title).strip(" \"'\n`#*")
+                for sp in ["<|im_end|>", "<|im_start|>", "\n"]:
+                    if sp in title:
+                        title = title.split(sp)[0].strip()
+                if not title:
+                    title = "New Chat"
+
+            return {
+                "content": title,
+                "raw_content": title,
+                "model": f"nsa-{title_model}",
+                "nsa": self.governed.status(),
+                "latency_sec": round(dt, 3),
+            }
+
         cce_footer_section = ""
-        system_one_meta = ""
-        if self._system_one_last_tick is not None:
-            tick = self._system_one_last_tick
-            system_one_meta = (
-                f"\n[SYSTEM 1 CONTROL PLANE]\n"
-                f"• Salience: {tick.salience:.3f} | Escalate: {tick.escalate}\n"
-                f"• Memory policy: {tick.memory_policy}\n"
-                f"• Model route: {tick.selected_model}\n"
-                f"• Backend: {tick.decisions.get('escalation').backend if 'escalation' in tick.decisions else 'n/a'}\n"
-            )
         now = time.time()
         idle_duration = max(0.0, now - self.last_user_interaction_time)
         self.last_user_interaction_time = now
 
         # Ingest user prompt as sensory perturbation if CCE is enabled
-        if self.enable_cce and not is_title_gen:
+        if self.enable_cce:
             dt_tick = max(0.001, now - self._last_cce_tick)
             self._last_cce_tick = now
 
@@ -297,39 +330,46 @@ class NSAProxyRuntime:
             obs = SalienceObservation(prediction_error=pred_err, state_delta=pred_err * 0.5, input_delta=0.8, uncertainty=snap.uncertainty)
             salience_dec = self.salience_gate.observe(obs)
 
-            cce_meta_section = (
-                f"\n[CONTINUOUS COGNITIVE STATE X(t)]\n"
-                f"• Elapsed Wall-Clock Lifetime: {snap.elapsed_seconds:.1f}s | Ticks: #{snap.update_count}\n"
-                f"• Time Elapsed Since Previous Interaction: {idle_duration:.1f}s\n"
-                f"• Active Cognitive Goal: {self.active_cognitive_goal}\n"
-                f"• Epistemic Uncertainty: {snap.uncertainty * 100:.1f}%\n"
-                f"• Working Memory Channels: {[round(x, 3) for x in envelope.working]}\n"
-                f"• Salience Score: {salience_dec.score:.3f} (Triggered: {salience_dec.triggered})\n"
-            )
-
-        if is_title_gen:
-            system_directive = "You are a title generator. Respond only with the requested JSON format."
-            prompt = latest
+        custom_system = next((m.get("content", "").strip() for m in messages if m.get("role") == "system" and m.get("content", "").strip()), None)
+        if custom_system:
+            system_directive = custom_system
         else:
             system_directive = (
-                "You are the Continuous Cognitive Engine (CCE) running inside the Neural State Architecture (NSA).\n"
-                "Unlike a stateless chatbot, you possess a persistent internal stream of state, memory, and cognitive goals that evolve over real physical wall-clock time.\n\n"
-                "COGNITIVE DIRECTIVES:\n"
-                "1. Speak naturally and authentically from your continuous internal cognitive state.\n"
-                "2. Reflect on your active topics, ongoing thoughts, and the time elapsed since the last turn.\n"
-                "3. NEVER use generic canned assistant boilerplate (DO NOT say 'How can I assist you today?', 'I am just a large language model', or 'I don't have thoughts').\n"
-                "4. Engage deeply, share original hypotheses, ask thoughtful questions, and collaborate with the user as an autonomous cognitive partner.\n"
-                "5. Use clear, engaging Markdown formatting."
+                "You are a helpful, direct, and concise AI assistant governed by the Neural State Architecture (NSA).\n"
+                "Respond naturally and concisely to the user. Do not explain internal cognitive mechanics, architecture details, or state dynamics unless specifically asked."
             )
 
-            full_system = system_directive + ("\n" + cce_meta_section if cce_meta_section else "")
-            prompt = (
-                f"[SYSTEM DIRECTIVE]\n{full_system}\n{system_one_meta}\n"
-                f"[SELECTED NSA MEMORY]\n{self._selected_memory_text()}\n\n"
-                f"[CONVERSATION HISTORY]\n{chr(10).join(history[-10:])}\n\n"
-                f"[CURRENT USER SENSORY INPUT]\n{latest}\n\n"
-                f"Respond authentically from your continuous cognitive state in natural markdown prose:"
-            )
+        # Build clean conversational context, stripping any previous governance badges
+        chat_turns = []
+        if system_directive:
+            chat_turns.append({"role": "system", "content": system_directive})
+        for m in messages[-8:]:
+            role = m.get("role", "")
+            raw_c = m.get("content", "").strip()
+            if role in {"user", "assistant"} and raw_c:
+                clean_c = re.sub(r"\n*---\n+🛡️\s*\*\*NSA Cognitive Governance\*\*.*$", "", raw_c, flags=re.DOTALL).strip()
+                if clean_c:
+                    chat_turns.append({"role": role, "content": clean_c})
+        if not chat_turns or chat_turns[-1]["role"] != "user":
+            chat_turns.append({"role": "user", "content": latest})
+
+        # Try to resolve tokenizer for native chat template
+        tok = None
+        if hasattr(self.backend, "tokenizer") and self.backend.tokenizer is not None:
+            tok = self.backend.tokenizer
+        elif hasattr(self.system_one_generation_backend, "tokenizer") and self.system_one_generation_backend.tokenizer is not None:
+            tok = self.system_one_generation_backend.tokenizer
+
+        if tok is not None and getattr(tok, "chat_template", None):
+            try:
+                prompt = tok.apply_chat_template(chat_turns, tokenize=False, add_generation_prompt=True)
+                system_directive = None
+            except Exception:
+                prompt = "\n".join(f"<|im_start|>{m['role']}\n{m['content']}<|im_end|>" for m in chat_turns) + "\n<|im_start|>assistant\n"
+                system_directive = None
+        else:
+            prompt = "\n".join(f"<|im_start|>{m['role']}\n{m['content']}<|im_end|>" for m in chat_turns) + "\n<|im_start|>assistant\n"
+            system_directive = None
 
         self._remember_selectively(messages, latest)
         t0 = time.time()
@@ -346,41 +386,23 @@ class NSAProxyRuntime:
             if routed == self.system_one_model_name and self.system_one_governed is not None:
                 generator = self.system_one_governed
                 routed_model = self.system_one_model_name
+
+        max_gen_tokens = 256 if routed_model == self.model_name else 128
         raw_output = generator.generate_text(
             prompt,
-            max_tokens=1024 if routed_model == self.model_name else 256,
+            max_tokens=max_gen_tokens,
             temperature=0.7,
             system_prompt=system_directive,
         )
         dt = time.time() - t0
         clean_text = _extract_clean_markdown(raw_output)
+        # Prevent model from continuing into multi-turn dialogue
+        for stop_pattern in ["<|im_end|>", "<|im_start|>", "<|endoftext|>", "\nUser:", "\nHuman:", "\nAssistant:", "### Task:"]:
+            if stop_pattern in clean_text:
+                clean_text = clean_text.split(stop_pattern)[0].strip()
+        # Strip any duplicate or hallucinated governance badges
+        clean_text = re.sub(r"\n*---\n+🛡️\s*\*\*NSA Cognitive Governance\*\*.*$", "", clean_text, flags=re.DOTALL).strip()
 
-        if is_title_gen:
-            return {
-                "content": clean_text,
-                "raw_content": clean_text,
-                "model": f"nsa-{routed_model}",
-                "nsa": self.governed.status(),
-                "latency_sec": round(dt, 3),
-            }
-
-        # Apply governed cognitive feedback to soft CCE state
-        if self.enable_cce:
-            proposal = CognitiveFeedbackProposal(
-                working_delta=(0.02, -0.01, 0.03, -0.01),
-                confidence=0.85,
-                source="post_turn_feedback",
-            )
-            feedback_res = self.feedback_engine.apply(proposal, dt=0.05)
-            cce_snap = self.cce_state.snapshot()
-            
-            cce_footer_section = (
-                f"\n\n🧠 **Continuous Cognitive Engine (CCE $X_t$)**:\n"
-                f"• **Wall-Clock Elapsed**: `{cce_snap.elapsed_seconds:.1f}s` | **Updates**: `#{cce_snap.update_count}` | **Uncertainty**: `{cce_snap.uncertainty * 100:.1f}%`\n"
-
-                f"• **Sensory Ingress**: `OpenWebUI Prompt` | **Salience**: `{salience_dec.score:.3f}` (`Triggered={salience_dec.triggered}`)\n"
-                f"• **Feedback Norm**: `{feedback_res.clipped_norm:.4f}` | **Working State**: `{[round(float(x), 3) for x in cce_snap.working.tolist()]}`"
-            )
 
         gov_status = self.governed.status()
         step = gov_status.get("state_step", 1)
@@ -389,13 +411,31 @@ class NSAProxyRuntime:
         conf = float(gov_status.get("epistemic_confidence", 0.90)) * 100.0
         verdict = gov_status.get("last_kernel_verdict") or "n/a"
 
-        meta_badge = (
-            f"\n\n---\n"
-            f"🛡️ **NSA Cognitive Governance**: `Kernel verdict [{verdict}]` | **Turn**: `Step #{step}`\n\n"
-            f"Ω **State**: Epistemic Confidence: `{conf:.1f}%` | Provenance: `{prov_id}` (`{prov_hash}...`) | Clearance: `{self.governed.user_clearance.name}`"
-            f"{cce_footer_section}\n\n"
-            f"⚡ **Inference**: `{self.model_name}` on `{self.backend_type.upper()}` | **Latency**: `{dt:.2f}s` | **Weights**: `100% Frozen`"
-        )
+        verbose_badge = os.environ.get("NSA_VERBOSE_BADGE", "0") == "1"
+        if verbose_badge:
+            meta_badge = (
+                f"\n\n---\n"
+                f"🛡️ **NSA Cognitive Governance**: `Kernel verdict [{verdict}]` | **Turn**: `Step #{step}`\n\n"
+                f"Ω **State**: Epistemic Confidence: `{conf:.1f}%` | Provenance: `{prov_id}` (`{prov_hash}...`) | Clearance: `{self.governed.user_clearance.name}`"
+                f"{cce_footer_section}\n\n"
+                f"⚡ **Inference**: `{self.model_name}` on `{self.backend_type.upper()}` | **Latency**: `{dt:.2f}s` | **Weights**: `100% Frozen`"
+            )
+        else:
+            if self.enable_cce:
+                proposal = CognitiveFeedbackProposal(
+                    working_delta=(0.02, -0.01, 0.03, -0.01),
+                    confidence=0.85,
+                    source="post_turn_feedback",
+                )
+                self.feedback_engine.apply(proposal, dt=0.05)
+                cce_snap = self.cce_state.snapshot()
+                cce_indicator = f" | Continuous Cognitive Engine: Wall-Clock Elapsed `{cce_snap.elapsed_seconds:.1f}s`"
+            else:
+                cce_indicator = ""
+            meta_badge = (
+                f"\n\n---\n"
+                f"🛡️ **NSA Cognitive Governance**: `[{verdict}]` | Step `#{step}` | Confidence: `{conf:.1f}%`{cce_indicator} | Latency: `{dt:.2f}s`"
+            )
 
         full_content = clean_text + meta_badge
         return {
@@ -486,6 +526,14 @@ class NSAProxyRuntime:
 class NSAHTTPHandler(BaseHTTPRequestHandler):
     runtime: NSAProxyRuntime
 
+    def _html(self, html_str: str, status: int = 200) -> None:
+        body = html_str.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _cors_origin(self) -> Optional[str]:
         """Echo the request Origin only when it is loopback or explicitly allowed.
 
@@ -544,12 +592,36 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
             self._json({"error": "unauthorized"}, 401)
             return
         path = self.path.split("?", 1)[0]
-        if path in {"/", "/health"}:
+        if path in {"/dashboard", "/ui", "/visualize"}:
+            self._html(DASHBOARD_HTML)
+            return
+        if path == "/":
+            accept = self.headers.get("Accept", "")
+            if "text/html" in accept:
+                self._html(DASHBOARD_HTML)
+                return
             self._json(self.runtime.status())
+            return
+        elif path == "/health":
+            self._json(self.runtime.status())
+            return
+        elif path == "/api/memory":
+            with self.runtime._memory_lock:
+                items = [
+                    {
+                        "memory_id": m.memory_id,
+                        "kind": m.kind,
+                        "content": m.content,
+                    }
+                    for m in self.runtime.memory_store.active()
+                ]
+            self._json({"items": items, "count": len(items)})
+            return
         elif path in {"/v1/models", "/models"}:
             names = [f"nsa-{self.runtime.model_name}", "nsa:latest"]
             if self.runtime.system_one is not None:
-                names.append("nsa-system1:1.5b")
+                tag = "0.5b" if "0.5b" in self.runtime.system_one_model_name.lower() else "1.5b"
+                names.extend([f"nsa-system1:{tag}", "nsa-system1", "nsa-system1:1.5b"])
             self._json({
                 "object": "list",
                 "data": [{
@@ -562,7 +634,8 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
         elif path == "/api/tags":
             names = [f"nsa-{self.runtime.model_name}", "nsa:latest"]
             if self.runtime.system_one is not None:
-                names.append("nsa-system1:1.5b")
+                tag = "0.5b" if "0.5b" in self.runtime.system_one_model_name.lower() else "1.5b"
+                names.extend([f"nsa-system1:{tag}", "nsa-system1", "nsa-system1:1.5b"])
             self._json({
                 "models": [{"name": name} for name in names],
                 "nsa": self.runtime.status(),
@@ -680,7 +753,15 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
         if not isinstance(messages, list):
             self._json({"error": "'messages' must be a list"}, 400)
             return
-        logger.info("Processing chat request (messages=%d, path=%s)", len(messages), path)
+        latest_user = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
+        is_title = (
+            any(k in latest_user.lower() for k in ["3-5 word", "title with an emoji", "generate a concise", "summarize the prompt", "create a title", "chat title", "summarize the chat", "title:"])
+            or (len(messages) <= 2 and "title" in latest_user.lower())
+        )
+        req_type = "OPENWEBUI_TITLE" if is_title else "USER_CHAT"
+        preview = (latest_user[:60] + "...") if len(latest_user) > 60 else latest_user
+        preview = preview.replace("\n", " ")
+        logger.info("Processing chat request [%s] (messages=%d, preview=%r, path=%s)", req_type, len(messages), preview, path)
         t0 = time.time()
 
         try:
@@ -695,7 +776,7 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
             return
 
         dt = time.time() - t0
-        logger.info("Completed chat response in %.2fs (length=%d chars)", dt, len(result["content"]))
+        logger.info("Completed chat response [%s] in %.2fs (length=%d chars)", req_type, dt, len(result["content"]))
 
         stream = bool(data.get("stream", False))
         if path == "/api/chat":
@@ -708,10 +789,9 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 "nsa_policy": result.get("nsa_policy"),
             }
             if stream:
-                self._stream(
-                    [json.dumps({**payload, "done": False}), json.dumps(payload)],
-                    ollama=True,
-                )
+                chunk = {**payload, "done": False}
+                final = {**payload, "done": True, "message": {"role": "assistant", "content": ""}}
+                self._stream([json.dumps(chunk), json.dumps(final)], ollama=True)
             else:
                 self._json(payload)
         else:
@@ -785,9 +865,9 @@ def run_server(
         model=model,
         backend_url=backend_url,
         enable_cce=enable_cce,
-        system_one_model=os.environ.get("NSA_SYSTEM_ONE_MODEL", "Qwen/Qwen2.5-1.5B-Instruct"),
+        system_one_model=os.environ.get("NSA_SYSTEM_ONE_MODEL", "Qwen/Qwen2.5-0.5B-Instruct"),
         system_one_enabled=os.environ.get("NSA_DISABLE_SYSTEM_ONE", "0") != "1",
-        system_one_heartbeat=float(os.environ.get("NSA_SYSTEM_ONE_HEARTBEAT", "1.0")),
+        system_one_heartbeat=float(os.environ.get("NSA_SYSTEM_ONE_HEARTBEAT", "2.0")),
     )
     NSAHTTPHandler.runtime = runtime
     warn_if_exposed(host)
@@ -808,9 +888,9 @@ def main() -> None:
     parser.add_argument("--backend", choices=["ollama", "transformers", "local", "openai", "lmstudio"], default="transformers")
     parser.add_argument("--model", default=os.environ.get("NSA_MODEL", "Qwen/Qwen2.5-3B-Instruct"))
     parser.add_argument("--backend-url", default=None)
-    parser.add_argument("--system-one-model", default=os.environ.get("NSA_SYSTEM_ONE_MODEL", "Qwen/Qwen2.5-1.5B-Instruct"))
+    parser.add_argument("--system-one-model", default=os.environ.get("NSA_SYSTEM_ONE_MODEL", "Qwen/Qwen2.5-0.5B-Instruct"))
     parser.add_argument("--no-system-one", action="store_true", help="Disable the continuous local System 1 controller")
-    parser.add_argument("--system-one-heartbeat", type=float, default=float(os.environ.get("NSA_SYSTEM_ONE_HEARTBEAT", "1.0")))
+    parser.add_argument("--system-one-heartbeat", type=float, default=float(os.environ.get("NSA_SYSTEM_ONE_HEARTBEAT", "2.0")))
     parser.add_argument("--no-cce", action="store_true", help="Disable CCE continuous background engine")
     args = parser.parse_args()
     run_server(
