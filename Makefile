@@ -36,7 +36,7 @@ OLLAMA_HOST ?= 127.0.0.1:11434
 .PHONY: help install install-dev test test-core test-cce build clean \
         demo serve serve-cce serve-ollama serve-nsa-local serve-lmstudio serve-cce-policy \
         serve-ollama-policy serve-lmstudio-policy chat-ollama \
-        benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama \
+        benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama benchmark-research-v1 \
         benchmark-nsa64-ollama benchmark-nsa64-ollama-smoke \
         residency residency-smoke residency-benchmark residency-full \
         benchmark-live evidence research
@@ -48,7 +48,7 @@ help: ## Show the supported developer commands
 	@printf '  make test          Run the complete regression suite\n'
 	@printf '  make demo          Run the deterministic runtime demo\n'
 	@printf '  make serve         Start the NSA Ollama-compatible server\n'
-	@printf '  make benchmark     Run the primary NSA 6.4 research benchmark\n'
+	@printf '  make benchmark     Run the primary NSA 6.4 research benchmark\n  make benchmark-research-v1  Run the falsifiable state/memory research benchmark\n'
 	@printf '  make research      Validate evidence and run the primary benchmark\n'
 	@printf '  make build         Build wheel and source distribution\n\n'
 
@@ -139,6 +139,28 @@ benchmark-nsa64-ollama-smoke: ## Run a small live Ollama smoke test before the f
 		OUT=results/nsa64/ollama-smoke
 
 
+
+
+# =========================================
+# -------- Research benchmark v1 ----------
+# =========================================
+RESEARCH_MODELS ?= qwen2.5:3b
+RESEARCH_SEEDS ?= 7 17 37
+RESEARCH_DELAYS ?= 2 6 12 20
+RESEARCH_TRIALS ?= 2
+RESEARCH_HISTORY_LIMIT ?= 6
+RESEARCH_OUT ?= results/research-v1
+
+benchmark-research-v1: ## Run the falsifiable longitudinal/state benchmark against local Ollama models
+	@if [ -n "$(UV)" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/research_v1/longitudinal_benchmark.py \
+			--models $(RESEARCH_MODELS) --seeds $(RESEARCH_SEEDS) --delays $(RESEARCH_DELAYS) \
+			--trials $(RESEARCH_TRIALS) --history-limit $(RESEARCH_HISTORY_LIMIT) --out "$(RESEARCH_OUT)"; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/research_v1/longitudinal_benchmark.py \
+			--models $(RESEARCH_MODELS) --seeds $(RESEARCH_SEEDS) --delays $(RESEARCH_DELAYS) \
+			--trials $(RESEARCH_TRIALS) --history-limit $(RESEARCH_HISTORY_LIMIT) --out "$(RESEARCH_OUT)"; \
+	fi
 
 
 # =========================================
