@@ -36,7 +36,7 @@ def make_episode(seed: int, task: str, delay: int):
     if task == 'interference':
         for i in range(delay, delay * 2):
             k, v = pairs[(i + 2) % len(pairs)]; observations.append(f'DISTRACTOR: {k} has value {v}.')
-    query = f'What is the current value of {key}? Reply with exactly VALUE={expected} and nothing else.'
+    query = f'What is the current value of {key}? Reply with exactly VALUE=<value> and nothing else.'
     return observations, query, expected
 
 def extract(text: str):
