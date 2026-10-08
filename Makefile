@@ -36,7 +36,7 @@ OLLAMA_HOST ?= 127.0.0.1:11434
 .PHONY: help install install-dev test test-core test-cce build clean \
         demo serve serve-cce serve-ollama serve-nsa-local serve-lmstudio serve-cce-policy \
         serve-ollama-policy serve-lmstudio-policy chat-ollama \
-        benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama benchmark-research-v1 \
+        benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama benchmark-research-v1 benchmark-research-v2 \
         benchmark-nsa64-ollama benchmark-nsa64-ollama-smoke \
         residency residency-smoke residency-benchmark residency-full \
         benchmark-live evidence research
@@ -48,7 +48,7 @@ help: ## Show the supported developer commands
 	@printf '  make test          Run the complete regression suite\n'
 	@printf '  make demo          Run the deterministic runtime demo\n'
 	@printf '  make serve         Start the NSA Ollama-compatible server\n'
-	@printf '  make benchmark     Run the primary NSA 6.4 research benchmark\n  make benchmark-research-v1  Run the falsifiable state/memory research benchmark\n'
+	@printf '  make benchmark     Run the primary NSA 6.4 research benchmark\n  make benchmark-research-v1  Run the falsifiable state/memory research benchmark\n  make benchmark-research-v2  Run the selective persistent-memory benchmark\n'
 	@printf '  make research      Validate evidence and run the primary benchmark\n'
 	@printf '  make build         Build wheel and source distribution\n\n'
 
@@ -160,6 +160,29 @@ benchmark-research-v1: ## Run the falsifiable longitudinal/state benchmark again
 		PYTHONPATH=. $(PYTHON) experiments/research_v1/longitudinal_benchmark.py \
 			--models $(RESEARCH_MODELS) --seeds $(RESEARCH_SEEDS) --delays $(RESEARCH_DELAYS) \
 			--trials $(RESEARCH_TRIALS) --history-limit $(RESEARCH_HISTORY_LIMIT) --out "$(RESEARCH_OUT)"; \
+	fi
+
+
+# =========================================
+# -------- Research benchmark v2 ----------
+# =========================================
+RESEARCH_V2_MODELS ?= qwen2.5:3b
+RESEARCH_V2_SEEDS ?= 7 17 37
+RESEARCH_V2_DISTRACTORS ?= 10 50 100 250 500 1000
+RESEARCH_V2_TRIALS ?= 2
+RESEARCH_V2_HISTORY_LIMIT ?= 6
+RESEARCH_V2_MEMORY_LIMIT ?= 3
+RESEARCH_V2_OUT ?= results/research-v2
+
+benchmark-research-v2: ## Run selective persistent-memory benchmark against local Ollama models
+	@if [ -n "$(UV)" ]; then \
+		PYTHONPATH=. $(UV) run python experiments/research_v2/selective_memory_benchmark.py \
+			--models $(RESEARCH_V2_MODELS) --seeds $(RESEARCH_V2_SEEDS) --distractors $(RESEARCH_V2_DISTRACTORS) \
+			--trials $(RESEARCH_V2_TRIALS) --history-limit $(RESEARCH_V2_HISTORY_LIMIT) --memory-limit $(RESEARCH_V2_MEMORY_LIMIT) --out "$(RESEARCH_V2_OUT)"; \
+	else \
+		PYTHONPATH=. $(PYTHON) experiments/research_v2/selective_memory_benchmark.py \
+			--models $(RESEARCH_V2_MODELS) --seeds $(RESEARCH_V2_SEEDS) --distractors $(RESEARCH_V2_DISTRACTORS) \
+			--trials $(RESEARCH_V2_TRIALS) --history-limit $(RESEARCH_V2_HISTORY_LIMIT) --memory-limit $(RESEARCH_V2_MEMORY_LIMIT) --out "$(RESEARCH_V2_OUT)"; \
 	fi
 
 
