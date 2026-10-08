@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
-PYTHON ?= python3
-UV := $(shell command -v uv 2>/dev/null || echo "")
+PYTHON ?= $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)
+UV := $(shell command -v uv 2>/dev/null || { [ -x "$$HOME/.local/bin/uv" ] && echo "$$HOME/.local/bin/uv"; } || echo "")
 UV_EXISTS := $(if $(UV),yes,no)
 UV_VENV ?= .venv
 UV_PYTHON ?= $(UV_VENV)/bin/python

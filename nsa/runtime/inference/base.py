@@ -52,6 +52,7 @@ class InferenceBackend(abc.ABC):
         max_tokens: int = 256,
         temperature: float = 0.7,
         extract_hidden: bool = False,
+        **kwargs: Any,
     ) -> LLMGenerationOutput:
         """Generate text and extract intermediate neural representations."""
         pass

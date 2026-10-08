@@ -1,0 +1,332 @@
+{
+  "benchmark": "NSA Research Benchmark v1",
+  "version": "1.0",
+  "generated_at_utc": "2026-10-08T13:32:20.837723+00:00",
+  "models": [
+    "qwen2.5:3b"
+  ],
+  "seeds": [
+    7,
+    17,
+    37
+  ],
+  "trials": 2,
+  "delays": [
+    2,
+    6,
+    12,
+    20
+  ],
+  "history_limit": 6,
+  "conditions": [
+    "raw",
+    "transcript",
+    "bounded",
+    "nsa_no_state",
+    "nsa_state"
+  ],
+  "hypotheses": {
+    "H1": "nsa_state > nsa_no_state on delayed recall with matched bounded history",
+    "H2": "nsa_state degrades more slowly as irrelevant observations increase",
+    "H3": "nsa_state maintains supersession accuracy without increased stale-memory errors",
+    "H4": "accuracy gains must be interpreted jointly with input-size and latency proxies"
+  },
+  "summary": {
+    "raw": {
+      "n": 72,
+      "accuracy": 0.0,
+      "latency_seconds_mean": 2.3914698662084044,
+      "input_chars_proxy_mean": 178.0,
+      "response_chars_mean": 8.5
+    },
+    "transcript": {
+      "n": 72,
+      "accuracy": 0.9305555555555556,
+      "latency_seconds_mean": 1.7787418169024123,
+      "input_chars_proxy_mean": 770.3333333333334,
+      "response_chars_mean": 14.666666666666666
+    },
+    "bounded": {
+      "n": 72,
+      "accuracy": 0.3194444444444444,
+      "latency_seconds_mean": 0.8119203634722302,
+      "input_chars_proxy_mean": 408.0833333333333,
+      "response_chars_mean": 11.88888888888889
+    },
+    "nsa_no_state": {
+      "n": 72,
+      "accuracy": 0.0,
+      "latency_seconds_mean": 2.310058022500218,
+      "input_chars_proxy_mean": 281.3888888888889,
+      "response_chars_mean": 11.305555555555555
+    },
+    "nsa_state": {
+      "n": 72,
+      "accuracy": 0.20833333333333334,
+      "latency_seconds_mean": 5.8606267308333475,
+      "input_chars_proxy_mean": 292.9861111111111,
+      "response_chars_mean": 22.90277777777778
+    },
+    "cells": {
+      "recall/delay=2/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=2/transcript": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "recall/delay=2/bounded": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "recall/delay=2/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=2/nsa_state": {
+        "n": 6,
+        "accuracy": 0.8333333333333334
+      },
+      "recall/delay=6/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=6/transcript": {
+        "n": 6,
+        "accuracy": 0.8333333333333334
+      },
+      "recall/delay=6/bounded": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=6/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=6/nsa_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=12/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=12/transcript": {
+        "n": 6,
+        "accuracy": 0.8333333333333334
+      },
+      "recall/delay=12/bounded": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=12/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=12/nsa_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=20/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=20/transcript": {
+        "n": 6,
+        "accuracy": 0.8333333333333334
+      },
+      "recall/delay=20/bounded": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=20/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "recall/delay=20/nsa_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=2/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=2/transcript": {
+        "n": 6,
+        "accuracy": 0.8333333333333334
+      },
+      "interference/delay=2/bounded": {
+        "n": 6,
+        "accuracy": 0.8333333333333334
+      },
+      "interference/delay=2/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=2/nsa_state": {
+        "n": 6,
+        "accuracy": 0.5
+      },
+      "interference/delay=6/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=6/transcript": {
+        "n": 6,
+        "accuracy": 0.8333333333333334
+      },
+      "interference/delay=6/bounded": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=6/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=6/nsa_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=12/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=12/transcript": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "interference/delay=12/bounded": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "interference/delay=12/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=12/nsa_state": {
+        "n": 6,
+        "accuracy": 0.3333333333333333
+      },
+      "interference/delay=20/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=20/transcript": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "interference/delay=20/bounded": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=20/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "interference/delay=20/nsa_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=2/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=2/transcript": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "supersession/delay=2/bounded": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "supersession/delay=2/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=2/nsa_state": {
+        "n": 6,
+        "accuracy": 0.8333333333333334
+      },
+      "supersession/delay=6/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=6/transcript": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "supersession/delay=6/bounded": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=6/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=6/nsa_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=12/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=12/transcript": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "supersession/delay=12/bounded": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=12/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=12/nsa_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=20/raw": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=20/transcript": {
+        "n": 6,
+        "accuracy": 1.0
+      },
+      "supersession/delay=20/bounded": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=20/nsa_no_state": {
+        "n": 6,
+        "accuracy": 0.0
+      },
+      "supersession/delay=20/nsa_state": {
+        "n": 6,
+        "accuracy": 0.0
+      }
+    }
+  },
+  "key_deltas": {
+    "nsa_state_vs_nsa_no_state": {
+      "accuracy_delta": 0.20833333333333334,
+      "latency_delta_seconds": 3.5505687083331297,
+      "input_chars_delta": 11.597222222222172
+    },
+    "nsa_state_vs_bounded": {
+      "accuracy_delta": -0.11111111111111108,
+      "latency_delta_seconds": 5.048706367361118,
+      "input_chars_delta": -115.09722222222223
+    },
+    "nsa_state_vs_transcript": {
+      "accuracy_delta": -0.7222222222222222,
+      "latency_delta_seconds": 4.081884913930935,
+      "input_chars_delta": -477.3472222222223
+    }
+  },
+  "raw_artifact": "results/research-v1/raw.jsonl",
+  "scientific_boundary": "This suite tests explicit state utility in the current runtime. It does not establish consciousness, AGI, or general superiority."
+}

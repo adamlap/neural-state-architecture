@@ -141,6 +141,8 @@ class OllamaInferenceBackend(InferenceBackend):
         temperature: float = 0.7,
         extract_hidden: bool = False,
         json_format: bool = False,
+        state: Optional[Mapping[str, Any]] = None,
+        **kwargs: Any,
     ) -> LLMGenerationOutput:
         if self.mode == BackendMode.MOCK:
             act = "probe_service_config"
@@ -184,6 +186,8 @@ class OllamaInferenceBackend(InferenceBackend):
                 "temperature": temperature,
             },
         }
+        if state is not None:
+            payload["options"]["num_ctx"] = 8192
         if json_format:
             payload["format"] = "json"
 

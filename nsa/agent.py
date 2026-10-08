@@ -116,7 +116,14 @@ class NSARuntime:
         if self.policy_engine:
             decision = self.policy_engine.enforce(prompt, context=context, state=self.state)
             if decision.decision.value in {"deny", "require_approval"}: self.trace.append({"step": self.state.step, "prompt": prompt, "blocked": True}); return AgentResult("", self.state, decision=decision, trace_id=len(self.trace), blocked=True)
-        text = self.backend.generate(self._prompt(prompt), state=self.state.summary())
+        try:
+            raw_text = self.backend.generate(self._prompt(prompt), state=self.state.summary())
+        except TypeError as err:
+            if "state" in str(err) or "unexpected keyword" in str(err):
+                raw_text = self.backend.generate(self._prompt(prompt))
+            else:
+                raise
+        text = raw_text.text if hasattr(raw_text, "text") else (str(raw_text) if not isinstance(raw_text, str) else raw_text)
         if self.config.auto_update_semantic_state:
             self.state = replace(self.state, semantic=SemanticState(text), provenance=self.state.provenance.extend(transformation="llm.generate"), step=self.state.step+1); self._run_cognitive_transition(text, confidence=self.state.soft.confidence)
         self._cce.set_state(self.state); self._sync_canonical(); self.trace.append({"step": self.state.step, "prompt": prompt, "response": text, "blocked": False})

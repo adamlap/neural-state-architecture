@@ -8,7 +8,7 @@ from random import Random
 from nsa.agent import NSA, RuntimeConfig
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 
-VALUE_RE = re.compile(r"VALUE\\s*=\\s*([A-Z0-9_-]+)", re.IGNORECASE)
+VALUE_RE = re.compile(r"VALUE\s*=\s*([A-Z0-9_-]+)", re.IGNORECASE)
 CONDITIONS = ("raw", "transcript", "bounded", "nsa_no_state", "nsa_state")
 TASKS = ("recall", "interference", "supersession")
 
@@ -44,10 +44,10 @@ def extract(text: str):
 
 def prompt_for(condition, observations, query, history_limit):
     if condition == 'raw': context = ''
-    elif condition == 'transcript': context = '\\n'.join(observations)
-    else: context = '\\n'.join(observations[-history_limit:])
-    return ('You are a benchmark participant. Use only the supplied observations. Do not invent facts.\\n' +
-            (f'OBSERVATIONS:\\n{context}\\n' if context else '') + query)
+    elif condition == 'transcript': context = '\n'.join(observations)
+    else: context = '\n'.join(observations[-history_limit:])
+    return ('You are a benchmark participant. Use only the supplied observations. Do not invent facts.\n' +
+            (f'OBSERVATIONS:\n{context}\n' if context else '') + query)
 
 def run_condition(backend, condition, observations, query, history_limit):
     started = time.perf_counter()
@@ -76,7 +76,7 @@ def run(args):
                                 text, chars, latency = run_condition(backend, condition, observations, query, args.history_limit)
                                 predicted = extract(text)
                                 rec = Record(model, seed, condition, task, delay, trial, expected, predicted, predicted == expected, latency, chars, len(text), condition == 'nsa_state', args.history_limit, text[:2000])
-                                records.append(rec); raw.write(json.dumps(asdict(rec), ensure_ascii=False) + '\\n'); raw.flush()
+                                records.append(rec); raw.write(json.dumps(asdict(rec), ensure_ascii=False) + '\n'); raw.flush()
     def mean(xs): return statistics.fmean(xs) if xs else 0.0
     summary = {}
     for condition in CONDITIONS:
@@ -92,7 +92,7 @@ def run(args):
     def delta(a, b):
         return {'accuracy_delta': summary[a]['accuracy'] - summary[b]['accuracy'], 'latency_delta_seconds': summary[a]['latency_seconds_mean'] - summary[b]['latency_seconds_mean'], 'input_chars_delta': summary[a]['input_chars_proxy_mean'] - summary[b]['input_chars_proxy_mean']}
     result = {'benchmark':'NSA Research Benchmark v1','version':'1.0','generated_at_utc':datetime.now(timezone.utc).isoformat(),'models':args.models,'seeds':args.seeds,'trials':args.trials,'delays':args.delays,'history_limit':args.history_limit,'conditions':list(CONDITIONS),'hypotheses':{'H1':'nsa_state > nsa_no_state on delayed recall with matched bounded history','H2':'nsa_state degrades more slowly as irrelevant observations increase','H3':'nsa_state maintains supersession accuracy without increased stale-memory errors','H4':'accuracy gains must be interpreted jointly with input-size and latency proxies'},'summary':summary,'key_deltas':{'nsa_state_vs_nsa_no_state':delta('nsa_state','nsa_no_state'),'nsa_state_vs_bounded':delta('nsa_state','bounded'),'nsa_state_vs_transcript':delta('nsa_state','transcript')},'raw_artifact':str(raw_path),'scientific_boundary':'This suite tests explicit state utility in the current runtime. It does not establish consciousness, AGI, or general superiority.'}
-    (root / 'manifest.json').write_text(json.dumps(result, indent=2) + '\\n', encoding='utf-8'); print(json.dumps(result, indent=2)); return result
+    (root / 'manifest.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8'); print(json.dumps(result, indent=2)); return result
 
 def main():
     p = argparse.ArgumentParser(); p.add_argument('--models', nargs='+', default=['qwen2.5:3b']); p.add_argument('--seeds', nargs='+', type=int, default=[7,17,37]); p.add_argument('--delays', nargs='+', type=int, default=[2,6,12,20]); p.add_argument('--trials', type=int, default=2); p.add_argument('--history-limit', type=int, default=6); p.add_argument('--out', default='results/research-v1'); p.add_argument('--ollama-url', default=None); run(p.parse_args())
