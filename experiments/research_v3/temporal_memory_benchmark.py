@@ -206,11 +206,22 @@ def answer_for(condition: str, backend, observations, query, expected, task, his
         raw = backend.generate(prompt)
         return raw, len(prompt), len(store.store.items), len(items), bool(items), stale
 
-    agent = NSA(backend, config=RuntimeConfig(history_limit=history_limit, cognitive_enabled=True))
+    agent = NSA(backend, config=RuntimeConfig(
+        history_limit=history_limit, cognitive_enabled=True, memory_enabled=True, memory_limit=memory_limit
+    ))
     for observation in observations:
+        match = FACT_RE.search(observation)
+        if match:
+            key, value = match.group(1).upper(), match.group(2).upper()
+            kind = "update" if observation.upper().startswith("UPDATE:") else "fact"
+            agent.remember(key, {"value": value, "key": key}, kind=kind)
         agent.observe(observation)
-    result = agent.step(prompt)
-    return result.text, len(agent._prompt(prompt)), len(store.store.items), len(items), bool(items), stale
+    if history:
+        result = agent.step(prompt)
+    else:
+        result = agent.step(query, memory_keys=keys)
+    model_prompt = agent._prompt(query if not history else prompt)
+    return result.text, len(model_prompt), len(store.store.items), len(items), bool(items), stale
 
 
 def run(args):
