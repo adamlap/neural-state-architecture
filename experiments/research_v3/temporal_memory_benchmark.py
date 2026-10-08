@@ -218,7 +218,7 @@ def run(args):
     root.mkdir(parents=True, exist_ok=True)
     raw_path = root / "raw.jsonl"
     records = []
-    total = len(args.models) * len(args.seeds) * len(args.distractors) * len(args.trials) * len(TASKS) * len(CONDITIONS)
+    total = len(args.models) * len(args.seeds) * len(args.distractors) * args.trials * len(TASKS) * len(CONDITIONS)
     done = 0
     with raw_path.open("a", encoding="utf-8") as handle:
         for model in args.models:
