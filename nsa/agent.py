@@ -123,14 +123,14 @@ class NSARuntime:
     def recall(self, keys: Sequence[str], *, limit: int | None = None) -> tuple[dict[str, Any], ...]:
         if self.memory is None:
             return ()
-        items = self.memory.retrieve(keys, limit=limit or self.config.memory_limit)
+        items = self.memory.retrieve(keys, limit=self.config.memory_limit if limit is None else limit)
         return tuple(dict(item.content) if isinstance(item.content, Mapping) else {"value": item.content} for item in items)
 
     def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = (), memory_keys: Sequence[str] = ()) -> AgentResult:
         self.observe(prompt)
         memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit) if self.memory is not None and memory_keys else ""
         model_prompt = f"RETRIEVED_MEMORY=\\n{memory_context}\\n\\n{prompt}" if memory_context else prompt
-        self.observe(prompt); context = EvaluationContext(action=action, capabilities=frozenset(capabilities), protected_data=frozenset(protected_data), risk=self.state.soft.risk, uncertainty=self.state.soft.uncertainty); decision = None
+        context = EvaluationContext(action=action, capabilities=frozenset(capabilities), protected_data=frozenset(protected_data), risk=self.state.soft.risk, uncertainty=self.state.soft.uncertainty); decision = None
         if self.policy_engine:
             decision = self.policy_engine.enforce(prompt, context=context, state=self.state)
             if decision.decision.value in {"deny", "require_approval"}: self.trace.append({"step": self.state.step, "prompt": prompt, "blocked": True}); return AgentResult("", self.state, decision=decision, trace_id=len(self.trace), blocked=True)
