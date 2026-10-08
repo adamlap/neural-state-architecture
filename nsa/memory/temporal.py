@@ -71,7 +71,7 @@ class TemporalMemoryStore:
 
     def current(self, key: str) -> MemoryItem | None:
         versions = self.versions(key)
-        return max(versions, key=lambda item: item.created_at, default=None)
+        return max(versions, key=lambda item: int(item.content.get("version", 0)), default=None)
 
     def retrieve(self, keys: Sequence[str], *, limit: int = 3) -> tuple[MemoryItem, ...]:
         if limit < 0:
@@ -83,7 +83,7 @@ class TemporalMemoryStore:
     def history(self, key: str, *, limit: int = 10) -> tuple[MemoryItem, ...]:
         if limit < 0:
             raise ValueError("limit must be non-negative")
-        return tuple(sorted(self.versions(key), key=lambda item: item.created_at, reverse=True)[:limit])
+        return tuple(sorted(self.versions(key), key=lambda item: int(item.content.get("version", 0)), reverse=True)[:limit])
 
     def render(self, keys: Sequence[str], *, limit: int = 3) -> str:
         items = self.retrieve(keys, limit=limit)
