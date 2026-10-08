@@ -13,6 +13,7 @@ from nsa.policy import NSAPolicy
 from nsa.core.state_codec import decode_state, encode_state
 from nsa.cognition.system_one_runtime import SystemOneController, SystemOneBackend, SystemOneTick
 from nsa.cognition.tools import ToolRegistry
+from nsa.memory import TemporalMemoryStore
 
 class ModelBackend(Protocol):
     model: str
@@ -37,8 +38,10 @@ class RuntimeConfig:
     embodied_enabled: bool = False
     system_one_enabled: bool = False
     system_one_models: tuple[str, ...] = ()
+    memory_enabled: bool = False
+    memory_limit: int = 3
     def __post_init__(self) -> None:
-        if self.history_limit < 0 or self.continuous_interval_seconds <= 0 or self.cognitive_workspace_capacity < 1: raise ValueError("invalid runtime configuration")
+        if self.history_limit < 0 or self.continuous_interval_seconds <= 0 or self.cognitive_workspace_capacity < 1 or self.memory_limit < 1: raise ValueError("invalid runtime configuration")
 
 class NSARuntime:
     """Single public runtime; legacy cognition remains available while canonical CCE is exposed as the governed transaction plane."""
@@ -51,6 +54,7 @@ class NSARuntime:
         self.policy_engine = policy_engine or (PolicyEngine(policy) if policy else None); self.checkpoint = checkpoint; self.history: list[CognitiveInputEvent] = []; self.trace: list[dict[str, Any]] = []
         self.system_one = (system_one or SystemOneController(system_one_backend)) if self.config.system_one_enabled else None
         self.system_one_tools = system_one_tools
+        self.memory = TemporalMemoryStore() if self.config.memory_enabled else None
         self.last_system_one_tick: SystemOneTick | None = None
         self.cognitive = CognitiveSubstrate(switches=self.config.cognitive_switches, workspace_capacity=self.config.cognitive_workspace_capacity) if self.config.cognitive_enabled else None
         self.cognitive_state = CognitiveState(switches=self.config.cognitive_switches); self.active = ActiveCognition() if self.config.embodied_enabled else None; self.active_state = ActiveCognitionState()
@@ -111,16 +115,30 @@ class NSARuntime:
         context = "\n".join(f"- {e.source}: {e.payload}" for e in recent)
         return f"You are operating inside the Neural State Architecture runtime.\nCURRENT_STATE={self.state.summary()!r}\nCOGNITIVE_STATE={self.cognitive_state.to_dict() if self.cognitive else None!r}\nACTIVE_COGNITION={self.active_state.to_dict() if self.active else None!r}\nRECENT_OBSERVATIONS={context!r}\n\nUSER_INPUT={prompt}"
 
-    def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = ()) -> AgentResult:
+    def remember(self, key: str, value: Any, *, kind: str = "fact", provenance_ids: Sequence[str] = ()) -> None:
+        if self.memory is None:
+            raise RuntimeError("memory is not enabled")
+        self.memory = self.memory.remember(key, value, kind=kind, provenance_ids=provenance_ids)
+
+    def recall(self, keys: Sequence[str], *, limit: int | None = None) -> tuple[dict[str, Any], ...]:
+        if self.memory is None:
+            return ()
+        items = self.memory.retrieve(keys, limit=limit or self.config.memory_limit)
+        return tuple(dict(item.content) if isinstance(item.content, Mapping) else {"value": item.content} for item in items)
+
+    def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = (), memory_keys: Sequence[str] = ()) -> AgentResult:
+        self.observe(prompt)
+        memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit) if self.memory is not None and memory_keys else ""
+        model_prompt = f"RETRIEVED_MEMORY=\\n{memory_context}\\n\\n{prompt}" if memory_context else prompt
         self.observe(prompt); context = EvaluationContext(action=action, capabilities=frozenset(capabilities), protected_data=frozenset(protected_data), risk=self.state.soft.risk, uncertainty=self.state.soft.uncertainty); decision = None
         if self.policy_engine:
             decision = self.policy_engine.enforce(prompt, context=context, state=self.state)
             if decision.decision.value in {"deny", "require_approval"}: self.trace.append({"step": self.state.step, "prompt": prompt, "blocked": True}); return AgentResult("", self.state, decision=decision, trace_id=len(self.trace), blocked=True)
         try:
-            raw_text = self.backend.generate(self._prompt(prompt), state=self.state.summary())
+            raw_text = self.backend.generate(self._prompt(model_prompt), state=self.state.summary())
         except TypeError as err:
             if "state" in str(err) or "unexpected keyword" in str(err):
-                raw_text = self.backend.generate(self._prompt(prompt))
+                raw_text = self.backend.generate(self._prompt(model_prompt))
             else:
                 raise
         text = raw_text.text if hasattr(raw_text, "text") else (str(raw_text) if not isinstance(raw_text, str) else raw_text)
