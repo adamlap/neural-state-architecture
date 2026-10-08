@@ -143,48 +143,56 @@ def prompt_for(condition, observations, query, history_limit, retrieved=()):
 
 def run_condition(backend, condition, observations, query, history_limit, memory_limit):
     started = time.perf_counter()
-    store = build_memory(observations) if condition.startswith("memory_") else None
+    store = build_memory(observations) if "memory" in condition else None
     retrieved = retrieve(store, query, memory_limit) if store else ()
     stale = len(retrieved) > 1 and any(i.content.get("kind") == "fact" for i in retrieved[:-1])
 
-    if condition == "nsa_state":
-        agent = NSA(
-            backend,
-            config=RuntimeConfig(
-                history_limit=history_limit,
-                include_state_in_prompt=True,
-                cognitive_enabled=True,
-            ),
-        )
-        for obs in observations:
-            agent.observe(obs, source="benchmark")
-        result = agent.step(query)
-        prompt_chars = len(agent._prompt(query))
-        return result.text, prompt_chars, time.perf_counter() - started, 0, 0, False
+    try:
+        if condition == "nsa_state":
+            agent = NSA(
+                backend,
+                config=RuntimeConfig(
+                    history_limit=history_limit,
+                    include_state_in_prompt=True,
+                    cognitive_enabled=True,
+                ),
+            )
+            for obs in observations:
+                agent.observe(obs, source="benchmark")
+            result = agent.step(query)
+            prompt_chars = len(agent._prompt(query))
+            return result.text, prompt_chars, time.perf_counter() - started, 0, 0, False
 
-    if condition == "nsa_memory":
-        agent = NSA(
-            backend,
-            config=RuntimeConfig(
-                history_limit=history_limit,
-                include_state_in_prompt=False,
-                cognitive_enabled=True,
-            ),
-        )
-        memory_prompt = prompt_for(condition, observations, query, history_limit, retrieved)
-        for obs in observations:
-            agent.observe(obs, source="benchmark")
-        result = agent.step(memory_prompt)
-        return result.text, len(memory_prompt), time.perf_counter() - started, len(store.items), len(retrieved), stale
+        if condition == "nsa_memory":
+            agent = NSA(
+                backend,
+                config=RuntimeConfig(
+                    history_limit=history_limit,
+                    include_state_in_prompt=False,
+                    cognitive_enabled=True,
+                ),
+            )
+            memory_prompt = prompt_for(condition, observations, query, history_limit, retrieved)
+            for obs in observations:
+                agent.observe(obs, source="benchmark")
+            result = agent.step(memory_prompt)
+            return result.text, len(memory_prompt), time.perf_counter() - started, len(store.items) if store else 0, len(retrieved), stale
 
-    if condition == "memory_no_cognitive":
-        prompt = prompt_for(condition, observations, query, history_limit, retrieved)
+        if condition == "memory_no_cognitive":
+            prompt = prompt_for(condition, observations, query, history_limit, retrieved)
+            result = backend.generate(prompt, max_tokens=32, temperature=0.0)
+            return result.text, len(prompt), time.perf_counter() - started, len(store.items) if store else 0, len(retrieved), stale
+
+        prompt = prompt_for(condition, observations, query, history_limit)
         result = backend.generate(prompt, max_tokens=32, temperature=0.0)
-        return result.text, len(prompt), time.perf_counter() - started, len(store.items), len(retrieved), stale
-
-    prompt = prompt_for(condition, observations, query, history_limit)
-    result = backend.generate(prompt, max_tokens=32, temperature=0.0)
-    return result.text, len(prompt), time.perf_counter() - started, 0, 0, False
+        return result.text, len(prompt), time.perf_counter() - started, 0, 0, False
+    except Exception as err:
+        err_msg = str(err).lower()
+        if "timed out" in err_msg or "timeout" in err_msg:
+            fallback_prompt = prompt_for(condition, observations, query, history_limit, retrieved if "memory" in condition else ())
+            store_items = len(store.items) if store else 0
+            return "TIMEOUT", len(fallback_prompt), time.perf_counter() - started, store_items, len(retrieved), stale
+        raise
 
 
 def run(args):
@@ -192,10 +200,30 @@ def run(args):
     root.mkdir(parents=True, exist_ok=True)
     raw_path = root / "raw.jsonl"
     records: list[Record] = []
+    total = len(args.models) * len(args.seeds) * len(TASKS) * len(args.distractors) * args.trials * len(CONDITIONS)
+    completed_keys: set[tuple[str, int, str, str, int, int]] = set()
 
-    with raw_path.open("w", encoding="utf-8") as raw:
+    if raw_path.exists() and not getattr(args, "no_resume", False):
+        with raw_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                    rec = Record(**d)
+                    records.append(rec)
+                    completed_keys.add(
+                        (rec.model, rec.seed, rec.condition, rec.task, rec.distractors, rec.trial)
+                    )
+                except Exception:
+                    continue
+        if completed_keys:
+            print(f"Resuming benchmark: {len(completed_keys)} episodes already completed in {raw_path}", flush=True)
+
+    with raw_path.open("a", encoding="utf-8") as raw:
         for model in args.models:
-            backend = OllamaInferenceBackend(model_name=model, base_url=args.ollama_url)
+            backend = OllamaInferenceBackend(model_name=model, base_url=args.ollama_url, timeout_sec=args.timeout)
             for seed in args.seeds:
                 for task in TASKS:
                     for distractors in args.distractors:
@@ -203,6 +231,9 @@ def run(args):
                             episode_seed = seed + trial * 100003
                             observations, query, expected, _ = make_episode(episode_seed, task, distractors)
                             for condition in CONDITIONS:
+                                key = (model, seed, condition, task, distractors, trial)
+                                if key in completed_keys:
+                                    continue
                                 (
                                     text,
                                     prompt_chars,
@@ -220,12 +251,12 @@ def run(args):
                                 )
                                 predicted = extract(text)
                                 retrieved_expected = False
-                                if condition.startswith("memory_"):
+                                if "memory" in condition:
                                     store = build_memory(observations)
                                     retrieved = retrieve(store, query, args.memory_limit)
                                     retrieved_expected = any(
                                         i.content.get("value") == expected for i in retrieved
-                                    )
+                                   )
                                 rec = Record(
                                     model=model,
                                     seed=seed,
@@ -250,6 +281,12 @@ def run(args):
                                 records.append(rec)
                                 raw.write(json.dumps(asdict(rec), ensure_ascii=False) + "\n")
                                 raw.flush()
+                                status_sym = "✅" if rec.correct else "✗"
+                                note = " (TIMEOUT)" if text == "TIMEOUT" else ""
+                                print(
+                                    f"[{len(records)}/{total}] {model} s={seed} {task} d={distractors} {condition} -> {status_sym}{note} ({latency:.2f}s)",
+                                    flush=True,
+                                )
 
     def mean(xs):
         return statistics.fmean(xs) if xs else 0.0
@@ -338,6 +375,8 @@ def main():
     p.add_argument("--trials", type=int, default=2)
     p.add_argument("--history-limit", type=int, default=6)
     p.add_argument("--memory-limit", type=int, default=3)
+    p.add_argument("--timeout", type=float, default=300.0)
+    p.add_argument("--no-resume", action="store_true")
     p.add_argument("--out", default="results/research-v2")
     p.add_argument("--ollama-url", default=None)
     run(p.parse_args())

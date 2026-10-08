@@ -172,17 +172,18 @@ RESEARCH_V2_DISTRACTORS ?= 10 50 100 250 500 1000
 RESEARCH_V2_TRIALS ?= 2
 RESEARCH_V2_HISTORY_LIMIT ?= 6
 RESEARCH_V2_MEMORY_LIMIT ?= 3
+RESEARCH_V2_TIMEOUT ?= 300
 RESEARCH_V2_OUT ?= results/research-v2
 
 benchmark-research-v2: ## Run selective persistent-memory benchmark against local Ollama models
 	@if [ -n "$(UV)" ]; then \
 		PYTHONPATH=. $(UV) run python experiments/research_v2/selective_memory_benchmark.py \
 			--models $(RESEARCH_V2_MODELS) --seeds $(RESEARCH_V2_SEEDS) --distractors $(RESEARCH_V2_DISTRACTORS) \
-			--trials $(RESEARCH_V2_TRIALS) --history-limit $(RESEARCH_V2_HISTORY_LIMIT) --memory-limit $(RESEARCH_V2_MEMORY_LIMIT) --out "$(RESEARCH_V2_OUT)"; \
+			--trials $(RESEARCH_V2_TRIALS) --history-limit $(RESEARCH_V2_HISTORY_LIMIT) --memory-limit $(RESEARCH_V2_MEMORY_LIMIT) --timeout $(RESEARCH_V2_TIMEOUT) --out "$(RESEARCH_V2_OUT)"; \
 	else \
 		PYTHONPATH=. $(PYTHON) experiments/research_v2/selective_memory_benchmark.py \
 			--models $(RESEARCH_V2_MODELS) --seeds $(RESEARCH_V2_SEEDS) --distractors $(RESEARCH_V2_DISTRACTORS) \
-			--trials $(RESEARCH_V2_TRIALS) --history-limit $(RESEARCH_V2_HISTORY_LIMIT) --memory-limit $(RESEARCH_V2_MEMORY_LIMIT) --out "$(RESEARCH_V2_OUT)"; \
+			--trials $(RESEARCH_V2_TRIALS) --history-limit $(RESEARCH_V2_HISTORY_LIMIT) --memory-limit $(RESEARCH_V2_MEMORY_LIMIT) --timeout $(RESEARCH_V2_TIMEOUT) --out "$(RESEARCH_V2_OUT)"; \
 	fi
 
 

@@ -1,0 +1,670 @@
+{
+  "benchmark": "NSA Research Benchmark v2",
+  "version": "2.0",
+  "generated_at_utc": "2026-10-08T18:03:55.279492+00:00",
+  "models": [
+    "qwen2.5:3b"
+  ],
+  "seeds": [
+    7,
+    17,
+    37
+  ],
+  "trials": 2,
+  "distractors": [
+    10,
+    50,
+    100,
+    250,
+    500,
+    1000
+  ],
+  "history_limit": 6,
+  "memory_limit": 3,
+  "conditions": [
+    "raw",
+    "transcript",
+    "bounded",
+    "nsa_state",
+    "memory_no_cognitive",
+    "nsa_memory"
+  ],
+  "hypotheses": {
+    "H5": "Selective memory should retain task-relevant facts across long distractor sequences while using substantially less prompt context than a full transcript.",
+    "H6": "The retrieval benefit should persist without cognitive-state machinery; nsa_memory should be comparable to memory_no_cognitive, isolating memory retrieval from cognitive-state effects.",
+    "H7": "Append-only memory with latest-value retrieval should preserve supersession accuracy without increasing stale-memory retrieval as distractor count grows.",
+    "H8": "Any memory accuracy gain must be reported jointly with prompt size, latency, retrieval-hit rate, and stale-memory retrieval rate."
+  },
+  "conditions_description": {
+    "raw": "Question only; no prior context.",
+    "transcript": "Full observation transcript.",
+    "bounded": "Only the most recent history_limit observations.",
+    "nsa_state": "Current NSARuntime state/cognitive state plus bounded history.",
+    "memory_no_cognitive": "Typed MemoryStore + deterministic structured extraction + key retrieval; no cognitive substrate.",
+    "nsa_memory": "Typed MemoryStore + same retrieval + NSARuntime cognitive substrate, with memory context explicitly supplied to the model."
+  },
+  "extraction_boundary": "Memory extraction is deterministic from the benchmark's FACT/UPDATE schema. This isolates storage/retrieval utility; it does not claim that an LLM can autonomously extract useful memories.",
+  "summary": {
+    "raw": {
+      "n": 108,
+      "accuracy": 0.0,
+      "latency_seconds_mean": 2.3781062756210036,
+      "prompt_chars_mean": 177.0,
+      "response_chars_mean": 9.0,
+      "retrieval_hit_rate": 0.0,
+      "retrieved_expected_rate": 0.0,
+      "stale_memory_retrieval_rate": 0.0
+    },
+    "transcript": {
+      "n": 108,
+      "accuracy": 0.9259259259259259,
+      "latency_seconds_mean": 32.309139750435456,
+      "prompt_chars_mean": 15100.888888888889,
+      "response_chars_mean": 15.11111111111111,
+      "retrieval_hit_rate": 0.0,
+      "retrieved_expected_rate": 0.0,
+      "stale_memory_retrieval_rate": 0.0
+    },
+    "bounded": {
+      "n": 108,
+      "accuracy": 0.1111111111111111,
+      "latency_seconds_mean": 2.116087215120017,
+      "prompt_chars_mean": 426.0,
+      "response_chars_mean": 10.925925925925926,
+      "retrieval_hit_rate": 0.0,
+      "retrieved_expected_rate": 0.0,
+      "stale_memory_retrieval_rate": 0.0
+    },
+    "nsa_state": {
+      "n": 108,
+      "accuracy": 0.027777777777777776,
+      "latency_seconds_mean": 13.861073931870461,
+      "prompt_chars_mean": 9076.342592592593,
+      "response_chars_mean": 19.675925925925927,
+      "retrieval_hit_rate": 0.0,
+      "retrieved_expected_rate": 0.0,
+      "stale_memory_retrieval_rate": 0.0
+    },
+    "memory_no_cognitive": {
+      "n": 108,
+      "accuracy": 0.8333333333333334,
+      "latency_seconds_mean": 2.8111390007404595,
+      "prompt_chars_mean": 299.0,
+      "response_chars_mean": 14.666666666666666,
+      "retrieval_hit_rate": 1.0,
+      "retrieved_expected_rate": 0.8333333333333334,
+      "stale_memory_retrieval_rate": 0.7777777777777778
+    },
+    "nsa_memory": {
+      "n": 108,
+      "accuracy": 0.8333333333333334,
+      "latency_seconds_mean": 2.681285573944546,
+      "prompt_chars_mean": 299.0,
+      "response_chars_mean": 14.666666666666666,
+      "retrieval_hit_rate": 1.0,
+      "retrieved_expected_rate": 0.8333333333333334,
+      "stale_memory_retrieval_rate": 0.7777777777777778
+    }
+  },
+  "key_deltas": {
+    "memory_no_cognitive_vs_bounded": {
+      "accuracy_delta": 0.7222222222222223,
+      "latency_delta_seconds": 0.6950517856204423,
+      "prompt_chars_delta": -127.0
+    },
+    "nsa_memory_vs_memory_no_cognitive": {
+      "accuracy_delta": 0.0,
+      "latency_delta_seconds": -0.1298534267959135,
+      "prompt_chars_delta": 0.0
+    },
+    "memory_no_cognitive_vs_transcript": {
+      "accuracy_delta": -0.09259259259259256,
+      "latency_delta_seconds": -29.498000749694995,
+      "prompt_chars_delta": -14801.888888888889
+    }
+  },
+  "cells": {
+    "recall/distractors=10/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=10/transcript": {
+      "n": 6,
+      "accuracy": 0.8333333333333334,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=10/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=10/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=10/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=10/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=50/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=50/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=50/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=50/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=50/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=50/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=100/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=100/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=100/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=100/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=100/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=100/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=250/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=250/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=250/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=250/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=250/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=250/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=500/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=500/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=500/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=500/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=500/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=500/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=1000/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=1000/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=1000/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=1000/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "recall/distractors=1000/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "recall/distractors=1000/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=10/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=10/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=10/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=10/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=10/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=10/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=50/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=50/transcript": {
+      "n": 6,
+      "accuracy": 0.8333333333333334,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=50/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=50/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=50/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=50/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=100/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=100/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=100/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=100/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=100/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=100/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=250/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=250/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=250/bounded": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=250/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=250/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=250/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=500/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=500/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=500/bounded": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=500/nsa_state": {
+      "n": 6,
+      "accuracy": 0.5,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=500/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=500/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=1000/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=1000/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=1000/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=1000/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "interference/distractors=1000/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "interference/distractors=1000/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "supersession/distractors=10/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=10/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=10/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=10/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=10/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "supersession/distractors=10/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "supersession/distractors=50/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=50/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=50/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=50/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=50/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "supersession/distractors=50/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "supersession/distractors=100/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=100/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=100/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=100/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=100/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "supersession/distractors=100/nsa_memory": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 1.0
+    },
+    "supersession/distractors=250/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=250/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=250/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=250/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=250/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=250/nsa_memory": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=500/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=500/transcript": {
+      "n": 6,
+      "accuracy": 1.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=500/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=500/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=500/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=500/nsa_memory": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=1000/raw": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=1000/transcript": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=1000/bounded": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=1000/nsa_state": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=1000/memory_no_cognitive": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    },
+    "supersession/distractors=1000/nsa_memory": {
+      "n": 6,
+      "accuracy": 0.0,
+      "retrieved_expected_rate": 0.0
+    }
+  },
+  "raw_artifact": "results/research-v2/raw.jsonl",
+  "scientific_boundary": "This suite tests selective persistent retrieval in the current runtime. It does not establish consciousness, AGI, general superiority, or autonomous memory formation."
+}

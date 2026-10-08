@@ -28,7 +28,7 @@ class OllamaInferenceBackend(InferenceBackend):
         model_name: str = "qwen2.5:3b",
         mode: Optional[Union[BackendMode, str]] = None,
         base_url: Optional[str] = None,
-        timeout_sec: float = 60.0,
+        timeout_sec: float = 300.0,
         fallback_to_mock: bool = False,
     ) -> None:
         self.model_name = model_name
@@ -186,8 +186,8 @@ class OllamaInferenceBackend(InferenceBackend):
                 "temperature": temperature,
             },
         }
-        if state is not None:
-            payload["options"]["num_ctx"] = 8192
+        if state is not None or len(prompt) > 4000:
+            payload["options"]["num_ctx"] = 16384 if len(prompt) > 16000 else 8192
         if json_format:
             payload["format"] = "json"
 

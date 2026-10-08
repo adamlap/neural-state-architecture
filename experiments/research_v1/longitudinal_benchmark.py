@@ -76,7 +76,7 @@ def run(args):
                                 text, chars, latency = run_condition(backend, condition, observations, query, args.history_limit)
                                 predicted = extract(text)
                                 rec = Record(model, seed, condition, task, delay, trial, expected, predicted, predicted == expected, latency, chars, len(text), condition == 'nsa_state', args.history_limit, text[:2000])
-                                records.append(rec); raw.write(json.dumps(asdict(rec), ensure_ascii=False) + '\n'); raw.flush()
+                                records.append(rec); raw.write(json.dumps(asdict(rec), ensure_ascii=False) + '\n'); raw.flush(); sym = "✅" if rec.correct else "✗"; print(f"[{len(records)}/{total}] {model} s={seed} {task} d={delay} {condition} -> {sym} ({latency:.2f}s)", flush=True)
     def mean(xs): return statistics.fmean(xs) if xs else 0.0
     summary = {}
     for condition in CONDITIONS:
