@@ -135,10 +135,9 @@ def append_retrieve(store: MemoryStore, keys: list[str], *, history: bool, limit
     matched.sort(key=lambda x: x.content.get("ordinal", 0))
     if history:
         return tuple(matched[-min(limit, len(matched)):])
-    latest = {}
-    for item in matched:
-        latest[item.content["key"].upper()] = item
-    return tuple(latest[k] for k in keys if k in latest)[:limit]
+    # Deliberately preserve recent historical versions: this is the v2-style
+    # append-only baseline that exposes the supersession burden to the LLM.
+    return tuple(matched[-limit:])
 
 
 def temporal_retrieve(store: TemporalMemoryStore, keys: list[str], *, history: bool, limit: int):
