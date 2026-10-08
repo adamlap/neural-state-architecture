@@ -21,7 +21,7 @@ from nsa.memory import MemoryItem, MemoryStore
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 
 VALUE_RE = re.compile(r"VALUE\s*=\s*([A-Z0-9_-]+)", re.IGNORECASE)
-FACT_RE = re.compile(r"(?:FACT|UPDATE):\s+(ITEM_[0-9A-Z_]+)\s+(?:now\s+)?has value ([A-Z0-9_-]+)", re.IGNORECASE)
+FACT_RE = re.compile(r"(?:FACT|UPDATE|DISTRACTOR):\s+(ITEM_[0-9A-Z_]+)\s+(?:now\s+)?has value ([A-Z0-9_-]+)", re.IGNORECASE)
 CONDITIONS = ("raw", "transcript", "bounded", "nsa_state", "memory_no_cognitive", "nsa_memory")
 TASKS = ("recall", "interference", "supersession")
 
