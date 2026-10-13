@@ -190,9 +190,8 @@ def answer_for(
         result = agent.step(query, memory_keys=keys)
         model_prompt = agent._prompt(query)
 
-    return result.text, len(model_prompt), len(store.store.items), len(
-        temporal_retrieve(store, keys, history=history, limit=memory_limit)
-    ), True, False
+    runtime_items = temporal_retrieve(store, keys, history=history, limit=memory_limit)
+    return result.text, len(model_prompt), len(store.store.items), len(runtime_items), bool(runtime_items), False
 
 
 def run(args):
