@@ -36,7 +36,7 @@ OLLAMA_HOST ?= 127.0.0.1:11434
 .PHONY: help install install-dev test test-core test-cce build clean \
         demo serve serve-cce serve-ollama serve-nsa-local serve-lmstudio serve-cce-policy \
         serve-ollama-policy serve-lmstudio-policy chat-ollama \
-        benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama benchmark-research-v1 benchmark-research-v2 benchmark-research-v3 \
+        benchmark benchmark-nsa63 benchmark-nsa64 benchmark-ollama benchmark-research-v1 benchmark-research-v2 benchmark-research-v3 benchmark-research-v4 \
         benchmark-nsa64-ollama benchmark-nsa64-ollama-smoke \
         residency residency-smoke residency-benchmark residency-full \
         benchmark-live evidence research
@@ -48,7 +48,7 @@ help: ## Show the supported developer commands
 	@printf '  make test          Run the complete regression suite\n'
 	@printf '  make demo          Run the deterministic runtime demo\n'
 	@printf '  make serve         Start the NSA Ollama-compatible server\n'
-	@printf '  make benchmark     Run the primary NSA 6.4 research benchmark\n  make benchmark-research-v1  Run the falsifiable state/memory research benchmark\n  make benchmark-research-v2  Run the selective persistent-memory benchmark\n  make benchmark-research-v3  Run the temporal canonical-memory benchmark\n'
+	@printf '  make benchmark     Run the primary NSA 6.4 research benchmark\n  make benchmark-research-v1  Run the falsifiable state/memory research benchmark\n  make benchmark-research-v2  Run the selective persistent-memory benchmark\n  make benchmark-research-v3  Run the temporal canonical-memory benchmark\n  make benchmark-research-v4  Run the temporal semantics/retrieval-attribution benchmark\n'
 	@printf '  make research      Validate evidence and run the primary benchmark\n'
 	@printf '  make build         Build wheel and source distribution\n\n'
 
