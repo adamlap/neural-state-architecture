@@ -25,12 +25,15 @@ class OllamaInferenceBackend(InferenceBackend):
 
     def __init__(
         self,
-        model_name: str = "qwen2.5:3b",
+        model_name: Optional[str] = None,
         mode: Optional[Union[BackendMode, str]] = None,
         base_url: Optional[str] = None,
         timeout_sec: float = 300.0,
         fallback_to_mock: bool = False,
+        **kwargs: Any,
     ) -> None:
+        if model_name is None:
+            model_name = kwargs.pop("model", "qwen2.5:3b")
         self.model_name = model_name
         if mode is not None:
             self.mode = BackendMode(mode) if isinstance(mode, str) else mode

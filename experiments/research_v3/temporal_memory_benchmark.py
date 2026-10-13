@@ -168,6 +168,15 @@ def render(items) -> str:
 
 
 def answer_for(condition: str, backend, observations, query, expected, task, history_limit, memory_limit):
+    try:
+        return _answer_for_impl(condition, backend, observations, query, expected, task, history_limit, memory_limit)
+    except Exception as err:
+        err_msg = str(err).lower()
+        if "timed out" in err_msg or "timeout" in err_msg:
+            return "TIMEOUT", len(query), 0, 0, False, False
+        raise
+
+def _answer_for_impl(condition: str, backend, observations, query, expected, task, history_limit, memory_limit):
     if condition == "raw":
         prompt = query
         return backend.generate(prompt), len(prompt), 0, 0, False, False
@@ -229,16 +238,38 @@ def run(args):
     raw_path = root / "raw.jsonl"
     records = []
     total = len(args.models) * len(args.seeds) * len(args.distractors) * args.trials * len(TASKS) * len(CONDITIONS)
-    done = 0
+    completed_keys = set()
+    if raw_path.exists() and not getattr(args, "no_resume", False):
+        with raw_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                    rec = Record(**d)
+                    records.append(rec)
+                    completed_keys.add(
+                        (rec.model, rec.seed, rec.condition, rec.task, rec.distractors, rec.trial)
+                    )
+                except Exception:
+                    continue
+        if completed_keys:
+            print(f"Resuming benchmark: {len(completed_keys)} episodes already completed in {raw_path}", flush=True)
+
+    done = len(records)
     with raw_path.open("a", encoding="utf-8") as handle:
         for model in args.models:
-            backend = OllamaInferenceBackend(model=model, base_url=args.ollama_url) if args.ollama_url else OllamaInferenceBackend(model=model)
+            backend = OllamaInferenceBackend(model=model, base_url=args.ollama_url, timeout_sec=args.timeout) if args.ollama_url else OllamaInferenceBackend(model=model, timeout_sec=args.timeout)
             for seed in args.seeds:
                 for task in TASKS:
                     for distractors in args.distractors:
                         for trial in range(args.trials):
                             observations, query, expected, _, history_query = make_episode(seed + trial, task, distractors)
                             for condition in CONDITIONS:
+                                key = (model, seed, condition, task, distractors, trial)
+                                if key in completed_keys:
+                                    continue
                                 done += 1
                                 start = time.perf_counter()
                                 response, prompt_chars, memory_items, retrieved_items, hit, stale = answer_for(
@@ -318,6 +349,8 @@ def main():
     p.add_argument("--trials", type=int, default=2)
     p.add_argument("--history-limit", type=int, default=6)
     p.add_argument("--memory-limit", type=int, default=3)
+    p.add_argument("--timeout", type=float, default=300.0)
+    p.add_argument("--no-resume", action="store_true")
     p.add_argument("--out", default="results/research-v3")
     p.add_argument("--ollama-url", default=None)
     run(p.parse_args())
