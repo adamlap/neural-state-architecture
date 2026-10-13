@@ -55,3 +55,21 @@ def test_temporal_render_is_bounded():
         memory = memory.remember(f"item-{i}", {"value": str(i)})
     rendered = memory.render(["item-1", "item-500", "item-999"], limit=2)
     assert rendered.count("\n") == 1
+
+
+def test_temporal_render_labels_current_and_history_semantics():
+    memory = TemporalMemoryStore()
+    memory = memory.remember("status", {"value": "old"})
+    memory = memory.remember("status", {"value": "new"}, kind="update")
+
+    current = memory.render(["status"])
+    assert "status: new" in current
+    assert "VERSION=2" in current
+    assert "STATUS=CURRENT" in current
+    assert "old" not in current
+
+    history = memory.render(["status"], mode="history")
+    assert "status: old" in history
+    assert "VERSION=1" in history
+    assert "STATUS=SUPERSEDED" in history
+    assert "CURRENT_VALUE=new" in history
