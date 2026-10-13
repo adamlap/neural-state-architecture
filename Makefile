@@ -196,17 +196,18 @@ RESEARCH_V3_DISTRACTORS ?= 10 50 100 250 500 1000
 RESEARCH_V3_TRIALS ?= 2
 RESEARCH_V3_HISTORY_LIMIT ?= 6
 RESEARCH_V3_MEMORY_LIMIT ?= 3
+RESEARCH_V3_TIMEOUT ?= 300
 RESEARCH_V3_OUT ?= results/research-v3
 
 benchmark-research-v3: ## Run temporal canonical-memory benchmark against local Ollama models
 	@if [ -n "$(UV)" ]; then \
 		PYTHONPATH=. $(UV) run python experiments/research_v3/temporal_memory_benchmark.py \
 			--models $(RESEARCH_V3_MODELS) --seeds $(RESEARCH_V3_SEEDS) --distractors $(RESEARCH_V3_DISTRACTORS) \
-			--trials $(RESEARCH_V3_TRIALS) --history-limit $(RESEARCH_V3_HISTORY_LIMIT) --memory-limit $(RESEARCH_V3_MEMORY_LIMIT) --out "$(RESEARCH_V3_OUT)"; \
+			--trials $(RESEARCH_V3_TRIALS) --history-limit $(RESEARCH_V3_HISTORY_LIMIT) --memory-limit $(RESEARCH_V3_MEMORY_LIMIT) --timeout $(RESEARCH_V3_TIMEOUT) --out "$(RESEARCH_V3_OUT)"; \
 	else \
 		PYTHONPATH=. $(PYTHON) experiments/research_v3/temporal_memory_benchmark.py \
 			--models $(RESEARCH_V3_MODELS) --seeds $(RESEARCH_V3_SEEDS) --distractors $(RESEARCH_V3_DISTRACTORS) \
-			--trials $(RESEARCH_V3_TRIALS) --history-limit $(RESEARCH_V3_HISTORY_LIMIT) --memory-limit $(RESEARCH_V3_MEMORY_LIMIT) --out "$(RESEARCH_V3_OUT)"; \
+			--trials $(RESEARCH_V3_TRIALS) --history-limit $(RESEARCH_V3_HISTORY_LIMIT) --memory-limit $(RESEARCH_V3_MEMORY_LIMIT) --timeout $(RESEARCH_V3_TIMEOUT) --out "$(RESEARCH_V3_OUT)"; \
 	fi
 
 # =========================================

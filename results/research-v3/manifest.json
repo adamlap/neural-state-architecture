@@ -1,0 +1,275 @@
+{
+  "benchmark": "NSA Research Benchmark v3",
+  "version": "3.0",
+  "generated_at_utc": "2026-10-08T23:08:22.028941+00:00",
+  "models": [
+    "qwen2.5:3b"
+  ],
+  "seeds": [
+    7
+  ],
+  "trials": 1,
+  "distractors": [
+    10,
+    100
+  ],
+  "history_limit": 6,
+  "memory_limit": 3,
+  "conditions": [
+    "raw",
+    "transcript",
+    "bounded",
+    "nsa_state",
+    "append_memory",
+    "temporal_memory",
+    "nsa_temporal_memory"
+  ],
+  "tasks": [
+    "recall",
+    "interference",
+    "supersession_current",
+    "supersession_history",
+    "multi_current"
+  ],
+  "hypotheses": {
+    "H9": "Temporal canonical memory should preserve current-value accuracy across long distractor sequences while keeping retrieved context bounded.",
+    "H10": "Canonical retrieval should eliminate stale-memory retrieval for current-value queries compared with append-only retrieval.",
+    "H11": "Explicit historical retrieval should recover superseded values without contaminating current-value retrieval.",
+    "H12": "Temporal memory should provide these gains without requiring cognitive-state machinery; compare temporal_memory with nsa_temporal_memory."
+  },
+  "conditions_description": {
+    "raw": "Question only.",
+    "transcript": "Full observation transcript.",
+    "bounded": "Recent observations only.",
+    "nsa_state": "Current NSARuntime state/cognitive state plus bounded history.",
+    "append_memory": "v2 append-only MemoryStore retrieval.",
+    "temporal_memory": "Versioned TemporalMemoryStore with canonical current-value retrieval.",
+    "nsa_temporal_memory": "TemporalMemoryStore retrieval plus NSARuntime cognitive substrate."
+  },
+  "scientific_boundary": "Deterministic extraction isolates temporal storage/retrieval semantics. This benchmark does not test autonomous LLM memory extraction.",
+  "summary": {
+    "raw": {
+      "n": 10,
+      "accuracy": 0.0,
+      "latency_seconds_mean": 2.65041,
+      "prompt_chars_mean": 96.2,
+      "memory_items_mean": 0,
+      "retrieved_items_mean": 0,
+      "retrieval_hit_rate": 0.0,
+      "stale_memory_rate": 0.0
+    },
+    "transcript": {
+      "n": 10,
+      "accuracy": 0.8,
+      "latency_seconds_mean": 8.04125,
+      "prompt_chars_mean": 2602,
+      "memory_items_mean": 0,
+      "retrieved_items_mean": 62.5,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "bounded": {
+      "n": 10,
+      "accuracy": 0.0,
+      "latency_seconds_mean": 2.08751,
+      "prompt_chars_mean": 337.2,
+      "memory_items_mean": 0,
+      "retrieved_items_mean": 6,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "nsa_state": {
+      "n": 10,
+      "accuracy": 0.0,
+      "latency_seconds_mean": 9.43197,
+      "prompt_chars_mean": 4570.8,
+      "memory_items_mean": 0,
+      "retrieved_items_mean": 0,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "append_memory": {
+      "n": 10,
+      "accuracy": 1.0,
+      "latency_seconds_mean": 2.8846499999999997,
+      "prompt_chars_mean": 160.8,
+      "memory_items_mean": 62.5,
+      "retrieved_items_mean": 2.2,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.2
+    },
+    "temporal_memory": {
+      "n": 10,
+      "accuracy": 0.7,
+      "latency_seconds_mean": 0.96433,
+      "prompt_chars_mean": 160.8,
+      "memory_items_mean": 62.5,
+      "retrieved_items_mean": 1.4,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "nsa_temporal_memory": {
+      "n": 10,
+      "accuracy": 0.8,
+      "latency_seconds_mean": 9.76995,
+      "prompt_chars_mean": 4586.1,
+      "memory_items_mean": 62.5,
+      "retrieved_items_mean": 1.4,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    }
+  },
+  "by_task": {
+    "recall": {
+      "raw": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "transcript": {
+        "n": 2,
+        "accuracy": 0.5
+      },
+      "bounded": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "nsa_state": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "append_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "temporal_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "nsa_temporal_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      }
+    },
+    "interference": {
+      "raw": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "transcript": {
+        "n": 2,
+        "accuracy": 0.5
+      },
+      "bounded": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "nsa_state": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "append_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "temporal_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "nsa_temporal_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      }
+    },
+    "supersession_current": {
+      "raw": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "transcript": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "bounded": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "nsa_state": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "append_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "temporal_memory": {
+        "n": 2,
+        "accuracy": 0.5
+      },
+      "nsa_temporal_memory": {
+        "n": 2,
+        "accuracy": 0.5
+      }
+    },
+    "supersession_history": {
+      "raw": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "transcript": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "bounded": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "nsa_state": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "append_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "temporal_memory": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "nsa_temporal_memory": {
+        "n": 2,
+        "accuracy": 0.5
+      }
+    },
+    "multi_current": {
+      "raw": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "transcript": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "bounded": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "nsa_state": {
+        "n": 2,
+        "accuracy": 0.0
+      },
+      "append_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "temporal_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      },
+      "nsa_temporal_memory": {
+        "n": 2,
+        "accuracy": 1.0
+      }
+    }
+  },
+  "raw_artifact": "results/research-v3/raw.jsonl"
+}
