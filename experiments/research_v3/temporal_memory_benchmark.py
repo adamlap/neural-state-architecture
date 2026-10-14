@@ -19,6 +19,8 @@ from random import Random
 from nsa.agent import NSA, RuntimeConfig
 from nsa.memory import MemoryItem, MemoryStore, TemporalMemoryStore
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
+from experiments.research_common.backends import FixedDecodingBackend
+from experiments.research_common.episodes import GENERATORS, answer_instruction, facts as _facts, pool_size
 
 VALUE_RE = re.compile(r"VALUE\s*=\s*([A-Z0-9_-]+)", re.IGNORECASE)
 FACT_RE = re.compile(r"(?:FACT|UPDATE|DISTRACTOR):\s+(ITEM_[0-9A-Z_]+)\s+(?:now\s+)?has value ([A-Z0-9_-]+)", re.IGNORECASE)
@@ -49,18 +51,16 @@ class Record:
 
 
 def facts(seed: int, n: int = 64):
-    rng = Random(seed)
-    keys = [f"ITEM_{i:02d}" for i in range(n)]
-    rng.shuffle(keys)
-    return [(k, f"V{seed % 1000:03d}_{i:03d}") for i, k in enumerate(keys)]
+    return _facts(seed, n)
 
 
-def make_episode(seed: int, task: str, distractors: int):
-    pairs = facts(seed)
+def make_episode(seed: int, task: str, distractors: int, generator: str = "unique", instruction: str = "legacy"):
+    pairs = facts(seed, pool_size(distractors, generator))
     key, old_value = pairs[0]
     observations = [f"FACT: {key} has value {old_value}."]
     expected = old_value
-    query = f"What is the current value of {key}? Reply with exactly VALUE=<value> and nothing else."
+    ask = answer_instruction(instruction)
+    query = f"What is the current value of {key}? {ask}"
     history_query = False
     if task.startswith("supersession"):
         new_value = f"V{seed % 1000:03d}_CURRENT"
@@ -69,7 +69,7 @@ def make_episode(seed: int, task: str, distractors: int):
         if task == "supersession_history":
             expected = old_value
             history_query = True
-            query = f"What was the previous value of {key}? Reply with exactly VALUE=<value> and nothing else."
+            query = f"What was the previous value of {key}? {ask}"
     for i in range(distractors):
         k, v = pairs[(i + 1) % len(pairs)]
         observations.append(f"DISTRACTOR: {k} has value {v}.")
@@ -82,7 +82,7 @@ def make_episode(seed: int, task: str, distractors: int):
         observations = [f"FACT: {k} has value {v}." for k, v in selected] + observations
         keys = [k for k, _ in selected]
         expected = "|".join(v for _, v in selected)
-        query = f"What are the current values of {', '.join(keys)}? Reply with exactly VALUE=<value1>|<value2>|<value3> and nothing else."
+        query = f"What are the current values of {', '.join(keys)}? {answer_instruction(instruction, multi=True)}"
     return observations, query, expected, key, history_query
 
 
@@ -153,6 +153,15 @@ def temporal_retrieve(store: TemporalMemoryStore, keys: list[str], *, history: b
     return store.retrieve(keys, limit=limit)
 
 
+def temporal_stale(items) -> bool:
+    """True when canonical retrieval returned a CURRENT value that merely restates an older version.
+
+    This is measured from the store's own conflict metadata. It was hard-coded False, which made
+    "temporal memory eliminates stale retrieval" true by construction.
+    """
+    return any(isinstance(i.content, dict) and "reasserts_version" in i.content for i in items)
+
+
 def render(items) -> str:
     if not items:
         return "NO_RELEVANT_MEMORY"
@@ -191,7 +200,7 @@ def _answer_for_impl(condition: str, backend, observations, query, expected, tas
         for observation in observations:
             agent.observe(observation)
         result = agent.step(query)
-        return result.text, len(agent._prompt(query)), 0, 0, True, False
+        return result.text, len(backend.last.prompt), 0, 0, True, False
 
     keys = target_keys(query)
     history = task == "supersession_history"
@@ -207,7 +216,7 @@ def _answer_for_impl(condition: str, backend, observations, query, expected, tas
 
     store = build_temporal_memory(observations)
     items = temporal_retrieve(store, keys, history=history, limit=memory_limit)
-    stale = False
+    stale = (not history) and temporal_stale(items)
     context = render(items)
     prompt = f"RETRIEVED_MEMORY=\n{context}\n\n{query}"
     if condition == "temporal_memory":
@@ -228,7 +237,7 @@ def _answer_for_impl(condition: str, backend, observations, query, expected, tas
         result = agent.step(prompt)
     else:
         result = agent.step(query, memory_keys=keys)
-    model_prompt = agent._prompt(query if not history else prompt)
+    model_prompt = backend.last.prompt
     return result.text, len(model_prompt), len(store.store.items), len(items), bool(items), stale
 
 
@@ -260,12 +269,13 @@ def run(args):
     done = len(records)
     with raw_path.open("a", encoding="utf-8") as handle:
         for model in args.models:
-            backend = OllamaInferenceBackend(model=model, base_url=args.ollama_url, timeout_sec=args.timeout) if args.ollama_url else OllamaInferenceBackend(model=model, timeout_sec=args.timeout)
+            inner = OllamaInferenceBackend(model=model, base_url=args.ollama_url, timeout_sec=args.timeout) if args.ollama_url else OllamaInferenceBackend(model=model, timeout_sec=args.timeout)
+            backend = FixedDecodingBackend(inner, temperature=0.0, max_tokens=32)
             for seed in args.seeds:
                 for task in TASKS:
                     for distractors in args.distractors:
                         for trial in range(args.trials):
-                            observations, query, expected, _, history_query = make_episode(seed + trial, task, distractors)
+                            observations, query, expected, _, history_query = make_episode(seed + trial * 100003, task, distractors, args.generator, args.instruction)
                             for condition in CONDITIONS:
                                 key = (model, seed, condition, task, distractors, trial)
                                 if key in completed_keys:
@@ -313,7 +323,7 @@ def run(args):
             by_task[task][condition] = {"n": len(rows), "accuracy": statistics.mean(float(r.correct) for r in rows)}
     manifest = {
         "benchmark": "NSA Research Benchmark v3",
-        "version": "3.0",
+        "version": "3.1", "generator": args.generator, "instruction": args.instruction, "decoding": {"temperature": 0.0, "max_tokens": 32, "num_ctx": 32768},
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "models": args.models, "seeds": args.seeds, "trials": args.trials,
         "distractors": args.distractors, "history_limit": args.history_limit, "memory_limit": args.memory_limit,
@@ -351,7 +361,9 @@ def main():
     p.add_argument("--memory-limit", type=int, default=3)
     p.add_argument("--timeout", type=float, default=300.0)
     p.add_argument("--no-resume", action="store_true")
-    p.add_argument("--out", default="results/research-v3")
+    p.add_argument("--generator", choices=GENERATORS, default="unique")
+    p.add_argument("--instruction", choices=("legacy", "plain"), default="legacy")
+    p.add_argument("--out", default="results/research-v3.1")
     p.add_argument("--ollama-url", default=None)
     run(p.parse_args())
 

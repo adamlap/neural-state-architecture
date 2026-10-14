@@ -7,6 +7,8 @@ from pathlib import Path
 from random import Random
 from nsa.agent import NSA, RuntimeConfig
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
+from experiments.research_common.backends import FixedDecodingBackend
+from experiments.research_common.episodes import GENERATORS, facts as _facts, pool_size
 
 VALUE_RE = re.compile(r"VALUE\s*=\s*([A-Z0-9_-]+)", re.IGNORECASE)
 CONDITIONS = ("raw", "transcript", "bounded", "nsa_no_state", "nsa_state")
@@ -20,11 +22,11 @@ class Record:
     history_limit: int; response: str
 
 def facts(seed: int, n: int = 24):
-    rng = Random(seed); keys = [f'ITEM_{i:02d}' for i in range(n)]; rng.shuffle(keys)
-    return [(k, f'V{seed % 1000:03d}_{i:02d}') for i, k in enumerate(keys)]
+    return _facts(seed, n)
 
-def make_episode(seed: int, task: str, delay: int):
-    pairs = facts(seed); key, value = pairs[0]
+def make_episode(seed: int, task: str, delay: int, generator: str = 'unique'):
+    # interference needs 2*delay distractors; the pool must not wrap onto the target key
+    pairs = facts(seed, pool_size(2 * delay, generator, minimum=24, legacy=24)); key, value = pairs[0]
     observations = [f'FACT: {key} has value {value}.']
     expected = value
     if task == 'supersession':
@@ -53,25 +55,28 @@ def run_condition(backend, condition, observations, query, history_limit):
     started = time.perf_counter()
     if condition.startswith('nsa_'):
         enabled = condition == 'nsa_state'
-        agent = NSA(backend, config=RuntimeConfig(history_limit=history_limit, include_state_in_prompt=enabled, cognitive_enabled=enabled))
+        # nsa_no_state keeps the same bounded history window and drops only the state text
+        # (previously it dropped history too, so it was really "no context at all").
+        agent = NSA(backend, config=RuntimeConfig(history_limit=history_limit, include_state_in_prompt=enabled, include_history_in_prompt=True, cognitive_enabled=enabled))
         for obs in observations: agent.observe(obs, source='benchmark')
         result = agent.step(query)
-        prompt_size = len(result.text) + sum(len(str(e.payload)) for e in agent.history[-history_limit:])
-        return result.text, prompt_size, time.perf_counter() - started
+        prompt = backend.last.prompt if getattr(backend, 'last', None) else ''
+        return result.text, len(prompt), time.perf_counter() - started
     prompt = prompt_for(condition, observations, query, history_limit)
-    result = backend.generate(prompt, max_tokens=32, temperature=0.0)
-    return result.text, len(prompt), time.perf_counter() - started
+    result = backend.generate(prompt)
+    return (result.text if hasattr(result, 'text') else str(result)), len(prompt), time.perf_counter() - started
 
 def run(args):
     root = Path(args.out); root.mkdir(parents=True, exist_ok=True); raw_path = root / 'raw.jsonl'; records = []
+    total = len(args.models) * len(args.seeds) * len(TASKS) * len(args.delays) * args.trials * len(CONDITIONS)
     with raw_path.open('w', encoding='utf-8') as raw:
         for model in args.models:
-            backend = OllamaInferenceBackend(model_name=model, base_url=args.ollama_url)
+            backend = FixedDecodingBackend(OllamaInferenceBackend(model_name=model, base_url=args.ollama_url), temperature=0.0, max_tokens=32)
             for seed in args.seeds:
                 for task in TASKS:
                     for delay in args.delays:
                         for trial in range(args.trials):
-                            observations, query, expected = make_episode(seed + trial * 100003, task, delay)
+                            observations, query, expected = make_episode(seed + trial * 100003, task, delay, args.generator)
                             for condition in CONDITIONS:
                                 text, chars, latency = run_condition(backend, condition, observations, query, args.history_limit)
                                 predicted = extract(text)
@@ -91,10 +96,10 @@ def run(args):
     summary['cells'] = cells
     def delta(a, b):
         return {'accuracy_delta': summary[a]['accuracy'] - summary[b]['accuracy'], 'latency_delta_seconds': summary[a]['latency_seconds_mean'] - summary[b]['latency_seconds_mean'], 'input_chars_delta': summary[a]['input_chars_proxy_mean'] - summary[b]['input_chars_proxy_mean']}
-    result = {'benchmark':'NSA Research Benchmark v1','version':'1.0','generated_at_utc':datetime.now(timezone.utc).isoformat(),'models':args.models,'seeds':args.seeds,'trials':args.trials,'delays':args.delays,'history_limit':args.history_limit,'conditions':list(CONDITIONS),'hypotheses':{'H1':'nsa_state > nsa_no_state on delayed recall with matched bounded history','H2':'nsa_state degrades more slowly as irrelevant observations increase','H3':'nsa_state maintains supersession accuracy without increased stale-memory errors','H4':'accuracy gains must be interpreted jointly with input-size and latency proxies'},'summary':summary,'key_deltas':{'nsa_state_vs_nsa_no_state':delta('nsa_state','nsa_no_state'),'nsa_state_vs_bounded':delta('nsa_state','bounded'),'nsa_state_vs_transcript':delta('nsa_state','transcript')},'raw_artifact':str(raw_path),'scientific_boundary':'This suite tests explicit state utility in the current runtime. It does not establish consciousness, AGI, or general superiority.'}
+    result = {'benchmark':'NSA Research Benchmark v1','version':'1.1','generator':args.generator,'decoding':{'temperature':0.0,'max_tokens':32,'num_ctx':32768},'generated_at_utc':datetime.now(timezone.utc).isoformat(),'models':args.models,'seeds':args.seeds,'trials':args.trials,'delays':args.delays,'history_limit':args.history_limit,'conditions':list(CONDITIONS),'hypotheses':{'H1':'nsa_state > nsa_no_state on delayed recall with matched bounded history','H2':'nsa_state degrades more slowly as irrelevant observations increase','H3':'nsa_state maintains supersession accuracy without increased stale-memory errors','H4':'accuracy gains must be interpreted jointly with input-size and latency proxies'},'summary':summary,'key_deltas':{'nsa_state_vs_nsa_no_state':delta('nsa_state','nsa_no_state'),'nsa_state_vs_bounded':delta('nsa_state','bounded'),'nsa_state_vs_transcript':delta('nsa_state','transcript')},'raw_artifact':str(raw_path),'scientific_boundary':'This suite tests explicit state utility in the current runtime. It does not establish consciousness, AGI, or general superiority.'}
     (root / 'manifest.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8'); print(json.dumps(result, indent=2)); return result
 
 def main():
-    p = argparse.ArgumentParser(); p.add_argument('--models', nargs='+', default=['qwen2.5:3b']); p.add_argument('--seeds', nargs='+', type=int, default=[7,17,37]); p.add_argument('--delays', nargs='+', type=int, default=[2,6,12,20]); p.add_argument('--trials', type=int, default=2); p.add_argument('--history-limit', type=int, default=6); p.add_argument('--out', default='results/research-v1'); p.add_argument('--ollama-url', default=None); run(p.parse_args())
+    p = argparse.ArgumentParser(); p.add_argument('--models', nargs='+', default=['qwen2.5:3b']); p.add_argument('--seeds', nargs='+', type=int, default=[7,17,37]); p.add_argument('--delays', nargs='+', type=int, default=[2,6,12,20]); p.add_argument('--trials', type=int, default=2); p.add_argument('--history-limit', type=int, default=6); p.add_argument('--generator', choices=GENERATORS, default='unique'); p.add_argument('--out', default='results/research-v1.1'); p.add_argument('--ollama-url', default=None); run(p.parse_args())
 
 if __name__ == '__main__': main()

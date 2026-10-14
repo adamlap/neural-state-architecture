@@ -19,6 +19,8 @@ from random import Random
 from nsa.agent import NSA, RuntimeConfig
 from nsa.memory import MemoryItem, MemoryStore
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
+from experiments.research_common.backends import FixedDecodingBackend
+from experiments.research_common.episodes import GENERATORS, facts as _facts, pool_size
 
 VALUE_RE = re.compile(r"VALUE\s*=\s*([A-Z0-9_-]+)", re.IGNORECASE)
 FACT_RE = re.compile(r"(?:FACT|UPDATE|DISTRACTOR):\s+(ITEM_[0-9A-Z_]+)\s+(?:now\s+)?has value ([A-Z0-9_-]+)", re.IGNORECASE)
@@ -50,14 +52,14 @@ class Record:
 
 
 def facts(seed: int, n: int = 64):
-    rng = Random(seed)
-    keys = [f"ITEM_{i:02d}" for i in range(n)]
-    rng.shuffle(keys)
-    return [(k, f"V{seed % 1000:03d}_{i:03d}") for i, k in enumerate(keys)]
+    return _facts(seed, n)
 
 
-def make_episode(seed: int, task: str, distractors: int):
-    pairs = facts(seed)
+def make_episode(seed: int, task: str, distractors: int, generator: str = "unique"):
+    # The pool must not wrap onto the target key (see experiments/research_common/episodes.py):
+    # with the original 64-key pool a target restated after a supersession made the gold
+    # label contradict the stream, and a revisit could land inside a short history window.
+    pairs = facts(seed, pool_size(distractors, generator))
     key, old_value = pairs[0]
     observations = [f"FACT: {key} has value {old_value}."]
     expected = old_value
@@ -160,7 +162,7 @@ def run_condition(backend, condition, observations, query, history_limit, memory
             for obs in observations:
                 agent.observe(obs, source="benchmark")
             result = agent.step(query)
-            prompt_chars = len(agent._prompt(query))
+            prompt_chars = len(backend.last.prompt) if getattr(backend, 'last', None) else 0
             return result.text, prompt_chars, time.perf_counter() - started, 0, 0, False
 
         if condition == "nsa_memory":
@@ -168,7 +170,10 @@ def run_condition(backend, condition, observations, query, history_limit, memory
                 backend,
                 config=RuntimeConfig(
                     history_limit=history_limit,
-                    include_state_in_prompt=False,
+                    # True: the cognitive state/history ARE part of the prompt. With False the
+                    # prompt was byte-identical to memory_no_cognitive (108/108 identical
+                    # responses in the first run), so H6 could not have failed.
+                    include_state_in_prompt=True,
                     cognitive_enabled=True,
                 ),
             )
@@ -176,7 +181,8 @@ def run_condition(backend, condition, observations, query, history_limit, memory
             for obs in observations:
                 agent.observe(obs, source="benchmark")
             result = agent.step(memory_prompt)
-            return result.text, len(memory_prompt), time.perf_counter() - started, len(store.items) if store else 0, len(retrieved), stale
+            sent = len(backend.last.prompt) if getattr(backend, 'last', None) else len(memory_prompt)
+            return result.text, sent, time.perf_counter() - started, len(store.items) if store else 0, len(retrieved), stale
 
         if condition == "memory_no_cognitive":
             prompt = prompt_for(condition, observations, query, history_limit, retrieved)
@@ -223,13 +229,13 @@ def run(args):
 
     with raw_path.open("a", encoding="utf-8") as raw:
         for model in args.models:
-            backend = OllamaInferenceBackend(model_name=model, base_url=args.ollama_url, timeout_sec=args.timeout)
+            backend = FixedDecodingBackend(OllamaInferenceBackend(model_name=model, base_url=args.ollama_url, timeout_sec=args.timeout), temperature=0.0, max_tokens=32)
             for seed in args.seeds:
                 for task in TASKS:
                     for distractors in args.distractors:
                         for trial in range(args.trials):
                             episode_seed = seed + trial * 100003
-                            observations, query, expected, _ = make_episode(episode_seed, task, distractors)
+                            observations, query, expected, _ = make_episode(episode_seed, task, distractors, args.generator)
                             for condition in CONDITIONS:
                                 key = (model, seed, condition, task, distractors, trial)
                                 if key in completed_keys:
@@ -328,7 +334,9 @@ def run(args):
 
     result = {
         "benchmark": "NSA Research Benchmark v2",
-        "version": "2.0",
+        "version": "2.1",
+        "generator": args.generator,
+        "decoding": {"temperature": 0.0, "max_tokens": 32, "num_ctx": 32768},
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "models": args.models,
         "seeds": args.seeds,
@@ -377,7 +385,8 @@ def main():
     p.add_argument("--memory-limit", type=int, default=3)
     p.add_argument("--timeout", type=float, default=300.0)
     p.add_argument("--no-resume", action="store_true")
-    p.add_argument("--out", default="results/research-v2")
+    p.add_argument("--generator", choices=GENERATORS, default="unique")
+    p.add_argument("--out", default="results/research-v2.1")
     p.add_argument("--ollama-url", default=None)
     run(p.parse_args())
 
