@@ -29,3 +29,12 @@ def test_extract_is_strict_and_case_insensitive():
     assert extract("VALUE=V007_001") == "V007_001"
     assert extract("answer: value=v007_001") == "V007_001"
     assert extract("no structured answer") is None
+
+
+def test_plain_instruction_has_no_template_placeholder():
+    from experiments.research_v2.selective_memory_benchmark import make_episode
+
+    _, legacy_query, _, _ = make_episode(7, "recall", 5, instruction="legacy")
+    _, plain_query, _, _ = make_episode(7, "recall", 5, instruction="plain")
+    assert "<value>" in legacy_query
+    assert "<" not in plain_query and "VALUE=" in plain_query

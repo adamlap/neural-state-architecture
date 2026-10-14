@@ -17,12 +17,15 @@ before 0.6.0 were not documented here; see git history.
   value or overrides an explicit update (last-write-wins is unchanged, but is no
   longer silent).
 - `experiments/research_common` (unique-key episodes, strict/lenient grading, fixed
-  decoding wrapper, Wilson / McNemar / Holm) and benchmark versions v1.1, v2.1, v3.1
-  and v4.1. See `research/BENCHMARK_VALIDITY.md`.
+  decoding wrapper, Wilson / McNemar / Holm) and benchmark versions v1.2, v2.2, v3.1
+  and v4.2. See `research/BENCHMARK_VALIDITY.md`.
 - CI lint step (`ruff --select F821,E9`).
 
 ### Changed
 
+- `TemporalMemoryStore.render(mode="history")` no longer appends `CURRENT_VALUE=` (opt back in with
+  `include_current=True`): it made a 1.5B model answer the current value to "what was the previous value".
+- Added `RuntimeConfig.include_history_with_memory` (default `True`, unchanged behaviour).
 - Prompt construction: the state header, `RECENT_OBSERVATIONS` and `USER_INPUT` are
   assembled consistently, the in-flight input is no longer duplicated in history,
   and the state's `provenance.sources` is bounded (last 5 plus `source_count`) so the

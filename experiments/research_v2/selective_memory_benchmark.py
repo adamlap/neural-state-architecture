@@ -20,7 +20,8 @@ from nsa.agent import NSA, RuntimeConfig
 from nsa.memory import MemoryItem, MemoryStore
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 from experiments.research_common.backends import FixedDecodingBackend
-from experiments.research_common.episodes import GENERATORS, facts as _facts, pool_size
+from experiments.research_common.episodes import GENERATORS, answer_instruction, facts as _facts, pool_size
+from experiments.research_common.grading import lenient_correct
 
 VALUE_RE = re.compile(r"VALUE\s*=\s*([A-Z0-9_-]+)", re.IGNORECASE)
 FACT_RE = re.compile(r"(?:FACT|UPDATE|DISTRACTOR):\s+(ITEM_[0-9A-Z_]+)\s+(?:now\s+)?has value ([A-Z0-9_-]+)", re.IGNORECASE)
@@ -49,13 +50,14 @@ class Record:
     retrieved_expected: bool
     history_limit: int
     response: str
+    correct_lenient: bool = False
 
 
 def facts(seed: int, n: int = 64):
     return _facts(seed, n)
 
 
-def make_episode(seed: int, task: str, distractors: int, generator: str = "unique"):
+def make_episode(seed: int, task: str, distractors: int, generator: str = "unique", instruction: str = "legacy"):
     # The pool must not wrap onto the target key (see experiments/research_common/episodes.py):
     # with the original 64-key pool a target restated after a supersession made the gold
     # label contradict the stream, and a revisit could land inside a short history window.
@@ -74,7 +76,7 @@ def make_episode(seed: int, task: str, distractors: int, generator: str = "uniqu
         for i in range(distractors // 2):
             k, v = pairs[(i + 9) % len(pairs)]
             observations.append(f"DISTRACTOR: {k} has value {v}.")
-    query = f"What is the current value of {key}? Reply with exactly VALUE=<value> and nothing else."
+    query = f"What is the current value of {key}? {answer_instruction(instruction)}"
     return observations, query, expected, key
 
 
@@ -235,7 +237,7 @@ def run(args):
                     for distractors in args.distractors:
                         for trial in range(args.trials):
                             episode_seed = seed + trial * 100003
-                            observations, query, expected, _ = make_episode(episode_seed, task, distractors, args.generator)
+                            observations, query, expected, _ = make_episode(episode_seed, task, distractors, args.generator, args.instruction)
                             for condition in CONDITIONS:
                                 key = (model, seed, condition, task, distractors, trial)
                                 if key in completed_keys:
@@ -283,6 +285,7 @@ def run(args):
                                     retrieved_expected=retrieved_expected,
                                     history_limit=args.history_limit,
                                     response=text[:2000],
+                                    correct_lenient=lenient_correct(text, expected),
                                 )
                                 records.append(rec)
                                 raw.write(json.dumps(asdict(rec), ensure_ascii=False) + "\n")
@@ -303,6 +306,7 @@ def run(args):
         summary[condition] = {
             "n": len(rows),
             "accuracy": mean([float(r.correct) for r in rows]),
+            "accuracy_lenient": mean([float(r.correct_lenient) for r in rows]),
             "latency_seconds_mean": mean([r.latency_seconds for r in rows]),
             "prompt_chars_mean": mean([r.prompt_chars for r in rows]),
             "response_chars_mean": mean([r.response_chars for r in rows]),
@@ -322,6 +326,7 @@ def run(args):
                 cells[f"{task}/distractors={distractors}/{condition}"] = {
                     "n": len(rows),
                     "accuracy": mean([float(r.correct) for r in rows]),
+                    "accuracy_lenient": mean([float(r.correct_lenient) for r in rows]),
                     "retrieved_expected_rate": mean([float(r.retrieved_expected) for r in rows]),
                 }
 
@@ -334,7 +339,8 @@ def run(args):
 
     result = {
         "benchmark": "NSA Research Benchmark v2",
-        "version": "2.1",
+        "version": "2.2",
+        "instruction": args.instruction,
         "generator": args.generator,
         "decoding": {"temperature": 0.0, "max_tokens": 32, "num_ctx": 32768},
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -386,7 +392,8 @@ def main():
     p.add_argument("--timeout", type=float, default=300.0)
     p.add_argument("--no-resume", action="store_true")
     p.add_argument("--generator", choices=GENERATORS, default="unique")
-    p.add_argument("--out", default="results/research-v2.1")
+    p.add_argument("--instruction", choices=("legacy", "plain"), default="plain")
+    p.add_argument("--out", default="results/research-v2.2")
     p.add_argument("--ollama-url", default=None)
     run(p.parse_args())
 
