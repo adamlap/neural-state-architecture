@@ -16,6 +16,8 @@ from nsa.core.state_codec import decode_state, encode_state
 from nsa.cognition.system_one_runtime import SystemOneController, SystemOneBackend, SystemOneTick
 from nsa.cognition.tools import ToolRegistry
 from nsa.memory import TemporalMemoryStore
+from nsa.decision import SecurityDecision
+from nsa.taint import authorize_tool_call, join_integrity
 
 class ModelBackend(Protocol):
     model: str
@@ -40,6 +42,9 @@ class RuntimeConfig:
     # 5/18 correct with them, 18/18 without), so tasks that answer from memory can turn
     # it off; conversational use usually wants them.
     include_history_with_memory: bool = True
+    # Observation sources whose content is labelled UNTRUSTED at ingress (e.g. "web", "email",
+    # "tool_output"). Empty keeps every observation trusted (historical behaviour).
+    untrusted_sources: tuple[str, ...] = ()
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -119,8 +124,30 @@ class NSARuntime:
             self._run_cognitive_transition(state.semantic.value, confidence=state.soft.confidence)
         return replace(state, provenance=state.provenance.extend(transformation="cce.heartbeat"), step=state.step + 1)
 
-    def observe(self, payload: Any, *, source: str = "text", confidence: float = 1.0, provenance: str = "local") -> None:
-        self.history.append(CognitiveInputEvent(payload, source=source, confidence=confidence, provenance=provenance)); self.state = replace(self.state, soft=replace(self.state.soft, confidence=confidence, uncertainty=1.0-confidence), provenance=self.state.provenance.extend(source=source), step=self.state.step+1); self._run_cognitive_transition(payload, confidence=confidence); self._cce.set_state(self.state); self._sync_canonical()
+    def observe(self, payload: Any, *, source: str = "text", confidence: float = 1.0, provenance: str = "local",
+                integrity: Optional[IntegrityLabel] = None) -> None:
+        if integrity is None:
+            integrity = IntegrityLabel.UNTRUSTED if source in self.config.untrusted_sources else IntegrityLabel.TRUSTED
+        self.history.append(CognitiveInputEvent(payload, source=source, confidence=confidence, provenance=provenance, integrity=integrity)); self.state = replace(self.state, soft=replace(self.state.soft, confidence=confidence, uncertainty=1.0-confidence), provenance=self.state.provenance.extend(source=source), step=self.state.step+1); self._run_cognitive_transition(payload, confidence=confidence); self._cce.set_state(self.state); self._sync_canonical()
+
+    def context_integrity(self) -> IntegrityLabel:
+        """Join of the integrity labels of the observations the model is shown (the prompt window)."""
+        window = self.history[-self.config.history_limit:] if self.config.history_limit else []
+        return join_integrity(e.integrity for e in window)
+
+    def authorize_tool(self, name: str, args: Mapping[str, Any], registry: ToolRegistry, *,
+                       capabilities: Sequence[str] = ()) -> SecurityDecision:
+        """Authorise a model-proposed tool call against the current state (see nsa/taint.py).
+
+        Returns a typed decision; the runtime never executes the tool.
+        """
+        trusted_texts = [str(e.payload) for e in self.history if e.integrity is IntegrityLabel.TRUSTED]
+        if self.memory is not None:
+            trusted_texts += list(self.memory.trusted_values())
+        return authorize_tool_call(
+            registry.get(name), args, granted=capabilities,
+            context_integrity=self.context_integrity(), trusted_texts=trusted_texts,
+        )
 
     _PROMPT_SOURCES_SHOWN = 5
 

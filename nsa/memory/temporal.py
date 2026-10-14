@@ -125,6 +125,14 @@ class TemporalMemoryStore:
     def current(self, key: str) -> MemoryItem | None:
         return self._current_of(self.versions(key))
 
+    def trusted_values(self) -> tuple[str, ...]:
+        """Values of canonical versions written under a TRUSTED label (data-flow origin checks)."""
+        trusted = IntegrityLabel.TRUSTED.name
+        return tuple(
+            str(self._value(i)) for chain in self._index.values() for i in chain
+            if i.content.get("integrity", trusted) == trusted
+        )
+
     def quarantined(self) -> tuple[MemoryItem, ...]:
         """Writes rejected by the integrity gate, in write order (for audit)."""
         return tuple(

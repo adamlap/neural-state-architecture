@@ -13,6 +13,7 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Any
+from nsa.algebra import IntegrityLabel
 
 
 def _now() -> str:
@@ -26,6 +27,8 @@ class CognitiveInputEvent:
     confidence: float = 1.0
     timestamp: str = ""
     provenance: str = "local"
+    # Assigned by the ingress path (never derived from ``payload``); see nsa/taint.py.
+    integrity: IntegrityLabel = IntegrityLabel.TRUSTED
 
     def __post_init__(self) -> None:
         if not self.timestamp:
