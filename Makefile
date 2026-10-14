@@ -220,7 +220,7 @@ RESEARCH_V4_TRIALS ?= 2
 RESEARCH_V4_HISTORY_LIMIT ?= 6
 RESEARCH_V4_MEMORY_LIMIT ?= 3
 RESEARCH_V4_TIMEOUT ?= 300
-RESEARCH_V4_OUT ?= results/research-v4.1
+RESEARCH_V4_OUT ?= results/research-v4.2
 
 benchmark-research-v4: ## Run temporal semantics + retrieval attribution benchmark
 	@if [ -n "$(UV)" ]; then \

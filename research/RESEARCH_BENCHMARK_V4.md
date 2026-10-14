@@ -20,7 +20,11 @@ Current-value retrieval renders entries as:
 
 Historical retrieval renders superseded entries as:
 
-    - ITEM_XX: OLD_VALUE VERSION=1 STATUS=SUPERSEDED CURRENT_VALUE=NEW_VALUE
+    - ITEM_XX: OLD_VALUE VERSION=1 STATUS=SUPERSEDED
+
+(4.0/4.1 appended `CURRENT_VALUE=NEW_VALUE`. With qwen2.5:1.5b that made the model answer the current
+value to "what was the previous value" in 18/18 episodes, versus 0/18 without it, so 4.2 drops it;
+`TemporalMemoryStore.render(..., include_current=True)` restores it.)
 
 This prevents the model from having to infer temporal meaning from an unlabeled key/value pair.
 
@@ -52,13 +56,15 @@ Recommended full run:
 Outputs:
 
 - `results/research-v4/raw.jsonl`
-- `results/research-v4/manifest.json`
+- `results/research-v4.2/manifest.json` (and `results/research-v4.2-3b/`)
 
 ## Hypotheses
 
 - **H13:** temporal memory exposes explicit CURRENT versus SUPERSEDED semantics to the model.
 - **H14:** memory retrieval correctness can be measured independently from final model-answer correctness.
-- **H15:** historical retrieval remains correct when the previous value is explicitly labeled SUPERSEDED and the current value is provided as CURRENT_VALUE.
+- **H15:** historical retrieval remains correct when the previous value is explicitly labeled SUPERSEDED (4.2: without the current value in the row).
+- **H17:** `nsa_state` differs from `nsa_history` (same window, no state text) only if the serialised state carries task-relevant information.
+- **H18:** recent observations compete with retrieved memory; suppressing them when memory is attached (`nsa_temporal_memory_nohist`) raises accuracy.
 - **H16:** temporal memory retains its accuracy/latency advantage over cognitive-state-only context without requiring cognitive machinery.
 
 ## Scientific boundary

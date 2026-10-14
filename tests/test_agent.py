@@ -145,6 +145,23 @@ def test_retrieved_memory_is_rendered_with_real_newlines():
     assert prompt.endswith("\n\nWhat is K?")
 
 
+def test_history_can_be_dropped_only_when_memory_is_attached():
+    def run(with_history, memory_keys):
+        backend = _Recorder()
+        agent = NSA(backend, config=RuntimeConfig(memory_enabled=True, include_history_with_memory=with_history))
+        agent.remember("K", {"value": "V1"})
+        agent.observe("DISTRACTOR: J has value Z9.")
+        agent.step("What is K?", memory_keys=memory_keys)
+        return backend.prompts[-1]
+
+    kept = run(True, ["K"])
+    assert "DISTRACTOR: J" in kept and "RETRIEVED_MEMORY=" in kept
+    dropped = run(False, ["K"])
+    assert "DISTRACTOR: J" not in dropped and "RETRIEVED_MEMORY=\n- K: V1" in dropped
+    assert "CURRENT_STATE=" in dropped                      # state text is unaffected
+    assert "DISTRACTOR: J" in run(False, [])                # no memory attached -> history stays
+
+
 def test_auto_checkpoint_writes_a_format_load_state_can_read(tmp_path):
     """Regression: auto_checkpoint wrote the lossy snapshot(); load_state() then raised
     'unsupported canonical state schema: None'."""

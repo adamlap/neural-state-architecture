@@ -33,6 +33,12 @@ class RuntimeConfig:
     # include_state_in_prompt=False for a matched "history only" control that
     # sees the same window as the state-bearing prompt but no state text.
     include_history_in_prompt: Optional[bool] = None
+    # Whether recent observations are still shown when retrieved memory is attached to
+    # the prompt. True keeps the historical behaviour. In a keyed-recall benchmark the
+    # unrelated recent observations compete with the retrieved value (qwen2.5:1.5b:
+    # 5/18 correct with them, 18/18 without), so tasks that answer from memory can turn
+    # it off; conversational use usually wants them.
+    include_history_with_memory: bool = True
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -132,17 +138,21 @@ class NSARuntime:
         summary["source_count"] = len(sources)
         return summary
 
-    def _prompt(self, prompt: str, *, in_flight: bool = False) -> str:
+    def _prompt(self, prompt: str, *, in_flight: bool = False, memory_present: bool = False) -> str:
         """Build the model-facing prompt.
 
         in_flight: the prompt was already recorded via observe() (as step() does),
         so it is excluded from RECENT_OBSERVATIONS instead of consuming a history
         slot and appearing a second time.
+        memory_present: retrieved memory is part of ``prompt``; see
+        ``RuntimeConfig.include_history_with_memory``.
         """
         include_state = self.config.include_state_in_prompt
         include_history = self.config.include_history_in_prompt
         if include_history is None:
             include_history = include_state
+        if memory_present and not self.config.include_history_with_memory:
+            include_history = False
         if not include_state and not include_history:
             return prompt
         events = self.history[:-1] if in_flight and self.history else self.history
@@ -196,7 +206,7 @@ class NSARuntime:
         if self.policy_engine:
             decision = self.policy_engine.enforce(prompt, context=context, state=self.state)
             if decision.decision.value in {"deny", "require_approval"}: self.trace.append({"step": self.state.step, "prompt": prompt, "blocked": True}); return AgentResult("", self.state, decision=decision, trace_id=len(self.trace), blocked=True)
-        raw_text = self._generate(self._prompt(model_prompt, in_flight=True))
+        raw_text = self._generate(self._prompt(model_prompt, in_flight=True, memory_present=bool(memory_context)))
         text = raw_text.text if hasattr(raw_text, "text") else (str(raw_text) if not isinstance(raw_text, str) else raw_text)
         if self.config.auto_update_semantic_state:
             self.state = replace(self.state, semantic=SemanticState(text), provenance=self.state.provenance.extend(transformation="llm.generate"), step=self.state.step+1); self._run_cognitive_transition(text, confidence=self.state.soft.confidence)

@@ -22,7 +22,7 @@ def test_history_render_exposes_superseded_semantics():
     rendered = render_temporal(store, [key], history=True, limit=3)
     assert f"{expected}" in rendered
     assert "STATUS=SUPERSEDED" in rendered
-    assert "CURRENT_VALUE=V007_CURRENT" in rendered
+    assert "CURRENT_VALUE" not in rendered and "V007_CURRENT" not in rendered
 
 
 def test_retrieval_correctness_is_separate_from_model_answer():
@@ -113,7 +113,7 @@ def test_run_writes_manifest_and_guards_resume(tmp_path, monkeypatch):
     manifest = v4.run(args)
     total = len(v4.TASKS) * len(v4.CONDITIONS)
     assert manifest["episodes_recorded"] == total
-    assert manifest["version"] == "4.1"
+    assert manifest["version"] == "4.2"
     assert "paired_tests_lenient" in manifest and "accuracy_ci95" in manifest["summary"]["raw"]
     # resume: nothing re-run
     assert v4.run(args)["episodes_recorded"] == total
@@ -125,3 +125,28 @@ def test_run_writes_manifest_and_guards_resume(tmp_path, monkeypatch):
     assert again["episodes_recorded"] == total
     rows = [json.loads(l) for l in (tmp_path / "out" / "raw.jsonl").read_text().splitlines()]
     assert all("prompt_tokens" in r and "timed_out" in r for r in rows)
+
+
+def test_nohist_condition_drops_history_only_for_memory_prompts():
+    backend = v4.FixedDecodingBackend(_FakeInner())
+    obs = ["FACT: ITEM_001 has value V001_000.", "DISTRACTOR: ITEM_002 has value V002_000."]
+    v4.answer_for("nsa_temporal_memory", backend, obs, "What is ITEM_001?", "V001_000", "recall", 4, 3)
+    with_hist = backend.last.prompt
+    v4.answer_for("nsa_temporal_memory_nohist", backend, obs, "What is ITEM_001?", "V001_000", "recall", 4, 3)
+    without = backend.last.prompt
+    assert "DISTRACTOR: ITEM_002" in with_hist and "RECENT_OBSERVATIONS" in with_hist
+    assert "RECENT_OBSERVATIONS" not in without and "RETRIEVED_MEMORY=" in without
+
+
+def test_carry_over_reuses_only_unchanged_conditions_and_checks_compatibility(tmp_path, monkeypatch):
+    monkeypatch.setattr(v4, "OllamaInferenceBackend", lambda **kw: _FakeInner())
+    first = _args(tmp_path, out=str(tmp_path / "old"))
+    v4.run(first)
+    second = _args(tmp_path, out=str(tmp_path / "new"), carry_over=str(tmp_path / "old"))
+    manifest = v4.run(second)
+    n_tasks = len(v4.TASKS)
+    assert manifest["carried_over"]["records"] == n_tasks * len(v4.UNCHANGED_SINCE_4_1)
+    assert set(manifest["carried_over"]["conditions"]) == set(v4.UNCHANGED_SINCE_4_1)
+    assert manifest["episodes_recorded"] == n_tasks * len(v4.CONDITIONS)
+    with pytest.raises(SystemExit):
+        v4.run(_args(tmp_path, out=str(tmp_path / "bad"), history_limit=9, carry_over=str(tmp_path / "old")))

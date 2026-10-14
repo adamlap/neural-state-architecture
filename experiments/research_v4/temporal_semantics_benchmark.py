@@ -1,4 +1,4 @@
-"""NSA Research Benchmark v4.1: temporal semantics and retrieval-vs-answer attribution.
+"""NSA Research Benchmark v4.2: temporal semantics and retrieval-vs-answer attribution.
 
 v4 keeps the deterministic FACT/UPDATE/DISTRACTOR extractor from v3 but makes
 the model-facing temporal semantics explicit and records memory retrieval
@@ -19,6 +19,16 @@ correctness separately from final model-answer correctness.
 * stale retrieval is measured from the store's conflict metadata, not hard-coded;
 * a manifest is always written (also with ``--summarize-only``) and a sidecar guards
   ``--resume`` against mixing episodes from a different configuration.
+
+4.2 (after the 4.1 results):
+
+* history rows are rendered without ``CURRENT_VALUE=`` (qwen2.5:1.5b answered the current
+  value to "what was the previous value" in 18/18 episodes; 0/18 with the row removed);
+* ``nsa_temporal_memory_nohist`` runs the NSA runtime with recent observations suppressed
+  when memory is attached (``include_history_with_memory=False``); the original
+  ``nsa_temporal_memory`` is kept so the effect is measured, not assumed;
+* ``--carry-over DIR`` reuses records of conditions whose prompts did not change from a
+  compatible earlier run instead of re-running them (temperature 0, same episodes).
 """
 from __future__ import annotations
 
@@ -53,10 +63,12 @@ from experiments.research_v3.temporal_memory_benchmark import (
 )
 
 
-VERSION = "4.1"
+VERSION = "4.2"
 CONDITIONS = ("raw", "transcript", "bounded", "nsa_history", "nsa_state",
-              "append_memory", "temporal_memory", "nsa_temporal_memory")
-MEMORY_CONDITIONS = ("append_memory", "temporal_memory", "nsa_temporal_memory")
+              "append_memory", "temporal_memory", "nsa_temporal_memory", "nsa_temporal_memory_nohist")
+MEMORY_CONDITIONS = ("append_memory", "temporal_memory", "nsa_temporal_memory", "nsa_temporal_memory_nohist")
+# Conditions whose model-facing prompt is identical in 4.1 and 4.2.
+UNCHANGED_SINCE_4_1 = ("raw", "transcript", "bounded", "nsa_history", "nsa_state", "append_memory")
 DECODING = {"temperature": 0.0, "max_tokens": 32, "num_ctx": 32768}
 assert set(V3_CONDITIONS) <= set(CONDITIONS)
 
@@ -87,6 +99,7 @@ class Record:
     completion_tokens: int | None = None
     truncated: bool = False
     timed_out: bool = False
+    carried_from: str | None = None
 
 
 def extract(text: str):
@@ -191,7 +204,10 @@ def answer_for(condition, backend, observations, query, expected, task, history_
         out = backend.generate(prompt)
         return out.text, len(backend.last.prompt), len(store.store.items), len(items), bool(items), stale
 
-    agent = _nsa_agent(backend, history_limit, memory_enabled=True, memory_limit=memory_limit)
+    agent = _nsa_agent(
+        backend, history_limit, memory_enabled=True, memory_limit=memory_limit,
+        include_history_with_memory=(condition != "nsa_temporal_memory_nohist"),
+    )
     for observation in observations:
         match = FACT_RE.search(observation)
         if match:
@@ -224,6 +240,22 @@ def _check_sidecar(root: Path, signature: dict, resume: bool) -> None:
                 "use a new --out or --no-resume"
             )
     sidecar.write_text(json.dumps(signature, indent=2) + "\n", encoding="utf-8")
+
+
+def _load_carried(args, signature: dict) -> list[Record]:
+    """Records of unchanged-prompt conditions from a compatible earlier run."""
+    carry = Path(args.carry_over)
+    earlier = json.loads((carry / "config.json").read_text(encoding="utf-8"))
+    for field in ("generator", "instruction", "history_limit", "memory_limit", "decoding"):
+        if earlier.get(field) != signature[field]:
+            raise SystemExit(f"--carry-over {carry}: {field} differs ({earlier.get(field)} vs {signature[field]})")
+    carried = []
+    for r in _load_records(carry / "raw.jsonl"):
+        if r.condition in UNCHANGED_SINCE_4_1 and r.model in args.models and r.seed in args.seeds \
+                and r.distractors in args.distractors and r.trial < args.trials:
+            r.carried_from = f"{carry.name} v{earlier.get('version')}"
+            carried.append(r)
+    return carried
 
 
 def _load_records(raw_path: Path) -> list[Record]:
@@ -327,12 +359,18 @@ def write_manifest(root: Path, args, records: list[Record]) -> dict:
         "conditions": list(CONDITIONS),
         "tasks": list(TASKS),
         "episodes_recorded": len(records),
+        "carried_over": {
+            "records": sum(1 for r in records if r.carried_from),
+            "sources": sorted({r.carried_from for r in records if r.carried_from}),
+            "conditions": sorted({r.condition for r in records if r.carried_from}),
+        },
         "hypotheses": {
             "H13": "Temporal memory exposes explicit CURRENT versus SUPERSEDED semantics to the model.",
             "H14": "Memory retrieval correctness can be measured independently from final model-answer correctness.",
             "H15": "Historical retrieval remains correct when the previous value is explicitly labeled SUPERSEDED and the current value is provided as CURRENT_VALUE.",
             "H16": "Temporal memory retains its accuracy/latency advantage over cognitive-state-only context without requiring cognitive machinery.",
             "H17": "nsa_state differs from nsa_history (same window, no state text) only if the serialised state carries task-relevant information.",
+            "H18": "Recent observations compete with retrieved memory: suppressing them when memory is attached raises nsa_temporal_memory accuracy (compare nsa_temporal_memory_nohist).",
         },
         "scientific_boundary": (
             "Deterministic extraction isolates storage/retrieval semantics. "
@@ -364,6 +402,15 @@ def run(args):
     if not resume and raw_path.exists():
         raw_path.unlink()
     records = _load_records(raw_path) if resume else []
+    if getattr(args, "carry_over", None) and not any(r.carried_from for r in records):
+        have = {(r.model, r.seed, r.condition, r.task, r.distractors, r.trial) for r in records}
+        fresh = [r for r in _load_carried(args, _config_signature(args))
+                 if (r.model, r.seed, r.condition, r.task, r.distractors, r.trial) not in have]
+        with raw_path.open("a", encoding="utf-8") as carried_handle:
+            for r in fresh:
+                carried_handle.write(json.dumps(asdict(r)) + "\n")
+        records.extend(fresh)
+        print(f"Carried over {len(fresh)} records from {args.carry_over}", flush=True)
     completed_keys = {(r.model, r.seed, r.condition, r.task, r.distractors, r.trial) for r in records}
     if completed_keys:
         print(f"Resuming benchmark: {len(completed_keys)} episodes already completed in {raw_path}", flush=True)
@@ -455,8 +502,9 @@ def main():
     parser.add_argument("--no-resume", action="store_true")
     parser.add_argument("--generator", choices=GENERATORS, default="unique")
     parser.add_argument("--instruction", choices=("legacy", "plain"), default="plain")
+    parser.add_argument("--carry-over", default=None, help="earlier run directory whose unchanged-prompt conditions are reused")
     parser.add_argument("--summarize-only", action="store_true", help="rebuild manifest.json from raw.jsonl and exit")
-    parser.add_argument("--out", default="results/research-v4.1")
+    parser.add_argument("--out", default="results/research-v4.2")
     parser.add_argument("--ollama-url", default=None)
     run(parser.parse_args())
 

@@ -138,8 +138,15 @@ class TemporalMemoryStore:
         *,
         limit: int = 3,
         mode: str = "current",
+        include_current: bool = False,
     ) -> str:
-        """Render memory with explicit temporal semantics for an LLM."""
+        """Render memory with explicit temporal semantics for an LLM.
+
+        History rows are ``STATUS=SUPERSEDED`` only. Appending ``CURRENT_VALUE=`` to them
+        (``include_current=True``) made qwen2.5:1.5b answer the current value to "what was
+        the previous value" 18/18 times (0/18 correct); without it 18/18 correct. A model
+        that needs both values should be given the CURRENT rows separately.
+        """
         if mode not in {"current", "history"}:
             raise ValueError("mode must be 'current' or 'history'")
 
@@ -160,11 +167,13 @@ class TemporalMemoryStore:
                 continue
             current = versions[0]
             for item in versions[1:limit + 1]:
-                rows.append(
+                row = (
                     f"- {item.content.get('memory_key')}: {self._value(item)} "
-                    f"VERSION={item.content.get('version')} STATUS=SUPERSEDED "
-                    f"CURRENT_VALUE={self._value(current)}"
+                    f"VERSION={item.content.get('version')} STATUS=SUPERSEDED"
                 )
+                if include_current:
+                    row += f" CURRENT_VALUE={self._value(current)}"
+                rows.append(row)
         return "\n".join(rows) if rows else "NO_RELEVANT_MEMORY_HISTORY"
 
 

@@ -72,7 +72,8 @@ def test_temporal_render_labels_current_and_history_semantics():
     assert "status: old" in history
     assert "VERSION=1" in history
     assert "STATUS=SUPERSEDED" in history
-    assert "CURRENT_VALUE=new" in history
+    assert "CURRENT_VALUE" not in history and "new" not in history
+    assert "CURRENT_VALUE=new" in memory.render(["status"], mode="history", include_current=True)
 
 
 def test_temporal_store_flags_reassertion_of_a_superseded_value():
