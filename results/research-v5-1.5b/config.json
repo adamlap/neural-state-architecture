@@ -1,0 +1,9 @@
+{
+  "version": "5.0",
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 32,
+    "num_ctx": 32768
+  },
+  "history": null
+}

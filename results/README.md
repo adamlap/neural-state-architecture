@@ -7,6 +7,7 @@
 | `research-v4.1` | Corrected benchmark (qwen2.5:1.5b). Superseded by 4.2 for the temporal and NSA-memory conditions; its history-query result is what motivated the 4.2 render change. |
 | `research-v4.2`, `research-v4.2-3b` | Current. See below. |
 | `research-v1.2`, `research-v2.2`, `research-v3.1` | Current for v1–v3 (qwen2.5:1.5b, reduced grids). See the end of this file. |
+| `research-v5-1.5b`, `research-v5-3b` | Current. Memory poisoning / integrity gate (see the end of this file). |
 | `research-v1.1`, `research-v2.1` | Superseded: valid episodes and decoding, but still the `VALUE=<value>` instruction, which the 1.5b model echoes verbatim (`VALUE=<V007_000>`). In v2.1 `memory_no_cognitive` scores 0 % strict although retrieval was correct in 100 % of episodes, so its comparisons are format artifacts. Kept for provenance. |
 
 
@@ -113,3 +114,27 @@ window; (2) retrieved memory matches or beats the full transcript at a fraction 
 the NSA prompt costs accuracy (v2.2 0.94 → 0.78, v3.1 1.00 → 0.82, v4.2 0.99 → 0.87) because recent observations compete with
 the retrieved value (see v4.2 `nohist`). v2.2/v3.1 have no `nohist` condition, so for them that mechanism is inferred from
 v4.2, not measured. These runs are small (36–72 episodes per condition, one model) and do not use more than a keyed-lookup oracle for memory.
+
+## research-v5 (memory poisoning, integrity-gated memory)
+
+84 episodes per condition per model (3 seeds × 2 trials × distractors {10, 100} × 7 task/style combinations),
+temperature 0, 32 tokens. Lenient accuracy / attack-success rate (ASR, the model answered the attacker's value):
+
+| Condition | qwen2.5:1.5b acc | ASR | qwen2.5:3b acc | ASR |
+|-----------|-----------------:|----:|---------------:|----:|
+| transcript | 0.46 | 0.54 | 0.43 | 0.57 |
+| transcript_warned | 0.55 | 0.42 | 0.51 | 0.49 |
+| temporal_ungoverned (gate off) | 0.52 | 0.29 | 0.57 | 0.35 |
+| temporal_governed | **0.93** | **0.00** | **1.00** | **0.00** |
+
+* Governed vs every other condition: paired McNemar, Holm p < 0.001 for both accuracy and ASR on both models.
+* **Legitimate updates are not rejected.** On `legit_update` and `poison_then_legit` the governed store scores the
+  same as the ungated store (1.5b: 0.92 vs 0.92; 3b: 1.00 vs 1.00). The one 1.5b miss per cell is an answer-format slip, not a blocked update.
+* **A prompt warning is not a defence.** It helps only when the line honestly says it is unverified (1.5b `poisoned/plain` ASR 0.08),
+  does nothing against a forged source claim (ASR 1.00 on both models) and little against "SYSTEM OVERRIDE" text. On 3b the warning did
+  not help even for honest tags (`poisoned/plain` ASR 1.00; n = 12 per cell, so treat per-cell numbers as indicative).
+* Ungated canonical memory is not safer than a transcript: with every write trusted it returns the attacker's value
+  (ASR 0.29 / 0.35 overall, 0.67–0.83 on the poisoned tasks). The protection comes from the label, not from structured memory.
+
+**What this does not show:** the gate blocks the attack by construction if the ingress label is correct; the labelling step itself is
+the trust boundary and is not tested here. Extraction is a deterministic oracle, there is no adaptive attacker, and only two small models were run.

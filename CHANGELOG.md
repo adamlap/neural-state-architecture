@@ -7,6 +7,10 @@ before 0.6.0 were not documented here; see git history.
 
 ### Added
 
+- Integrity-gated canonical memory: `TemporalMemoryStore.remember(integrity=...)` /
+  `NSARuntime.remember(integrity=...)`. An `UNTRUSTED` write cannot supersede a `TRUSTED` value; it is
+  quarantined (`TemporalMemoryStore.quarantined()`) and never retrievable. Default `TRUSTED` (unchanged behaviour).
+  Benchmark: `research/RESEARCH_BENCHMARK_V5.md`.
 - `RuntimeConfig.include_history_in_prompt` (default `None`, follows
   `include_state_in_prompt`): lets a "history only" control see the same window as
   the state-bearing prompt without the state text.
