@@ -6,8 +6,9 @@
 | `research-v4` (untracked, if present) | **Legacy.** Partial 4.0 run, no manifest. |
 | `research-v4.1` | Corrected benchmark (qwen2.5:1.5b). Superseded by 4.2 for the temporal and NSA-memory conditions; its history-query result is what motivated the 4.2 render change. |
 | `research-v4.2`, `research-v4.2-3b` | Current. See below. |
+| `research-v1.2`, `research-v2.2`, `research-v3.1` | Current for v1–v3 (qwen2.5:1.5b, reduced grids). See the end of this file. |
+| `research-v1.1`, `research-v2.1` | Superseded: valid episodes and decoding, but still the `VALUE=<value>` instruction, which the 1.5b model echoes verbatim (`VALUE=<V007_000>`). In v2.1 `memory_no_cognitive` scores 0 % strict although retrieval was correct in 100 % of episodes, so its comparisons are format artifacts. Kept for provenance. |
 
-v1.1, v2.1 and v3.1 live runs (qwen2.5:1.5b, reduced grids) are listed at the end of this file once finished.
 
 ## research-v4.2
 
@@ -64,3 +65,51 @@ Memory retrieval was correct in 100 % of memory-condition episodes in both runs.
 One or two small models, 30–90 episodes per condition, a keyed-lookup oracle for memory extraction, and no test of
 LLM-driven memory formation or larger models. `append_memory` returns superseded values 20 % of the time (stale rate) yet
 scores 100 % here; with a model less able to pick the later of two rows that would not hold.
+
+## research-v1.2, v2.2, v3.1 (qwen2.5:1.5b)
+
+Same fixed decoding and unique-key generator as v4.2, `plain` instruction, reduced grids, n as shown. Strict and lenient
+accuracy are equal everywhere in these three runs, so only one number is given.
+
+**v1.2** (72 episodes per condition; delays 2/6/12/20 observations, 3 seeds × 2 trials, history window 6):
+
+| Condition | Accuracy |
+|-----------|---------:|
+| raw | 0.00 |
+| transcript | 1.00 |
+| bounded (last 6 observations) | 0.25 |
+| nsa_no_state (same window, no state text) | 0.25 |
+| nsa_state | 0.24 |
+
+Accuracy of `bounded`, `nsa_no_state` and `nsa_state` is 1.0 at delay 2 and 0.0 at delay ≥ 6 for every task: they succeed
+exactly when the fact is still inside the 6-observation window. The 20.8 % vs 0 % "state benefit" reported by the original
+v1 was produced by a control that had no history at all; against a matched control there is no state effect.
+
+**v2.2** (36 per condition; distractors 10/250):
+
+| Condition | Accuracy | Retrieval hit | Stale retrieval |
+|-----------|---------:|--------------:|----------------:|
+| raw | 0.00 | – | – |
+| transcript | 0.89 | – | – |
+| bounded | 0.03 | – | – |
+| nsa_state | 0.00 | – | – |
+| memory_no_cognitive | 0.94 | 1.00 | 0.33 |
+| nsa_memory | 0.78 | 1.00 | 0.33 |
+
+**v3.1** (60 per condition; distractors 10/250; v3 render format, `plain` instruction):
+
+| Condition | Accuracy | Stale retrieval |
+|-----------|---------:|----------------:|
+| raw | 0.00 | 0.00 |
+| transcript | 0.97 | 0.00 |
+| bounded | 0.02 | 0.00 |
+| nsa_state | 0.00 | 0.00 |
+| append_memory | 1.00 | 0.20 |
+| temporal_memory | 1.00 | 0.00 |
+| nsa_temporal_memory | 0.82 | 0.00 |
+
+Across v1–v4 the same three things recur on this model: (1) the serialised NSA state adds nothing over the same history
+window; (2) retrieved memory matches or beats the full transcript at a fraction of the prompt size; (3) wrapping memory in
+the NSA prompt costs accuracy (v2.2 0.94 → 0.78, v3.1 1.00 → 0.82, v4.2 0.99 → 0.87) because recent observations compete with
+the retrieved value (see v4.2 `nohist`). v2.2/v3.1 have no `nohist` condition, so for them that mechanism is inferred from
+v4.2, not measured. These runs are small (36–72 episodes per condition, one model) and do not use more than a keyed-lookup oracle for memory.
