@@ -3,14 +3,26 @@
 Episodic memory remains append-only, while canonical retrieval exposes only the
 latest valid version for a logical memory key unless historical retrieval is
 explicitly requested.
+
+"Latest" means latest *written*. That is last-write-wins and it is deliberate, but
+it has a sharp edge: a later low-authority assertion of an old value silently
+becomes CURRENT. Each version therefore records, in its content, whether it
+re-asserts a previously superseded value (``reasserts_version``) and whether it
+overrides an explicit update with a plain fact (``overrides_update``);
+``conflicts()`` returns the keys where that happened so callers can decide what
+to do instead of discovering it from a wrong answer.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
 from .model import MemoryItem, MemoryStore
+
+
+def _norm(key: Any) -> str:
+    return str(key).strip().lower()
 
 
 @dataclass(frozen=True)
@@ -18,6 +30,18 @@ class TemporalMemoryStore:
     """Immutable append-only memory with canonical latest-value retrieval."""
 
     store: MemoryStore = MemoryStore()
+    # normalised key -> that key's versions in write order. Derived from ``store``
+    # and maintained incrementally so lookups do not rescan the whole store.
+    _index: Mapping[str, tuple] = field(default=None, init=False, repr=False, compare=False)  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        if self._index is None:
+            index: dict[str, list[MemoryItem]] = {}
+            for item in self.store.items:
+                content = item.content
+                if isinstance(content, Mapping) and "memory_key" in content:
+                    index.setdefault(_norm(content["memory_key"]), []).append(item)
+            object.__setattr__(self, "_index", {k: tuple(v) for k, v in index.items()})
 
     def remember(
         self,
@@ -32,19 +56,23 @@ class TemporalMemoryStore:
         key = str(key).strip()
         if not key:
             raise ValueError("memory key must not be empty")
-        current = self.current(key)
+        chain = self._index.get(_norm(key), ())
+        current = self._current_of(tuple(i for i in chain if i.available()))
         ordinal = len(self.store.items)
         payload = dict(content) if isinstance(content, Mapping) else {"value": content}
-        version = (
-            int(current.content.get("version", 0)) + 1
-            if current and isinstance(current.content, Mapping)
-            else 1
-        )
+        version = int(current.content.get("version", 0)) + 1 if current else 1
         payload.update({
             "memory_key": key,
             "version": version,
             "supersedes_id": current.memory_id if current else None,
         })
+        if current is not None:
+            new_value = payload.get("value")
+            earlier = [i for i in chain if i is not current and self._value(i) == new_value]
+            if earlier and new_value != self._value(current):
+                payload["reasserts_version"] = int(earlier[-1].content.get("version", 0))
+            if current.kind == "update" and kind != "update" and new_value != self._value(current):
+                payload["overrides_update"] = True
         item = MemoryItem(
             memory_id=f"tm-{ordinal:08d}",
             content=payload,
@@ -53,23 +81,30 @@ class TemporalMemoryStore:
             sensitivity=sensitivity,
             created_at=created_at or datetime.now(timezone.utc),
         )
-        return TemporalMemoryStore(self.store.write(item))
+        successor = object.__new__(TemporalMemoryStore)
+        object.__setattr__(successor, "store", self.store.write(item))
+        index = dict(self._index)
+        index[_norm(key)] = chain + (item,)
+        object.__setattr__(successor, "_index", index)
+        return successor
 
-    def versions(self, key: str) -> tuple[MemoryItem, ...]:
-        key = str(key).strip()
-        return tuple(
-            item
-            for item in self.store.active()
-            if isinstance(item.content, Mapping)
-            and str(item.content.get("memory_key", "")).lower() == key.lower()
-        )
+    def versions(self, key: str, now: datetime | None = None) -> tuple[MemoryItem, ...]:
+        return tuple(i for i in self._index.get(_norm(key), ()) if i.available(now))
+
+    @staticmethod
+    def _current_of(versions: Sequence[MemoryItem]) -> MemoryItem | None:
+        return max(versions, key=lambda item: int(item.content.get("version", 0)), default=None)
 
     def current(self, key: str) -> MemoryItem | None:
-        versions = self.versions(key)
-        return max(
-            versions,
-            key=lambda item: int(item.content.get("version", 0)),
-            default=None,
+        return self._current_of(self.versions(key))
+
+    def conflicts(self) -> tuple[MemoryItem, ...]:
+        """Versions that re-assert a superseded value or override an explicit update."""
+        return tuple(
+            item
+            for chain in self._index.values()
+            for item in chain
+            if "reasserts_version" in item.content or item.content.get("overrides_update")
         )
 
     def retrieve(self, keys: Sequence[str], *, limit: int = 3) -> tuple[MemoryItem, ...]:

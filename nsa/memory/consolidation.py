@@ -6,7 +6,19 @@ Orchestrates offline/idle consolidation cycles:
 3. Synthesizes semantic state updates and tunes residency predictors.
 4. Prunes stale working memory and demotes inactive regions to cold storage.
 
-Enforces the strict governance boundary: consolidation cannot alter hard authority.
+Boundaries, stated precisely:
+
+* Consolidation never touches hard state, but it does write ``consolidated_rules``
+  into the semantic channel directly (``CanonicalState.with_semantic``), i.e. not
+  through a CognitiveTransactionEngine tick, so that write has no transition
+  receipt. Callers that need an audited record should apply the returned state
+  through the transaction engine.
+* Residency "demotion" is bookkeeping only (``NeuralResidencyManager.record_resident``
+  updates the manager's tier accounting). It does not move weights: Accelerate owns
+  physical placement.
+* Action ids are not neural region ids, so induced action statistics are NOT fed
+  to the residency predictor (an earlier version did, which only taught the
+  predictor affinities to regions that do not exist).
 """
 from __future__ import annotations
 
@@ -99,11 +111,6 @@ class MemoryConsolidator:
                     summary=f"Action '{act}' has {rate:.1%} commit rate over {stats['attempts']} trials.",
                 )
                 induced_rules.append(rule)
-
-                # Feed outcome back to residency predictor if available
-                if residency_manager is not None and hasattr(residency_manager.predictor, "observe_state_tags"):
-                    for tag in stats["tags"]:
-                        residency_manager.predictor.observe_state_tags([tag], act)
 
         # Update SemanticState with consolidated knowledge
         existing_semantic = current_state.semantic.value if isinstance(current_state.semantic.value, dict) else {}

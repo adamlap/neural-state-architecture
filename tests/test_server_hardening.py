@@ -136,3 +136,25 @@ def test_runtime_close_stops_the_background_thread_and_is_idempotent():
     runtime.close()
     runtime.close()
     assert not runtime._cce_thread.is_alive() and ticks == [1]
+
+
+def test_dashboard_page_is_reachable_with_a_token_set_but_its_api_calls_are_not(server, monkeypatch):
+    """Regression: with NSA_API_TOKEN set, a browser could never load the dashboard
+    (navigation sends no Authorization header), and the page never sent one itself."""
+    monkeypatch.setenv("NSA_API_TOKEN", "s3cret")
+    req = urllib.request.Request(server.url + "/dashboard")
+    with urllib.request.urlopen(req) as resp:
+        html = resp.read().decode()
+        headers = dict(resp.headers)
+    assert resp.status == 200 and "apiFetch" in html and "Authorization" in html
+    assert "frame-ancestors 'none'" in headers["Content-Security-Policy"]
+    assert headers["X-Frame-Options"] == "DENY" and headers["X-Content-Type-Options"] == "nosniff"
+    assert _request(server.url + "/health")[0] == 401  # the data behind it still needs the token
+    assert _request(server.url + "/health", headers={"Authorization": "Bearer s3cret"})[0] == 200
+
+
+def test_dashboard_escapes_every_field_it_interpolates_into_innerhtml():
+    from nsa.server.dashboard import DASHBOARD_HTML
+    assert "${m.kind}" not in DASHBOARD_HTML and "${m.memory_id}" not in DASHBOARD_HTML
+    assert "escapeHtml(m.kind)" in DASHBOARD_HTML and "escapeHtml(m.memory_id)" in DASHBOARD_HTML and "escapeHtml(m.content)" in DASHBOARD_HTML
+    assert "fetch(" not in DASHBOARD_HTML.replace("await fetch(url, withAuth())", "")  # all other calls go through apiFetch

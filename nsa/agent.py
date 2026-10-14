@@ -1,5 +1,6 @@
 """Stable application-facing NSA runtime with optional cognitive substrate."""
 from __future__ import annotations
+import inspect
 from dataclasses import dataclass, replace
 from typing import Any, Callable, Mapping, Optional, Protocol, Sequence
 from nsa.cce.engine import CCEStatus, ContinuousCognitiveEngine
@@ -27,6 +28,11 @@ class AgentResult:
 class RuntimeConfig:
     history_limit: int = 12
     include_state_in_prompt: bool = True
+    # Whether recent observations are shown to the model. None follows
+    # include_state_in_prompt (the historical behaviour). Set True with
+    # include_state_in_prompt=False for a matched "history only" control that
+    # sees the same window as the state-bearing prompt but no state text.
+    include_history_in_prompt: Optional[bool] = None
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -109,11 +115,50 @@ class NSARuntime:
     def observe(self, payload: Any, *, source: str = "text", confidence: float = 1.0, provenance: str = "local") -> None:
         self.history.append(CognitiveInputEvent(payload, source=source, confidence=confidence, provenance=provenance)); self.state = replace(self.state, soft=replace(self.state.soft, confidence=confidence, uncertainty=1.0-confidence), provenance=self.state.provenance.extend(source=source), step=self.state.step+1); self._run_cognitive_transition(payload, confidence=confidence); self._cce.set_state(self.state); self._sync_canonical()
 
-    def _prompt(self, prompt: str) -> str:
-        if not self.config.include_state_in_prompt: return prompt
-        recent = self.history[-self.config.history_limit:] if self.config.history_limit else []
-        context = "\n".join(f"- {e.source}: {e.payload}" for e in recent)
-        return f"You are operating inside the Neural State Architecture runtime.\nCURRENT_STATE={self.state.summary()!r}\nCOGNITIVE_STATE={self.cognitive_state.to_dict() if self.cognitive else None!r}\nACTIVE_COGNITION={self.active_state.to_dict() if self.active else None!r}\nRECENT_OBSERVATIONS={context!r}\n\nUSER_INPUT={prompt}"
+    _PROMPT_SOURCES_SHOWN = 5
+
+    def _bounded_state_summary(self) -> dict[str, Any]:
+        """State summary safe to put in a prompt.
+
+        CanonicalState.summary() lists every provenance source ever recorded, which
+        grows by one entry per observation. Put verbatim into a prompt, that makes
+        the "bounded" state prompt grow linearly with runtime age (3k chars after
+        10 observations, 17k after 1000). Show a count and the most recent
+        sources instead.
+        """
+        summary = dict(self.state.summary())
+        sources = tuple(summary.get("sources", ()))
+        summary["sources"] = sources[-self._PROMPT_SOURCES_SHOWN:]
+        summary["source_count"] = len(sources)
+        return summary
+
+    def _prompt(self, prompt: str, *, in_flight: bool = False) -> str:
+        """Build the model-facing prompt.
+
+        in_flight: the prompt was already recorded via observe() (as step() does),
+        so it is excluded from RECENT_OBSERVATIONS instead of consuming a history
+        slot and appearing a second time.
+        """
+        include_state = self.config.include_state_in_prompt
+        include_history = self.config.include_history_in_prompt
+        if include_history is None:
+            include_history = include_state
+        if not include_state and not include_history:
+            return prompt
+        events = self.history[:-1] if in_flight and self.history else self.history
+        recent = events[-self.config.history_limit:] if self.config.history_limit else []
+        parts = []
+        if include_state:
+            parts.append(
+                "You are operating inside the Neural State Architecture runtime.\n"
+                f"CURRENT_STATE={self._bounded_state_summary()!r}\n"
+                f"COGNITIVE_STATE={self.cognitive_state.to_dict() if self.cognitive else None!r}\n"
+                f"ACTIVE_COGNITION={self.active_state.to_dict() if self.active else None!r}"
+            )
+        if include_history:
+            context = "\n".join(f"- {e.source}: {e.payload}" for e in recent)
+            parts.append(f"RECENT_OBSERVATIONS=\n{context}" if context else "RECENT_OBSERVATIONS=(none)")
+        return "\n".join(parts) + f"\n\nUSER_INPUT={prompt}"
 
     def remember(self, key: str, value: Any, *, kind: str = "fact", provenance_ids: Sequence[str] = ()) -> None:
         if self.memory is None:
@@ -126,26 +171,37 @@ class NSARuntime:
         items = self.memory.retrieve(keys, limit=self.config.memory_limit if limit is None else limit)
         return tuple(dict(item.content) if isinstance(item.content, Mapping) else {"value": item.content} for item in items)
 
+    def _backend_accepts_state(self) -> bool:
+        """Whether backend.generate takes a ``state`` keyword (checked by signature).
+
+        Previously a TypeError whose message mentioned "state" triggered a blind
+        retry, which re-invoked the model for any unrelated backend failure.
+        """
+        try:
+            params = inspect.signature(self.backend.generate).parameters
+        except (TypeError, ValueError):
+            return True
+        return "state" in params or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+    def _generate(self, model_prompt: str):
+        if self._backend_accepts_state():
+            return self.backend.generate(model_prompt, state=self.state.summary())
+        return self.backend.generate(model_prompt)
+
     def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = (), memory_keys: Sequence[str] = ()) -> AgentResult:
         self.observe(prompt)
         memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit) if self.memory is not None and memory_keys else ""
-        model_prompt = f"RETRIEVED_MEMORY=\\n{memory_context}\\n\\n{prompt}" if memory_context else prompt
+        model_prompt = f"RETRIEVED_MEMORY=\n{memory_context}\n\n{prompt}" if memory_context else prompt
         context = EvaluationContext(action=action, capabilities=frozenset(capabilities), protected_data=frozenset(protected_data), risk=self.state.soft.risk, uncertainty=self.state.soft.uncertainty); decision = None
         if self.policy_engine:
             decision = self.policy_engine.enforce(prompt, context=context, state=self.state)
             if decision.decision.value in {"deny", "require_approval"}: self.trace.append({"step": self.state.step, "prompt": prompt, "blocked": True}); return AgentResult("", self.state, decision=decision, trace_id=len(self.trace), blocked=True)
-        try:
-            raw_text = self.backend.generate(self._prompt(model_prompt), state=self.state.summary())
-        except TypeError as err:
-            if "state" in str(err) or "unexpected keyword" in str(err):
-                raw_text = self.backend.generate(self._prompt(model_prompt))
-            else:
-                raise
+        raw_text = self._generate(self._prompt(model_prompt, in_flight=True))
         text = raw_text.text if hasattr(raw_text, "text") else (str(raw_text) if not isinstance(raw_text, str) else raw_text)
         if self.config.auto_update_semantic_state:
             self.state = replace(self.state, semantic=SemanticState(text), provenance=self.state.provenance.extend(transformation="llm.generate"), step=self.state.step+1); self._run_cognitive_transition(text, confidence=self.state.soft.confidence)
         self._cce.set_state(self.state); self._sync_canonical(); self.trace.append({"step": self.state.step, "prompt": prompt, "response": text, "blocked": False})
-        if self.checkpoint and self.config.auto_checkpoint: self.checkpoint.save(self.snapshot())
+        if self.checkpoint and self.config.auto_checkpoint: self.save()
         return AgentResult(text, self.state, decision=decision, trace_id=len(self.trace))
 
     run = step

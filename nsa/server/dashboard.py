@@ -399,11 +399,33 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <script>
     let lastTickCount = -1;
 
+    // The page itself is static and served without auth; every API call carries the
+    // bearer token (NSA_API_TOKEN) from sessionStorage, asked for once on a 401.
+    function nsaToken() { try { return sessionStorage.getItem("nsa_token") || ""; } catch (e) { return ""; } }
+    async function apiFetch(url, opts) {
+      opts = opts || {};
+      const withAuth = () => {
+        const headers = Object.assign({}, opts.headers || {});
+        const token = nsaToken();
+        if (token) headers["Authorization"] = "Bearer " + token;
+        return Object.assign({}, opts, { headers: headers });
+      };
+      let res = await fetch(url, withAuth());
+      if (res.status === 401) {
+        const entered = window.prompt("This NSA server requires an API token (NSA_API_TOKEN):");
+        if (entered) {
+          try { sessionStorage.setItem("nsa_token", entered); } catch (e) {}
+          res = await fetch(url, withAuth());
+        }
+      }
+      return res;
+    }
+
     async function updateDashboard() {
       try {
-        const res = await fetch("/health");
+        const res = await apiFetch("/health");
         if (!res.ok) return;
-        const data = await res.ok ? await res.json() : {};
+        const data = await res.json();
 
         // Headers
         document.getElementById("hdr-backend").textContent = (data.backend || "transformers").toUpperCase();
@@ -467,14 +489,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     async function updateMemories() {
       try {
-        const res = await fetch("/api/memory");
+        const res = await apiFetch("/api/memory");
         if (!res.ok) return;
         const data = await res.json();
         const container = document.getElementById("memory-items-container");
         if (data.items && data.items.length > 0) {
           container.innerHTML = data.items.map(m => `
             <div class="memory-item">
-              <div class="meta"><span class="memory-badge">${m.kind}</span> ${m.memory_id}</div>
+              <div class="meta"><span class="memory-badge">${escapeHtml(m.kind)}</span> ${escapeHtml(m.memory_id)}</div>
               <div>${escapeHtml(m.content)}</div>
             </div>
           `).reverse().join("");
@@ -487,7 +509,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const text = input.value.trim();
       if (!text) return;
       try {
-        const res = await fetch("/api/cce/sensor", {
+        const res = await apiFetch("/api/cce/sensor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: text, source: "dashboard_ui", importance: 0.8 })
@@ -502,7 +524,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     function escapeHtml(s) {
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     // Auto-poll

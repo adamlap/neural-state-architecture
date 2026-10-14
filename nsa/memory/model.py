@@ -25,11 +25,23 @@ class MemoryItem:
 @dataclass(frozen=True)
 class MemoryStore:
     items: Tuple[MemoryItem, ...] = ()
+    # memory_id set, maintained incrementally so write() does not rescan every item
+    # in Python. Derived from ``items``; excluded from equality, repr and init.
+    _ids: frozenset = field(default=None, init=False, repr=False, compare=False)  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        if self._ids is None:
+            object.__setattr__(self, "_ids", frozenset(item.memory_id for item in self.items))
 
     def write(self, item: MemoryItem) -> "MemoryStore":
-        if any(existing.memory_id == item.memory_id for existing in self.items):
+        if item.memory_id in self._ids:
             raise ValueError(f"duplicate memory_id: {item.memory_id}")
-        return MemoryStore(self.items + (item,))
+        # Build the successor directly so the id set is extended (a C-level copy)
+        # rather than recomputed by a Python-level pass over every item.
+        store = object.__new__(MemoryStore)
+        object.__setattr__(store, "items", self.items + (item,))
+        object.__setattr__(store, "_ids", self._ids | {item.memory_id})
+        return store
 
     def active(self, now: datetime | None = None) -> Tuple[MemoryItem, ...]:
         return tuple(item for item in self.items if item.available(now))

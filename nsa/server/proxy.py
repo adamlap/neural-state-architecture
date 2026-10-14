@@ -531,6 +531,16 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        # The dashboard is self-contained (inline script/style, same-origin API calls):
+        # forbid everything else, and forbid framing it (it can inject sensor events).
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+            "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        )
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
         self.end_headers()
         self.wfile.write(body)
 
@@ -588,18 +598,19 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
         self._json({"ok": True})
 
     def do_GET(self) -> None:
+        path = self.path.split("?", 1)[0]
+        # The dashboard page is static markup with no runtime data, and a browser
+        # navigation cannot send an Authorization header, so it is served without
+        # auth; every API call it makes (see dashboard.py apiFetch) is authorized.
+        if path in {"/dashboard", "/ui", "/visualize"} or (
+            path == "/" and "text/html" in self.headers.get("Accept", "")
+        ):
+            self._html(DASHBOARD_HTML)
+            return
         if not self._authorized():
             self._json({"error": "unauthorized"}, 401)
             return
-        path = self.path.split("?", 1)[0]
-        if path in {"/dashboard", "/ui", "/visualize"}:
-            self._html(DASHBOARD_HTML)
-            return
         if path == "/":
-            accept = self.headers.get("Accept", "")
-            if "text/html" in accept:
-                self._html(DASHBOARD_HTML)
-                return
             self._json(self.runtime.status())
             return
         elif path == "/health":

@@ -10,7 +10,7 @@ import json
 import os
 import urllib.error
 import urllib.request
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 from nsa.runtime.inference.action_parser import ActionParser
 from nsa.runtime.inference.base import (

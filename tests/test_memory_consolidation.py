@@ -74,3 +74,34 @@ def test_memory_consolidation_cycle():
     assert new_state.hard == initial_hard
     assert "consolidated_rules" in new_state.semantic.value
     assert "probe_service" in new_state.semantic.value["consolidated_rules"]
+
+def test_consolidation_does_not_teach_the_residency_predictor_about_nonexistent_regions():
+    """Regression: action ids were fed to observe_state_tags() as if they were region ids."""
+    from nsa.cce.trajectory import CognitiveTrajectory
+    from nsa.core.state import CanonicalState
+    from nsa.memory import MemoryConsolidator
+    from nsa.residency import NeuralRegion, NeuralResidencyManager, ResidencyPolicy
+
+    class Recorder:
+        def __init__(self):
+            self.seen = []
+
+        def predict(self, regions, state, current_region=None):
+            return {}
+
+        def observe_state_tags(self, tags, region_id):
+            self.seen.append((tuple(tags), region_id))
+
+    from nsa.cce.events import CognitiveEvent, EventKind
+    from nsa.core.transition import TransitionReceipt
+
+    state = CanonicalState()
+    trajectory = CognitiveTrajectory(state)
+    for _ in range(3):  # enough committed samples that a rule (and the old feed) is induced
+        receipt = TransitionReceipt("act", "s", "t", "p", True, "ok", 0.0, 0)
+        trajectory.append(state, receipt=receipt, events=(CognitiveEvent(EventKind.OBSERVATION, 0, "e", {}),))
+    manager = NeuralResidencyManager(ResidencyPolicy(vram_budget_bytes=100, ram_budget_bytes=100), predictor=Recorder())
+    manager.register([NeuralRegion("layer.0", size_bytes=10)])
+    _, report = MemoryConsolidator().consolidate(trajectory, state, manager)
+    assert [rule.action_id for rule in report.induced_rules] == ["act"]  # the rule is induced...
+    assert manager.predictor.seen == []  # ...but never sent to the region predictor
