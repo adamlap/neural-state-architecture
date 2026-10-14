@@ -1,5 +1,8 @@
 # Research Benchmark v4 — Temporal Semantics and Retrieval Attribution
 
+> **Validity notice:** results from the original (pre-fix) run are unreliable — see [BENCHMARK_VALIDITY.md](BENCHMARK_VALIDITY.md). Use the corrected benchmark version.
+
+
 ## Purpose
 
 v4 follows the v3 smoke result by separating two questions:

@@ -3,6 +3,46 @@
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Versions
 before 0.6.0 were not documented here; see git history.
 
+## [Unreleased]
+
+### Added
+
+- `RuntimeConfig.include_history_in_prompt` (default `None`, follows
+  `include_state_in_prompt`): lets a "history only" control see the same window as
+  the state-bearing prompt without the state text.
+- `OllamaInferenceBackend.generate(num_ctx=...)`: explicit context size, identical
+  across calls (previously derived from prompt length / whether state was passed).
+- `TemporalMemoryStore.versions()`, `.current()` and `.conflicts()`; versions record
+  `reasserts_version` / `overrides_update` when a later write restores a superseded
+  value or overrides an explicit update (last-write-wins is unchanged, but is no
+  longer silent).
+- `experiments/research_common` (unique-key episodes, strict/lenient grading, fixed
+  decoding wrapper, Wilson / McNemar / Holm) and benchmark versions v1.1, v2.1, v3.1
+  and v4.1. See `research/BENCHMARK_VALIDITY.md`.
+- CI lint step (`ruff --select F821,E9`).
+
+### Changed
+
+- Prompt construction: the state header, `RECENT_OBSERVATIONS` and `USER_INPUT` are
+  assembled consistently, the in-flight input is no longer duplicated in history,
+  and the state's `provenance.sources` is bounded (last 5 plus `source_count`) so the
+  prompt does not grow with every observation.
+- `TemporalMemoryStore` keeps an incremental per-key index instead of rescanning the
+  whole store on every lookup; `MemoryStore` tracks ids incrementally.
+- Dashboard: bearer token held in `sessionStorage`, CSP / `X-Frame-Options` headers,
+  HTML-escaped rendering.
+
+### Fixed
+
+- `auto_checkpoint` wrote a format that `load_state` could not read; it now uses `save()`.
+- A backend raising `TypeError` was retried without `state`, calling the model twice.
+- Missing `Mapping` import in `nsa.runtime.inference.ollama`.
+- Consolidation no longer feeds action ids into the predictor.
+- Removed four stray workflow files from the repository root.
+- Research benchmarks v1–v4 had validity problems (key-pool wraparound, unequal
+  decoding, an invalid v1 control, byte-identical v2 memory conditions, hard-coded
+  stale metric). Pre-fix results are legacy; see `research/BENCHMARK_VALIDITY.md`.
+
 ## [0.7.0] - 2026-10-06
 
 ### Added

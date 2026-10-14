@@ -1,5 +1,8 @@
 # Research Benchmark v3 — Temporal Canonical Memory
 
+> **Validity notice:** results from the original (pre-fix) run are unreliable — see [BENCHMARK_VALIDITY.md](BENCHMARK_VALIDITY.md). Use the corrected benchmark version.
+
+
 ## Purpose
 
 Benchmark temporal memory after v2 showed that append-only retrieval can find the right memory while still exposing stale superseded versions to a small model.

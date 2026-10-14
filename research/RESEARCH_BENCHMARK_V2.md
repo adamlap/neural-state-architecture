@@ -1,5 +1,8 @@
 # NSA Research Benchmark v2 — Selective Persistent Memory
 
+> **Validity notice:** results from the original (pre-fix) run are unreliable — see [BENCHMARK_VALIDITY.md](BENCHMARK_VALIDITY.md). Use the corrected benchmark version.
+
+
 ## Purpose
 
 Benchmark v1 showed that the current compact cognitive/state prompt is measurably better than NSA without state, but it loses long-range facts and is much slower than bounded context. v2 isolates the missing mechanism: **persistent selective retrieval**.

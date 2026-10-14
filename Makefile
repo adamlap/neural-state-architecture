@@ -149,7 +149,7 @@ RESEARCH_SEEDS ?= 7 17 37
 RESEARCH_DELAYS ?= 2 6 12 20
 RESEARCH_TRIALS ?= 2
 RESEARCH_HISTORY_LIMIT ?= 6
-RESEARCH_OUT ?= results/research-v1
+RESEARCH_OUT ?= results/research-v1.1
 
 benchmark-research-v1: ## Run the falsifiable longitudinal/state benchmark against local Ollama models
 	@if [ -n "$(UV)" ]; then \
@@ -173,7 +173,7 @@ RESEARCH_V2_TRIALS ?= 2
 RESEARCH_V2_HISTORY_LIMIT ?= 6
 RESEARCH_V2_MEMORY_LIMIT ?= 3
 RESEARCH_V2_TIMEOUT ?= 300
-RESEARCH_V2_OUT ?= results/research-v2
+RESEARCH_V2_OUT ?= results/research-v2.1
 
 benchmark-research-v2: ## Run selective persistent-memory benchmark against local Ollama models
 	@if [ -n "$(UV)" ]; then \

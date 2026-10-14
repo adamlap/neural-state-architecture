@@ -1,5 +1,8 @@
 # NSA Research Benchmark v1
 
+> **Validity notice:** results from the original (pre-fix) run are unreliable — see [BENCHMARK_VALIDITY.md](BENCHMARK_VALIDITY.md). Use the corrected benchmark version.
+
+
 ## Purpose
 
 This suite tests whether explicit NSA state changes longitudinal model behaviour, rather than merely adding another prompt wrapper.
