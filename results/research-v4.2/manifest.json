@@ -1,0 +1,1452 @@
+{
+  "benchmark": "NSA Research Benchmark v4",
+  "version": "4.2",
+  "generated_at_utc": "2026-10-14T16:33:51.131245+00:00",
+  "models": [
+    "qwen2.5:1.5b"
+  ],
+  "seeds": [
+    7,
+    17,
+    37
+  ],
+  "trials": 2,
+  "distractors": [
+    10,
+    250,
+    1000
+  ],
+  "history_limit": 6,
+  "memory_limit": 3,
+  "generator": "unique",
+  "instruction": "plain",
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 32,
+    "num_ctx": 32768
+  },
+  "conditions": [
+    "raw",
+    "transcript",
+    "bounded",
+    "nsa_history",
+    "nsa_state",
+    "append_memory",
+    "temporal_memory",
+    "nsa_temporal_memory",
+    "nsa_temporal_memory_nohist"
+  ],
+  "tasks": [
+    "recall",
+    "interference",
+    "supersession_current",
+    "supersession_history",
+    "multi_current"
+  ],
+  "episodes_recorded": 810,
+  "carried_over": {
+    "records": 540,
+    "sources": [
+      "research-v4.1 v4.1"
+    ],
+    "conditions": [
+      "append_memory",
+      "bounded",
+      "nsa_history",
+      "nsa_state",
+      "raw",
+      "transcript"
+    ]
+  },
+  "hypotheses": {
+    "H13": "Temporal memory exposes explicit CURRENT versus SUPERSEDED semantics to the model.",
+    "H14": "Memory retrieval correctness can be measured independently from final model-answer correctness.",
+    "H15": "Historical retrieval remains correct when the previous value is explicitly labeled SUPERSEDED and the current value is provided as CURRENT_VALUE.",
+    "H16": "Temporal memory retains its accuracy/latency advantage over cognitive-state-only context without requiring cognitive machinery.",
+    "H17": "nsa_state differs from nsa_history (same window, no state text) only if the serialised state carries task-relevant information.",
+    "H18": "Recent observations compete with retrieved memory: suppressing them when memory is attached raises nsa_temporal_memory accuracy (compare nsa_temporal_memory_nohist)."
+  },
+  "scientific_boundary": "Deterministic extraction isolates storage/retrieval semantics. v4 does not test autonomous LLM memory formation; the extractor is a keyed lookup oracle.",
+  "metrics": "accuracy = strict exact match; accuracy_lenient also accepts wrapper punctuation and echoed VERSION/STATUS suffixes.",
+  "summary": {
+    "raw": {
+      "n": 90,
+      "accuracy": 0.0,
+      "accuracy_ci95": [
+        0.0,
+        0.04093706842168078
+      ],
+      "accuracy_lenient": 0.0,
+      "accuracy_lenient_ci95": [
+        0.0,
+        0.04093706842168078
+      ],
+      "memory_retrieval_correct_rate": null,
+      "retrieval_answer_gap": null,
+      "timeouts": 0,
+      "truncated": 0,
+      "latency_seconds_mean": 0.6911744444444444,
+      "prompt_chars_mean": 208.8,
+      "memory_items_mean": 0,
+      "retrieved_items_mean": 0,
+      "retrieval_hit_rate": 0.0,
+      "stale_memory_rate": 0.0
+    },
+    "transcript": {
+      "n": 90,
+      "accuracy": 0.9111111111111111,
+      "accuracy_ci95": [
+        0.8342928001780631,
+        0.9542700546752215
+      ],
+      "accuracy_lenient": 0.9111111111111111,
+      "accuracy_lenient_ci95": [
+        0.8342928001780631,
+        0.9542700546752215
+      ],
+      "memory_retrieval_correct_rate": null,
+      "retrieval_answer_gap": null,
+      "timeouts": 0,
+      "truncated": 0,
+      "latency_seconds_mean": 102.75973444444445,
+      "prompt_chars_mean": 19601.933333333334,
+      "memory_items_mean": 0,
+      "retrieved_items_mean": 464,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "bounded": {
+      "n": 90,
+      "accuracy": 0.011111111111111112,
+      "accuracy_ci95": [
+        0.001964033535512348,
+        0.06028554447679776
+      ],
+      "accuracy_lenient": 0.011111111111111112,
+      "accuracy_lenient_ci95": [
+        0.001964033535512348,
+        0.06028554447679776
+      ],
+      "memory_retrieval_correct_rate": null,
+      "retrieval_answer_gap": null,
+      "timeouts": 0,
+      "truncated": 0,
+      "latency_seconds_mean": 11.939502222222222,
+      "prompt_chars_mean": 456.06666666666666,
+      "memory_items_mean": 0,
+      "retrieved_items_mean": 6,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "nsa_history": {
+      "n": 90,
+      "accuracy": 0.011111111111111112,
+      "accuracy_ci95": [
+        0.001964033535512348,
+        0.06028554447679776
+      ],
+      "accuracy_lenient": 0.011111111111111112,
+      "accuracy_lenient_ci95": [
+        0.001964033535512348,
+        0.06028554447679776
+      ],
+      "memory_retrieval_correct_rate": null,
+      "retrieval_answer_gap": null,
+      "timeouts": 0,
+      "truncated": 0,
+      "latency_seconds_mean": 2.3801144444444446,
+      "prompt_chars_mean": 536.0666666666667,
+      "memory_items_mean": 0,
+      "retrieved_items_mean": 0,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "nsa_state": {
+      "n": 90,
+      "accuracy": 0.0,
+      "accuracy_ci95": [
+        0.0,
+        0.04093706842168078
+      ],
+      "accuracy_lenient": 0.0,
+      "accuracy_lenient_ci95": [
+        0.0,
+        0.04093706842168078
+      ],
+      "memory_retrieval_correct_rate": null,
+      "retrieval_answer_gap": null,
+      "timeouts": 0,
+      "truncated": 0,
+      "latency_seconds_mean": 6.390295555555555,
+      "prompt_chars_mean": 4428.066666666667,
+      "memory_items_mean": 0,
+      "retrieved_items_mean": 0,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "append_memory": {
+      "n": 90,
+      "accuracy": 1.0,
+      "accuracy_ci95": [
+        0.959062931578319,
+        0.9999999999999998
+      ],
+      "accuracy_lenient": 1.0,
+      "accuracy_lenient_ci95": [
+        0.959062931578319,
+        0.9999999999999998
+      ],
+      "memory_retrieval_correct_rate": 1.0,
+      "retrieval_answer_gap": 0.0,
+      "timeouts": 0,
+      "truncated": 0,
+      "latency_seconds_mean": 0.9639411111111111,
+      "prompt_chars_mean": 267.2,
+      "memory_items_mean": 464,
+      "retrieved_items_mean": 1.8,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.2
+    },
+    "temporal_memory": {
+      "n": 90,
+      "accuracy": 0.9666666666666667,
+      "accuracy_ci95": [
+        0.9065255864388707,
+        0.9885998163675604
+      ],
+      "accuracy_lenient": 0.9888888888888889,
+      "accuracy_lenient_ci95": [
+        0.9397144555232021,
+        0.9980359664644874
+      ],
+      "memory_retrieval_correct_rate": 1.0,
+      "retrieval_answer_gap": 0.011111111111111112,
+      "timeouts": 0,
+      "truncated": 0,
+      "latency_seconds_mean": 0.99946,
+      "prompt_chars_mean": 293.6,
+      "memory_items_mean": 464,
+      "retrieved_items_mean": 1.4,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "nsa_temporal_memory": {
+      "n": 90,
+      "accuracy": 0.8666666666666667,
+      "accuracy_ci95": [
+        0.7812588689264784,
+        0.9220539475642889
+      ],
+      "accuracy_lenient": 0.8666666666666667,
+      "accuracy_lenient_ci95": [
+        0.7812588689264784,
+        0.9220539475642889
+      ],
+      "memory_retrieval_correct_rate": 1.0,
+      "retrieval_answer_gap": 0.13333333333333333,
+      "timeouts": 0,
+      "truncated": 0,
+      "latency_seconds_mean": 4.87355,
+      "prompt_chars_mean": 4527.066666666667,
+      "memory_items_mean": 464,
+      "retrieved_items_mean": 1.4,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    },
+    "nsa_temporal_memory_nohist": {
+      "n": 90,
+      "accuracy": 1.0,
+      "accuracy_ci95": [
+        0.959062931578319,
+        0.9999999999999998
+      ],
+      "accuracy_lenient": 1.0,
+      "accuracy_lenient_ci95": [
+        0.959062931578319,
+        0.9999999999999998
+      ],
+      "memory_retrieval_correct_rate": 1.0,
+      "retrieval_answer_gap": 0.0,
+      "timeouts": 0,
+      "truncated": 0,
+      "latency_seconds_mean": 1.1083844444444444,
+      "prompt_chars_mean": 4274.866666666667,
+      "memory_items_mean": 464,
+      "retrieved_items_mean": 1.4,
+      "retrieval_hit_rate": 1.0,
+      "stale_memory_rate": 0.0
+    }
+  },
+  "by_task": {
+    "recall": {
+      "raw": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.5545,
+        "prompt_chars_mean": 196,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 0.0,
+        "stale_memory_rate": 0.0
+      },
+      "transcript": {
+        "n": 18,
+        "accuracy": 0.9444444444444444,
+        "accuracy_ci95": [
+          0.7424220019799247,
+          0.9901250641690756
+        ],
+        "accuracy_lenient": 0.9444444444444444,
+        "accuracy_lenient_ci95": [
+          0.7424220019799247,
+          0.9901250641690756
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 114.14554444444445,
+        "prompt_chars_mean": 17782.333333333332,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 421,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "bounded": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.6669611111111111,
+        "prompt_chars_mean": 443.3333333333333,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 6,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_history": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.6725666666666668,
+        "prompt_chars_mean": 523.3333333333334,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_state": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 6.656783333333333,
+        "prompt_chars_mean": 4365,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "append_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.7634111111111112,
+        "prompt_chars_mean": 236,
+        "memory_items_mean": 421,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "temporal_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.9654166666666667,
+        "prompt_chars_mean": 261,
+        "memory_items_mean": 421,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 4.62485,
+        "prompt_chars_mean": 4430,
+        "memory_items_mean": 421,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory_nohist": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.0011388888888888,
+        "prompt_chars_mean": 4114.666666666667,
+        "memory_items_mean": 421,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      }
+    },
+    "interference": {
+      "raw": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.6164222222222222,
+        "prompt_chars_mean": 196,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 0.0,
+        "stale_memory_rate": 0.0
+      },
+      "transcript": {
+        "n": 18,
+        "accuracy": 0.6111111111111112,
+        "accuracy_ci95": [
+          0.3861866858065617,
+          0.7969500807306884
+        ],
+        "accuracy_lenient": 0.6111111111111112,
+        "accuracy_lenient_ci95": [
+          0.3861866858065617,
+          0.7969500807306884
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 142.91858333333332,
+        "prompt_chars_mean": 26557.333333333332,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 631,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "bounded": {
+        "n": 18,
+        "accuracy": 0.05555555555555555,
+        "accuracy_ci95": [
+          0.009874935830924522,
+          0.2575779980200754
+        ],
+        "accuracy_lenient": 0.05555555555555555,
+        "accuracy_lenient_ci95": [
+          0.009874935830924522,
+          0.2575779980200754
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 2.282288888888889,
+        "prompt_chars_mean": 443,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 6,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_history": {
+        "n": 18,
+        "accuracy": 0.05555555555555555,
+        "accuracy_ci95": [
+          0.009874935830924522,
+          0.2575779980200754
+        ],
+        "accuracy_lenient": 0.05555555555555555,
+        "accuracy_lenient_ci95": [
+          0.009874935830924522,
+          0.2575779980200754
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.8069277777777777,
+        "prompt_chars_mean": 523,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_state": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 6.6955,
+        "prompt_chars_mean": 4440.666666666667,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "append_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.8776555555555555,
+        "prompt_chars_mean": 236,
+        "memory_items_mean": 631,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "temporal_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.7600944444444444,
+        "prompt_chars_mean": 261,
+        "memory_items_mean": 631,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 4.7491055555555555,
+        "prompt_chars_mean": 4505.666666666667,
+        "memory_items_mean": 631,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory_nohist": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.0876944444444445,
+        "prompt_chars_mean": 4190.666666666667,
+        "memory_items_mean": 631,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      }
+    },
+    "supersession_current": {
+      "raw": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.5459722222222222,
+        "prompt_chars_mean": 196,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 0.0,
+        "stale_memory_rate": 0.0
+      },
+      "transcript": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 113.85801111111111,
+        "prompt_chars_mean": 17859.333333333332,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 422,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "bounded": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.2085611111111112,
+        "prompt_chars_mean": 443.3333333333333,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 6,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_history": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 5.669261111111111,
+        "prompt_chars_mean": 523.3333333333334,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_state": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 6.268111111111111,
+        "prompt_chars_mean": 4394.333333333333,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "append_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.7263555555555555,
+        "prompt_chars_mean": 261,
+        "memory_items_mean": 422,
+        "retrieved_items_mean": 2,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 1.0
+      },
+      "temporal_memory": {
+        "n": 18,
+        "accuracy": 0.8333333333333334,
+        "accuracy_ci95": [
+          0.6077750036164077,
+          0.9416352959953425
+        ],
+        "accuracy_lenient": 0.9444444444444444,
+        "accuracy_lenient_ci95": [
+          0.7424220019799247,
+          0.9901250641690756
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.05555555555555555,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.6834,
+        "prompt_chars_mean": 265,
+        "memory_items_mean": 422,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory": {
+        "n": 18,
+        "accuracy": 0.3888888888888889,
+        "accuracy_ci95": [
+          0.2030499192693116,
+          0.6138133141934383
+        ],
+        "accuracy_lenient": 0.3888888888888889,
+        "accuracy_lenient_ci95": [
+          0.2030499192693116,
+          0.6138133141934383
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.6111111111111112,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 4.671294444444444,
+        "prompt_chars_mean": 4463.333333333333,
+        "memory_items_mean": 422,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory_nohist": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.9096444444444445,
+        "prompt_chars_mean": 4148,
+        "memory_items_mean": 422,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      }
+    },
+    "supersession_history": {
+      "raw": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.5398055555555555,
+        "prompt_chars_mean": 198,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 0.0,
+        "stale_memory_rate": 0.0
+      },
+      "transcript": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 23.79466111111111,
+        "prompt_chars_mean": 17861.333333333332,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 422,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "bounded": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.0201777777777778,
+        "prompt_chars_mean": 445.3333333333333,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 6,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_history": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.9610277777777778,
+        "prompt_chars_mean": 525.3333333333334,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_state": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 4.448916666666666,
+        "prompt_chars_mean": 4398.333333333333,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "append_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.7549555555555556,
+        "prompt_chars_mean": 263,
+        "memory_items_mean": 422,
+        "retrieved_items_mean": 2,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "temporal_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.7906666666666666,
+        "prompt_chars_mean": 266,
+        "memory_items_mean": 422,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 4.118955555555556,
+        "prompt_chars_mean": 4537.333333333333,
+        "memory_items_mean": 422,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory_nohist": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 0.44908888888888887,
+        "prompt_chars_mean": 4537.333333333333,
+        "memory_items_mean": 422,
+        "retrieved_items_mean": 1,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      }
+    },
+    "multi_current": {
+      "raw": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.1991722222222223,
+        "prompt_chars_mean": 258,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 0.0,
+        "stale_memory_rate": 0.0
+      },
+      "transcript": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 119.08187222222222,
+        "prompt_chars_mean": 17949.333333333332,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 424,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "bounded": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 53.51952222222222,
+        "prompt_chars_mean": 505.3333333333333,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 6,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_history": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.790788888888889,
+        "prompt_chars_mean": 585.3333333333334,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_state": {
+        "n": 18,
+        "accuracy": 0.0,
+        "accuracy_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "accuracy_lenient": 0.0,
+        "accuracy_lenient_ci95": [
+          0.0,
+          0.1758845505823749
+        ],
+        "memory_retrieval_correct_rate": null,
+        "retrieval_answer_gap": null,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 7.8821666666666665,
+        "prompt_chars_mean": 4542,
+        "memory_items_mean": 0,
+        "retrieved_items_mean": 0,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "append_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.6973277777777778,
+        "prompt_chars_mean": 340,
+        "memory_items_mean": 424,
+        "retrieved_items_mean": 3,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "temporal_memory": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 1.7977222222222222,
+        "prompt_chars_mean": 415,
+        "memory_items_mean": 424,
+        "retrieved_items_mean": 3,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory": {
+        "n": 18,
+        "accuracy": 0.9444444444444444,
+        "accuracy_ci95": [
+          0.7424220019799247,
+          0.9901250641690756
+        ],
+        "accuracy_lenient": 0.9444444444444444,
+        "accuracy_lenient_ci95": [
+          0.7424220019799247,
+          0.9901250641690756
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.05555555555555555,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 6.203544444444445,
+        "prompt_chars_mean": 4699,
+        "memory_items_mean": 424,
+        "retrieved_items_mean": 3,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      },
+      "nsa_temporal_memory_nohist": {
+        "n": 18,
+        "accuracy": 1.0,
+        "accuracy_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "accuracy_lenient": 1.0,
+        "accuracy_lenient_ci95": [
+          0.8241154494176252,
+          1.0
+        ],
+        "memory_retrieval_correct_rate": 1.0,
+        "retrieval_answer_gap": 0.0,
+        "timeouts": 0,
+        "truncated": 0,
+        "latency_seconds_mean": 2.0943555555555555,
+        "prompt_chars_mean": 4383.666666666667,
+        "memory_items_mean": 424,
+        "retrieved_items_mean": 3,
+        "retrieval_hit_rate": 1.0,
+        "stale_memory_rate": 0.0
+      }
+    }
+  },
+  "paired_tests_lenient": [
+    {
+      "first": "nsa_state",
+      "second": "nsa_history",
+      "metric": "correct_lenient",
+      "paired": 90,
+      "only_first": 0,
+      "only_second": 1,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "first": "nsa_history",
+      "second": "bounded",
+      "metric": "correct_lenient",
+      "paired": 90,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "first": "temporal_memory",
+      "second": "append_memory",
+      "metric": "correct_lenient",
+      "paired": 90,
+      "only_first": 0,
+      "only_second": 1,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "first": "nsa_temporal_memory",
+      "second": "temporal_memory",
+      "metric": "correct_lenient",
+      "paired": 90,
+      "only_first": 0,
+      "only_second": 11,
+      "p": 0.0009765625,
+      "p_holm": 0.005859375
+    },
+    {
+      "first": "temporal_memory",
+      "second": "transcript",
+      "metric": "correct_lenient",
+      "paired": 90,
+      "only_first": 8,
+      "only_second": 1,
+      "p": 0.0390625,
+      "p_holm": 0.15625
+    },
+    {
+      "first": "append_memory",
+      "second": "transcript",
+      "metric": "correct_lenient",
+      "paired": 90,
+      "only_first": 8,
+      "only_second": 0,
+      "p": 0.0078125,
+      "p_holm": 0.0390625
+    }
+  ],
+  "paired_tests_strict": [
+    {
+      "first": "nsa_state",
+      "second": "nsa_history",
+      "metric": "correct",
+      "paired": 90,
+      "only_first": 0,
+      "only_second": 1,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "first": "nsa_history",
+      "second": "bounded",
+      "metric": "correct",
+      "paired": 90,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "first": "temporal_memory",
+      "second": "append_memory",
+      "metric": "correct",
+      "paired": 90,
+      "only_first": 0,
+      "only_second": 3,
+      "p": 0.25,
+      "p_holm": 0.90625
+    },
+    {
+      "first": "nsa_temporal_memory",
+      "second": "temporal_memory",
+      "metric": "correct",
+      "paired": 90,
+      "only_first": 0,
+      "only_second": 9,
+      "p": 0.00390625,
+      "p_holm": 0.0234375
+    },
+    {
+      "first": "temporal_memory",
+      "second": "transcript",
+      "metric": "correct",
+      "paired": 90,
+      "only_first": 8,
+      "only_second": 3,
+      "p": 0.2265625,
+      "p_holm": 0.90625
+    },
+    {
+      "first": "append_memory",
+      "second": "transcript",
+      "metric": "correct",
+      "paired": 90,
+      "only_first": 8,
+      "only_second": 0,
+      "p": 0.0078125,
+      "p_holm": 0.0390625
+    }
+  ],
+  "raw_artifact": "results/research-v4.2/raw.jsonl"
+}

@@ -1,0 +1,12 @@
+{
+  "version": "4.2",
+  "generator": "unique",
+  "instruction": "plain",
+  "history_limit": 6,
+  "memory_limit": 3,
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 32,
+    "num_ctx": 32768
+  }
+}
