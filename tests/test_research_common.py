@@ -137,3 +137,27 @@ def test_ollama_num_ctx_is_sent_explicitly(monkeypatch):
     backend.generate("x" * 5000, num_ctx=32768)          # long prompt must not flip the size
     backend.generate("x" * 5000)                         # legacy heuristic unchanged
     assert [p["options"].get("num_ctx") for p in sent] == [32768, 32768, 8192]
+
+
+def test_fixed_decoding_retries_transient_5xx_once():
+    from types import SimpleNamespace
+    from experiments.research_common.backends import FixedDecodingBackend
+
+    class Flaky:
+        calls = 0
+        def generate(self, prompt, **kw):
+            Flaky.calls += 1
+            if Flaky.calls == 1:
+                raise RuntimeError("ERROR: ... failed: HTTP Error 500: Internal Server Error")
+            return SimpleNamespace(text="VALUE=X", raw_response={})
+
+    out = FixedDecodingBackend(Flaky(), retry_delay=0).generate("p")
+    assert out.text == "VALUE=X" and Flaky.calls == 2
+
+    class Broken:
+        def generate(self, prompt, **kw):
+            raise RuntimeError("HTTP Error 500: Internal Server Error")
+
+    import pytest
+    with pytest.raises(RuntimeError):
+        FixedDecodingBackend(Broken(), retry_delay=0).generate("p")

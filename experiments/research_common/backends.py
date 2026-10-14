@@ -1,6 +1,7 @@
 """Decoding wrapper so every benchmark condition is generated identically."""
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -33,12 +34,13 @@ class FixedDecodingBackend:
     which differs from anything reconstructed afterwards (e.g. via agent._prompt()).
     """
 
-    def __init__(self, inner: Any, *, temperature: float = 0.0, max_tokens: int = 32, num_ctx: int | None = 32768):
+    def __init__(self, inner: Any, *, temperature: float = 0.0, max_tokens: int = 32, num_ctx: int | None = 32768, retry_delay: float = 5.0):
         self.inner = inner
         self.model = getattr(inner, "model", getattr(inner, "model_name", "unknown"))
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.num_ctx = num_ctx
+        self.retry_delay = retry_delay
         self.last: Generation | None = None
 
     def generate(self, prompt: str, *, state: Any = None, **_ignored: Any):
@@ -48,7 +50,15 @@ class FixedDecodingBackend:
         if state is not None:
             kwargs["state"] = state
         try:
-            out = self.inner.generate(prompt, **kwargs)
+            try:
+                out = self.inner.generate(prompt, **kwargs)
+            except RuntimeError as err:
+                # A transient server fault (e.g. the Ollama runner restarting after a very
+                # long prompt) answers HTTP 5xx. Retry once; a persistent fault still raises.
+                if "http error 5" not in str(err).lower():
+                    raise
+                time.sleep(self.retry_delay)
+                out = self.inner.generate(prompt, **kwargs)
         except RuntimeError as err:
             message = str(err).lower()
             if "timed out" in message or "timeout" in message:
