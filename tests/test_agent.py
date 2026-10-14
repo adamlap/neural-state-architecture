@@ -199,3 +199,12 @@ def test_backends_without_a_state_parameter_still_work():
             return "ok"
 
     assert NSA(Plain(), config=RuntimeConfig(include_state_in_prompt=False)).step("x").text == "ok"
+
+
+def test_runtime_remember_threads_the_integrity_label_to_memory():
+    from nsa.algebra import IntegrityLabel
+
+    agent = NSA(_Recorder(), config=RuntimeConfig(memory_enabled=True))
+    agent.remember("K", {"value": "good"})
+    agent.remember("K", {"value": "bad"}, kind="update", integrity=IntegrityLabel.UNTRUSTED)
+    assert agent.recall(["K"])[0]["value"] == "good"

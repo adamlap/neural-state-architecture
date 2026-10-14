@@ -127,3 +127,46 @@ def test_memory_store_still_rejects_duplicate_ids_after_many_writes():
     with pytest.raises(ValueError, match="duplicate"):
         store.write(MemoryItem("m7", {}, "fact"))
     assert len(store.items) == 50 and store == MemoryStore(store.items)
+
+
+def test_untrusted_write_cannot_supersede_a_trusted_value():
+    from nsa.algebra import IntegrityLabel
+
+    memory = TemporalMemoryStore()
+    memory = memory.remember("owner", {"value": "alice"})
+    memory = memory.remember("owner", {"value": "mallory"}, kind="update", integrity=IntegrityLabel.UNTRUSTED)
+
+    assert memory.current("owner").content["value"] == "alice"
+    assert "mallory" not in memory.render(["owner"])
+    assert "mallory" not in memory.render(["owner"], mode="history")
+    assert [i.content["value"] for i in memory.history("owner")] == ["alice"]
+    # audit trail keeps it, flagged, and it never entered the version chain
+    (blocked,) = memory.quarantined()
+    assert blocked.content["value"] == "mallory" and blocked.content["blocked_version"] == 1
+    assert len(memory.store.items) == 2
+
+
+def test_trusted_write_still_supersedes_and_untrusted_can_update_untrusted():
+    from nsa.algebra import IntegrityLabel
+
+    memory = TemporalMemoryStore().remember("k", {"value": "u1"}, integrity=IntegrityLabel.UNTRUSTED)
+    memory = memory.remember("k", {"value": "u2"}, kind="update", integrity=IntegrityLabel.UNTRUSTED)
+    assert memory.current("k").content["value"] == "u2" and not memory.quarantined()
+    memory = memory.remember("k", {"value": "t1"}, kind="update")          # trusted wins
+    assert memory.current("k").content["value"] == "t1" and memory.current("k").content["version"] == 3
+    memory = memory.remember("k", {"value": "u3"}, kind="update", integrity=IntegrityLabel.UNTRUSTED)
+    assert memory.current("k").content["value"] == "t1" and len(memory.quarantined()) == 1
+
+
+def test_quarantine_survives_rebuilding_the_index_from_items():
+    from nsa.algebra import IntegrityLabel
+
+    memory = TemporalMemoryStore().remember("k", {"value": "a"})
+    memory = memory.remember("k", {"value": "evil"}, integrity=IntegrityLabel.UNTRUSTED)
+    rebuilt = TemporalMemoryStore(store=memory.store)
+    assert rebuilt.current("k").content["value"] == "a" and len(rebuilt.quarantined()) == 1
+
+
+def test_default_integrity_is_trusted_so_existing_callers_are_unchanged():
+    memory = TemporalMemoryStore().remember("k", {"value": "a"}).remember("k", {"value": "b"}, kind="update")
+    assert memory.current("k").content["value"] == "b" and not memory.quarantined()

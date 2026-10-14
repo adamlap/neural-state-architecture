@@ -11,12 +11,21 @@ re-asserts a previously superseded value (``reasserts_version``) and whether it
 overrides an explicit update with a plain fact (``overrides_update``);
 ``conflicts()`` returns the keys where that happened so callers can decide what
 to do instead of discovering it from a wrong answer.
+
+Integrity gate: every write carries an ``IntegrityLabel`` (``TRUSTED`` by default). An
+``UNTRUSTED`` write may *not* supersede a ``TRUSTED`` current value. It is appended to the
+episodic store for audit with ``quarantined=True`` but never enters the canonical version
+chain, so no retrieval path (current, history, render) can return it. A ``TRUSTED`` write
+always supersedes. The label is supplied by the caller out of band (the ingress path that
+knows where the bytes came from); text inside the content cannot raise it.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
+
+from nsa.algebra import IntegrityLabel
 
 from .model import MemoryItem, MemoryStore
 
@@ -39,7 +48,7 @@ class TemporalMemoryStore:
             index: dict[str, list[MemoryItem]] = {}
             for item in self.store.items:
                 content = item.content
-                if isinstance(content, Mapping) and "memory_key" in content:
+                if isinstance(content, Mapping) and "memory_key" in content and not content.get("quarantined"):
                     index.setdefault(_norm(content["memory_key"]), []).append(item)
             object.__setattr__(self, "_index", {k: tuple(v) for k, v in index.items()})
 
@@ -52,6 +61,7 @@ class TemporalMemoryStore:
         provenance_ids: Sequence[str] = (),
         sensitivity: str = "normal",
         created_at: datetime | None = None,
+        integrity: IntegrityLabel = IntegrityLabel.TRUSTED,
     ) -> "TemporalMemoryStore":
         key = str(key).strip()
         if not key:
@@ -61,6 +71,23 @@ class TemporalMemoryStore:
         ordinal = len(self.store.items)
         payload = dict(content) if isinstance(content, Mapping) else {"value": content}
         version = int(current.content.get("version", 0)) + 1 if current else 1
+        payload.update({"integrity": integrity.name})
+        if (
+            current is not None
+            and integrity is IntegrityLabel.UNTRUSTED
+            and current.content.get("integrity", IntegrityLabel.TRUSTED.name) == IntegrityLabel.TRUSTED.name
+        ):
+            # Audit-only: kept in the episodic store, absent from the canonical index.
+            payload.update({"memory_key": key, "quarantined": True, "blocked_version": int(current.content.get("version", 0))})
+            item = MemoryItem(
+                memory_id=f"tm-{ordinal:08d}", content=payload, kind=kind,
+                provenance_ids=tuple(provenance_ids), sensitivity=sensitivity,
+                created_at=created_at or datetime.now(timezone.utc),
+            )
+            successor = object.__new__(TemporalMemoryStore)
+            object.__setattr__(successor, "store", self.store.write(item))
+            object.__setattr__(successor, "_index", self._index)
+            return successor
         payload.update({
             "memory_key": key,
             "version": version,
@@ -97,6 +124,13 @@ class TemporalMemoryStore:
 
     def current(self, key: str) -> MemoryItem | None:
         return self._current_of(self.versions(key))
+
+    def quarantined(self) -> tuple[MemoryItem, ...]:
+        """Writes rejected by the integrity gate, in write order (for audit)."""
+        return tuple(
+            i for i in self.store.items
+            if isinstance(i.content, Mapping) and i.content.get("quarantined")
+        )
 
     def conflicts(self) -> tuple[MemoryItem, ...]:
         """Versions that re-assert a superseded value or override an explicit update."""

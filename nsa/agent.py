@@ -9,6 +9,7 @@ from nsa.cce.lifecycle import CognitiveInputEvent, StateCheckpointStore
 from nsa.cognition.embodied import ActiveCognition, ActiveCognitionState
 from nsa.cognition.substrate import CognitiveState, CognitiveSubstrate, CognitiveSwitches
 from nsa.core.state import CanonicalState, GoalState, SemanticState
+from nsa.algebra import IntegrityLabel
 from nsa.enforcement import EvaluationContext, PolicyEngine
 from nsa.policy import NSAPolicy
 from nsa.core.state_codec import decode_state, encode_state
@@ -170,10 +171,13 @@ class NSARuntime:
             parts.append(f"RECENT_OBSERVATIONS=\n{context}" if context else "RECENT_OBSERVATIONS=(none)")
         return "\n".join(parts) + f"\n\nUSER_INPUT={prompt}"
 
-    def remember(self, key: str, value: Any, *, kind: str = "fact", provenance_ids: Sequence[str] = ()) -> None:
+    def remember(self, key: str, value: Any, *, kind: str = "fact", provenance_ids: Sequence[str] = (),
+                 integrity: IntegrityLabel = IntegrityLabel.TRUSTED) -> None:
+        """Write to canonical memory. ``integrity`` is the label of the *source* of this write,
+        supplied by the caller's ingress path; an UNTRUSTED write cannot supersede a TRUSTED value."""
         if self.memory is None:
             raise RuntimeError("memory is not enabled")
-        self.memory = self.memory.remember(key, value, kind=kind, provenance_ids=provenance_ids)
+        self.memory = self.memory.remember(key, value, kind=kind, provenance_ids=provenance_ids, integrity=integrity)
 
     def recall(self, keys: Sequence[str], *, limit: int | None = None) -> tuple[dict[str, Any], ...]:
         if self.memory is None:
