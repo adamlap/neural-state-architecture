@@ -145,6 +145,7 @@ class OllamaInferenceBackend(InferenceBackend):
         extract_hidden: bool = False,
         json_format: bool = False,
         state: Optional[Mapping[str, Any]] = None,
+        num_ctx: Optional[int] = None,
         **kwargs: Any,
     ) -> LLMGenerationOutput:
         if self.mode == BackendMode.MOCK:
@@ -189,7 +190,11 @@ class OllamaInferenceBackend(InferenceBackend):
                 "temperature": temperature,
             },
         }
-        if state is not None or len(prompt) > 4000:
+        if num_ctx is not None:
+            # Explicit context size: identical for every call, so conditions are
+            # comparable and Ollama does not reload the model when it changes.
+            payload["options"]["num_ctx"] = int(num_ctx)
+        elif state is not None or len(prompt) > 4000:
             payload["options"]["num_ctx"] = 16384 if len(prompt) > 16000 else 8192
         if json_format:
             payload["format"] = "json"
