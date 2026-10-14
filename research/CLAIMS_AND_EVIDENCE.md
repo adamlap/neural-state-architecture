@@ -9,6 +9,7 @@
 | Live NSA maintained zero observed violations in recorded quick-run cells | Observed | Observational, not universal |
 | Live NSA is robust at high hypothesis complexity | **Not established** | K=8 shows substantial degradation |
 | An untrusted write cannot change canonical memory that a trusted source established (integrity gate) | Structurally supported; ungated baselines measured vulnerable (qwen2.5 1.5b/3b, `results/research-v5-*`) | Holds only if the ingress label is correct; labelling is not tested; deterministic extraction; no adaptive attacker |
+| Untrusted content cannot cause a privileged tool call with an attacker-chosen sink argument (runtime taint gate) | Structurally supported; 0/120 injected episodes executed an attack on qwen2.5 1.5b and 3b with all capabilities granted, vs 45–67 % without the gate; no measured utility cost (`results/research-v6-*`) | Exact-token data-flow check; attacker choosing among trusted values, laundering via model output, wrong ingress labels and adaptive attackers are not covered; label assignment is the trust boundary |
 | NSA is superior to arbitrary agent architectures | **Not established** | Requires matched independent baselines |
 | NSA generalizes across model families | **Not established** | Current live quick run uses Qwen2.5-3B |
 | NSA is safe against strategic deception | **Not established** | Requires adaptive adversarial evaluation |

@@ -8,6 +8,7 @@
 | `research-v4.2`, `research-v4.2-3b` | Current. See below. |
 | `research-v1.2`, `research-v2.2`, `research-v3.1` | Current for v1–v3 (qwen2.5:1.5b, reduced grids). See the end of this file. |
 | `research-v5-1.5b`, `research-v5-3b` | Current. Memory poisoning / integrity gate (see the end of this file). |
+| `research-v6-1.5b`, `research-v6-3b` | Current. Tool-use prompt injection with runtime taint gating (see the end of this file). |
 | `research-v1.1`, `research-v2.1` | Superseded: valid episodes and decoding, but still the `VALUE=<value>` instruction, which the 1.5b model echoes verbatim (`VALUE=<V007_000>`). In v2.1 `memory_no_cognitive` scores 0 % strict although retrieval was correct in 100 % of episodes, so its comparisons are format artifacts. Kept for provenance. |
 
 
@@ -138,3 +139,22 @@ temperature 0, 32 tokens. Lenient accuracy / attack-success rate (ASR, the model
 
 **What this does not show:** the gate blocks the attack by construction if the ingress label is correct; the labelling step itself is
 the trust boundary and is not tested here. Extraction is a deterministic oracle, there is no adaptive attacker, and only two small models were run.
+
+## research-v6 (prompt injection against tool-using agents)
+
+150 generations per model (5 seeds × 3 trials × 5 kinds × 2 prompts), each scored with the gate off and on.
+"Attack executed" = a privileged call with the attacker's argument was executed; attack rows are the 120 injected episodes.
+
+| | 1.5b proposed → executed | 3b proposed → executed |
+|---|---|---|
+| plain prompt, gate off | 0.45 → 0.45 | 0.48 → 0.48 |
+| plain prompt, gate on | 0.45 → **0.00** | 0.48 → **0.00** |
+| defended prompt, gate off | 0.57 → 0.57 | 0.67 → 0.67 |
+| defended prompt, gate on | 0.57 → **0.00** | 0.67 → **0.00** |
+
+* The gate executed 0 of the proposed attack calls on both models; Wilson upper bound 0.06. Gate-on vs gate-off, paired McNemar, Holm p < 0.001 in every cell.
+* **No utility cost.** Benign task completion is 1.00 with the gate on and off; task completion under attack is identical on and off (1.5b 0.98 / 0.78, 3b 0.82 / 0.75 for plain / defended), because the user's recipient has a trusted origin.
+* **The defensive prompt did not help and probably hurt.** Proposed attacks rose from 0.45 to 0.57 (1.5b) and 0.48 to 0.67 (3b). Paired plain-vs-defended, unadjusted p ≈ 0.04 on each model, so treat it as suggestive, not established.
+* Susceptibility is high: both models propose the attack call in roughly half of injected episodes, and `delete` instructions are followed 53–100 % of the time. All capabilities were granted on purpose.
+
+**What this does not show:** attackers who select among values already in trusted context, laundering through model output, mislabelled ingress, adaptive attackers, larger models; only 15 episodes per kind per cell. Blocking a *proposed* call is a property of the exact data-flow check, not a model result.

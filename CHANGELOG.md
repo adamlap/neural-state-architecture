@@ -7,6 +7,11 @@ before 0.6.0 were not documented here; see git history.
 
 ### Added
 
+- Integrity/taint tracking in the agent runtime (`nsa/taint.py`): `CognitiveInputEvent.integrity`,
+  `RuntimeConfig.untrusted_sources`, `observe(integrity=...)`, `NSARuntime.context_integrity()` and
+  `NSARuntime.authorize_tool()` (typed `SecurityDecision`; unknown tool / missing capability → DENY; side-effect tool in a
+  tainted context with a sink argument lacking trusted origin → REQUIRE_APPROVAL). Default config is unchanged.
+  Benchmark: `research/RESEARCH_BENCHMARK_V6.md`.
 - Integrity-gated canonical memory: `TemporalMemoryStore.remember(integrity=...)` /
   `NSARuntime.remember(integrity=...)`. An `UNTRUSTED` write cannot supersede a `TRUSTED` value; it is
   quarantined (`TemporalMemoryStore.quarantined()`) and never retrievable. Default `TRUSTED` (unchanged behaviour).
