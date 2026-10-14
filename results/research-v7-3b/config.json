@@ -1,0 +1,14 @@
+{
+  "version": "7.0",
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 32,
+    "num_ctx": 32768
+  },
+  "abstain_above": 0.5,
+  "instructions": {
+    "generic": "Reply with exactly one line: VALUE= followed by the value token and nothing else (example: VALUE=V123_456). The value token never includes VERSION or STATUS. If the value is not in the information provided, reply VALUE=UNKNOWN.",
+    "keyed": "Reply with exactly one line: VALUE= followed by the value token and nothing else (example: VALUE=V123_456). The value token never includes VERSION or STATUS. Only if RETRIEVED_MEMORY is exactly NO_RELEVANT_MEMORY, reply VALUE=UNKNOWN instead.",
+    "none": "Reply with exactly one line: VALUE= followed by the value token and nothing else (example: VALUE=V123_456). The value token never includes VERSION or STATUS."
+  }
+}

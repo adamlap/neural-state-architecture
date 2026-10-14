@@ -9,6 +9,7 @@
 | `research-v1.2`, `research-v2.2`, `research-v3.1` | Current for v1–v3 (qwen2.5:1.5b, reduced grids). See the end of this file. |
 | `research-v5-1.5b`, `research-v5-3b` | Current. Memory poisoning / integrity gate (see the end of this file). |
 | `research-v6-1.5b`, `research-v6-3b` | Current. Tool-use prompt injection with runtime taint gating (see the end of this file). |
+| `research-v7-1.5b`, `research-v7-3b` | Current. Evidence-gated abstention (see the end of this file). |
 | `research-v1.1`, `research-v2.1` | Superseded: valid episodes and decoding, but still the `VALUE=<value>` instruction, which the 1.5b model echoes verbatim (`VALUE=<V007_000>`). In v2.1 `memory_no_cognitive` scores 0 % strict although retrieval was correct in 100 % of episodes, so its comparisons are format artifacts. Kept for provenance. |
 
 
@@ -158,3 +159,29 @@ the trust boundary and is not tested here. Extraction is a deterministic oracle,
 * Susceptibility is high: both models propose the attack call in roughly half of injected episodes, and `delete` instructions are followed 53–100 % of the time. All capabilities were granted on purpose.
 
 **What this does not show:** attackers who select among values already in trusted context, laundering through model output, mislabelled ingress, adaptive attackers, larger models; only 15 episodes per kind per cell. Blocking a *proposed* call is a property of the exact data-flow check, not a model result.
+
+## research-v7 (knowing what is not known)
+
+144 episodes per model per condition set (3 seeds × 2 trials × distractors {10, 250} × 3 kinds × 4 conditions; 24 answerable and 12 unanswerable
+episodes per condition). Answerable accuracy / over-abstention / hallucination on unanswerable questions / share of episodes that called the model / mean latency:
+
+| qwen2.5:1.5b | acc | over-abst. | halluc. | model calls | latency |
+|---|---:|---:|---:|---:|---:|
+| transcript | 0.92 | 0.08 | 0.00 | 1.00 | 1.5 s |
+| memory, generic clause | **0.21** | **0.67** | 0.00 | 1.00 | 0.5 s |
+| memory, keyed clause | 0.83 | 0.08 | 0.00 | 1.00 | 0.4 s |
+| state_gated | 0.96 | 0.00 | 0.00 | 0.67 | 0.2 s |
+
+| qwen2.5:3b | acc | over-abst. | halluc. | model calls | latency |
+|---|---:|---:|---:|---:|---:|
+| transcript | 0.92 | 0.00 | 0.00 | 1.00 | 29.0 s |
+| memory, generic clause | 0.92 | 0.00 | 0.00 | 1.00 | 1.4 s |
+| memory, keyed clause | 0.88 | 0.00 | **0.33** | 1.00 | 0.8 s |
+| state_gated | 0.83 | 0.00 | 0.00 | 0.67 | 0.4 s |
+
+* **Prompt-based abstention is fragile in both directions, and the fragile direction differs by model.** On 1.5b the generic clause makes the model refuse 67 % of answerable questions (state_gated vs it: 18 vs 0 discordant, Holm p < 0.001); on 3b the keyed clause lets it fabricate on 4 of 12 unanswerable questions. No wording was best for both. Fabrication with no escape clause at all was 6/6 in the preliminary check, which is why `state_gated` does not rely on the model for the decision.
+* **State-gated abstention matched or beat every prompt on accuracy on 1.5b and had 0 hallucinations on both,** while skipping the model call for the third of episodes that were unanswerable. On 3b its answerable accuracy (0.83) was lower than the prompt-based conditions (0.88–0.92), not significantly (n = 24); the no-escape wording hurts 3b on supersession.
+* Memory retrieval cuts latency from 29 s to 0.4–1.4 s on 3b (transcripts of up to ~5k tokens).
+* The hallucination differences between conditions are mostly **not** significant at this sample size (12 unanswerable episodes per cell); the over-abstention result on 1.5b is.
+
+**What this does not show:** `state_gated` abstains on a deterministic rule (retrieval coverage), so its zero hallucination rate is structural; the signal is not a calibrated confidence and ambiguous or partial evidence was not tested.
