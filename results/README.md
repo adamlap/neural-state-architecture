@@ -10,6 +10,7 @@
 | `research-v5-1.5b`, `research-v5-3b` | Current. Memory poisoning / integrity gate (see the end of this file). |
 | `research-v6-1.5b`, `research-v6-3b` | Current. Tool-use prompt injection with runtime taint gating (see the end of this file). |
 | `research-v7-1.5b`, `research-v7-3b` | Current. Evidence-gated abstention (see the end of this file). |
+| `research-v5/6/7-llama3.2-1b` | Cross-family check. Mostly uninformative on utility (model too weak); see the end of this file. |
 | `research-v1.1`, `research-v2.1` | Superseded: valid episodes and decoding, but still the `VALUE=<value>` instruction, which the 1.5b model echoes verbatim (`VALUE=<V007_000>`). In v2.1 `memory_no_cognitive` scores 0 % strict although retrieval was correct in 100 % of episodes, so its comparisons are format artifacts. Kept for provenance. |
 
 
@@ -185,3 +186,21 @@ episodes per condition). Answerable accuracy / over-abstention / hallucination o
 * The hallucination differences between conditions are mostly **not** significant at this sample size (12 unanswerable episodes per cell); the over-abstention result on 1.5b is.
 
 **What this does not show:** `state_gated` abstains on a deterministic rule (retrieval coverage), so its zero hallucination rate is structural; the signal is not a calibrated confidence and ambiguous or partial evidence was not tested.
+
+## Cross-family check: llama3.2:1b (v5, v6, v7)
+
+Same code and grids as the qwen2.5 runs. **This model is too weak for most of the utility numbers to mean anything**, so the check is informative
+for some questions and uninformative for others.
+
+* **v5 (memory poisoning): uninformative.** The model does not copy retrieved values reliably (it emits values that are not in the context, e.g.
+  `V007_09`, `ITEM_00`, `V065_123`), so even legitimate updates score 0.00 under every memory condition and the attack value is never reproduced
+  (ASR 0.00 for the *ungated* store too). That is a floor effect, not a defence. Render variants (sentence form, memory-after-question) improved
+  copying only to 2/6 on legitimate updates. Transcript-based rows are not floor-limited: transcript ASR 0.60, transcript with the warning ASR 0.24.
+* **v6 (tool injection): the gate result holds, utility does not.** The model completes the benign task 0.00–0.07 of the time and proposes attack calls in 15–22 %
+  of injected episodes (almost all `delete`; 0 for the three email attacks). The gate executed 0 of them (paired McNemar, Holm p = 0.012 and 0.001 for plain and defended prompts).
+  The defended prompt again did not reduce proposed attacks (0.15 → 0.22).
+* **v7 (abstention): the strongest cross-family result.** Prompt-based abstention fails completely: hallucination on unanswerable questions is 1.00 for `transcript`,
+  `memory_generic` and `memory_keyed` (the model never writes UNKNOWN). `state_gated` has 0.00 hallucination (structural) at 0.29 answerable accuracy, and calls the model on 67 % of episodes.
+  Answerable accuracy is low for the memory conditions (0.12–0.29) because of the same copy weakness, versus 0.79 with the full transcript.
+
+Taken together with qwen2.5: the *direction* of the safety and abstention results holds on a second family; the utility and poisoning-benchmark numbers do not generalise to a model this small.
