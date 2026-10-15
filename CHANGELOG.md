@@ -7,6 +7,10 @@ before 0.6.0 were not documented here; see git history.
 
 ### Added
 
+- Signed ingress (`nsa/ingress.py`): `IngressAuthority.seal()/verify()` bind source, integrity label and content
+  digest under HMAC-SHA256 (nonce, expiry, replay protection). `RuntimeConfig.require_signed_ingress` makes the
+  runtime accept a TRUSTED label only from a verified envelope (`observe(envelope=)`, `remember(envelope=)`);
+  everything else degrades to UNTRUSTED, never upgrades. Default unchanged.
 - Integrity/taint tracking in the agent runtime (`nsa/taint.py`): `CognitiveInputEvent.integrity`,
   `RuntimeConfig.untrusted_sources`, `observe(integrity=...)`, `NSARuntime.context_integrity()` and
   `NSARuntime.authorize_tool()` (typed `SecurityDecision`; unknown tool / missing capability → DENY; side-effect tool in a

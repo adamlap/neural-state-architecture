@@ -18,6 +18,7 @@ from nsa.cognition.tools import ToolRegistry
 from nsa.memory import TemporalMemoryStore
 from nsa.decision import SecurityDecision
 from nsa.taint import authorize_tool_call, join_integrity
+from nsa.ingress import IngressAuthority, IngressEnvelope, content_digest
 
 class ModelBackend(Protocol):
     model: str
@@ -45,6 +46,10 @@ class RuntimeConfig:
     # Observation sources whose content is labelled UNTRUSTED at ingress (e.g. "web", "email",
     # "tool_output"). Empty keeps every observation trusted (historical behaviour).
     untrusted_sources: tuple[str, ...] = ()
+    # With an IngressAuthority configured and this True, a TRUSTED label is accepted only from a
+    # verified envelope: unsigned observe()/remember() calls are labelled UNTRUSTED, even if they
+    # pass integrity=TRUSTED explicitly. See nsa/ingress.py.
+    require_signed_ingress: bool = False
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -67,7 +72,9 @@ class NSARuntime:
                  policy: Optional[NSAPolicy] = None, policy_engine: Optional[PolicyEngine] = None, checkpoint: Optional[StateCheckpointStore] = None,
                  config: Optional[RuntimeConfig] = None, continuous_transition: Optional[Callable[[CanonicalState], CanonicalState]] = None,
                  system_one: Optional[SystemOneController] = None, system_one_backend: Optional[SystemOneBackend] = None,
-                 system_one_tools: Optional[ToolRegistry] = None) -> None:
+                 system_one_tools: Optional[ToolRegistry] = None, ingress: Optional[IngressAuthority] = None) -> None:
+        self.ingress = ingress
+        self.ingress_rejections: list[tuple[str, str]] = []
         self.backend = backend; self.config = config or RuntimeConfig(); self.state = state or self._state_from_mapping(initial_state or {})
         self.policy_engine = policy_engine or (PolicyEngine(policy) if policy else None); self.checkpoint = checkpoint; self.history: list[CognitiveInputEvent] = []; self.trace: list[dict[str, Any]] = []
         self.system_one = (system_one or SystemOneController(system_one_backend)) if self.config.system_one_enabled else None
@@ -125,9 +132,18 @@ class NSARuntime:
         return replace(state, provenance=state.provenance.extend(transformation="cce.heartbeat"), step=state.step + 1)
 
     def observe(self, payload: Any, *, source: str = "text", confidence: float = 1.0, provenance: str = "local",
-                integrity: Optional[IntegrityLabel] = None) -> None:
-        if integrity is None:
+                integrity: Optional[IntegrityLabel] = None, envelope: Optional[IngressEnvelope] = None) -> None:
+        if envelope is not None:
+            if self.ingress is None:
+                raise RuntimeError("an envelope was supplied but no IngressAuthority is configured")
+            result = self.ingress.verify(payload, envelope)
+            integrity = result.label
+            if not result.verified:
+                self.ingress_rejections.append((envelope.source, result.reason))
+        elif integrity is None:
             integrity = IntegrityLabel.UNTRUSTED if source in self.config.untrusted_sources else IntegrityLabel.TRUSTED
+        if envelope is None and self.config.require_signed_ingress:
+            integrity = IntegrityLabel.UNTRUSTED       # a TRUSTED label needs a verified envelope
         self.history.append(CognitiveInputEvent(payload, source=source, confidence=confidence, provenance=provenance, integrity=integrity)); self.state = replace(self.state, soft=replace(self.state.soft, confidence=confidence, uncertainty=1.0-confidence), provenance=self.state.provenance.extend(source=source), step=self.state.step+1); self._run_cognitive_transition(payload, confidence=confidence); self._cce.set_state(self.state); self._sync_canonical()
 
     def context_integrity(self) -> IntegrityLabel:
@@ -199,11 +215,24 @@ class NSARuntime:
         return "\n".join(parts) + f"\n\nUSER_INPUT={prompt}"
 
     def remember(self, key: str, value: Any, *, kind: str = "fact", provenance_ids: Sequence[str] = (),
-                 integrity: IntegrityLabel = IntegrityLabel.TRUSTED) -> None:
+                 integrity: IntegrityLabel = IntegrityLabel.TRUSTED, envelope: Optional[IngressEnvelope] = None) -> None:
         """Write to canonical memory. ``integrity`` is the label of the *source* of this write,
-        supplied by the caller's ingress path; an UNTRUSTED write cannot supersede a TRUSTED value."""
+        supplied by the caller's ingress path; an UNTRUSTED write cannot supersede a TRUSTED value.
+
+        With ``require_signed_ingress``, a TRUSTED write must carry an ``envelope`` sealed for exactly
+        this ``value`` (``content_digest(value)``); otherwise it is recorded as UNTRUSTED.
+        """
         if self.memory is None:
             raise RuntimeError("memory is not enabled")
+        if envelope is not None:
+            if self.ingress is None:
+                raise RuntimeError("an envelope was supplied but no IngressAuthority is configured")
+            result = self.ingress.verify(value, envelope)
+            integrity = result.label
+            if not result.verified:
+                self.ingress_rejections.append((envelope.source, result.reason))
+        elif self.config.require_signed_ingress:
+            integrity = IntegrityLabel.UNTRUSTED
         self.memory = self.memory.remember(key, value, kind=kind, provenance_ids=provenance_ids, integrity=integrity)
 
     def recall(self, keys: Sequence[str], *, limit: int | None = None) -> tuple[dict[str, Any], ...]:
