@@ -49,7 +49,7 @@ class TypedToolRequest:
     required_capability_id: str
     risk_level: ToolRiskLevel = ToolRiskLevel.LOW
     reversibility: ActionReversibility = ActionReversibility.REVERSIBLE
-    approval_status: ToolApprovalStatus = ToolApprovalStatus.APPROVED
+    approval_status: ToolApprovalStatus = ToolApprovalStatus.PENDING_APPROVAL
     request_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     timestamp: float = field(default_factory=time.time)
 

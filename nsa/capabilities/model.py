@@ -41,11 +41,14 @@ class CapabilityAuthority:
             raise PermissionError("capability issuer does not match authority")
         return CapabilityAuthority(self.issuer_id, self.capabilities | {capability})
 
+    def match(self, capability_id: str, subject: str, action: str, scope: str) -> Capability | None:
+        for c in self.capabilities:
+            if c.capability_id == capability_id and c.valid_for(subject, action, scope):
+                return c
+        return None
+
     def allows(self, capability_id: str, subject: str, action: str, scope: str) -> bool:
-        return any(
-            c.capability_id == capability_id and c.valid_for(subject, action, scope)
-            for c in self.capabilities
-        )
+        return self.match(capability_id, subject, action, scope) is not None
 
     def get(self, capability_id: str) -> Capability:
         for capability in self.capabilities:

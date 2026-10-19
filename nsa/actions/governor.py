@@ -45,6 +45,17 @@ class ToolGovernor:
         self._tool_metadata: Dict[str, Dict[str, Any]] = {}
         self._execution_history: List[Tuple[TypedToolRequest, TypedToolResponse]] = []
         self._undo_stack: List[Callable[[], None]] = []
+        # request_id -> (tool_name, arguments, capability_id) of governor-prepared requests.
+        self._pending: Dict[str, Tuple[str, Dict[str, Any], str]] = {}
+        self._approved: Dict[str, Tuple[str, Dict[str, Any], str]] = {}
+        self._rejected: set[str] = set()
+        self._consumed_nonces: set[str] = set()
+
+    def _requires_manual_approval(self, risk: ToolRiskLevel) -> bool:
+        return risk in (ToolRiskLevel.HIGH, ToolRiskLevel.CRITICAL) and self.auto_approve_risk_limit in (
+            ToolRiskLevel.LOW,
+            ToolRiskLevel.MEDIUM,
+        )
 
     def register_tool(
         self,
@@ -90,13 +101,10 @@ class ToolGovernor:
         risk = meta["risk_level"]
         reversibility = meta["reversibility"]
 
-        needs_manual_approval = risk in (ToolRiskLevel.HIGH, ToolRiskLevel.CRITICAL) and self.auto_approve_risk_limit in (
-            ToolRiskLevel.LOW,
-            ToolRiskLevel.MEDIUM,
-        )
+        needs_manual_approval = self._requires_manual_approval(risk)
         status = ToolApprovalStatus.PENDING_APPROVAL if needs_manual_approval else ToolApprovalStatus.APPROVED
 
-        return TypedToolRequest(
+        request = TypedToolRequest(
             tool_name=tool_name,
             arguments=arguments,
             caller_state=caller_state,
@@ -105,6 +113,39 @@ class ToolGovernor:
             reversibility=reversibility,
             approval_status=status,
         )
+        if needs_manual_approval:
+            self._pending[request.request_id] = (tool_name, dict(arguments), capability_id)
+        return request
+
+    def approve_request(self, request_id: str) -> bool:
+        """Approve a pending governor-prepared request; returns False if unknown or already decided."""
+        entry = self._pending.pop(request_id, None)
+        if entry is None:
+            return False
+        self._approved[request_id] = entry
+        return True
+
+    def reject_request(self, request_id: str) -> bool:
+        """Reject a pending or approved request so it can never execute."""
+        entry = self._pending.pop(request_id, None) or self._approved.pop(request_id, None)
+        if entry is None:
+            return False
+        self._rejected.add(request_id)
+        return True
+
+    def _approval_error(self, request: TypedToolRequest) -> Optional[str]:
+        """Derive approval from registered metadata and the governor's registry, never from the request."""
+        if request.request_id in self._rejected or request.approval_status == ToolApprovalStatus.REJECTED:
+            return "Tool execution was rejected"
+        risk = self._tool_metadata[request.tool_name]["risk_level"]
+        if not self._requires_manual_approval(risk):
+            return None
+        entry = self._approved.get(request.request_id)
+        if entry is None:
+            return "Tool execution requires explicit approval (current status: pending_approval)"
+        if entry != (request.tool_name, dict(request.arguments), request.required_capability_id):
+            return "Tool execution requires explicit approval (request differs from the approved request)"
+        return None
 
     def _validate_registration_constraints(self, request: TypedToolRequest) -> Optional[str]:
         meta = self._tool_metadata[request.tool_name]
@@ -134,22 +175,34 @@ class ToolGovernor:
         scope: str = "tool_execution",
     ) -> TypedToolResponse:
         """Authoritatively evaluate permissions and execute tool."""
-        has_capability = self.authority.allows(
+        if request.tool_name not in self._registered_tools:
+            return self._reject(request, f"unknown tool: {request.tool_name}")
+
+        capability = self.authority.match(
             capability_id=request.required_capability_id,
             subject=subject,
             action=request.tool_name,
             scope=scope,
         )
 
-        if not has_capability:
+        if capability is None:
             return self._reject(request, f"Capability '{request.required_capability_id}' not authorized for action '{request.tool_name}'")
 
         constraint_error = self._validate_registration_constraints(request)
         if constraint_error is not None:
             return self._reject(request, constraint_error)
 
-        if request.approval_status != ToolApprovalStatus.APPROVED:
-            return self._reject(request, f"Tool execution requires explicit approval (current status: {request.approval_status})")
+        approval_error = self._approval_error(request)
+        if approval_error is not None:
+            return self._reject(request, approval_error)
+
+        if capability.nonce is not None and capability.nonce in self._consumed_nonces:
+            return self._reject(request, f"Capability '{capability.capability_id}' nonce already consumed (replay rejected)")
+
+        # Approvals and nonces are single-use; consume them before the handler runs.
+        self._approved.pop(request.request_id, None)
+        if capability.nonce is not None:
+            self._consumed_nonces.add(capability.nonce)
 
         handler = self._registered_tools[request.tool_name]
         try:
