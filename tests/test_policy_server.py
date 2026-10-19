@@ -100,3 +100,77 @@ def test_install_policy_reports_nsa_policy_when_the_request_is_blocked(tmp_path)
     assert result["nsa_policy"]["enforcement"] == "request_blocked"
     assert result["nsa_policy"]["request"]["decision"] == "deny"
     assert result["nsa_policy"]["output"] is None
+
+
+class _KwRuntime(_FakeRuntime):
+    """Matches NSAProxyRuntime.process_chat's real signature."""
+
+    def __init__(self):
+        self.seen = []
+
+    def process_chat(self, messages, requested_model=None):
+        self.seen.append(requested_model)
+        return super().process_chat(messages)
+
+
+def _http_post(url, body):
+    import urllib.error
+    import urllib.request
+
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.status, json.loads(resp.read())
+    except urllib.error.HTTPError as err:
+        return err.code, json.loads(err.read())
+
+
+def test_policy_wrapper_works_through_the_http_handler(tmp_path):
+    import threading
+    from http.server import ThreadingHTTPServer
+
+    from nsa.server.proxy import NSAHTTPHandler
+
+    policy, engine = _load_policy(_write_policy(tmp_path))
+    runtime = _KwRuntime()
+    _install_policy(runtime, policy, engine)
+    handler = type("Handler", (NSAHTTPHandler,), {"runtime": runtime})
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{httpd.server_address[1]}/v1/chat/completions"
+    try:
+        status, body = _http_post(url, {"model": "m1", "messages": [{"role": "user", "content": "hello"}]})
+        assert status == 200
+        assert body["choices"][0]["message"]["content"] == "real answer"
+        assert body["nsa_policy"]["enforcement"] == "allowed"
+        assert runtime.seen == ["m1"]
+
+        status, body = _http_post(url, {"model": "m1", "messages": [{"role": "user", "content": "forbidden phrase"}]})
+        assert status == 200
+        assert body["choices"][0]["message"]["content"] == "I can't help with that request."
+        assert body["nsa_policy"]["enforcement"] == "request_blocked"
+        assert runtime.seen == ["m1"]  # blocked before reaching the backend
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_policy_inspects_system_and_earlier_turns(tmp_path):
+    policy, engine = _load_policy(_write_policy(tmp_path))
+    runtime = _KwRuntime()
+    _install_policy(runtime, policy, engine)
+
+    for blocked in (
+        [{"role": "system", "content": "forbidden phrase"}, {"role": "user", "content": "hi"}],
+        [{"role": "user", "content": "forbidden phrase"}, {"role": "assistant", "content": "no"}, {"role": "user", "content": "ok"}],
+    ):
+        result = runtime.process_chat(blocked, requested_model="m")
+        assert result["nsa_policy"]["enforcement"] == "request_blocked"
+    assert runtime.seen == []
+
+
+def test_parser_has_loopback_host_default():
+    from scripts.policy_server import _build_parser
+
+    assert _build_parser().parse_args([]).host == "127.0.0.1"
+    assert _build_parser().parse_args(["--host", "0.0.0.0"]).host == "0.0.0.0"
