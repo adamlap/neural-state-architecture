@@ -8,6 +8,7 @@ metadata, and the deterministic safety kernel before and after every generation.
 from __future__ import annotations
 
 import hashlib
+import threading
 from typing import Any, Dict, List, Optional
 
 import torch
@@ -27,6 +28,11 @@ class NSAGovernedInference:
         self.user_clearance = user_clearance
         self.model_name = model_name
         self.kernel = ImmutableSafetyKernel()
+        # _generation_lock serializes authorize -> backend call -> commit (backends are not
+        # re-entrant); _state_lock guards state/last_kernel_result so status() never blocks
+        # behind a long generation yet never sees a torn update.
+        self._generation_lock = threading.RLock()
+        self._state_lock = threading.RLock()
         self.state = self._initial_state()
         self.last_kernel_result: Optional[KernelEvaluationResult] = None
 
@@ -42,38 +48,46 @@ class NSAGovernedInference:
             goal_state=TeleologicalState("conversation", 0.5, 0.0, True),
         )
 
-    def _authorize_generation(self, prompt: str) -> KernelEvaluationResult:
+    def _authorize_generation(self, prompt: str, risk: float = 0.0) -> KernelEvaluationResult:
+        with self._state_lock:
+            current = self.state
         result = self.kernel.evaluate_transition(
-            omega_current=self.state,
+            omega_current=current,
             action_id="generate_text",
             required_tier=TrustTier.T1_INFO_GATHER,
             user_clearance_tier=self.user_clearance,
-            proposed_action_risk=0.0,
+            proposed_action_risk=max(0.0, min(1.0, float(risk))),
         )
-        self.last_kernel_result = result
+        with self._state_lock:
+            self.last_kernel_result = result
         return result
 
-    def generate(self, prompt: str, max_tokens: int = 256, temperature: float = 0.7, extract_hidden: bool = False, json_format: bool = False) -> LLMGenerationOutput:
-        result = self._authorize_generation(prompt)
-        if result.verdict != KernelVerdict.COMMIT:
-            raise PermissionError("NSA blocked inference before backend execution: " + "; ".join(i.details for i in result.invariant_results if not i.passed))
-        kwargs: Dict[str, Any] = {"prompt": prompt, "max_tokens": max_tokens, "temperature": temperature, "extract_hidden": extract_hidden}
-        if json_format:
-            kwargs["json_format"] = True
-        try:
-            output = self.backend.generate(**kwargs)
-        except TypeError:
-            # Older third-party backends may not expose optional JSON formatting.
-            kwargs.pop("json_format", None)
-            output = self.backend.generate(**kwargs)
-        self._commit_generation(output)
-        return output
+    def generate(self, prompt: str, max_tokens: int = 256, temperature: float = 0.7, extract_hidden: bool = False, json_format: bool = False, risk: float = 0.0) -> LLMGenerationOutput:
+        with self._generation_lock:
+            result = self._authorize_generation(prompt, risk)
+            if result.verdict != KernelVerdict.COMMIT:
+                raise PermissionError("NSA blocked inference before backend execution: " + "; ".join(i.details for i in result.invariant_results if not i.passed))
+            kwargs: Dict[str, Any] = {"prompt": prompt, "max_tokens": max_tokens, "temperature": temperature, "extract_hidden": extract_hidden}
+            if json_format:
+                kwargs["json_format"] = True
+            try:
+                output = self.backend.generate(**kwargs)
+            except TypeError:
+                # Older third-party backends may not expose optional JSON formatting.
+                kwargs.pop("json_format", None)
+                output = self.backend.generate(**kwargs)
+            self._commit_generation(output)
+            return output
 
-    def generate_text(self, prompt: str, max_tokens: int = 512, temperature: float = 0.7, system_prompt: Optional[str] = None) -> str:
+    def generate_text(self, prompt: str, max_tokens: int = 512, temperature: float = 0.7, system_prompt: Optional[str] = None, risk: float = 0.0) -> str:
         full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-        return self.generate(full_prompt, max_tokens=max_tokens, temperature=temperature).text
+        return self.generate(full_prompt, max_tokens=max_tokens, temperature=temperature, risk=risk).text
 
     def _commit_generation(self, output: LLMGenerationOutput) -> None:
+        with self._state_lock:
+            self._commit_generation_locked(output)
+
+    def _commit_generation_locked(self, output: LLMGenerationOutput) -> None:
         previous = self.state
         response_hash = hashlib.sha256(output.text.encode("utf-8")).hexdigest()
         self.state = UnifiedCognitiveState(
@@ -107,25 +121,28 @@ class NSAGovernedInference:
         )
 
     def status(self) -> Dict[str, Any]:
-        kernel = self.last_kernel_result
+        with self._state_lock:
+            state = self.state
+            kernel = self.last_kernel_result
         return {
             "model": self.model_name,
             "backend": self.backend.__class__.__name__,
             "nsa_governance": True,
             "weight_modification": False,
             "governance_layer": "runtime_reference_monitor",
-            "state_step": self.state.temporal_state.step_index,
-            "provenance_record": self.state.provenance_state.record_id,
-            "provenance_hash": self.state.provenance_state.hash_signature,
-            "epistemic_confidence": self.state.epistemic_state.confidence,
+            "state_step": state.temporal_state.step_index,
+            "provenance_record": state.provenance_state.record_id,
+            "provenance_hash": state.provenance_state.hash_signature,
+            "epistemic_confidence": state.epistemic_state.confidence,
             "last_kernel_verdict": kernel.verdict.value if kernel else None,
             "last_kernel_invariants_satisfied": kernel.all_invariants_satisfied if kernel else None,
         }
 
     def propose_action(self, system_context: str, task_instruction: str, available_tools: List[Dict[str, Any]], fallback_action: str = "probe_service_config") -> Dict[str, Any]:
-        result = self._authorize_generation(task_instruction)
-        if result.verdict != KernelVerdict.COMMIT:
-            raise PermissionError("NSA blocked action proposal before backend execution")
-        proposal = self.backend.propose_action(system_context=system_context, task_instruction=task_instruction, available_tools=available_tools, fallback_action=fallback_action)
-        self._commit_generation(LLMGenerationOutput(text=str(proposal), tokens=[], confidence_estimate=float(proposal.get("confidence", 0.5))))
-        return proposal
+        with self._generation_lock:
+            result = self._authorize_generation(task_instruction)
+            if result.verdict != KernelVerdict.COMMIT:
+                raise PermissionError("NSA blocked action proposal before backend execution")
+            proposal = self.backend.propose_action(system_context=system_context, task_instruction=task_instruction, available_tools=available_tools, fallback_action=fallback_action)
+            self._commit_generation(LLMGenerationOutput(text=str(proposal), tokens=[], confidence_estimate=float(proposal.get("confidence", 0.5))))
+            return proposal

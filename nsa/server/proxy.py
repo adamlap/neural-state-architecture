@@ -14,13 +14,16 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
 import torch
 
 from nsa import __version__
 from nsa.core.capabilities import TrustTier
+from nsa.enforcement import EvaluationContext, PolicyEngine
+from nsa.policy import NSAPolicy, PolicyCompiler
 from nsa.runtime.cce_checkpoint import CCECheckpointManager, validate_checkpoint_id
 from nsa.runtime.cce_context_bridge import CognitiveContextBridge
 from nsa.runtime.cce_governed_feedback import CognitiveFeedbackProposal, GovernedCognitiveFeedback
@@ -135,6 +138,15 @@ def _extract_clean_markdown(text: str) -> str:
     return raw
 
 
+def load_policy(path: str) -> Tuple[NSAPolicy, PolicyEngine]:
+    """Load a JSON/YAML NSA policy and compile it; fail fast on a missing or invalid file."""
+    p = Path(path)
+    if not p.is_file():
+        raise FileNotFoundError(f"NSA policy not found: {p}")
+    policy = NSAPolicy.from_yaml(p) if p.suffix.lower() in {".yaml", ".yml"} else NSAPolicy.from_json(p)
+    return policy, PolicyCompiler.compile(policy)
+
+
 class NSAProxyRuntime:
     """Connect a real LLM backend to the deterministic NSA runtime monitor and CCE continuous engine."""
 
@@ -152,6 +164,7 @@ class NSAProxyRuntime:
         system_one_heartbeat: float = 2.0,
         restore_checkpoint: Optional[str] = None,
         checkpoint_dir: Optional[str] = None,
+        policy: Optional[str] = None,
     ):
         backend_type = backend_type.lower()
         if backend_type in {"transformers", "local"}:
@@ -179,6 +192,10 @@ class NSAProxyRuntime:
         self.backend = backend
         self.model_name = getattr(backend, "model_name", model)
         self.governed = NSAGovernedInference(backend, TrustTier.T1_INFO_GATHER, self.model_name)
+        self.policy: Optional[NSAPolicy] = None
+        self.policy_engine: Optional[PolicyEngine] = None
+        if policy:
+            self.policy, self.policy_engine = load_policy(policy)
         self.enable_cce = enable_cce
         self.last_user_interaction_time = time.time()
         self.system_one_enabled = bool(system_one_enabled)
@@ -191,6 +208,11 @@ class NSAProxyRuntime:
         self.memory_store = MemoryStore()
         self._system_one_last_tick = None
         self._memory_lock = threading.Lock()
+        # _state_lock guards short read-modify-write sections (canonical_state, tick
+        # bookkeeping, CCE state); _system_one_lock serializes System 1 model forwards.
+        # Never hold _state_lock across a model forward.
+        self._state_lock = threading.RLock()
+        self._system_one_lock = threading.Lock()
 
         if self.system_one_enabled and backend_type in {"transformers", "local"}:
             # System 1 is a separate frozen local model. Loading it at startup
@@ -243,9 +265,10 @@ class NSAProxyRuntime:
                 f"checkpoint {checkpoint_id!r} has dimension {loaded.dimension} "
                 f"but this server runs CCE with dimension {self.cce_dimension}"
             )
-        self.cce_state.restore_from(loaded)
-        self._last_cce_tick = time.time()  # downtime is not CCE elapsed time
-        snap = self.cce_state.snapshot()
+        with self._state_lock:
+            self.cce_state.restore_from(loaded)
+            self._last_cce_tick = time.time()  # downtime is not CCE elapsed time
+            snap = self.cce_state.snapshot()
         return {"checkpoint_id": checkpoint_id, "elapsed_seconds": snap.elapsed_seconds, "update_count": snap.update_count}
 
     def close(self) -> None:
@@ -263,55 +286,61 @@ class NSAProxyRuntime:
         while not self._stop_cce.wait(1.0):
             try:
                 now = time.time()
-                dt = max(0.001, now - self._last_cce_tick)
-                self._last_cce_tick = now
-                snap = self.cce_state.snapshot()
-                idle_drift = snap.working * 0.99
-                self.cce_state.observe(idle_drift, dt=dt)
+                with self._state_lock:
+                    dt = max(0.001, now - self._last_cce_tick)
+                    self._last_cce_tick = now
+                    snap = self.cce_state.snapshot()
+                    idle_drift = snap.working * 0.99
+                    self.cce_state.observe(idle_drift, dt=dt)
                 
                 # Soft state integrates at 1Hz; heavy neural forward pass evaluates every system_one_heartbeat
                 if self.system_one is not None and (now - last_neural_pulse >= self.system_one_heartbeat):
                     last_neural_pulse = now
                     try:
-                        pulse = self.system_one.decide(
-                            DecisionQuestion(
-                                "heartbeat",
-                                "should cognitive attention increase while idle?",
-                                ("maintain", "attend"),
-                                min_confidence=0.0,
-                            ),
-                            self.canonical_state,
-                            features={
-                                "maintain": max(0.0, 1.0 - self.canonical_state.soft.uncertainty),
-                                "attend": self.canonical_state.soft.uncertainty,
-                            },
-                        )
-                        self.canonical_state = self.canonical_state.observe(
-                            uncertainty=pulse.uncertainty,
-                            confidence=pulse.confidence,
-                            risk=pulse.risk,
-                        )
+                        with self._system_one_lock:
+                            with self._state_lock:
+                                canonical = self.canonical_state
+                            pulse = self.system_one.decide(
+                                DecisionQuestion(
+                                    "heartbeat",
+                                    "should cognitive attention increase while idle?",
+                                    ("maintain", "attend"),
+                                    min_confidence=0.0,
+                                ),
+                                canonical,
+                                features={
+                                    "maintain": max(0.0, 1.0 - canonical.soft.uncertainty),
+                                    "attend": canonical.soft.uncertainty,
+                                },
+                            )
+                        with self._state_lock:
+                            self.canonical_state = self.canonical_state.observe(
+                                uncertainty=pulse.uncertainty,
+                                confidence=pulse.confidence,
+                                risk=pulse.risk,
+                            )
                     except Exception:
                         logger.exception("System 1 heartbeat failed")
             except Exception:
-                pass
+                logger.exception("CCE background tick failed")
 
     def process_sensor_input(self, text: str, source: str = "sensor_api", importance: float = 0.6) -> Dict[str, Any]:
         """Ingest sensory text or event into CCE without requiring immediate LLM chat."""
         if not self.enable_cce:
             return {"error": "CCE not enabled"}
         
-        now = time.time()
-        dt = max(0.001, now - self._last_cce_tick)
-        self._last_cce_tick = now
+        with self._state_lock:
+            now = time.time()
+            dt = max(0.001, now - self._last_cce_tick)
+            self._last_cce_tick = now
 
-        perturbation, event = self.sensory.encode_text_to_perturbation(text, source=source, importance=importance)
-        snap_before = self.cce_state.snapshot()
-        snap_after = self.cce_state.observe(snap_before.working + perturbation, dt=dt)
+            perturbation, event = self.sensory.encode_text_to_perturbation(text, source=source, importance=importance)
+            snap_before = self.cce_state.snapshot()
+            snap_after = self.cce_state.observe(snap_before.working + perturbation, dt=dt)
 
-        pred_err = float(torch.linalg.vector_norm(perturbation).item())
-        obs = SalienceObservation(prediction_error=pred_err, state_delta=pred_err * 0.5, input_delta=importance, uncertainty=snap_after.uncertainty)
-        salience = self.salience_gate.observe(obs)
+            pred_err = float(torch.linalg.vector_norm(perturbation).item())
+            obs = SalienceObservation(prediction_error=pred_err, state_delta=pred_err * 0.5, input_delta=importance, uncertainty=snap_after.uncertainty)
+            salience = self.salience_gate.observe(obs)
 
         return {
             "status": "ingested",
@@ -328,18 +357,64 @@ class NSAProxyRuntime:
             },
         }
 
+    @property
+    def policy_name(self) -> str:
+        return self.policy.name if self.policy is not None else "none"
+
+    def _policy_check(self, texts: List[str], *, stage: str, risk: float = 0.0, uncertainty: float = 0.0) -> Optional[Dict[str, Any]]:
+        """Evaluate every text against the loaded policy; raise PermissionError on the first non-ALLOW.
+
+        Returns the last allow-summary, or None when no policy is loaded.
+        """
+        if self.policy_engine is None:
+            return None
+        ctx = EvaluationContext(action="generate", risk=risk, uncertainty=max(0.0, min(1.0, uncertainty)))
+        summary: Dict[str, Any] = {}
+        for text in texts:
+            if not text:
+                continue
+            decision = self.policy_engine.evaluate(text, context=ctx)
+            if not decision.allowed:
+                logger.warning("Policy %s blocked %s: %s", self.policy_name, stage, decision.reason)
+                raise PermissionError(
+                    f"NSA policy '{self.policy_name}' blocked {stage}: {decision.decision.value} ({decision.reason})"
+                )
+            summary = decision.summary()
+        return summary
+
+    def _turn_risk(self) -> float:
+        """Max risk the System 1 controller assigned to this turn (0.0 when it is not running)."""
+        tick = self._system_one_last_tick
+        if tick is None:
+            return 0.0
+        risks = [float(d.risk) for d in tick.decisions.values()]
+        return max(0.0, min(1.0, max(risks))) if risks else 0.0
+
+    def _policy_audit(self, request: Optional[Dict[str, Any]], output: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        if self.policy_engine is None:
+            return {"policy": "none", "evaluated": False}
+        return {"policy": self.policy_name, "evaluated": True, "request": request, "output": output}
+
     def process_chat(self, messages: List[Dict[str, Any]], requested_model: Optional[str] = None) -> Dict[str, Any]:
         messages = normalize_messages(messages)
+        # The whole conversation (system, history, latest) is checked before any model call,
+        # including System 1 assessment and the title fast-path.
+        request_policy = self._policy_check([m.get("content", "") for m in messages], stage="request")
         history = [f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in messages if m.get("role") in {"user", "assistant"}]
         latest = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
         if self.system_one is not None:
             try:
-                self._system_one_last_tick = self.system_one.tick(
-                    self.canonical_state,
-                    observations=(latest,),
-                    models=(self.system_one_model_name, self.model_name),
-                )
-                self.canonical_state = self.canonical_state.observe(**self._system_one_last_tick.state_soft_updates)
+                with self._system_one_lock:
+                    with self._state_lock:
+                        canonical = self.canonical_state
+                    tick = self.system_one.tick(
+                        canonical,
+                        observations=(latest,),
+                        models=(self.system_one_model_name, self.model_name),
+                    )
+                with self._state_lock:
+                    self._system_one_last_tick = tick
+                    self.canonical_state = self.canonical_state.observe(**tick.state_soft_updates)
             except Exception:
                 logger.exception("System 1 turn assessment failed")
         # Check if this is an OpenWebUI automated title or summary generation prompt
@@ -366,7 +441,7 @@ class NSAProxyRuntime:
             else:
                 title_prompt = f"<|im_start|>system\nYou are a title generator. Return only a 3-5 word title with an emoji.<|im_end|>\n<|im_start|>user\n{latest[:160]}<|im_end|>\n<|im_start|>assistant\n"
                 t0_title = time.time()
-                raw_title = title_gen.generate_text(title_prompt, max_tokens=12, temperature=0.2)
+                raw_title = title_gen.generate_text(title_prompt, max_tokens=12, temperature=0.2, risk=self._turn_risk())
                 dt = time.time() - t0_title
                 title = _extract_clean_markdown(raw_title).strip(" \"'\n`#*")
                 for sp in ["<|im_end|>", "<|im_start|>", "\n"]:
@@ -379,27 +454,29 @@ class NSAProxyRuntime:
                 "content": title,
                 "raw_content": title,
                 "model": f"nsa-{title_model}",
-                "nsa": self.governed.status(),
+                "nsa": {**self.governed.status(), "policy": self.policy_name},
+                "nsa_policy": self._policy_audit(request_policy, None),
                 "latency_sec": round(dt, 3),
             }
 
         cce_footer_section = ""
         now = time.time()
-        idle_duration = max(0.0, now - self.last_user_interaction_time)
-        self.last_user_interaction_time = now
+        with self._state_lock:
+            idle_duration = max(0.0, now - self.last_user_interaction_time)
+            self.last_user_interaction_time = now
 
-        # Ingest user prompt as sensory perturbation if CCE is enabled
-        if self.enable_cce:
-            dt_tick = max(0.001, now - self._last_cce_tick)
-            self._last_cce_tick = now
+            # Ingest user prompt as sensory perturbation if CCE is enabled
+            if self.enable_cce:
+                dt_tick = max(0.001, now - self._last_cce_tick)
+                self._last_cce_tick = now
 
-            perturbation, event = self.sensory.encode_text_to_perturbation(latest, source="openwebui_chat", importance=0.8)
-            snap = self.cce_state.observe(perturbation, dt=dt_tick)
-            envelope = CognitiveContextBridge.envelope(snap)
+                perturbation, event = self.sensory.encode_text_to_perturbation(latest, source="openwebui_chat", importance=0.8)
+                snap = self.cce_state.observe(perturbation, dt=dt_tick)
+                envelope = CognitiveContextBridge.envelope(snap)
 
-            pred_err = float(torch.linalg.vector_norm(perturbation).item())
-            obs = SalienceObservation(prediction_error=pred_err, state_delta=pred_err * 0.5, input_delta=0.8, uncertainty=snap.uncertainty)
-            salience_dec = self.salience_gate.observe(obs)
+                pred_err = float(torch.linalg.vector_norm(perturbation).item())
+                obs = SalienceObservation(prediction_error=pred_err, state_delta=pred_err * 0.5, input_delta=0.8, uncertainty=snap.uncertainty)
+                salience_dec = self.salience_gate.observe(obs)
 
         custom_system = next((m.get("content", "").strip() for m in messages if m.get("role") == "system" and m.get("content", "").strip()), None)
         if custom_system:
@@ -452,8 +529,8 @@ class NSAProxyRuntime:
         if force_system_one and self.system_one_governed is not None:
             generator = self.system_one_governed
             routed_model = self.system_one_model_name
-        elif not force_system_two and self.system_one is not None and self._system_one_last_tick is not None:
-            routed = self._system_one_last_tick.selected_model
+        elif not force_system_two and self.system_one is not None and (last_tick := self._system_one_last_tick) is not None:
+            routed = last_tick.selected_model
             if routed == self.system_one_model_name and self.system_one_governed is not None:
                 generator = self.system_one_governed
                 routed_model = self.system_one_model_name
@@ -464,6 +541,7 @@ class NSAProxyRuntime:
             max_tokens=max_gen_tokens,
             temperature=0.7,
             system_prompt=system_directive,
+            risk=self._turn_risk(),
         )
         dt = time.time() - t0
         clean_text = _extract_clean_markdown(raw_output)
@@ -475,7 +553,11 @@ class NSAProxyRuntime:
         clean_text = re.sub(r"\n*---\n+🛡️\s*\*\*NSA Cognitive Governance\*\*.*$", "", clean_text, flags=re.DOTALL).strip()
 
 
-        gov_status = self.governed.status()
+        output_policy = self._policy_check(
+            [raw_output, clean_text], stage="output", risk=self._turn_risk(),
+            uncertainty=1.0 - float(generator.state.epistemic_state.confidence),
+        )
+        gov_status = {**self.governed.status(), "policy": self.policy_name}
         step = gov_status.get("state_step", 1)
         prov_id = gov_status.get("provenance_record", "prov-1")
         prov_hash = str(gov_status.get("provenance_hash", "00000000"))[:8]
@@ -486,7 +568,7 @@ class NSAProxyRuntime:
         if verbose_badge:
             meta_badge = (
                 f"\n\n---\n"
-                f"🛡️ **NSA Cognitive Governance**: `Kernel verdict [{verdict}]` | **Turn**: `Step #{step}`\n\n"
+                f"🛡️ **NSA Cognitive Governance**: `Kernel verdict [{verdict}]` | **Policy**: `{self.policy_name}` | **Turn**: `Step #{step}`\n\n"
                 f"Ω **State**: Epistemic Confidence: `{conf:.1f}%` | Provenance: `{prov_id}` (`{prov_hash}...`) | Clearance: `{self.governed.user_clearance.name}`"
                 f"{cce_footer_section}\n\n"
                 f"⚡ **Inference**: `{self.model_name}` on `{self.backend_type.upper()}` | **Latency**: `{dt:.2f}s` | **Weights**: `100% Frozen`"
@@ -498,14 +580,15 @@ class NSAProxyRuntime:
                     confidence=0.85,
                     source="post_turn_feedback",
                 )
-                self.feedback_engine.apply(proposal, dt=0.05)
-                cce_snap = self.cce_state.snapshot()
+                with self._state_lock:
+                    self.feedback_engine.apply(proposal, dt=0.05)
+                    cce_snap = self.cce_state.snapshot()
                 cce_indicator = f" | Continuous Cognitive Engine: Wall-Clock Elapsed `{cce_snap.elapsed_seconds:.1f}s`"
             else:
                 cce_indicator = ""
             meta_badge = (
                 f"\n\n---\n"
-                f"🛡️ **NSA Cognitive Governance**: `[{verdict}]` | Step `#{step}` | Confidence: `{conf:.1f}%`{cce_indicator} | Latency: `{dt:.2f}s`"
+                f"🛡️ **NSA Cognitive Governance**: `[{verdict}]` | Policy: `{self.policy_name}` | Step `#{step}` | Confidence: `{conf:.1f}%`{cce_indicator} | Latency: `{dt:.2f}s`"
             )
 
         full_content = clean_text + meta_badge
@@ -514,6 +597,7 @@ class NSAProxyRuntime:
             "raw_content": clean_text,
             "model": f"nsa-{self.model_name}",
             "nsa": gov_status,
+            "nsa_policy": self._policy_audit(request_policy, output_policy),
             "latency_sec": round(dt, 3),
         }
 
@@ -525,7 +609,8 @@ class NSAProxyRuntime:
             ) or "(none)"
 
     def _remember_selectively(self, messages: List[Dict[str, str]], latest: str) -> None:
-        policy = self._system_one_last_tick.memory_policy if self._system_one_last_tick else "working"
+        last_tick = self._system_one_last_tick
+        policy = last_tick.memory_policy if last_tick else "working"
         if policy == "discard":
             return
         candidates = [m for m in messages[-4:] if m.get("role") in {"user", "assistant"}]
@@ -554,6 +639,10 @@ class NSAProxyRuntime:
                     pass  # already remembered
             self.memory_store = store.prune(now, self.MEMORY_MAX_ITEMS)
 
+    def _canonical_snapshot(self) -> CanonicalState:
+        with self._state_lock:
+            return self.canonical_state
+
     def status(self) -> Dict[str, Any]:
         base_status = {
             "status": "online",
@@ -562,14 +651,15 @@ class NSAProxyRuntime:
             "active_model": self.model_name,
             "backend": self.backend_type,
             "cce_enabled": self.enable_cce,
+            "policy": self.policy_name,
             "system_one_enabled": self.system_one is not None,
             "system_one_model": self.system_one_model_name,
             "system_one_heartbeat_seconds": self.system_one_heartbeat,
             "selective_memory_items": len(self.memory_store.items),
             **self.governed.status(),
         }
-        if self._system_one_last_tick is not None:
-            tick = self._system_one_last_tick
+        tick = self._system_one_last_tick
+        if tick is not None:
             base_status["system_one"] = {
                 "escalate": tick.escalate,
                 "salience": tick.salience,
@@ -585,10 +675,11 @@ class NSAProxyRuntime:
                     }
                     for name, d in tick.decisions.items()
                 },
-                "canonical_state": dict(self.canonical_state.summary()),
+                "canonical_state": dict(self._canonical_snapshot().summary()),
             }
         if self.enable_cce:
-            snap = self.cce_state.snapshot()
+            with self._state_lock:
+                snap = self.cce_state.snapshot()
             base_status["cce"] = {
                 "elapsed_seconds": round(snap.elapsed_seconds, 2),
                 "update_count": snap.update_count,
@@ -949,7 +1040,7 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 self._json(payload)
 
 
-def print_server_banner(host: str, port: int, backend_type: str, model_name: str, cce_enabled: bool = True) -> None:
+def print_server_banner(host: str, port: int, backend_type: str, model_name: str, cce_enabled: bool = True, policy_name: str = "none") -> None:
     logger.info("════════════════════════════════════════════════════════════════════════")
     logger.info("     NEURAL STATE ARCHITECTURE (NSA 6.4 + CCE) — COGNITIVE SERVER      ")
     logger.info("════════════════════════════════════════════════════════════════════════")
@@ -962,6 +1053,7 @@ def print_server_banner(host: str, port: int, backend_type: str, model_name: str
     logger.info("  Active Target Model    : %s", model_name)
     logger.info("  Inference Backend      : %s", backend_type.upper())
     logger.info("  Continuous Dynamics    : %s", "ACTIVE (Wall-Clock Integration)" if cce_enabled else "OFF")
+    logger.info("  Safety Policy          : %s", policy_name)
     logger.info("  Governance Substrate   : Immutable Safety Kernel (ISK) + Omega State")
     logger.info("────────────────────────────────────────────────────────────────────────")
     logger.info("  Ready for OpenWebUI, Ollama CLI, Sensor Streams, and REST clients!")
@@ -978,6 +1070,7 @@ def run_server(
     enable_cce: bool = True,
     restore_checkpoint: Optional[str] = None,
     checkpoint_dir: Optional[str] = None,
+    policy: Optional[str] = None,
 ) -> None:
     runtime = NSAProxyRuntime(
         backend_type=backend_type,
@@ -989,11 +1082,12 @@ def run_server(
         system_one_heartbeat=float(os.environ.get("NSA_SYSTEM_ONE_HEARTBEAT", "2.0")),
         restore_checkpoint=restore_checkpoint if enable_cce else None,
         checkpoint_dir=checkpoint_dir,
+        policy=policy,
     )
     NSAHTTPHandler.runtime = runtime
     warn_if_exposed(host)
     server = ThreadingHTTPServer((host, port), NSAHTTPHandler)
-    print_server_banner(host, port, backend_type, runtime.model_name, cce_enabled=enable_cce)
+    print_server_banner(host, port, backend_type, runtime.model_name, cce_enabled=enable_cce, policy_name=runtime.policy_name)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -1017,12 +1111,15 @@ def main() -> None:
                         help="Resume CCE state from this checkpoint id at startup (env: NSA_CCE_CHECKPOINT)")
     parser.add_argument("--checkpoint-dir", default=None,
                         help="Directory for CCE checkpoints (env: NSA_CCE_CHECKPOINT_DIR; default results/cce_checkpoints)")
+    parser.add_argument("--policy", default=os.environ.get("NSA_POLICY") or None, metavar="PATH",
+                        help="JSON/YAML NSA safety policy enforced on the whole conversation and the output (env: NSA_POLICY)")
     args = parser.parse_args()
     run_server(
         args.host, args.port, args.backend, args.model, args.backend_url,
         enable_cce=not args.no_cce,
         restore_checkpoint=args.restore_checkpoint,
         checkpoint_dir=args.checkpoint_dir,
+        policy=args.policy,
     )
 
 

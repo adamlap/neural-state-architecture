@@ -30,6 +30,7 @@ def _runtime(ckpt_dir, dim: int = 4):
     runtime.cce_dimension = dim
     runtime.cce_state = PersistentCognitiveState(dimension=dim, decay=0.05, learning_rate=0.4)
     runtime.checkpoint_mgr = CCECheckpointManager(ckpt_dir)
+    runtime._state_lock = threading.RLock()
     runtime._last_cce_tick = 0.0
     return runtime
 
