@@ -110,7 +110,7 @@ def run_cce_unified_demo(output_dir: str = "results/cce_unified") -> Dict[str, A
 
     # 6. Atomic State Checkpointing & Integrity Verification
     print("\n[STEP 6] Saving Atomic Checkpoint with SHA-256 Integrity Digest...")
-    ckpt_path = checkpoint_mgr.save_persistent_state(state, checkpoint_id="unified_cce_state", tags=["demo", "final"])
+    ckpt_path = checkpoint_mgr.save_persistent_state(state, checkpoint_id="unified_cce_state", tags=["demo", "final"], overwrite=True)
     print(f"  • Checkpoint saved: {ckpt_path.name}")
 
     loaded = checkpoint_mgr.load_persistent_state("unified_cce_state")

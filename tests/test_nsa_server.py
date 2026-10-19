@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
+import nsa
 from nsa.runtime.inference.base import LLMGenerationOutput
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 from nsa.server.proxy import NSAHTTPHandler, NSAProxyRuntime
@@ -47,6 +48,7 @@ def test_server_health(nsa_test_server):
         assert resp.status == 200
         assert data["status"] == "online"
         assert data["service"] == "Neural State Architecture Cognitive Runtime Server"
+        assert data["version"] == nsa.__version__
 
 
 def test_server_v1_models(nsa_test_server):

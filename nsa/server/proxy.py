@@ -17,8 +17,9 @@ from urllib.parse import parse_qs, urlparse
 
 import torch
 
+from nsa import __version__
 from nsa.core.capabilities import TrustTier
-from nsa.runtime.cce_checkpoint import CCECheckpointManager
+from nsa.runtime.cce_checkpoint import CCECheckpointManager, validate_checkpoint_id
 from nsa.runtime.cce_context_bridge import CognitiveContextBridge
 from nsa.runtime.cce_governed_feedback import CognitiveFeedbackProposal, GovernedCognitiveFeedback
 from nsa.runtime.cce_persistent_state import PersistentCognitiveState
@@ -96,6 +97,8 @@ class NSAProxyRuntime:
         system_one_model: str = "Qwen/Qwen2.5-0.5B-Instruct",
         system_one_enabled: bool = True,
         system_one_heartbeat: float = 2.0,
+        restore_checkpoint: Optional[str] = None,
+        checkpoint_dir: Optional[str] = None,
     ):
         backend_type = backend_type.lower()
         if backend_type in {"transformers", "local"}:
@@ -162,7 +165,9 @@ class NSAProxyRuntime:
             self.sensory = CCESensoryIngress(dimension=self.cce_dimension)
             self.salience_gate = AdaptiveSalienceGate()
             self.feedback_engine = GovernedCognitiveFeedback(self.cce_state, max_norm=0.25)
-            self.checkpoint_mgr = CCECheckpointManager()
+            self.checkpoint_mgr = CCECheckpointManager(checkpoint_dir)
+            if restore_checkpoint:
+                self.restore_checkpoint(restore_checkpoint)  # fail fast: never silently start fresh
             self.active_cognitive_goal = "Continuously observing sensory ingress, reflecting on ideas, and collaborating."
             self._last_cce_tick = time.time()
             self._stop_cce = threading.Event()
@@ -174,6 +179,21 @@ class NSAProxyRuntime:
             logger.info("Continuous Cognitive Engine (CCE) Active: Dim=%d, Background Thread Started", self.cce_dimension)
 
         logger.info("Initialized NSA Runtime: Backend=%s, Model=%s", backend.__class__.__name__, self.model_name)
+
+    def restore_checkpoint(self, checkpoint_id: str) -> Dict[str, Any]:
+        """Load a saved CCE checkpoint into the live state (in place)."""
+        validate_checkpoint_id(checkpoint_id)
+        # Always an id inside checkpoint_dir, never a caller-supplied file path.
+        loaded = self.checkpoint_mgr.load_persistent_state(self.checkpoint_mgr.checkpoint_dir / f"{checkpoint_id}.json")
+        if loaded.dimension != self.cce_dimension:
+            raise ValueError(
+                f"checkpoint {checkpoint_id!r} has dimension {loaded.dimension} "
+                f"but this server runs CCE with dimension {self.cce_dimension}"
+            )
+        self.cce_state.restore_from(loaded)
+        self._last_cce_tick = time.time()  # downtime is not CCE elapsed time
+        snap = self.cce_state.snapshot()
+        return {"checkpoint_id": checkpoint_id, "elapsed_seconds": snap.elapsed_seconds, "update_count": snap.update_count}
 
     def close(self) -> None:
         """Stop the CCE background thread (idempotent)."""
@@ -480,7 +500,7 @@ class NSAProxyRuntime:
         base_status = {
             "status": "online",
             "service": "Neural State Architecture Cognitive Runtime Server",
-            "version": "6.4-CCE",
+            "version": __version__,
             "active_model": self.model_name,
             "backend": self.backend_type,
             "cce_enabled": self.enable_cce,
@@ -682,6 +702,15 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 "goal": snap.goal.tolist(),
                 "recent_sensory_events": [e.to_dict() for e in self.runtime.sensory.recent_events[-10:]],
             })
+        elif path == "/api/cce/checkpoints":
+            if not self.runtime.enable_cce:
+                self._json({"error": "CCE not enabled"}, 400)
+                return
+            checkpoints = [
+                {k: v for k, v in item.items() if k != "file"}  # do not expose server filesystem paths
+                for item in self.runtime.checkpoint_mgr.list_checkpoints()
+            ]
+            self._json({"checkpoints": checkpoints, "count": len(checkpoints)})
         else:
             self._json({"error": f"Endpoint '{path}' not found"}, 404)
 
@@ -749,11 +778,31 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
                 return
             cid = data.get("checkpoint_id")
             try:
-                path_saved = self.runtime.checkpoint_mgr.save_persistent_state(self.runtime.cce_state, checkpoint_id=cid)
+                path_saved = self.runtime.checkpoint_mgr.save_persistent_state(
+                    self.runtime.cce_state, checkpoint_id=cid, overwrite=data.get("overwrite") is True
+                )
+            except FileExistsError as exc:
+                self._json({"error": str(exc)}, 409)
+                return
             except ValueError as exc:  # e.g. a checkpoint id that tries to escape the directory
                 self._json({"error": str(exc)}, 400)
                 return
             self._json({"status": "saved", "checkpoint_file": str(path_saved.name)})
+            return
+
+        if path == "/api/cce/restore":
+            if not self.runtime.enable_cce:
+                self._json({"error": "CCE not enabled"}, 400)
+                return
+            try:
+                restored = self.runtime.restore_checkpoint(data.get("checkpoint_id"))
+            except FileNotFoundError:
+                self._json({"error": f"checkpoint {data.get('checkpoint_id')!r} not found"}, 404)
+                return
+            except ValueError as exc:  # bad id, failed integrity check, or dimension mismatch
+                self._json({"error": str(exc)}, 400)
+                return
+            self._json({"status": "restored", **restored})
             return
 
         if path not in {"/v1/chat/completions", "/chat/completions", "/api/chat"}:
@@ -853,6 +902,7 @@ def print_server_banner(host: str, port: int, backend_type: str, model_name: str
     logger.info("  Ollama Endpoint        : http://localhost:%s/api/chat", port)
     logger.info("  CCE Sensor Ingress     : http://localhost:%s/api/cce/sensor", port)
     logger.info("  CCE State Inspection   : http://localhost:%s/api/cce/state", port)
+    logger.info("  CCE Checkpoints        : http://localhost:%s/api/cce/checkpoints (GET), /api/cce/checkpoint, /api/cce/restore (POST)", port)
     logger.info("  Active Target Model    : %s", model_name)
     logger.info("  Inference Backend      : %s", backend_type.upper())
     logger.info("  Continuous Dynamics    : %s", "ACTIVE (Wall-Clock Integration)" if cce_enabled else "OFF")
@@ -870,6 +920,8 @@ def run_server(
     model: str = "qwen2.5:3b",
     backend_url: Optional[str] = None,
     enable_cce: bool = True,
+    restore_checkpoint: Optional[str] = None,
+    checkpoint_dir: Optional[str] = None,
 ) -> None:
     runtime = NSAProxyRuntime(
         backend_type=backend_type,
@@ -879,6 +931,8 @@ def run_server(
         system_one_model=os.environ.get("NSA_SYSTEM_ONE_MODEL", "Qwen/Qwen2.5-0.5B-Instruct"),
         system_one_enabled=os.environ.get("NSA_DISABLE_SYSTEM_ONE", "0") != "1",
         system_one_heartbeat=float(os.environ.get("NSA_SYSTEM_ONE_HEARTBEAT", "2.0")),
+        restore_checkpoint=restore_checkpoint if enable_cce else None,
+        checkpoint_dir=checkpoint_dir,
     )
     NSAHTTPHandler.runtime = runtime
     warn_if_exposed(host)
@@ -903,10 +957,16 @@ def main() -> None:
     parser.add_argument("--no-system-one", action="store_true", help="Disable the continuous local System 1 controller")
     parser.add_argument("--system-one-heartbeat", type=float, default=float(os.environ.get("NSA_SYSTEM_ONE_HEARTBEAT", "2.0")))
     parser.add_argument("--no-cce", action="store_true", help="Disable CCE continuous background engine")
+    parser.add_argument("--restore-checkpoint", default=os.environ.get("NSA_CCE_CHECKPOINT") or None, metavar="ID",
+                        help="Resume CCE state from this checkpoint id at startup (env: NSA_CCE_CHECKPOINT)")
+    parser.add_argument("--checkpoint-dir", default=None,
+                        help="Directory for CCE checkpoints (env: NSA_CCE_CHECKPOINT_DIR; default results/cce_checkpoints)")
     args = parser.parse_args()
     run_server(
         args.host, args.port, args.backend, args.model, args.backend_url,
         enable_cce=not args.no_cce,
+        restore_checkpoint=args.restore_checkpoint,
+        checkpoint_dir=args.checkpoint_dir,
     )
 
 

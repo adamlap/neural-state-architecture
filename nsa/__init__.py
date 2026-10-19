@@ -38,7 +38,11 @@ from nsa.decision import Decision, SecurityDecision
 from nsa.enforcement import EvaluationContext, KeywordClassifier, PolicyClassifier, PolicyEngine
 from nsa.policy import NSAPolicy, PolicyCompiler, PolicyRule
 
-__version__ = "0.7.0"
+try:
+    from importlib.metadata import PackageNotFoundError, version as _pkg_version
+    __version__ = _pkg_version("neural-state-architecture")
+except PackageNotFoundError:  # running from a source checkout that is not installed
+    __version__ = "0.7.0"
 
 _LAZY = {
     "NSA": ("nsa.agent", "NSA"), "NSARuntime": ("nsa.agent", "NSARuntime"),

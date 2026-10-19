@@ -28,6 +28,8 @@ from nsa.runtime.cce_persistent_state import CognitiveStateSnapshot, PersistentC
 from nsa.runtime.continuous_state_field import ContinuousFieldStatus, ContinuousStateField
 
 CHECKPOINT_SCHEMA_VERSION = "1.0.0"
+DEFAULT_CHECKPOINT_DIR = "results/cce_checkpoints"
+CHECKPOINT_DIR_ENV = "NSA_CCE_CHECKPOINT_DIR"
 
 
 @dataclass(frozen=True)
@@ -65,8 +67,9 @@ def validate_checkpoint_id(checkpoint_id: str) -> str:
 class CCECheckpointManager:
     """Manages persistent lifecycle, atomic saving, loading, and forking of CCE states."""
 
-    def __init__(self, checkpoint_dir: Union[str, Path] = "results/cce_checkpoints") -> None:
-        self.checkpoint_dir = Path(checkpoint_dir)
+    def __init__(self, checkpoint_dir: Optional[Union[str, Path]] = None) -> None:
+        # Resolved once so a later chdir cannot move where checkpoints are read/written.
+        self.checkpoint_dir = Path(checkpoint_dir or os.environ.get(CHECKPOINT_DIR_ENV) or DEFAULT_CHECKPOINT_DIR).resolve()
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     def save_persistent_state(
@@ -76,10 +79,16 @@ class CCECheckpointManager:
         *,
         parent_id: Optional[str] = None,
         tags: Sequence[str] = (),
+        overwrite: bool = False,
     ) -> Path:
-        """Atomically persist a PersistentCognitiveState to disk with SHA-256 integrity."""
+        """Atomically persist a PersistentCognitiveState to disk with SHA-256 integrity.
+
+        Raises FileExistsError if the checkpoint exists and ``overwrite`` is False.
+        """
         snapshot = state.snapshot()
         cid = validate_checkpoint_id(checkpoint_id) if checkpoint_id else f"cce_ckpt_{int(time.time() * 1000)}"
+        if not overwrite and (self.checkpoint_dir / f"{cid}.json").exists():
+            raise FileExistsError(f"checkpoint {cid!r} already exists; pass overwrite=True to replace it")
 
         working_list = [float(x) for x in snapshot.working.tolist()]
         self_state_list = [float(x) for x in snapshot.self_state.tolist()]
@@ -151,6 +160,13 @@ class CCECheckpointManager:
             )
 
         dim = int(meta.get("dimension", len(raw_state.get("working", []))))
+        for channel in ("working", "self_state", "goal"):
+            length = len(raw_state.get(channel, []))
+            if length != dim:
+                raise ValueError(
+                    f"CCE Checkpoint Dimension Mismatch: {path} declares dimension {dim} "
+                    f"but channel '{channel}' has {length} values."
+                )
         state = PersistentCognitiveState(
             dimension=dim,
             decay=float(raw_state.get("decay", 0.15)),
@@ -174,6 +190,8 @@ class CCECheckpointManager:
     ) -> Tuple[PersistentCognitiveState, Path]:
         """Fork an existing state into a new independent lineage with parent tracking."""
         validate_checkpoint_id(new_checkpoint_id)
+        if (self.checkpoint_dir / f"{new_checkpoint_id}.json").exists():
+            raise FileExistsError(f"checkpoint {new_checkpoint_id!r} already exists")
         source_path = self.save_persistent_state(source_state, tags=("parent_source",))
         parent_id = source_path.stem
 
@@ -248,6 +266,7 @@ class CCECheckpointManager:
 
 __all__ = [
     "CHECKPOINT_SCHEMA_VERSION",
+    "CHECKPOINT_DIR_ENV",
     "validate_checkpoint_id",
     "CheckpointMetadata",
     "CCECheckpointManager",

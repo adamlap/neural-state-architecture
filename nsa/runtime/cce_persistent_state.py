@@ -108,6 +108,21 @@ class PersistentCognitiveState:
             normative=self._normative,
         )
 
+    def restore_from(self, other: "PersistentCognitiveState") -> None:
+        """Replace this state's channels in place so existing references stay valid."""
+        if other.dimension != self._dimension:
+            raise ValueError(
+                f"cannot restore dimension {other.dimension} state into dimension {self._dimension} state"
+            )
+        self._decay = other._decay
+        self._learning_rate = other._learning_rate
+        self._working = other._working.clone()
+        self._self_state = other._self_state.clone()
+        self._goal = other._goal.clone()
+        self._uncertainty = other._uncertainty
+        self._elapsed = other._elapsed
+        self._updates = other._updates
+
     def composite_state(self, sigma_h: HardState) -> CompositeContinuousState:
         """Form explicit composite tuple X_t = (sigma_t, nu_t, m_t, c_t)."""
         return CompositeContinuousState(
