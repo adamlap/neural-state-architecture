@@ -118,7 +118,7 @@ Standard LLMs are passive: dead until a human presses "Enter", and frozen the mi
 NSA's Continuous Cognitive Engine (CCE) changes this:
 * **Wall-Clock Driven**: The agent ticks autonomously on its own internal clock, processing observations, updating beliefs, and generating thoughts even when no user prompt is arriving.
 * **Fail-Closed Execution**: If an authoritative transition fails or detects an invariant violation, CCE freezes safely rather than hallucinating wildly.
-* **Empirical Grounding**: In [`LIVE_CAPABILITY_BENCHMARK.md`](LIVE_CAPABILITY_BENCHMARK.md), we proved that persistent CCE state outperforms stateless LLM prompting across multiple model families (Qwen, Llama).
+* **Empirical Grounding**: In [`LIVE_CAPABILITY_BENCHMARK.md`](docs/LIVE_CAPABILITY_BENCHMARK.md), we proved that persistent CCE state outperforms stateless LLM prompting across multiple model families (Qwen, Llama).
 
 *Where the research frontier is*: As documented in the 4-way benchmark, while persistent cognitive state is universally robust, predictive extrapolation can sometimes cause weaker models to double-extrapolate drift or sign-flip numbers. Disciplining prompt phrasing and self-model calibration is the active milestone.
 

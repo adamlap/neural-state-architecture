@@ -5,7 +5,7 @@
 The deterministic cognitive benchmark suite (`experiments/cognitive/`, see
 [`COGNITIVE_ARCHITECTURE_EXPERIMENT.md`](COGNITIVE_ARCHITECTURE_EXPERIMENT.md))
 proves the CCE estimator logic is sound in closed-form synthetic simulations. It
-does not by itself say anything about a real language model. `docs/PLAN_CCE_STATUS.md`
+does not by itself say anything about a real language model. `docs/PLAN_STATUS.md`
 explicitly gates live deployment on this:
 
 > A predictor must beat the persistence baseline on held-out trajectories before
@@ -266,7 +266,7 @@ not fewer. The honest reading is:
    speculation, not a discarded inconvenient result.
 
 A null or mixed result is retained as a valid research outcome, per this
-project's stated methodology (`docs/PLAN_CCE_STATUS.md`, "Scientific success
+project's stated methodology (`docs/PLAN_STATUS.md`, "Scientific success
 criteria").
 
 ## Results, round 7: a first non-Qwen model family
@@ -317,7 +317,7 @@ root cause (vs. correlation) has not been confirmed by ablation.
 
 ## What this does and does not establish
 
-This satisfies part of `docs/PLAN_CCE_STATUS.md`'s open items ("demonstrate
+This satisfies part of `docs/PLAN_STATUS.md`'s open items ("demonstrate
 statistically robust gains over matched persistence baselines" on a live model;
 a first cross-model comparison point), on a single machine, single task,
 CPU-only. Three Qwen2.5 models (0.5B/1.5B/3B) and one Llama 3.2 model (1B) are
@@ -340,7 +340,7 @@ rather than an arbitrary constant. It does **not** yet establish:
   drift figure shown in the prompt -- was identified from raw output
   inspection, but not confirmed by ablation).
 
-Per `docs/PLAN_CCE_STATUS.md`'s own bar, this is evidence toward -- not proof
+Per `docs/PLAN_STATUS.md`'s own bar, this is evidence toward -- not proof
 of -- readiness to wire predictive CCE state into a production Ollama/LLM
 runtime integration. It now includes two settled negative results for
 `predictive_cce` specifically (qwen2.5:1.5b and llama3.2:1b, each confirmed on
@@ -358,7 +358,7 @@ fragile across models. Concrete next steps, in priority order:
    `counterfactual`/`interruption_recovery` tasks) before considering any of
    these results general rather than task-specific.
 3. Only after (1)-(2), revisit whether predictive CCE state should feed the
-   live continuous field per `docs/PLAN_CCE_STATUS.md`'s explicit gate --
+   live continuous field per `docs/PLAN_STATUS.md`'s explicit gate --
    and if wired in, gate it per validated model, not per parameter count or
    model family, given that neither predicted these two models' results.
 
