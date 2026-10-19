@@ -46,6 +46,15 @@ class MemoryStore:
     def active(self, now: datetime | None = None) -> Tuple[MemoryItem, ...]:
         return tuple(item for item in self.items if item.available(now))
 
+    def prune(self, now: datetime | None = None, max_items: int | None = None) -> "MemoryStore":
+        """Drop expired items, then the oldest items beyond ``max_items``; returns self if unchanged."""
+        kept = self.active(now)
+        if max_items is not None and len(kept) > max_items:
+            kept = kept[len(kept) - max_items:] if max_items > 0 else ()
+        if len(kept) == len(self.items):
+            return self
+        return MemoryStore(kept)
+
     def get(self, memory_id: str) -> MemoryItem:
         for item in self.items:
             if item.memory_id == memory_id:

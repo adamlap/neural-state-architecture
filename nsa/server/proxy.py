@@ -5,12 +5,14 @@ import re
 
 import argparse
 import atexit
+import hashlib
 import hmac
 import json
 import logging
 import os
 import threading
 import time
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
@@ -87,6 +89,9 @@ def _extract_clean_markdown(text: str) -> str:
 
 class NSAProxyRuntime:
     """Connect a real LLM backend to the deterministic NSA runtime monitor and CCE continuous engine."""
+
+    MEMORY_MAX_ITEMS = int(os.environ.get("NSA_MEMORY_MAX_ITEMS", 256))
+    MEMORY_TTL_SECONDS = float(os.environ.get("NSA_MEMORY_TTL_SECONDS", 24 * 3600))
 
     def __init__(
         self,
@@ -478,23 +483,30 @@ class NSAProxyRuntime:
         if policy == "discard":
             return
         candidates = [m for m in messages[-4:] if m.get("role") in {"user", "assistant"}]
+        now = datetime.now(timezone.utc)
         with self._memory_lock:
+            # Expired ids must be freed before dedupe so they can be re-remembered.
+            store = self.memory_store.prune(now)
             for message in candidates:
                 content = str(message.get("content", "")).strip()
                 if not content:
                     continue
-                memory_id = f"chat-{len(self.memory_store.items)}-{hash(content)}"
+                role = message.get("role", "user")
+                digest = hashlib.sha256(f"{role}\0{content}".encode("utf-8")).hexdigest()[:32]
                 try:
-                    self.memory_store = self.memory_store.write(
+                    store = store.write(
                         MemoryItem(
-                            memory_id=memory_id,
+                            memory_id=f"chat-{digest}",
                             content=content,
-                            kind=f"{policy}:{message.get('role', 'user')}",
+                            kind=f"{policy}:{role}",
                             provenance_ids=("openwebui",),
+                            created_at=now,
+                            expires_at=now + timedelta(seconds=self.MEMORY_TTL_SECONDS),
                         )
                     )
                 except ValueError:
-                    pass
+                    pass  # already remembered
+            self.memory_store = store.prune(now, self.MEMORY_MAX_ITEMS)
 
     def status(self) -> Dict[str, Any]:
         base_status = {
