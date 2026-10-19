@@ -57,6 +57,54 @@ def warn_if_exposed(host: str) -> None:
             "are reachable without authentication. Set NSA_API_TOKEN or bind to 127.0.0.1.", host)
 
 
+_TITLE_MARKERS = ("3-5 word", "title with an emoji", "generate a concise", "summarize the prompt", "chat title", "summarize the chat", "title:")
+
+
+def is_title_request(latest: str) -> bool:
+    """OpenWebUI's automated title/summary prompts, matched by their template phrasing only."""
+    lowered = latest.lower()
+    return any(k in lowered for k in _TITLE_MARKERS)
+
+
+def _content_to_text(content: Any) -> str:
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict):
+                text = part.get("text")
+                if part.get("type", "text") == "text" and isinstance(text, str):
+                    parts.append(text)
+            else:
+                raise ValueError("message content parts must be strings or objects")
+        return "\n".join(parts)
+    raise ValueError("message 'content' must be a string, a list of parts, or null")
+
+
+def normalize_messages(messages: Any) -> List[Dict[str, Any]]:
+    """Validate chat messages and flatten content to plain text; raises ValueError on invalid shapes."""
+    if not isinstance(messages, list):
+        raise ValueError("'messages' must be a list")
+    normalized = []
+    for index, message in enumerate(messages):
+        if not isinstance(message, dict):
+            raise ValueError(f"messages[{index}] must be an object")
+        role = message.get("role")
+        if role is not None and not isinstance(role, str):
+            raise ValueError(f"messages[{index}].role must be a string")
+        try:
+            content = _content_to_text(message.get("content"))
+        except ValueError as exc:
+            raise ValueError(f"messages[{index}]: {exc}") from None
+        normalized.append({**message, "role": role or "", "content": content})
+    return normalized
+
+
 def _extract_clean_markdown(text: str) -> str:
     """Unwraps JSON-encoded responses (e.g. {'response': '...'}) and extracts clean markdown prose."""
     raw = text.strip()
@@ -280,7 +328,8 @@ class NSAProxyRuntime:
             },
         }
 
-    def process_chat(self, messages: List[Dict[str, str]], requested_model: Optional[str] = None) -> Dict[str, Any]:
+    def process_chat(self, messages: List[Dict[str, Any]], requested_model: Optional[str] = None) -> Dict[str, Any]:
+        messages = normalize_messages(messages)
         history = [f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in messages if m.get("role") in {"user", "assistant"}]
         latest = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
         if self.system_one is not None:
@@ -294,10 +343,7 @@ class NSAProxyRuntime:
             except Exception:
                 logger.exception("System 1 turn assessment failed")
         # Check if this is an OpenWebUI automated title or summary generation prompt
-        is_title_gen = (
-            any(k in latest.lower() for k in ["3-5 word", "title with an emoji", "generate a concise", "summarize the prompt", "create a title", "chat title", "summarize the chat", "title:"])
-            or (len(messages) <= 2 and "title" in latest.lower())
-        )
+        is_title_gen = is_title_request(latest)
 
         if is_title_gen:
             # Fast-path for title generation to avoid blocking chat completion
@@ -821,15 +867,13 @@ class NSAHTTPHandler(BaseHTTPRequestHandler):
             self._json({"error": f"Endpoint '{path}' not supported"}, 404)
             return
 
-        messages = data.get("messages", [])
-        if not isinstance(messages, list):
-            self._json({"error": "'messages' must be a list"}, 400)
+        try:
+            messages = normalize_messages(data.get("messages", []))
+        except ValueError as exc:
+            self._json({"error": str(exc)}, 400)
             return
-        latest_user = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
-        is_title = (
-            any(k in latest_user.lower() for k in ["3-5 word", "title with an emoji", "generate a concise", "summarize the prompt", "create a title", "chat title", "summarize the chat", "title:"])
-            or (len(messages) <= 2 and "title" in latest_user.lower())
-        )
+        latest_user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        is_title = is_title_request(latest_user)
         req_type = "OPENWEBUI_TITLE" if is_title else "USER_CHAT"
         preview = (latest_user[:60] + "...") if len(latest_user) > 60 else latest_user
         preview = preview.replace("\n", " ")

@@ -22,12 +22,16 @@ def server(tmp_path):
         cce_state=PersistentCognitiveState(dimension=4),
         process_sensor_input=lambda text, source, importance: {"ok": True, "text": text, "importance": importance},
         status=lambda: {"status": "online"},
+        chat_calls=[],
+    )
+    fake.process_chat = lambda messages, requested_model=None: (
+        fake.chat_calls.append(messages) or {"content": "ok", "model": "nsa-test", "nsa": {}}
     )
     handler = type("Handler", (proxy.NSAHTTPHandler,), {"runtime": fake})
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
-    yield SimpleNamespace(url=f"http://127.0.0.1:{httpd.server_address[1]}", ckpt_dir=ckpt_dir, tmp=tmp_path)
+    yield SimpleNamespace(url=f"http://127.0.0.1:{httpd.server_address[1]}", ckpt_dir=ckpt_dir, tmp=tmp_path, chat_calls=fake.chat_calls)
     httpd.shutdown()
     httpd.server_close()
 
@@ -115,6 +119,38 @@ def test_malformed_requests_get_4xx_not_dropped_connections(server, monkeypatch)
     assert _request(server.url + "/v1/chat/completions", method="POST", body={"messages": "nope"})[0] == 400
     status, _, body = _request(server.url + "/api/cce/sensor", method="POST", body={"text": "hi", "importance": 0.7})
     assert status == 200 and body["importance"] == 0.7
+
+
+@pytest.mark.parametrize("messages", [
+    ["just a string"],
+    [42],
+    [None],
+    [{"role": 5, "content": "x"}],
+    [{"role": "user", "content": 7}],
+    [{"role": "user", "content": {"text": "x"}}],
+    [{"role": "user", "content": [123]}],
+])
+def test_invalid_message_shapes_return_400(server, messages):
+    status, _, body = _request(server.url + "/v1/chat/completions", method="POST", body={"messages": messages})
+    assert status == 400 and "messages[0]" in body["error"]
+    assert _request(server.url + "/health")[0] == 200
+
+
+def test_list_part_and_null_content_are_normalized(server):
+    parts = [{"type": "text", "text": "hello"}, {"type": "image_url", "image_url": {"url": "x"}}, {"type": "text", "text": "world"}]
+    status, _, _ = _request(server.url + "/v1/chat/completions", method="POST", body={"messages": [
+        {"role": "system", "content": None},
+        {"role": "user", "content": parts},
+    ]})
+    assert status == 200
+    assert [(m["role"], m["content"]) for m in server.chat_calls[-1]] == [("system", ""), ("user", "hello\nworld")]
+
+
+def test_title_detection_only_matches_openwebui_templates():
+    assert not proxy.is_title_request("suggest a title for my essay")
+    assert not proxy.is_title_request("create a title for my blog post")
+    assert proxy.is_title_request("### Task:\nGenerate a concise, 3-5 word title with an emoji summarizing the chat history.")
+    assert proxy.is_title_request("Summarize the chat")
 
 
 def test_warns_when_exposed_without_token(monkeypatch, caplog):
