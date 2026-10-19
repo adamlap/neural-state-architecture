@@ -216,3 +216,128 @@ def test_unknown_constraint_keys_fail_closed_by_default():
     decision = CapabilityConstraintEvaluator().evaluate(token, action)
     assert not decision.allowed
     assert "unsupported" in decision.reason
+
+
+class _FlakyEffect:
+    def __init__(self, *, fail_commit=False, fail_abort=False, fail_compensate=False):
+        self.fail_commit, self.fail_abort, self.fail_compensate = fail_commit, fail_abort, fail_compensate
+        self.committed = 0
+
+    def prepare(self, action, state): return action
+    def commit(self, prepared):
+        if self.fail_commit: raise RuntimeError("boom")
+        self.committed += 1
+        return "done"
+    def abort(self, prepared):
+        if self.fail_abort: raise RuntimeError("abort boom")
+    def compensate(self, result):
+        if self.fail_compensate: raise RuntimeError("comp boom")
+
+
+def _effect_engine(effect, **kwargs):
+    from nsa.cce.effects import TwoPhaseExecutor
+    authority = _authority()
+    token = authority.mint_capability("agent", "act", "ops", TrustTier.T2_REVERSIBLE, **kwargs)
+    engine = CognitiveTransactionEngine(CanonicalState(), capability_authority=authority,
+                                        capability_tokens={"act": token}, effect_executor=TwoPhaseExecutor(effect))
+    return engine, authority, token
+
+
+_ACT = ActionCandidate("act", expected_utility=1.0, risk=0.1, required_capabilities=("act.run",))
+
+
+def test_failed_commit_does_not_burn_a_one_shot_token_sync():
+    effect = _FlakyEffect(fail_commit=True)
+    engine, authority, token = _effect_engine(effect)
+    first = engine.tick(action_candidates=[_ACT])
+    assert not first.receipt.committed and "effect commit failed" in first.receipt.reason
+    effect.fail_commit = False
+    second = engine.tick(action_candidates=[_ACT])
+    assert second.receipt.committed, second.receipt.reason
+    third = engine.tick(action_candidates=[_ACT])
+    assert "already consumed" in third.receipt.reason  # still one-shot after a real success
+
+
+def test_failed_commit_does_not_count_against_rate_limit_sync():
+    effect = _FlakyEffect(fail_commit=True)
+    engine, _, _ = _effect_engine(effect, constraints={"max_calls": 1, "window_seconds": 60})
+    assert not engine.tick(action_candidates=[_ACT]).receipt.committed
+    effect.fail_commit = False
+    assert engine.tick(action_candidates=[_ACT]).receipt.committed
+    assert "rate limit" in engine.tick(action_candidates=[_ACT]).receipt.reason
+
+
+def test_failed_plain_executor_does_not_burn_token_sync():
+    authority = _authority()
+    token = authority.mint_capability("agent", "act", "ops", TrustTier.T2_REVERSIBLE)
+    calls = []
+
+    def executor(action, state):
+        calls.append(1)
+        if len(calls) == 1: raise RuntimeError("boom")
+        return "ok"
+
+    engine = CognitiveTransactionEngine(CanonicalState(), capability_authority=authority,
+                                        capability_tokens={"act": token}, executor=executor)
+    assert not engine.tick(action_candidates=[_ACT]).receipt.committed
+    assert engine.tick(action_candidates=[_ACT]).receipt.committed
+
+
+def test_multi_token_failure_burns_no_token_sync():
+    authority = _authority()
+    tokens = {cap: authority.mint_capability("agent", "act", "ops", TrustTier.T2_REVERSIBLE) for cap in ("act.a", "act.b")}
+    action = ActionCandidate("act", expected_utility=1.0, risk=0.1, required_capabilities=("act.a", "act.b"))
+    real_reserve = authority.reserve_capability
+    state = {"calls": 0}
+
+    def flaky_reserve(*args, **kwargs):
+        state["calls"] += 1
+        if state["calls"] == 2: return False, "reserve boom", None
+        return real_reserve(*args, **kwargs)
+
+    authority.reserve_capability = flaky_reserve
+    engine = CognitiveTransactionEngine(CanonicalState(), capability_authority=authority, capability_tokens=tokens)
+    failed = engine.tick(action_candidates=[action])
+    assert not failed.receipt.committed and failed.receipt.reason == "reserve boom"
+    assert authority._reserved_nonces == {} and authority._consumed_nonces == set()
+    assert engine.tick(action_candidates=[action]).receipt.committed
+    assert len(authority._consumed_nonces) == 2
+
+
+def test_multi_token_failed_commit_burns_no_token_sync():
+    effect = _FlakyEffect(fail_commit=True)
+    from nsa.cce.effects import TwoPhaseExecutor
+    authority = _authority()
+    tokens = {cap: authority.mint_capability("agent", "act", "ops", TrustTier.T2_REVERSIBLE) for cap in ("act.a", "act.b")}
+    action = ActionCandidate("act", expected_utility=1.0, risk=0.1, required_capabilities=("act.a", "act.b"))
+    engine = CognitiveTransactionEngine(CanonicalState(), capability_authority=authority, capability_tokens=tokens,
+                                        effect_executor=TwoPhaseExecutor(effect))
+    assert not engine.tick(action_candidates=[action]).receipt.committed
+    assert authority._reserved_nonces == {} and authority._consumed_nonces == set()
+    effect.fail_commit = False
+    assert engine.tick(action_candidates=[action]).receipt.committed
+
+
+def test_compensation_failure_is_recorded_in_events_sync():
+    from nsa.core.transition import TransitionValidator
+
+    class RejectingApply(TransitionValidator):
+        def apply(self, state, proposal):
+            return state, CognitiveTransactionEngine._proposal_receipt(state, proposal, "forced apply rejection")
+
+    effect = _FlakyEffect(fail_compensate=True)
+    engine, _, _ = _effect_engine(effect)
+    engine.validator = RejectingApply()
+    result = engine.tick(action_candidates=[_ACT])
+    assert not result.receipt.committed
+    errors = [e for e in result.events if e.kind.value == "error"]
+    assert any("compensation failed" in str(e.payload.get("reason")) for e in errors)
+    assert result.effect_receipt is not None
+
+
+def test_abort_failure_is_recorded_when_commit_fails_sync():
+    effect = _FlakyEffect(fail_commit=True, fail_abort=True)
+    engine, _, _ = _effect_engine(effect)
+    result = engine.tick(action_candidates=[_ACT])
+    assert "abort failed" in result.receipt.reason
+    assert any("abort failed" in str(e.payload.get("reason")) for e in result.events)

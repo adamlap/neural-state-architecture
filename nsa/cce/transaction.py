@@ -78,19 +78,41 @@ class CognitiveTransactionEngine:
             if all(t.nonce != token.nonce for t in verified): verified.append(token)
         return True, "capabilities verified", tuple(verified)
 
-    def _consume_capabilities(self, tokens, action):
-        if self.capability_authority is None: return True, "no cryptographic capabilities to consume"
+    def _reserve_capabilities(self, tokens, action):
+        """Reserve every token or none: a partial reservation is released before returning."""
+        if self.capability_authority is None: return False, "capability authority unavailable", []
+        reservations = []
         for token in tokens:
-            ok, reason = self.capability_authority.verify_capability(token, action.action_id, self._required_tier(action), time())
-            if not ok: return False, reason
-        for token in tokens:
+            ok, reason, rid = self.capability_authority.reserve_capability(token, action.action_id, self._required_tier(action), current_time=time())
+            if not ok or rid is None:
+                self._release_capabilities(reservations)
+                return False, reason, []
+            reservations.append((token, rid))
+        return True, "capabilities reserved", reservations
+
+    def _release_capabilities(self, reservations):
+        for token, rid in reservations: self.capability_authority.release_capability(token, rid)
+
+    def _consume_reserved(self, reservations, action):
+        """Burn reserved tokens after the effect committed; rate-limited use is recorded only here."""
+        for index, (token, rid) in enumerate(reservations):
             # A max_calls token is renewable: it stays valid (subject to expiry and
             # its own rate limit) instead of being burned by its first use.
-            if not token.is_rate_limited:
-                ok, reason = self.capability_authority.consume_capability(token)
-                if not ok: return False, reason
+            ok, reason = self.capability_authority.consume_reserved_capability(token, rid, burn=not token.is_rate_limited)
+            if not ok:
+                self._release_capabilities(reservations[index + 1:])
+                return False, reason
             self.constraint_evaluator.record_use(token, action, context=self._constraint_context(action))
-        return True, "capabilities consumed"
+        return True, "reserved capabilities consumed after successful effect"
+
+    def _compensate(self, effect_receipt, events):
+        try: compensated = self.effect_executor.compensate(effect_receipt)
+        except Exception as exc:
+            events.append(self._event(EventKind.ERROR, {"reason": f"compensation failed: {type(exc).__name__}: {exc}", "effect_id": effect_receipt.effect_id}))
+            return effect_receipt
+        events.append(self._event(EventKind.EXECUTION, {"phase": "compensation_required" if compensated.compensation_required else "compensated", "effect_id": compensated.effect_id, "reason": compensated.reason}))
+        if compensated.compensation_required: events.append(self._event(EventKind.ERROR, {"reason": compensated.reason, "effect_id": compensated.effect_id}))
+        return compensated
 
     @staticmethod
     def _proposal_receipt(state, proposal, reason):
@@ -128,39 +150,47 @@ class CognitiveTransactionEngine:
                 if not safety_allowed: return self._reject(proposal, selected, True, safety_reason, events)
         ok, validation_reason = self.validator.validate(self.state, proposal)
         if not ok: return self._reject(proposal, selected, True, validation_reason, events)
-        prepared_id = prepared = None
-        if selected is not None and self.effect_executor is not None:
-            try:
-                prepared_id, prepared = self.effect_executor.prepare(selected, self.state)
-                events.append(self._event(EventKind.EXECUTION, {"phase": "prepared", "effect_id": prepared_id}))
-            except Exception as exc:
-                return self._reject(proposal, selected, True, f"effect prepare failed: {type(exc).__name__}: {exc}", events)
+        reservations = []
         if selected is not None and verified_tokens:
-            consumed, consume_reason = self._consume_capabilities(verified_tokens, selected)
+            reserved, reserve_reason, reservations = self._reserve_capabilities(verified_tokens, selected)
+            events.append(self._event(EventKind.CAPABILITY, {"allowed": reserved, "reason": "capabilities reserved for effect" if reserved else reserve_reason, "reserved": len(reservations), "consumed": False}))
+            if not reserved: return self._reject(proposal, selected, True, reserve_reason, events)
+        effect_receipt = None; executed = False; execution_result = None
+        try:
+            prepared_id = prepared = None
+            if selected is not None and self.effect_executor is not None:
+                try:
+                    prepared_id, prepared = self.effect_executor.prepare(selected, self.state)
+                    events.append(self._event(EventKind.EXECUTION, {"phase": "prepared", "effect_id": prepared_id}))
+                except Exception as exc:
+                    self._release_capabilities(reservations)
+                    return self._reject(proposal, selected, True, f"effect prepare failed: {type(exc).__name__}: {exc}", events)
+                effect_receipt = self.effect_executor.commit(prepared_id, prepared, selected)
+                events.append(self._event(EventKind.EXECUTION, {"phase": "committed" if effect_receipt.committed else "failed", "effect_id": effect_receipt.effect_id, "result": effect_receipt.result, "reason": effect_receipt.reason}))
+                if not effect_receipt.committed:
+                    self._release_capabilities(reservations)
+                    return self._reject(proposal, selected, True, effect_receipt.reason, events, effect_receipt)
+                executed = True; execution_result = effect_receipt.result
+            elif selected is not None and self.executor is not None:
+                try: execution_result = self.executor(selected, self.state)
+                except Exception as exc:
+                    self._release_capabilities(reservations)
+                    reason_text = f"execution failed: {type(exc).__name__}: {exc}"; events.append(self._event(EventKind.ERROR, {"reason": reason_text})); return self._reject(proposal, selected, True, reason_text, events)
+                executed = True; events.append(self._event(EventKind.EXECUTION, {"action_id": selected.action_id, "result": execution_result}))
+        except BaseException:
+            self._release_capabilities(reservations)  # no-op for reservations already released above
+            raise
+        if reservations:
+            consumed, consume_reason = self._consume_reserved(reservations, selected)
             events.append(self._event(EventKind.CAPABILITY, {"allowed": consumed, "reason": consume_reason, "consumed": consumed}))
             if not consumed:
-                if prepared_id is not None:
-                    try: self.effect_executor.effect.abort(prepared)
-                    except Exception: pass
-                return self._reject(proposal, selected, True, consume_reason, events)
-        effect_receipt = None; executed = False; execution_result = None
-        if selected is not None and self.effect_executor is not None:
-            effect_receipt = self.effect_executor.commit(prepared_id, prepared, selected)
-            events.append(self._event(EventKind.EXECUTION, {"phase": "committed" if effect_receipt.committed else "failed", "effect_id": effect_receipt.effect_id, "result": effect_receipt.result, "reason": effect_receipt.reason}))
-            if not effect_receipt.committed: return self._reject(proposal, selected, True, effect_receipt.reason, events, effect_receipt)
-            executed = True; execution_result = effect_receipt.result
-        elif selected is not None and self.executor is not None:
-            try: execution_result = self.executor(selected, self.state)
-            except Exception as exc:
-                reason_text = f"execution failed: {type(exc).__name__}: {exc}"; events.append(self._event(EventKind.ERROR, {"reason": reason_text})); return self._reject(proposal, selected, True, reason_text, events)
-            executed = True; events.append(self._event(EventKind.EXECUTION, {"action_id": selected.action_id, "result": execution_result}))
+                if effect_receipt is not None: effect_receipt = self._compensate(effect_receipt, events)
+                return self._reject(proposal, selected, True, consume_reason, events, effect_receipt, executed=executed, execution_result=execution_result)
         next_state, receipt = self.validator.apply(self.state, proposal)
         if receipt.committed:
             events.append(self._event(EventKind.STATE_COMMIT, {"source_digest": receipt.source_digest, "target_digest": receipt.target_digest, "effect_id": effect_receipt.effect_id if effect_receipt else None})); self.state = next_state
         else:
-            if effect_receipt is not None and effect_receipt.committed:
-                try: effect_receipt = self.effect_executor.compensate(effect_receipt)
-                except Exception: pass
+            if effect_receipt is not None and effect_receipt.committed: effect_receipt = self._compensate(effect_receipt, events)
             events.append(self._event(EventKind.ROLLBACK, {"reason": receipt.reason}))
         self.trajectory.append(self.state, receipt=receipt, events=events)
         return CognitiveTransaction(self.state, proposal, selected, allowed, policy_reason, executed, execution_result, receipt, tuple(events), effect_receipt)
