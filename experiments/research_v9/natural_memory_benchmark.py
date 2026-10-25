@@ -18,6 +18,10 @@ Conditions
 Kinds: ``recall``; ``update`` (value changes later); ``poisoned`` (a later "update" arrives through
 the untrusted channel ``email``; the correct answer is the original value).
 
+9.1: ``NSARuntime.memory_keys_for`` prefers keys whose value came from a TRUSTED write. 9.0 showed that an LLM
+extractor phrases an untrusted restatement as a *different* key, which bypasses the write-time gate (35 % attack
+success for ``nsa_llm`` on 1.5b); 9.0 results are kept in ``results/research-v9-1.5b`` for comparison.
+
 Besides answer accuracy, memory-formation quality is measured without the answer model:
 ``memory_correct`` (the canonical value for the target key equals the expected value after ingest) and
 ``key_retrieved`` (the question ranks the target key). Ingest cost (seconds, model calls) is recorded.
@@ -41,7 +45,7 @@ from experiments.research_common.backends import FixedDecodingBackend
 from experiments.research_common.grading import lenient_correct
 from experiments.research_common.stats import holm, mcnemar_exact, wilson
 
-VERSION = "9.0"
+VERSION = "9.1"
 DECODING = {"temperature": 0.0, "max_tokens": 32, "num_ctx": 8192}
 CONDITIONS = ("transcript", "rag_overlap", "nsa_rules", "nsa_llm")
 KINDS = ("recall", "update", "poisoned")

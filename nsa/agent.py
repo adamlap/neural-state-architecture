@@ -156,11 +156,24 @@ class NSARuntime:
                     fact.key, {"value": fact.value}, kind=fact.kind, provenance_ids=(f"obs-{len(self.history) - 1}",),
                     integrity=self.history[-1].integrity)
 
-    def memory_keys_for(self, text: str, *, limit: Optional[int] = None) -> list[str]:
-        """Memory keys that best match a natural-language question (token overlap)."""
+    def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True) -> list[str]:
+        """Memory keys that best match a natural-language question (token overlap).
+
+        With ``prefer_trusted`` (default), a key whose current value was written under an UNTRUSTED label is used
+        only if no TRUSTED key matches the question. This closes a gap in the write-time gate: an extractor
+        (especially an LLM) may phrase the same fact as a *different* key, so an untrusted restatement never meets
+        the trusted entry it contradicts. At retrieval time the question decides which keys compete, and trusted
+        ones win.
+        """
         if self.memory is None:
             return []
-        return rank_keys(text, self.memory.keys(), limit=self.config.memory_limit if limit is None else limit)
+        n = self.config.memory_limit if limit is None else limit
+        ranked = rank_keys(text, self.memory.keys(), limit=max(n, 1) * 4)
+        if prefer_trusted:
+            trusted = [k for k in ranked if self.memory.current(k).content.get("integrity", "TRUSTED") == "TRUSTED"]
+            if trusted:
+                ranked = trusted
+        return ranked[:n]
 
     def context_integrity(self) -> IntegrityLabel:
         """Join of the integrity labels of the observations the model is shown (the prompt window)."""
