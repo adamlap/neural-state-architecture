@@ -6,6 +6,22 @@ NSA wraps a replaceable language model with **persistent explicit state, cogniti
 
 > **Research status:** NSA is experimental research software. The repository contains validated security/state primitives and live-model experiments, but benchmark results do not establish AGI, consciousness, or universal safety.
 
+## Evidence snapshot (small local models, CPU-only)
+
+What the benchmarks in `results/` currently support, with the caveats that go with each. Full tables: [`results/README.md`](results/README.md);
+claim boundaries: [`research/CLAIMS_AND_EVIDENCE.md`](research/CLAIMS_AND_EVIDENCE.md); plan: [`research/ROADMAP.md`](research/ROADMAP.md).
+The percentages in the pillar sections below are the authors' status estimates, not measurements, and where they differ from this table, this table is the measured one.
+
+| Claim | Evidence | Caveat |
+|---|---|---|
+| State-controlled gates make agents safer | Memory poisoning: attack success 0.00 vs 0.29–0.57 ungated (v5). Tool-use prompt injection: 0 of 120 injected episodes executed an attack vs 45–67 % without the gate, no utility cost (v6). Prompt-level warnings did not help and probably hurt. | The gate is exact by construction **if the integrity label is right**; labels are now signable (`nsa/ingress.py`) but ingress is the trust boundary. Without an oracle extractor, a sloppy extractor can bypass the write-time gate (found in v9); retrieval now prefers trusted memory. |
+| State-controlled abstention stops fabrication | v7: 0 fabrication and no model call when evidence is absent; prompt-based abstention is wording- and model-dependent in both directions. | Signal is retrieval coverage, not a calibrated confidence. |
+| Smaller context budget = less memory, same answers | v8 (qwen2.5:1.5b): `num_ctx` 32768 → 2048 cuts the loaded model 2024 → 1058 MiB and server RSS 2973 → 1346 MiB; retrieval stays at 1.00 while the transcript collapses once history exceeds the window; prefill 299 s → 0.5 s at 1000 events. | **A plain keyword-retrieval baseline does as well on non-adversarial recall.** The gain is from not putting history in the prompt, not from NSA-specific memory. |
+| Memory can be formed from natural language | v9 / extraction quality: rules are perfect on the phrasings they were written for and miss most held-out ones; a few-shot LLM or a rules-first hybrid recovers most of them (0.73–0.79 held-out recall, 1.5b–7b). | Synthetic template conversations; opaque value tokens; the weak link of the whole stack. |
+| Serialised state text improves answers | **Not supported.** It adds nothing over the same history window (v1.2, v4.2). | The benefit comes from state that controls something (a gate, a decision), not from state shown to the model. |
+| Neural residency / prefetch speeds up dense models | **Not supported** on the measured dense model (0.99×, statistically neutral). | Untested on MoE or GPU hardware. |
+| AGI, consciousness | **Not established**, not claimed. | See `research/CLAIMS_AND_EVIDENCE.md`. |
+
 ## Architectural Foundations of Safe AGI
 
 ### The Flaw of "Model-Centric" AGI
