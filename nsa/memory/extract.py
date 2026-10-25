@@ -32,8 +32,14 @@ class ExtractedFact:
 
 
 def normalize_key(text: str) -> str:
-    words = [w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in _ARTICLES and w not in {"for", "of", "s"}]
-    return " ".join(words)
+    """Canonical key: lower-cased content words, de-duplicated and sorted.
+
+    Order-insensitive on purpose. "staging cache size" and "the cache size for staging" must be the
+    same key; otherwise an untrusted restatement in a different word order creates a *second* key,
+    never meets the integrity gate, and can win retrieval (found by benchmark v9).
+    """
+    words = {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in _ARTICLES and w not in {"for", "of", "s"}}
+    return " ".join(sorted(words))
 
 
 class FactExtractor(Protocol):

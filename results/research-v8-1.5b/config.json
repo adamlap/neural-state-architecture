@@ -1,0 +1,8 @@
+{
+  "version": "8.0",
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 32
+  },
+  "transcript_token_cap": 20000
+}

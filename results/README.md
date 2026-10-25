@@ -11,6 +11,7 @@
 | `research-v6-1.5b`, `research-v6-3b` | Current. Tool-use prompt injection with runtime taint gating (see the end of this file). |
 | `research-v7-1.5b`, `research-v7-3b` | Current. Evidence-gated abstention (see the end of this file). |
 | `research-v5/6/7-llama3.2-1b` | Cross-family check. Mostly uninformative on utility (model too weak); see the end of this file. |
+| `research-v8-*` | Current. Fixed memory budget: memory, speed and accuracy vs `num_ctx` and history length. |
 | `research-v1.1`, `research-v2.1` | Superseded: valid episodes and decoding, but still the `VALUE=<value>` instruction, which the 1.5b model echoes verbatim (`VALUE=<V007_000>`). In v2.1 `memory_no_cognitive` scores 0 % strict although retrieval was correct in 100 % of episodes, so its comparisons are format artifacts. Kept for provenance. |
 
 
@@ -204,3 +205,25 @@ for some questions and uninformative for others.
   Answerable accuracy is low for the memory conditions (0.12–0.29) because of the same copy weakness, versus 0.79 with the full transcript.
 
 Taken together with qwen2.5: the *direction* of the safety and abstention results holds on a second family; the utility and poisoning-benchmark numbers do not generalise to a model this small.
+
+## research-v8 (fixed memory budget), qwen2.5:1.5b
+
+Per `num_ctx`: memory of the loaded model (`/api/ps`) and resident set of the Ollama processes; accuracy (lenient) by history length d for
+`transcript / rag_lines / temporal_memory` (a `T` marks cells where the transcript was truncated by the context limit). 6 episodes per cell.
+
+| num_ctx | model MiB | server RSS MiB | d=10 | d=100 | d=250 | d=1000 |
+|---:|---:|---:|---|---|---|---|
+| 2048 | 1058 | 1346 | 1.00 / 1.00 / 0.83 | 0.00T / 1.00 / 1.00 | 0.00T / 1.00 / 1.00 | 0.00T / 1.00 / 1.00 |
+| 4096 | 1116 | 1618 | 1.00 / 1.00 / 0.83 | 1.00 / 1.00 / 1.00 | 0.00T / 1.00 / 1.00 | 0.00T / 1.00 / 1.00 |
+| 8192 | 1304 | 2062 | 1.00 / 1.00 / 0.83 | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 | 0.00T / 1.00 / 1.00 |
+| 32768 | 2024 | 2973 | 1.00 / 1.00 / 0.83 | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 | 0.83 / 1.00 / 1.00 |
+
+Prompt-processing time at `num_ctx` 32768 (Ollama's `prompt_eval`): transcript 1.6 s (d=10) → 14 s (100) → 39 s (250) → **299 s (1000)**;
+`rag_lines` 0.5–0.6 s and `temporal_memory` 0.45–0.48 s at every history length.
+
+* **Memory is a real, measurable lever:** shrinking `num_ctx` from 32768 to 2048 cut the loaded model from 2024 to 1058 MiB (−48 %) and the server's resident set from 2973 to 1346 MiB (−55 %) for a 1.5B model.
+* **The transcript pays for it; retrieval does not.** The transcript's accuracy falls to 0 as soon as the history exceeds the budget (silent truncation drops the fact), whereas both retrieval conditions stay at 1.00 at 2048.
+* **Prefill is ~600× cheaper at 1000 events** (299 s vs 0.5 s) for the same answer.
+* **The plain keyword retrieval baseline is as good as the canonical store here** (1.00 everywhere). The benefit measured in v8 is from *not putting the history in the prompt*, not from NSA-specific memory. The `temporal_memory` 0.83 at d=10 is one answer-format slip per cell group (1 of 6), not a retrieval failure.
+
+**What this does not show:** LLM-driven memory formation (v9), larger models, GPU hardware, or that canonical memory beats generic retrieval on non-adversarial recall.
