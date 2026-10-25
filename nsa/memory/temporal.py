@@ -125,6 +125,15 @@ class TemporalMemoryStore:
     def current(self, key: str) -> MemoryItem | None:
         return self._current_of(self.versions(key))
 
+    def keys(self) -> tuple[str, ...]:
+        """Canonical keys with at least one available version (original spelling of the latest write)."""
+        out = []
+        for chain in self._index.values():
+            live = [i for i in chain if i.available()]
+            if live:
+                out.append(str(live[-1].content.get("memory_key")))
+        return tuple(out)
+
     def trusted_values(self) -> tuple[str, ...]:
         """Values of canonical versions written under a TRUSTED label (data-flow origin checks)."""
         trusted = IntegrityLabel.TRUSTED.name

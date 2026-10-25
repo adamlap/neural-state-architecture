@@ -16,6 +16,7 @@ from nsa.core.state_codec import decode_state, encode_state
 from nsa.cognition.system_one_runtime import SystemOneController, SystemOneBackend, SystemOneTick
 from nsa.cognition.tools import ToolRegistry
 from nsa.memory import TemporalMemoryStore
+from nsa.memory.extract import FactExtractor, rank_keys
 from nsa.decision import SecurityDecision
 from nsa.taint import authorize_tool_call, join_integrity
 from nsa.ingress import IngressAuthority, IngressEnvelope, content_digest
@@ -72,7 +73,9 @@ class NSARuntime:
                  policy: Optional[NSAPolicy] = None, policy_engine: Optional[PolicyEngine] = None, checkpoint: Optional[StateCheckpointStore] = None,
                  config: Optional[RuntimeConfig] = None, continuous_transition: Optional[Callable[[CanonicalState], CanonicalState]] = None,
                  system_one: Optional[SystemOneController] = None, system_one_backend: Optional[SystemOneBackend] = None,
-                 system_one_tools: Optional[ToolRegistry] = None, ingress: Optional[IngressAuthority] = None) -> None:
+                 system_one_tools: Optional[ToolRegistry] = None, ingress: Optional[IngressAuthority] = None,
+                 extractor: Optional[FactExtractor] = None) -> None:
+        self.extractor = extractor
         self.ingress = ingress
         self.ingress_rejections: list[tuple[str, str]] = []
         self.backend = backend; self.config = config or RuntimeConfig(); self.state = state or self._state_from_mapping(initial_state or {})
@@ -145,6 +148,19 @@ class NSARuntime:
         if envelope is None and self.config.require_signed_ingress:
             integrity = IntegrityLabel.UNTRUSTED       # a TRUSTED label needs a verified envelope
         self.history.append(CognitiveInputEvent(payload, source=source, confidence=confidence, provenance=provenance, integrity=integrity)); self.state = replace(self.state, soft=replace(self.state.soft, confidence=confidence, uncertainty=1.0-confidence), provenance=self.state.provenance.extend(source=source), step=self.state.step+1); self._run_cognitive_transition(payload, confidence=confidence); self._cce.set_state(self.state); self._sync_canonical()
+        if self.extractor is not None and self.memory is not None and isinstance(payload, str):
+            # The observation's integrity label becomes the label of every write it produces, so an
+            # untrusted source's claims are subject to the memory integrity gate automatically.
+            for fact in self.extractor.extract(payload):
+                self.memory = self.memory.remember(
+                    fact.key, {"value": fact.value}, kind=fact.kind, provenance_ids=(f"obs-{len(self.history) - 1}",),
+                    integrity=self.history[-1].integrity)
+
+    def memory_keys_for(self, text: str, *, limit: Optional[int] = None) -> list[str]:
+        """Memory keys that best match a natural-language question (token overlap)."""
+        if self.memory is None:
+            return []
+        return rank_keys(text, self.memory.keys(), limit=self.config.memory_limit if limit is None else limit)
 
     def context_integrity(self) -> IntegrityLabel:
         """Join of the integrity labels of the observations the model is shown (the prompt window)."""
@@ -258,8 +274,10 @@ class NSARuntime:
             return self.backend.generate(model_prompt, state=self.state.summary())
         return self.backend.generate(model_prompt)
 
-    def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = (), memory_keys: Sequence[str] = ()) -> AgentResult:
+    def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = (), memory_keys: Sequence[str] = (), auto_memory: bool = False) -> AgentResult:
         self.observe(prompt)
+        if auto_memory and not memory_keys:
+            memory_keys = self.memory_keys_for(prompt)
         memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit) if self.memory is not None and memory_keys else ""
         model_prompt = f"RETRIEVED_MEMORY=\n{memory_context}\n\n{prompt}" if memory_context else prompt
         context = EvaluationContext(action=action, capabilities=frozenset(capabilities), protected_data=frozenset(protected_data), risk=self.state.soft.risk, uncertainty=self.state.soft.uncertainty); decision = None

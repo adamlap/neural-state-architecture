@@ -7,6 +7,10 @@ before 0.6.0 were not documented here; see git history.
 
 ### Added
 
+- Fact extraction (`nsa/memory/extract.py`): `RuleFactExtractor`, `LLMFactExtractor`, `NSARuntime(extractor=...)`.
+  `observe()` writes the extracted facts to canonical memory with the observation's integrity label, so untrusted
+  sources hit the memory gate automatically; `TemporalMemoryStore.keys()`, `NSARuntime.memory_keys_for()` and
+  `step(auto_memory=True)` retrieve by token overlap with a natural-language question.
 - Signed ingress (`nsa/ingress.py`): `IngressAuthority.seal()/verify()` bind source, integrity label and content
   digest under HMAC-SHA256 (nonce, expiry, replay protection). `RuntimeConfig.require_signed_ingress` makes the
   runtime accept a TRUSTED label only from a verified envelope (`observe(envelope=)`, `remember(envelope=)`);

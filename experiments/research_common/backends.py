@@ -14,6 +14,10 @@ class Generation:
     completion_tokens: int | None
     timed_out: bool = False
     truncated: bool = False
+    # Ollama's own timings in milliseconds (None if the backend does not report them).
+    load_ms: float | None = None
+    prompt_eval_ms: float | None = None
+    eval_ms: float | None = None
 
 
 @dataclass
@@ -73,5 +77,10 @@ class FixedDecodingBackend:
         prompt_tokens = raw.get("prompt_eval_count") if isinstance(raw, dict) else None
         completion_tokens = raw.get("eval_count") if isinstance(raw, dict) else None
         truncated = bool(self.num_ctx and prompt_tokens is not None and prompt_tokens >= self.num_ctx - 1)
-        self.last = Generation(text, prompt, prompt_tokens, completion_tokens, truncated=truncated)
+        def ms(key: str) -> float | None:
+            value = raw.get(key) if isinstance(raw, dict) else None
+            return round(value / 1e6, 3) if isinstance(value, (int, float)) else None
+
+        self.last = Generation(text, prompt, prompt_tokens, completion_tokens, truncated=truncated,
+                               load_ms=ms("load_duration"), prompt_eval_ms=ms("prompt_eval_duration"), eval_ms=ms("eval_duration"))
         return out
