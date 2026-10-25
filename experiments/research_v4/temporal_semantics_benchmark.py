@@ -45,6 +45,7 @@ from nsa.memory import MemoryItem, TemporalMemoryStore
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 
 from experiments.research_common.backends import FixedDecodingBackend
+from experiments.research_common.memory_guard import prepare_model
 from experiments.research_common.episodes import GENERATORS
 from experiments.research_common.grading import lenient_correct, strict_correct
 from experiments.research_common.stats import holm, mcnemar_exact, wilson
@@ -422,6 +423,7 @@ def run(args):
 
     with raw_path.open("a", encoding="utf-8") as handle:
         for model in args.models:
+            prepare_model(args.ollama_url, model, DECODING["num_ctx"])
             inner = OllamaInferenceBackend(
                 model=model, base_url=args.ollama_url, timeout_sec=args.timeout
             ) if args.ollama_url else OllamaInferenceBackend(model=model, timeout_sec=args.timeout)

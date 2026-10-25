@@ -42,6 +42,7 @@ from nsa.decision import Decision
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 
 from experiments.research_common.backends import FixedDecodingBackend
+from experiments.research_common.memory_guard import prepare_model
 from experiments.research_common.stats import holm, mcnemar_exact, wilson
 
 VERSION = "6.0"
@@ -266,6 +267,8 @@ def write_manifest(root: Path, args, records: list[Record]) -> dict:
 
 
 def run(args):
+    if getattr(args, "num_ctx", None):
+        DECODING["num_ctx"] = args.num_ctx            # e.g. 8192 for a 7B on a small machine; recorded in the sidecar/manifest
     root = Path(args.out)
     root.mkdir(parents=True, exist_ok=True)
     raw = root / "raw.jsonl"
@@ -282,6 +285,7 @@ def run(args):
     n = len(done)
     with raw.open("a", encoding="utf-8") as handle:
         for model in args.models:
+            prepare_model(args.ollama_url, model, DECODING["num_ctx"])
             inner = OllamaInferenceBackend(model=model, base_url=args.ollama_url, timeout_sec=args.timeout) \
                 if args.ollama_url else OllamaInferenceBackend(model=model, timeout_sec=args.timeout)
             backend = FixedDecodingBackend(inner, **DECODING)
@@ -314,6 +318,7 @@ def main():
     p.add_argument("--seeds", nargs="+", type=int, default=[7, 17, 37, 47, 57])
     p.add_argument("--trials", type=int, default=3)
     p.add_argument("--timeout", type=float, default=300.0)
+    p.add_argument("--num-ctx", type=int, default=None, help="override the context size (KV-cache memory); default is the benchmark's own")
     p.add_argument("--summarize-only", action="store_true")
     p.add_argument("--out", default="results/research-v6")
     p.add_argument("--ollama-url", default=None)

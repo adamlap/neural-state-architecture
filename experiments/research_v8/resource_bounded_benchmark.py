@@ -38,6 +38,7 @@ from pathlib import Path
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 
 from experiments.research_common.backends import FixedDecodingBackend
+from experiments.research_common.memory_guard import prepare_model
 from experiments.research_common.grading import lenient_correct
 from experiments.research_common.stats import wilson
 from experiments.research_v3.temporal_memory_benchmark import build_temporal_memory, make_episode, target_keys
@@ -205,6 +206,7 @@ def run(args):
     n = len(records)
     with raw.open("a", encoding="utf-8") as handle:
         for model in args.models:
+            prepare_model(args.ollama_url, model, max(args.num_ctx))
             inner = OllamaInferenceBackend(model=model, base_url=args.ollama_url, timeout_sec=args.timeout) \
                 if args.ollama_url else OllamaInferenceBackend(model=model, timeout_sec=args.timeout)
             backend = FixedDecodingBackend(inner, num_ctx=args.num_ctx[0], **DECODING)

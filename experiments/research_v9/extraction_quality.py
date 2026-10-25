@@ -18,6 +18,7 @@ from nsa.memory.extract import HybridFactExtractor, LLMFactExtractor, RuleFactEx
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 
 from experiments.research_common.backends import FixedDecodingBackend
+from experiments.research_common.memory_guard import prepare_model
 from experiments.research_common.stats import wilson
 from experiments.research_v9.natural_memory_benchmark import CHATTER, ENTITIES, ATTRS, FACT_T, UPDATE_T, _token, chunk_events
 from random import Random
@@ -99,6 +100,7 @@ def run(args):
     root.mkdir(parents=True, exist_ok=True)
     records: list[Record] = []
     for model in args.models:
+        prepare_model(args.ollama_url, model, DECODING["num_ctx"])
         inner = OllamaInferenceBackend(model=model, base_url=args.ollama_url, timeout_sec=args.timeout) \
             if args.ollama_url else OllamaInferenceBackend(model=model, timeout_sec=args.timeout)
         backend = FixedDecodingBackend(inner, **DECODING)

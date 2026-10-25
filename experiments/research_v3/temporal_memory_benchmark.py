@@ -20,6 +20,7 @@ from nsa.agent import NSA, RuntimeConfig
 from nsa.memory import MemoryItem, MemoryStore, TemporalMemoryStore
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 from experiments.research_common.backends import FixedDecodingBackend
+from experiments.research_common.memory_guard import prepare_model
 from experiments.research_common.episodes import GENERATORS, answer_instruction, facts as _facts, pool_size
 
 VALUE_RE = re.compile(r"VALUE\s*=\s*([A-Z0-9_-]+)", re.IGNORECASE)
@@ -269,6 +270,7 @@ def run(args):
     done = len(records)
     with raw_path.open("a", encoding="utf-8") as handle:
         for model in args.models:
+            prepare_model(args.ollama_url, model, 32768)
             inner = OllamaInferenceBackend(model=model, base_url=args.ollama_url, timeout_sec=args.timeout) if args.ollama_url else OllamaInferenceBackend(model=model, timeout_sec=args.timeout)
             backend = FixedDecodingBackend(inner, temperature=0.0, max_tokens=32)
             for seed in args.seeds:
