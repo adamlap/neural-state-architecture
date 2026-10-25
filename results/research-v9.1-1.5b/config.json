@@ -1,0 +1,8 @@
+{
+  "version": "9.1",
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 32,
+    "num_ctx": 8192
+  }
+}

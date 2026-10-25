@@ -99,17 +99,66 @@ _LLM_PROMPT = (
 )
 
 
+_LLM_PROMPT_FEWSHOT = (
+    "Extract every fact that states a value for something. Output one line per fact in exactly this format:\n"
+    "entity | attribute | value | kind\n"
+    "kind is 'update' if the text says the value changed, otherwise 'fact'. Output NONE if there are no facts. "
+    "Output nothing else.\n\n"
+    "Example 1\nTEXT:\nOur CRM seat limit is 40.\nsee you at the demo\nOutput:\ncrm | seat limit | 40 | fact\n\n"
+    "Example 2\nTEXT:\nLooks fine to me.\nHeads-up: the vpn gateway moved to 10.0.4.2 today.\nOutput:\nvpn | gateway | 10.0.4.2 | update\n\n"
+    "Example 3\nTEXT:\nthanks!\nOutput:\nNONE\n\nNow the real input.\nTEXT:\n{text}\nOutput:\n"
+)
+
+
 class LLMFactExtractor:
-    def __init__(self, backend: Any, *, max_chars: int = 4000) -> None:
+    def __init__(self, backend: Any, *, max_chars: int = 4000, few_shot: bool = False) -> None:
         self.backend = backend
         self.max_chars = max_chars
+        self.few_shot = few_shot
         self.calls = 0
 
     def extract(self, text: str) -> list[ExtractedFact]:
         self.calls += 1
-        out = self.backend.generate(_LLM_PROMPT.format(text=text[: self.max_chars]))
+        template = _LLM_PROMPT_FEWSHOT if self.few_shot else _LLM_PROMPT
+        out = self.backend.generate(template.format(text=text[: self.max_chars]))
         reply = out.text if hasattr(out, "text") else str(out)
         return parse_llm_facts(reply)
+
+
+_FACTUAL_HINT = re.compile(r"(=|:\s*\S|\b(is|are|to|now|should be|runs with|uses?)\b)", re.I)
+_VALUE_HINT = re.compile(r"[A-Za-z]*\d[\w.@:/\-]*|\S+@\S+")
+
+
+def looks_factual(line: str) -> bool:
+    """Cheap pre-filter: a copula/assignment cue and a value-like token (a digit or an address)."""
+    return bool(_FACTUAL_HINT.search(line)) and bool(_VALUE_HINT.search(line))
+
+
+class HybridFactExtractor:
+    """Rules first; the model only sees factual-looking lines the rules could not parse (one call per text)."""
+
+    def __init__(self, backend: Any, *, few_shot: bool = True, rules: Any = None) -> None:
+        self.rules = rules or RuleFactExtractor()
+        self.llm = LLMFactExtractor(backend, few_shot=few_shot)
+
+    @property
+    def calls(self) -> int:
+        return self.llm.calls
+
+    def extract(self, text: str) -> list[ExtractedFact]:
+        facts: list[ExtractedFact] = []
+        leftovers = []
+        for line in text.splitlines():
+            if not line.strip():
+                continue
+            found = self.rules.extract(line)
+            if found:
+                facts += found
+            elif looks_factual(line):
+                leftovers.append(line)
+        if leftovers:
+            facts += self.llm.extract("\n".join(leftovers))
+        return facts
 
 
 def parse_llm_facts(reply: str) -> list[ExtractedFact]:
@@ -137,5 +186,6 @@ def rank_keys(question: str, keys: Iterable[str], *, limit: int = 3, min_score: 
     return [k for s, k in scored if s >= min_score][:limit]
 
 
-__all__ = ["ExtractedFact", "FactExtractor", "RuleFactExtractor", "LLMFactExtractor", "parse_llm_facts",
+__all__ = ["ExtractedFact", "FactExtractor", "RuleFactExtractor", "LLMFactExtractor", "HybridFactExtractor", "looks_factual",
+           "parse_llm_facts",
            "normalize_key", "key_overlap", "rank_keys"]

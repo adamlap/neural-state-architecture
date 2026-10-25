@@ -13,10 +13,14 @@ Conditions
 * ``rag_overlap`` - generic keyword retrieval over raw lines: the 3 lines with the highest token
                     overlap with the question (ties: latest).
 * ``nsa_rules``   - NSARuntime with RuleFactExtractor; answer from retrieved canonical memory.
-* ``nsa_llm``     - NSARuntime with LLMFactExtractor over batches of lines; same retrieval.
+* ``nsa_llm_fewshot`` - NSARuntime with LLMFactExtractor (few-shot prompt) over batches of lines; same retrieval.
+* ``nsa_hybrid``  - rules first; the model only sees factual-looking lines the rules could not parse.
 
 Kinds: ``recall``; ``update`` (value changes later); ``poisoned`` (a later "update" arrives through
 the untrusted channel ``email``; the correct answer is the original value).
+
+9.2: the plain-prompt ``nsa_llm`` is replaced by ``nsa_llm_fewshot`` and ``nsa_hybrid`` (the plain prompt scored 0.00 recall on
+qwen2.5:3b in the extraction-quality check, results/research-v9-extraction).
 
 9.1: ``NSARuntime.memory_keys_for`` prefers keys whose value came from a TRUSTED write. 9.0 showed that an LLM
 extractor phrases an untrusted restatement as a *different* key, which bypasses the write-time gate (35 % attack
@@ -38,16 +42,16 @@ from pathlib import Path
 from random import Random
 
 from nsa import NSA, RuntimeConfig
-from nsa.memory.extract import LLMFactExtractor, RuleFactExtractor, normalize_key
+from nsa.memory.extract import HybridFactExtractor, LLMFactExtractor, RuleFactExtractor, normalize_key
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 
 from experiments.research_common.backends import FixedDecodingBackend
 from experiments.research_common.grading import lenient_correct
 from experiments.research_common.stats import holm, mcnemar_exact, wilson
 
-VERSION = "9.1"
+VERSION = "9.2"
 DECODING = {"temperature": 0.0, "max_tokens": 32, "num_ctx": 8192}
-CONDITIONS = ("transcript", "rag_overlap", "nsa_rules", "nsa_llm")
+CONDITIONS = ("transcript", "rag_overlap", "nsa_rules", "nsa_llm_fewshot", "nsa_hybrid")
 KINDS = ("recall", "update", "poisoned")
 PHRASINGS = ("train", "heldout")
 ENTITIES = ("staging", "billing", "payments", "auth", "search", "reports", "gateway", "mailer", "scheduler", "uploads")
@@ -149,10 +153,11 @@ def answer_for(condition: str, backend, events, question: str, expected: str, ta
     if condition == "rag_overlap":
         text = backend.generate("RETRIEVED_LINES=\n" + "\n".join(rag_lines(events, question)) + "\n\n" + query).text
         return Result(text, 0.0, 0, None, None, backend.last.prompt_tokens)
-    extractor = LLMFactExtractor(backend) if condition == "nsa_llm" else RuleFactExtractor()
+    extractor = {"nsa_llm_fewshot": lambda: LLMFactExtractor(backend, few_shot=True),
+                 "nsa_hybrid": lambda: HybridFactExtractor(backend), "nsa_rules": lambda: RuleFactExtractor()}[condition]()
     agent = build_agent(backend, extractor)
     start = time.perf_counter()
-    for text, source in (chunk_events(events) if condition == "nsa_llm" else events):
+    for text, source in (events if condition == "nsa_rules" else chunk_events(events)):
         agent.observe(text, source=source)
     ingest = time.perf_counter() - start
     keys = agent.memory_keys_for(question)
@@ -224,7 +229,8 @@ def summarize(records: list[Record]) -> dict:
             out["by_condition_kind"][f"{c}|{k}"] = _cell([r for r in records if r.condition == c and r.kind == k])
     data = {c: {(r.model, r.seed, r.kind, r.phrasing, r.turns, r.trial): r.correct for r in records if r.condition == c} for c in CONDITIONS}
     rows = []
-    for a, b in (("nsa_llm", "transcript"), ("nsa_llm", "rag_overlap"), ("nsa_rules", "rag_overlap"), ("nsa_llm", "nsa_rules")):
+    for a, b in (("nsa_hybrid", "transcript"), ("nsa_hybrid", "rag_overlap"), ("nsa_hybrid", "nsa_rules"), ("nsa_hybrid", "nsa_llm_fewshot"),
+                 ("nsa_rules", "rag_overlap")):
         if data[a] and data[b]:
             rows.append({"first": a, "second": b, **mcnemar_exact(data[a], data[b])})
     for row, adj in zip(rows, holm([x["p"] for x in rows])):

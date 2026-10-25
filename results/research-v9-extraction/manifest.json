@@ -1,0 +1,335 @@
+{
+  "benchmark": "NSA extraction quality",
+  "version": "9.1-extraction",
+  "generated_at_utc": "2026-10-25T17:37:27.997200+00:00",
+  "models": [
+    "qwen2.5:1.5b",
+    "qwen2.5:3b",
+    "qwen2.5:7b"
+  ],
+  "seeds": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26
+  ],
+  "lines": 10,
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 512,
+    "num_ctx": 8192
+  },
+  "by_model": {
+    "qwen2.5:1.5b": {
+      "rules|train": {
+        "episodes": 20,
+        "recall": 1.0,
+        "recall_ci95": [
+          0.9725289184334275,
+          1.0
+        ],
+        "precision": 1.0,
+        "spurious_per_episode": 0.0,
+        "calls_per_episode": 0.0,
+        "seconds_per_episode": 0.0
+      },
+      "rules|heldout": {
+        "episodes": 20,
+        "recall": 0.16153846153846155,
+        "recall_ci95": [
+          0.10815038800230982,
+          0.23435597773151284
+        ],
+        "precision": 1.0,
+        "spurious_per_episode": 0.0,
+        "calls_per_episode": 0.0,
+        "seconds_per_episode": 0.00035
+      },
+      "llm|train": {
+        "episodes": 20,
+        "recall": 0.16176470588235295,
+        "recall_ci95": [
+          0.10932043649705381,
+          0.23279235397445108
+        ],
+        "precision": 0.275,
+        "spurious_per_episode": 2.9,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 3.1691
+      },
+      "llm|heldout": {
+        "episodes": 20,
+        "recall": 0.25384615384615383,
+        "recall_ci95": [
+          0.18684099802228096,
+          0.33498181342049915
+        ],
+        "precision": 0.3548387096774194,
+        "spurious_per_episode": 3.0,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 3.0858999999999996
+      },
+      "llm_fewshot|train": {
+        "episodes": 20,
+        "recall": 0.5808823529411765,
+        "recall_ci95": [
+          0.49684971420134433,
+          0.660471140251122
+        ],
+        "precision": 0.541095890410959,
+        "spurious_per_episode": 3.35,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 3.897
+      },
+      "llm_fewshot|heldout": {
+        "episodes": 20,
+        "recall": 0.5,
+        "recall_ci95": [
+          0.41529081256565625,
+          0.5847091874343437
+        ],
+        "precision": 0.5462184873949579,
+        "spurious_per_episode": 2.7,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 4.4772
+      },
+      "hybrid|train": {
+        "episodes": 20,
+        "recall": 1.0,
+        "recall_ci95": [
+          0.9725289184334275,
+          1.0
+        ],
+        "precision": 1.0,
+        "spurious_per_episode": 0.0,
+        "calls_per_episode": 0.0,
+        "seconds_per_episode": 0.0
+      },
+      "hybrid|heldout": {
+        "episodes": 20,
+        "recall": 0.7307692307692307,
+        "recall_ci95": [
+          0.6487069766947406,
+          0.7995841375776529
+        ],
+        "precision": 0.7661290322580645,
+        "spurious_per_episode": 1.45,
+        "calls_per_episode": 1.75,
+        "seconds_per_episode": 2.5829999999999997
+      }
+    },
+    "qwen2.5:3b": {
+      "rules|train": {
+        "episodes": 20,
+        "recall": 1.0,
+        "recall_ci95": [
+          0.9725289184334275,
+          1.0
+        ],
+        "precision": 1.0,
+        "spurious_per_episode": 0.0,
+        "calls_per_episode": 0.0,
+        "seconds_per_episode": 0.0
+      },
+      "rules|heldout": {
+        "episodes": 20,
+        "recall": 0.16153846153846155,
+        "recall_ci95": [
+          0.10815038800230982,
+          0.23435597773151284
+        ],
+        "precision": 1.0,
+        "spurious_per_episode": 0.0,
+        "calls_per_episode": 0.0,
+        "seconds_per_episode": 0.00035
+      },
+      "llm|train": {
+        "episodes": 20,
+        "recall": 0.0,
+        "recall_ci95": [
+          0.0,
+          0.02747108156657246
+        ],
+        "precision": 0.0,
+        "spurious_per_episode": 2.2,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 4.61835
+      },
+      "llm|heldout": {
+        "episodes": 20,
+        "recall": 0.0,
+        "recall_ci95": [
+          0.0,
+          0.02870258574314712
+        ],
+        "precision": 0.0,
+        "spurious_per_episode": 0.6,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 2.31705
+      },
+      "llm_fewshot|train": {
+        "episodes": 20,
+        "recall": 0.5661764705882353,
+        "recall_ci95": [
+          0.48219545880238435,
+          0.6465216039314516
+        ],
+        "precision": 0.5661764705882353,
+        "spurious_per_episode": 2.95,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 7.47645
+      },
+      "llm_fewshot|heldout": {
+        "episodes": 20,
+        "recall": 0.6,
+        "recall_ci95": [
+          0.5140824117718141,
+          0.6801770710795564
+        ],
+        "precision": 0.639344262295082,
+        "spurious_per_episode": 2.2,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 7.05365
+      },
+      "hybrid|train": {
+        "episodes": 20,
+        "recall": 1.0,
+        "recall_ci95": [
+          0.9725289184334275,
+          1.0
+        ],
+        "precision": 1.0,
+        "spurious_per_episode": 0.0,
+        "calls_per_episode": 0.0,
+        "seconds_per_episode": 0.0
+      },
+      "hybrid|heldout": {
+        "episodes": 20,
+        "recall": 0.7769230769230769,
+        "recall_ci95": [
+          0.697997729127831,
+          0.8399516079990413
+        ],
+        "precision": 0.7769230769230769,
+        "spurious_per_episode": 1.45,
+        "calls_per_episode": 1.75,
+        "seconds_per_episode": 5.9231
+      }
+    },
+    "qwen2.5:7b": {
+      "rules|train": {
+        "episodes": 20,
+        "recall": 1.0,
+        "recall_ci95": [
+          0.9725289184334275,
+          1.0
+        ],
+        "precision": 1.0,
+        "spurious_per_episode": 0.0,
+        "calls_per_episode": 0.0,
+        "seconds_per_episode": 0.0
+      },
+      "rules|heldout": {
+        "episodes": 20,
+        "recall": 0.16153846153846155,
+        "recall_ci95": [
+          0.10815038800230982,
+          0.23435597773151284
+        ],
+        "precision": 1.0,
+        "spurious_per_episode": 0.0,
+        "calls_per_episode": 0.0,
+        "seconds_per_episode": 0.00035
+      },
+      "llm|train": {
+        "episodes": 20,
+        "recall": 0.3602941176470588,
+        "recall_ci95": [
+          0.2844681556350323,
+          0.44379582303798054
+        ],
+        "precision": 0.5051546391752577,
+        "spurious_per_episode": 2.4,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 226.7636
+      },
+      "llm|heldout": {
+        "episodes": 20,
+        "recall": 0.2923076923076923,
+        "recall_ci95": [
+          0.22098338444253135,
+          0.37555461271231444
+        ],
+        "precision": 0.5588235294117647,
+        "spurious_per_episode": 1.5,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 9.92295
+      },
+      "llm_fewshot|train": {
+        "episodes": 20,
+        "recall": 0.8602941176470589,
+        "recall_ci95": [
+          0.7920898254971119,
+          0.9087030716093285
+        ],
+        "precision": 0.9212598425196851,
+        "spurious_per_episode": 0.5,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 14.9222
+      },
+      "llm_fewshot|heldout": {
+        "episodes": 20,
+        "recall": 0.7538461538461538,
+        "recall_ci95": [
+          0.6732170876497235,
+          0.8199031380499094
+        ],
+        "precision": 0.8990825688073395,
+        "spurious_per_episode": 0.55,
+        "calls_per_episode": 2.0,
+        "seconds_per_episode": 13.45675
+      },
+      "hybrid|train": {
+        "episodes": 20,
+        "recall": 1.0,
+        "recall_ci95": [
+          0.9725289184334275,
+          1.0
+        ],
+        "precision": 1.0,
+        "spurious_per_episode": 0.0,
+        "calls_per_episode": 0.0,
+        "seconds_per_episode": 0.0
+      },
+      "hybrid|heldout": {
+        "episodes": 20,
+        "recall": 0.7923076923076923,
+        "recall_ci95": [
+          0.7146820162899945,
+          0.853153395121704
+        ],
+        "precision": 0.865546218487395,
+        "spurious_per_episode": 0.8,
+        "calls_per_episode": 1.75,
+        "seconds_per_episode": 11.20565
+      }
+    }
+  },
+  "scientific_boundary": "Synthetic template conversations with opaque value tokens; held-out templates were written after the rules were fixed."
+}

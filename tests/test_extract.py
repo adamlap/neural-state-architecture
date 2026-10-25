@@ -116,3 +116,34 @@ def test_untrusted_memory_is_still_used_when_nothing_trusted_matches():
     agent.observe("The billing admin email is ops@corp.io.", source="web")
     keys = agent.memory_keys_for("What is the billing admin email?")
     assert [agent.recall([k])[0]["value"] for k in keys] == ["ops@corp.io"]
+
+
+def test_hybrid_uses_rules_for_parsable_lines_and_calls_the_model_only_for_the_rest():
+    from nsa.memory.extract import HybridFactExtractor, looks_factual
+
+    prompts = []
+
+    def gen(prompt, **kw):
+        prompts.append(prompt)
+        return SimpleNamespace(text="auth | owner team | zeta | fact")
+
+    ex = HybridFactExtractor(SimpleNamespace(generate=gen))
+    facts = ex.extract("The database port for staging is 5433.\nok thanks\nQuick note: auth runs with owner team zeta 4.\nlunch?")
+    assert {f.key: f.value for f in facts} == {"database port staging": "5433", "auth owner team": "zeta"}
+    assert ex.calls == 1 and "auth runs with owner team zeta 4" in prompts[0] and "5433" not in prompts[0].split("Now the real input.")[1]
+    assert not looks_factual("ok thanks") and looks_factual("billing contact: ops@corp.io")
+
+
+def test_hybrid_makes_no_model_call_when_rules_cover_everything():
+    from nsa.memory.extract import HybridFactExtractor
+
+    ex = HybridFactExtractor(SimpleNamespace(generate=lambda p, **kw: (_ for _ in ()).throw(AssertionError("no call expected"))))
+    assert ex.extract("The database port for staging is 5433.\nthanks") and ex.calls == 0
+
+
+def test_few_shot_prompt_is_used_only_when_requested():
+    seen = []
+    backend = SimpleNamespace(generate=lambda p, **kw: seen.append(p) or SimpleNamespace(text="NONE"))
+    LLMFactExtractor(backend).extract("x is 1")
+    LLMFactExtractor(backend, few_shot=True).extract("x is 1")
+    assert "Example 1" not in seen[0] and "Example 1" in seen[1]

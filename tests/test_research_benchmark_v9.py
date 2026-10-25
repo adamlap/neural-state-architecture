@@ -39,7 +39,7 @@ class _Fake:
         self.last = None
 
     def generate(self, prompt, **kw):
-        if "Extract every fact" in prompt:
+        if "Extract every fact" in prompt or "Example 1" in prompt:
             return SimpleNamespace(text="NONE", raw_response={})
         return SimpleNamespace(text="VALUE=ZZ99-zzz", raw_response={"prompt_eval_count": 5})
 
@@ -67,3 +67,24 @@ def test_run_end_to_end(tmp_path, monkeypatch):
     manifest = v9.run(args)
     assert manifest["episodes_recorded"] == len(v9.KINDS) * len(v9.PHRASINGS) * len(v9.CONDITIONS)
     assert v9.run(args)["episodes_recorded"] == manifest["episodes_recorded"]
+
+
+def test_extraction_quality_scoring_with_the_rules_and_a_fake_model():
+    from experiments.research_v9 import extraction_quality as eq
+
+    events, truth = eq.make_chunk_episode(7, "train", 10)
+    assert truth and all(k and v for k, v in truth)
+    res = eq.score(eq.build_extractor("rules", None), events, truth)
+    assert res["hit"] == res["truth"] and res["spurious"] == 0 and res["calls"] == 0     # rules cover their own templates
+    held_events, held_truth = eq.make_chunk_episode(7, "heldout", 10)
+    held = eq.score(eq.build_extractor("rules", None), held_events, held_truth)
+    assert held["hit"] < held["truth"]                                                    # and miss the held-out phrasings
+
+
+def test_extraction_quality_run_writes_a_manifest(tmp_path, monkeypatch):
+    from experiments.research_v9 import extraction_quality as eq
+
+    monkeypatch.setattr(eq, "OllamaInferenceBackend", lambda **kw: _Fake())
+    args = SimpleNamespace(models=["fake"], seeds=[7, 8], lines=8, timeout=1.0, out=str(tmp_path), ollama_url=None)
+    m = eq.run(args)
+    assert "rules|train" in m["by_model"]["fake"] and "hybrid|heldout" in m["by_model"]["fake"]
