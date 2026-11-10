@@ -45,7 +45,7 @@ def run_one(seed: int, count: int, *, height: int, width: int, channels: int) ->
     return {"seed": seed, "memories": count, "dimension": dimension,
             "field_shape": [height, width, channels], "methods": results}
 
-def run(seeds=DEFAULT_SEEDS, counts=DEFAULT_COUNTS, *, height=16, width=16, channels=8):
+def run(seeds=DEFAULT_SEEDS, counts=DEFAULT_COUNTS, *, height=32, width=32, channels=64):
     runs = [run_one(seed, count, height=height, width=width, channels=channels)
             for count in counts for seed in seeds]
     aggregates = []
@@ -71,7 +71,7 @@ def run(seeds=DEFAULT_SEEDS, counts=DEFAULT_COUNTS, *, height=16, width=16, chan
             "dimension": height * width * channels,
             "hsf_shape": [height, width, channels],
             "hrr_hdc_dimension": height * width * channels,
-            "caveat": "HSF tensor factorisation and flat HRR/HDC vectors have different inductive biases and compute costs. Equal flattened dimensions do not make algorithms mathematically identical."
+            "caveat": "HSF tensor factorisation and flat HRR/HDC vectors have different inductive biases and compute costs. Equal flattened dimensions do not make algorithms mathematically identical. HRR/HDC regenerate deterministic key/value codes, so only their persistent superposition vector is counted."
         },
         "configuration": {"seeds": list(seeds), "counts": list(counts),
                           "vocabulary": list(VOCABULARY), "height": height,
@@ -82,9 +82,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS))
     parser.add_argument("--counts", nargs="+", type=int, default=list(DEFAULT_COUNTS))
-    parser.add_argument("--height", type=int, default=16)
-    parser.add_argument("--width", type=int, default=16)
-    parser.add_argument("--channels", type=int, default=8)
+    parser.add_argument("--height", type=int, default=32)
+    parser.add_argument("--width", type=int, default=32)
+    parser.add_argument("--channels", type=int, default=64)
     parser.add_argument("--out", default="results/hsf_comparison_v1.json")
     args = parser.parse_args()
     report = run(args.seeds, args.counts, height=args.height,
