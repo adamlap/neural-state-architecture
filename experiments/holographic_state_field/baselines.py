@@ -1,0 +1,105 @@
+"""Small, deterministic associative-memory baselines for HSF comparisons."""
+from __future__ import annotations
+import hashlib
+from dataclasses import dataclass
+from typing import Iterable
+import numpy as np
+from numpy.typing import NDArray
+
+FloatArray = NDArray[np.float32]
+
+def _seed(seed: int, namespace: str, key: str) -> int:
+    raw = hashlib.sha256(f"{seed}\0{namespace}\0{key}".encode()).digest()
+    return int.from_bytes(raw[:8], "little")
+
+def normalised_bipolar(seed: int, namespace: str, key: str, dimension: int) -> FloatArray:
+    rng = np.random.default_rng(_seed(seed, namespace, key))
+    vector = rng.choice(np.array([-1.0, 1.0], dtype=np.float32), size=dimension)
+    return vector / np.sqrt(np.float32(dimension))
+
+@dataclass(frozen=True)
+class BaselineRetrieval:
+    value: str
+    margin: float
+
+class _VectorSuperposition:
+    def __init__(self, vocabulary: Iterable[str], *, dimension: int, seed: int) -> None:
+        self.vocabulary = tuple(dict.fromkeys(str(v) for v in vocabulary))
+        if not self.vocabulary:
+            raise ValueError("vocabulary must not be empty")
+        if dimension <= 0:
+            raise ValueError("dimension must be positive")
+        self.dimension, self.seed = int(dimension), int(seed)
+        self._memory = np.zeros(self.dimension, dtype=np.float32)
+        self._values = {v: self._code("value", v) for v in self.vocabulary}
+        self.writes = 0
+
+    def _code(self, namespace: str, value: str) -> FloatArray:
+        return normalised_bipolar(self.seed, namespace, value, self.dimension)
+
+    def _key(self, key: str) -> FloatArray:
+        return self._code("key", str(key))
+
+    @property
+    def memory_bytes(self) -> int:
+        return int(self._memory.nbytes + sum(v.nbytes for v in self._values.values()))
+
+    def _bind(self, key: FloatArray, value: FloatArray) -> FloatArray:
+        raise NotImplementedError
+
+    def _unbind(self, memory: FloatArray, key: FloatArray) -> FloatArray:
+        raise NotImplementedError
+
+    def write(self, key: str, value: str) -> None:
+        if value not in self._values:
+            raise KeyError(value)
+        self._memory += self._bind(self._key(key), self._values[value])
+        self.writes += 1
+
+    def retrieve(self, key: str) -> BaselineRetrieval:
+        vector = self._unbind(self._memory, self._key(key))
+        scores = np.asarray([np.dot(vector, self._values[v]) for v in self.vocabulary])
+        order = np.argsort(scores)
+        best = int(order[-1])
+        second = float(scores[order[-2]]) if len(order) > 1 else 0.0
+        return BaselineRetrieval(self.vocabulary[best], float(scores[best]) - second)
+
+class HRRMemory(_VectorSuperposition):
+    """Holographic reduced representations with circular-convolution binding."""
+    def _bind(self, key: FloatArray, value: FloatArray) -> FloatArray:
+        n = self.dimension
+        return (np.fft.irfft(np.fft.rfft(key) * np.fft.rfft(value), n=n)
+                * np.sqrt(np.float32(n))).astype(np.float32)
+
+    def _unbind(self, memory: FloatArray, key: FloatArray) -> FloatArray:
+        n = self.dimension
+        return (np.fft.irfft(np.fft.rfft(memory) * np.conjugate(np.fft.rfft(key)), n=n)
+                * np.sqrt(np.float32(n))).astype(np.float32)
+
+class HDCMemory(_VectorSuperposition):
+    """Bipolar hyperdimensional binding and additive bundling."""
+    def _bind(self, key: FloatArray, value: FloatArray) -> FloatArray:
+        return (key * value * np.sqrt(np.float32(self.dimension))).astype(np.float32)
+
+    def _unbind(self, memory: FloatArray, key: FloatArray) -> FloatArray:
+        return (memory * key).astype(np.float32)
+
+class ExactDictionary:
+    """Perfect-recall control with explicit key/value associations."""
+    def __init__(self) -> None:
+        self._records: dict[str, str] = {}
+
+    @property
+    def memory_bytes(self) -> int:
+        # Python strings/object overhead is implementation-dependent; measured separately.
+        return 0
+
+    @property
+    def record_count(self) -> int:
+        return len(self._records)
+
+    def write(self, key: str, value: str) -> None:
+        self._records[str(key)] = str(value)
+
+    def retrieve(self, key: str) -> BaselineRetrieval:
+        return BaselineRetrieval(self._records[str(key)], float("inf"))
