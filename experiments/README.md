@@ -16,6 +16,7 @@ Experiments are **thin research consumers of `nsa`**, not alternate runtimes.
 - `nsa64/` — independent replication, held-out and adversarial validation.
 - `cognitive/` — earlier CCE hypothesis tests retained for provenance.
 - `breakthrough/` — exploratory architectural experiments retained for provenance.
+- `holographic_state_field/` — distributed associative-memory experiments; see `docs/HSF_RESEARCH_BRAINSTORM.md` for the living research roadmap.
 - `nsa50/`–`nsa62/` — historical validation stages.
 
 The active development path is to make new experiments configure and exercise the same public `nsa.NSA` runtime used by applications.
