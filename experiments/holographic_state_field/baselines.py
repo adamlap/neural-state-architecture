@@ -31,7 +31,6 @@ class _VectorSuperposition:
             raise ValueError("dimension must be positive")
         self.dimension, self.seed = int(dimension), int(seed)
         self._memory = np.zeros(self.dimension, dtype=np.float32)
-        self._values = {v: self._code("value", v) for v in self.vocabulary}
         self.writes = 0
 
     def _code(self, namespace: str, value: str) -> FloatArray:
@@ -42,7 +41,8 @@ class _VectorSuperposition:
 
     @property
     def memory_bytes(self) -> int:
-        return int(self._memory.nbytes + sum(v.nbytes for v in self._values.values()))
+        # Key/value codes are deterministic and regenerated; only persistent state is counted.
+        return int(self._memory.nbytes)
 
     def _bind(self, key: FloatArray, value: FloatArray) -> FloatArray:
         raise NotImplementedError
@@ -51,14 +51,16 @@ class _VectorSuperposition:
         raise NotImplementedError
 
     def write(self, key: str, value: str) -> None:
-        if value not in self._values:
+        if value not in self.vocabulary:
             raise KeyError(value)
-        self._memory += self._bind(self._key(key), self._values[value])
+        self._memory += self._bind(self._key(key), self._code("value", value))
         self.writes += 1
 
     def retrieve(self, key: str) -> BaselineRetrieval:
         vector = self._unbind(self._memory, self._key(key))
-        scores = np.asarray([np.dot(vector, self._values[v]) for v in self.vocabulary])
+        scores = np.asarray([
+            np.dot(vector, self._code("value", v)) for v in self.vocabulary
+        ], dtype=np.float32)
         order = np.argsort(scores)
         best = int(order[-1])
         second = float(scores[order[-2]]) if len(order) > 1 else 0.0
