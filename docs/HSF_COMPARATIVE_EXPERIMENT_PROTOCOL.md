@@ -1,0 +1,98 @@
+# HSF Comparative Experiment Protocol — v1.0
+
+## Objective
+
+Test whether HSF offers a useful associative-recall trade-off compared with
+established vector-symbolic approaches. This stage tests the memory primitive,
+not a cortex, synapse model, or cognition.
+
+## Methods
+
+- **HSF:** spatial key pattern outer-product-bound with a channel value code;
+  associations are superposed into a fixed H × W × C tensor and recalled by
+  matched-filter correlation.
+- **HRR:** holographic reduced representations using circular convolution
+  for binding, additive superposition, and correlation/unbinding.
+- **HDC:** bipolar hyperdimensional vectors using elementwise multiplication
+  for binding, additive bundling, and unbinding.
+- **Exact dictionary:** perfect-recall control with explicit overwrite
+  semantics; not a distributed representation.
+
+All methods receive the same ordered synthetic key/value records, vocabulary,
+seeds, and memory counts. The default task uses eight closed-set value labels.
+
+## What this can establish
+
+The experiment can compare synthetic recall accuracy under interference and
+allocated numeric payloads under stated dimensions. It cannot establish
+semantic generalisation, biological fidelity, learning from sensory input,
+language quality, transformer-attention replacement, energy efficiency, or
+general memory-capacity advantage.
+
+## Fairness and accounting
+
+The benchmark records NumPy numeric payload bytes. It excludes Python object
+overhead, strings, allocator fragmentation, and process RSS. The explicit
+vector-slot estimate assumes two float32 vectors of dimension D per record;
+it is a transparent reference calculation, not a measured dictionary size.
+
+HSF's tensor factorisation and flat HRR/HDC vectors have different inductive
+biases and operation costs. Equal flattened dimensions make payload sizes
+visible but do not make algorithms mathematically identical. The exact
+dictionary is a quality upper bound and should later be measured using a
+real serialised and in-memory implementation before deployment claims.
+
+## Stage 1: independent random keys
+
+Run:
+
+~~~bash
+pytest -q tests/test_holographic_state_field.py tests/test_holographic_associative_baselines.py
+python -m experiments.holographic_state_field.comparative_benchmark --out results/hsf_comparison_v1.json
+~~~
+
+Record mean and minimum accuracy over seeds, accuracy as association count
+rises, and persistent numeric payload. Do not select a winner from one seed
+or one memory count.
+
+## Stage 2: correlated keys (next)
+
+Independent hash-derived patterns are the easiest case. A more revealing test
+must create controlled key similarity:
+1. Generate one random bipolar prototype per family.
+2. Generate a per-item random bipolar residual.
+3. Form each key from a tunable mixture of prototype and residual, then
+   normalise it.
+4. Sweep prototype contribution from zero to high similarity while holding
+   association count and value distribution fixed.
+5. Query with exact and noisy cues.
+
+The same generated key vectors must be passed to every method. Add a shared
+vector-input interface before this stage; do not simulate correlation by
+merely giving keys similar-looking strings. Use at least three families and
+ensure keys remain distinct.
+
+## Stage 3: noise and conflicting updates
+
+After Stage 2, flip a controlled fraction of cue bits or perturb cue vectors.
+Test repeated writes of the same association separately from conflicting
+writes to one key. Define overwrite, reinforcement, and supersession as
+distinct policies.
+
+## Decision gates
+
+Continue developing HSF only if it demonstrates at least one repeatable:
+- accuracy/capacity advantage at a comparable numeric budget;
+- robustness advantage under correlated or noisy cues;
+- useful update/forgetting property unavailable in simpler baselines; or
+- architectural property valuable to NSA even without raw benchmark wins.
+
+Otherwise retain the best established baseline and redirect effort. Do not add
+neural-field dynamics, self-organising plasticity, or LLM integration until
+these gates are evaluated.
+
+## Reproducibility
+
+Keep seeds, task generation, dimensions, software versions, and raw JSON
+artifacts with every run. Never replace raw runs with only an averaged chart.
+A failed or inconclusive result is a valid research outcome.
