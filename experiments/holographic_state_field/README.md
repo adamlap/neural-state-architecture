@@ -82,3 +82,27 @@ payloads, not Python object overhead or process RSS.
    baselines (circular convolution/correlation).
 4. Test update/supersession and selective forgetting without an external index.
 5. Only then connect a compact field to NSA memory/cognition interfaces.
+
+
+## Comparative research track
+
+The comparative implementation adds two reference associative memories:
+- HRR: circular-convolution binding and correlation-based unbinding.
+- HDC/VSA: bipolar elementwise binding and additive bundling.
+- An exact dictionary provides a perfect-recall quality control.
+
+Run the controlled comparison:
+
+~~~bash
+pytest -q tests/test_holographic_state_field.py tests/test_holographic_associative_baselines.py
+python -m experiments.holographic_state_field.comparative_benchmark --out results/hsf_comparison_v1.json
+~~~
+
+The comparison defaults to a 32 × 32 × 64 HSF tensor and flat HRR/HDC
+vectors with the same flattened dimension. HRR/HDC regenerate deterministic
+key/value codes, so only their persistent superposition vector is counted.
+HSF includes its fixed channel codebook. The comparison protocol documents
+the remaining representation and accounting caveats, as well as the next
+correlated-key experiment:
+
+- [HSF comparative experiment protocol](../../docs/HSF_COMPARATIVE_EXPERIMENT_PROTOCOL.md)
