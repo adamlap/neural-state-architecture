@@ -67,8 +67,11 @@ must create controlled key similarity:
    association count and value distribution fixed.
 5. Query with exact and noisy cues.
 
-The same generated key vectors must be passed to every method. Add a shared
-vector-input interface before this stage; do not simulate correlation by
+Use the same family/item identities, value assignments, and target similarity
+levels across methods. Because HSF keys are H×W vectors while HRR/HDC keys are
+D-dimensional, generate method-specific vectors from the same family/item
+seeds and verify that their realised pairwise-cosine distributions match the
+target similarity within a stated tolerance. Do not simulate correlation by
 merely giving keys similar-looking strings. Use at least three families and
 ensure keys remain distinct.
 
