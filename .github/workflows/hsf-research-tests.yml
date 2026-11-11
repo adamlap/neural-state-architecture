@@ -9,10 +9,14 @@ on:
       - research/holographic-state-field
   workflow_dispatch:
 
+concurrency:
+  group: hsf-research-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   hsf-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,9 +26,22 @@ jobs:
       - name: Install research test dependencies
         run: python -m pip install --upgrade pip numpy pytest
       - name: Run HSF research tests
-        run: >-
-          python -m pytest -q
-          tests/test_holographic_state_field.py
-          tests/test_holographic_associative_baselines.py
-          tests/test_holographic_correlated_keys.py
-          tests/test_holographic_allocation_benchmark.py\n          tests/test_holographic_plasticity.py\n      - name: Run reproducible research benchmarks\n        run: |\n          mkdir -p results\n          python -m experiments.holographic_state_field.correlated_key_benchmark --out results/hsf_correlated_keys_v1.json\n          python -m experiments.holographic_state_field.allocation_benchmark --out results/hsf_allocation_v1.json\n          python -m experiments.holographic_state_field.plasticity_benchmark --out results/hsf_plasticity_v1.json\n      - name: Upload raw benchmark results\n        uses: actions/upload-artifact@v4\n        with:\n          name: hsf-research-results\n          path: results/*.json\n          if-no-files-found: error
+        run: |
+          python -m pytest -q \
+            tests/test_holographic_state_field.py \
+            tests/test_holographic_associative_baselines.py \
+            tests/test_holographic_correlated_keys.py \
+            tests/test_holographic_allocation_benchmark.py \
+            tests/test_holographic_plasticity.py
+      - name: Run reproducible research benchmarks
+        run: |
+          mkdir -p results
+          python -m experiments.holographic_state_field.correlated_key_benchmark --out results/hsf_correlated_keys_v1.json
+          python -m experiments.holographic_state_field.allocation_benchmark --out results/hsf_allocation_v1.json
+          python -m experiments.holographic_state_field.plasticity_benchmark --out results/hsf_plasticity_v1.json
+      - name: Upload raw benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: hsf-research-results
+          path: results/*.json
+          if-no-files-found: error
