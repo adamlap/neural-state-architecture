@@ -159,3 +159,13 @@ plasticity rule organises this synthetic family task; it would not establish
 semantic generalisation or biological fidelity. A negative result is also
 useful. Do not combine the map with HSF until the standalone result and
 ablation controls justify doing so.
+
+
+## CI execution policy
+
+HSF tests are part of the normal `tests/` suite and therefore run through the
+existing `.github/workflows/test.yml` workflow. The HSF research sweeps are
+opt-in on manual workflow dispatch using `run_hsf_research_benchmarks`.
+This avoids a separate push-triggered workflow and keeps long-running
+scientific runs out of the automatic PR gate. Raw JSON outputs are uploaded
+as a single `hsf-research-results` artifact.
