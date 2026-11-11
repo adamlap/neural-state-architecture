@@ -83,8 +83,11 @@ def _run_method(method: str, seed: int, count: int, rho: float,
     else:
         raise ValueError(method)
 
-    records = [(name, VOCABULARY[(index * 7 + seed) % len(VOCABULARY)])
-               for index, name in enumerate(names_hsf)]
+    records = [
+        (name, VOCABULARY[((index // FAMILIES) * 3 + (index % FAMILIES) * 5 + seed)
+                          % len(VOCABULARY)])
+        for index, name in enumerate(names_hsf)
+    ]
     for name, value in records:
         write(name, value)
     correct = sum(retrieve(name) == value for name, value in records)
