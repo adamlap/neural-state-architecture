@@ -21,6 +21,11 @@ on:
         required: true
         default: true
         type: boolean
+      run_hsf_research_benchmarks:
+        description: "Run HSF allocation, correlated-key, and plasticity benchmarks"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: nsa-tests-${{ github.event.pull_request.number || github.ref }}
