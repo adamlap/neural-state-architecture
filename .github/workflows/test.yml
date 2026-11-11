@@ -97,6 +97,7 @@ jobs:
           tests/test_holographic_allocation_benchmark.py
           tests/test_holographic_plasticity.py
           tests/test_holographic_dimension_control.py
+          tests/test_holographic_interference_diagnostic.py
 
       - name: Run HSF research benchmarks
         if: (github.event_name == 'push' && github.ref == 'refs/heads/research/holographic-state-field') || (github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks)
@@ -106,6 +107,7 @@ jobs:
           PYTHONPATH=. python -m experiments.holographic_state_field.allocation_benchmark --out artifacts/hsf-results/hsf_allocation_v1.json
           PYTHONPATH=. python -m experiments.holographic_state_field.plasticity_benchmark --out artifacts/hsf-results/hsf_plasticity_v1.json
           PYTHONPATH=. python -m experiments.holographic_state_field.dimension_control_benchmark --out artifacts/hsf-results/hsf_dimension_control_v1.json
+          PYTHONPATH=. python -m experiments.holographic_state_field.interference_diagnostic --out artifacts/hsf-results/hsf_interference_diagnostic_v1.json
       - name: Upload HSF research results
         if: (github.event_name == 'push' && github.ref == 'refs/heads/research/holographic-state-field') || (github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks)
         uses: actions/upload-artifact@v4
