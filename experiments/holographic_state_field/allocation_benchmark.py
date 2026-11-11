@@ -20,7 +20,7 @@ from .correlated_key_benchmark import (
     _run_method,
 )
 
-DEFAULT_SHAPES = ((16, 32, 8), (16, 16, 16), (16, 8, 32), (8, 8, 64))
+DEFAULT_SHAPES = ((16, 16, 32), (16, 8, 64), (8, 8, 128), (8, 16, 64))
 
 
 def run(*, seeds=DEFAULT_SEEDS, counts=(16, 32, 64, 128),
@@ -29,8 +29,8 @@ def run(*, seeds=DEFAULT_SEEDS, counts=(16, 32, 64, 128),
     total_dimensions = {height * width * channels for height, width, channels in shapes}
     if len(total_dimensions) != 1:
         raise ValueError("all shapes must have the same H*W*C element budget")
-    if any(channels < 8 for _, _, channels in shapes):
-        raise ValueError("channels must be >= 8 for the eight-value vocabulary")
+    if any(channels < 16 for _, _, channels in shapes):
+        raise ValueError("channels must be >= 16 for the eight-value vocabulary")
     total_dimension = next(iter(total_dimensions))
     runs = []
     for height, width, channels in shapes:
