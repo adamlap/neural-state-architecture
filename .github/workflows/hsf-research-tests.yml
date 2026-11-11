@@ -27,4 +27,4 @@ jobs:
           tests/test_holographic_state_field.py
           tests/test_holographic_associative_baselines.py
           tests/test_holographic_correlated_keys.py
-          tests/test_holographic_allocation_benchmark.py\n          tests/test_holographic_plasticity.py
+          tests/test_holographic_allocation_benchmark.py\n          tests/test_holographic_plasticity.py\n      - name: Run reproducible research benchmarks\n        run: |\n          mkdir -p results\n          python -m experiments.holographic_state_field.correlated_key_benchmark --out results/hsf_correlated_keys_v1.json\n          python -m experiments.holographic_state_field.allocation_benchmark --out results/hsf_allocation_v1.json\n          python -m experiments.holographic_state_field.plasticity_benchmark --out results/hsf_plasticity_v1.json\n      - name: Upload raw benchmark results\n        uses: actions/upload-artifact@v4\n        with:\n          name: hsf-research-results\n          path: results/*.json\n          if-no-files-found: error
