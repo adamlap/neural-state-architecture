@@ -95,6 +95,54 @@ class HolographicStateField:
         self._field += np.float32(strength) * spatial[:, :, None] * code[None, None, :]
         self.writes += 1
 
+    def write_pattern(self, pattern: FloatArray, value: str, *, strength: float = 1.0) -> None:
+        """Write using an externally generated spatial cue (research interface).
+
+        The caller owns cue generation; the field retains no per-record keys.
+        Patterns must be finite, non-zero, and have the expected flattened size.
+        """
+        if value not in self._value_codes:
+            raise KeyError(f"value {value!r} is not in the fixed vocabulary")
+        if not np.isfinite(strength) or strength <= 0:
+            raise ValueError("strength must be a finite positive number")
+        cue = np.asarray(pattern, dtype=np.float32).reshape(-1)
+        if cue.size != self._spatial_size or not np.all(np.isfinite(cue)):
+            raise ValueError("pattern must be finite and match the spatial dimension")
+        norm = float(np.linalg.norm(cue))
+        if norm <= 0:
+            raise ValueError("pattern must have non-zero norm")
+        spatial = (cue / np.float32(norm)).reshape(self.height, self.width)
+        code = self._value_codes[value]
+        self._field += np.float32(strength) * spatial[:, :, None] * code[None, None, :]
+        self.writes += 1
+
+    def retrieve_pattern(self, pattern: FloatArray) -> Retrieval:
+        """Retrieve using an externally generated spatial cue."""
+        cue = np.asarray(pattern, dtype=np.float32).reshape(-1)
+        if cue.size != self._spatial_size or not np.all(np.isfinite(cue)):
+            raise ValueError("pattern must be finite and match the spatial dimension")
+        norm = float(np.linalg.norm(cue))
+        if norm <= 0:
+            raise ValueError("pattern must have non-zero norm")
+        spatial = (cue / np.float32(norm)).reshape(self.height, self.width)
+        reconstructed = np.einsum("hw,hwc->c", spatial, self._field, optimize=True)
+        scores_array = np.asarray(
+            [np.dot(reconstructed, self._value_codes[v]) for v in self.value_vocabulary],
+            dtype=np.float32,
+        )
+        order = np.argsort(scores_array)
+        best = int(order[-1])
+        second = float(scores_array[order[-2]]) if len(order) > 1 else 0.0
+        return Retrieval(
+            value=self.value_vocabulary[best],
+            confidence_margin=float(scores_array[best]) - second,
+            reconstructed_norm=float(np.linalg.norm(reconstructed)),
+            scores={
+                value: float(score)
+                for value, score in zip(self.value_vocabulary, scores_array, strict=True)
+            },
+        )
+
     def reinforce(self, key: str, value: str, *, amount: float = 0.1) -> None:
         """Strengthen an association with another small Hebbian-like trace."""
         self.write(key, value, strength=amount)
