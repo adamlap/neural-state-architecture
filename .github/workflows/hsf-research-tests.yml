@@ -1,9 +1,6 @@
 name: HSF research tests
 
 on:
-  push:
-    branches:
-      - research/holographic-state-field
   pull_request:
     branches:
       - research/holographic-state-field
