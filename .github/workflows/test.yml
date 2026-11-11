@@ -21,6 +21,11 @@ on:
         required: true
         default: true
         type: boolean
+      run_hsf_research_benchmarks:
+        description: "Run HSF allocation, correlated-key, and plasticity benchmarks"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: nsa-tests-${{ github.event.pull_request.number || github.ref }}
@@ -82,3 +87,18 @@ jobs:
         run: PYTHONPATH=. python experiments/self_state/run.py --steps 20 --seed 7
       - name: Run native NSA transformer probe
         run: PYTHONPATH=. python experiments/self_state/transformer_probe.py --batch 2 --seq-len 8
+
+      - name: Run HSF research benchmarks
+        if: github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks
+        run: |
+          mkdir -p results
+          PYTHONPATH=. python -m experiments.holographic_state_field.correlated_key_benchmark --out results/hsf_correlated_keys_v1.json
+          PYTHONPATH=. python -m experiments.holographic_state_field.allocation_benchmark --out results/hsf_allocation_v1.json
+          PYTHONPATH=. python -m experiments.holographic_state_field.plasticity_benchmark --out results/hsf_plasticity_v1.json
+      - name: Upload HSF research results
+        if: github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks
+        uses: actions/upload-artifact@v4
+        with:
+          name: hsf-research-results
+          path: results/*.json
+          if-no-files-found: error
