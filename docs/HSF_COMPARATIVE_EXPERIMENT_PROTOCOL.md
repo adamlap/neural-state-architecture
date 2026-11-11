@@ -117,3 +117,45 @@ these gates are evaluated.
 Keep seeds, task generation, dimensions, software versions, and raw JSON
 artifacts with every run. Never replace raw runs with only an averaged chart.
 A failed or inconclusive result is a valid research outcome.
+
+
+## Stage 2b: fixed-budget HSF factorisation (implemented; CI execution pending)
+
+The allocation sweep holds H×W×C constant and varies the split between
+spatial cue dimension H×W and value code dimension C. Flat HRR/HDC baselines
+use the full flattened dimension for both key and value codes. Raw runs and
+aggregates record these dimensions explicitly. This does not equalise compute
+or the dimensions of the individual codes; it makes the HSF allocation
+trade-off measurable rather than hiding it behind equal total element counts.
+
+Run:
+
+~~~bash
+pytest -q tests/test_holographic_allocation_benchmark.py
+python -m experiments.holographic_state_field.allocation_benchmark \
+  --out results/hsf_allocation_v1.json
+~~~
+
+## Stage 3: unsupervised competitive Hebbian plasticity (implemented; CI execution pending)
+
+A small competitive map is implemented independently of HSF and NSA runtime.
+It uses winner/neighbour local updates toward each input followed by weight
+normalisation. It receives vectors only; family labels are withheld from
+learning and used only after training to score cluster-to-family mapping.
+The benchmark compares the fixed random initial codebook with the learned
+map on held-out examples from the same synthetic family-generating process.
+
+Run:
+
+~~~bash
+pytest -q tests/test_holographic_plasticity.py
+python -m experiments.holographic_state_field.plasticity_benchmark \
+  --out results/hsf_plasticity_v1.json
+~~~
+
+Record held-out accuracy, training purity, occupied units, update count, and
+prototype bytes. A positive result would show that this particular local
+plasticity rule organises this synthetic family task; it would not establish
+semantic generalisation or biological fidelity. A negative result is also
+useful. Do not combine the map with HSF until the standalone result and
+ablation controls justify doing so.
