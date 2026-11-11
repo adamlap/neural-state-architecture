@@ -35,3 +35,9 @@ def test_allocation_sweep_rejects_empty_configuration():
     with pytest.raises(ValueError, match="must be non-empty"):
         run(seeds=(), counts=(8,), similarities=(0.0,),
             shapes=((4, 8, 32),))
+
+
+def test_allocation_sweep_uses_reproducible_default_seeds():
+    result = run(counts=(8,), similarities=(0.0,), shapes=((4, 8, 32),))
+    assert result["seeds"] == [7, 17, 37, 73, 137]
+    assert len(result["runs"]) == 5 + 10
