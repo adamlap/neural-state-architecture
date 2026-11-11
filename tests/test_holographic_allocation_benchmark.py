@@ -9,18 +9,18 @@ def test_allocation_sweep_holds_total_elements_constant_and_reports_dimensions()
         seeds=(7,),
         counts=(8,),
         similarities=(0.0,),
-        shapes=((4, 8, 16), (8, 4, 16)),
+        shapes=((4, 8, 32), (8, 8, 16)),
     )
-    assert result["total_dimensions"] == 512
+    assert result["total_dimensions"] == 1024
     hsf = [row for row in result["aggregates"] if row["method"] == "hsf"]
     assert len(hsf) == 2
-    assert {row["key_dimension"] for row in hsf} == {16, 32}
-    assert {row["value_dimension"] for row in hsf} == {16}
+    assert {row["key_dimension"] for row in hsf} == {32, 64}
+    assert {row["value_dimension"] for row in hsf} == {16, 32}
     assert all(row["numeric_payload_bytes"] > 0 for row in hsf)
 
 
 def test_allocation_sweep_rejects_unequal_budgets():
-    with pytest.raises(ValueError, match="same H\*W\*C"):
+    with pytest.raises(ValueError, match=r"same H\*W\*C"):
         run(seeds=(7,), counts=(8,), similarities=(0.0,),
             shapes=((4, 8, 16), (8, 4, 32)))
 
