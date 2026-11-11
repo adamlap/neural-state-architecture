@@ -3,9 +3,8 @@
 Two comparisons are reported separately:
 * key_dimension_matched: HRR/HDC use the same key dimension as HSF (H*W).
   Their value code dimension consequently equals that key dimension.
-* numeric_payload_matched: HRR/HDC use H*W*C dimensions, matching the
-  dominant HSF field payload in float32 bytes (HSF also stores its fixed
-  value-codebook).
+* numeric_payload_matched: HRR/HDC dimensions are chosen so their float32
+  state payload exactly matches the HSF field plus its fixed value codebook.
 
 Neither arm is presented as a fully capacity- and compute-equivalent test.
 The report makes key, value, and persistent numeric payload dimensions
@@ -103,8 +102,8 @@ def run(*, seeds=DEFAULT_SEEDS, counts=DEFAULT_COUNTS,
             "baseline_dimension": key_dim,
         },
         "numeric_payload_matched": {
-            "description": "Vector baselines use H*W*C dimensions, matching HSF field bytes before its small fixed codebook overhead.",
-            "baseline_dimension": field_elements,
+            "description": "Vector baselines use a dimension chosen to exactly match HSF field plus fixed-codebook float32 payload bytes.",
+            "baseline_dimension": field_elements + len(VOCABULARY) * channels,
         },
     }
     runs = []
