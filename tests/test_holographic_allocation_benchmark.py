@@ -29,3 +29,9 @@ def test_allocation_sweep_requires_enough_value_channels():
     with pytest.raises(ValueError, match="channels must be >= 16"):
         run(seeds=(7,), counts=(8,), similarities=(0.0,),
             shapes=((8, 8, 8),))
+
+
+def test_allocation_sweep_rejects_empty_configuration():
+    with pytest.raises(ValueError, match="must be non-empty"):
+        run(seeds=(), counts=(8,), similarities=(0.0,),
+            shapes=((4, 8, 32),))
