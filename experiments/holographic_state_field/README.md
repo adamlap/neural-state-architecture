@@ -125,3 +125,39 @@ H×W×C dimension. The benchmark reports realised cosine for each method.
 This deliberately tests each representation's response to the same target
 similarity, while acknowledging that their key dimensions and computation
 costs differ. See the comparative protocol for interpretation.
+
+
+## Fixed-budget factorisation sweep
+
+The allocation benchmark holds H×W×C constant while changing the split
+between spatial key dimension (H×W) and value channel dimension (C). It
+compares the resulting HSF configurations with flat HRR/HDC baselines and
+records key/value dimensions explicitly:
+
+~~~bash
+pytest -q tests/test_holographic_allocation_benchmark.py
+python -m experiments.holographic_state_field.allocation_benchmark \
+  --out results/hsf_allocation_v1.json
+~~~
+
+This tests the factorisation trade-off, not an equal-compute comparison.
+
+## Self-organising synapse experiment
+
+A separate experimental module implements a small online competitive
+Hebbian map. It updates winning and neighbouring prototypes toward each
+unlabelled input, then normalises weights. Family labels are excluded from
+the learning API and used only after training to score cluster-to-family
+correspondence on held-out samples.
+
+~~~bash
+pytest -q tests/test_holographic_plasticity.py
+python -m experiments.holographic_state_field.plasticity_benchmark \
+  --out results/hsf_plasticity_v1.json
+~~~
+
+The benchmark compares an untrained random codebook with the learned map
+across correlated synthetic families. It reports held-out accuracy, training
+cluster purity, occupied units, update count, and prototype payload. It is a
+controlled clustering experiment, not semantic learning or biological
+validation. The map is not connected to the HSF memory field or NSA runtime.
