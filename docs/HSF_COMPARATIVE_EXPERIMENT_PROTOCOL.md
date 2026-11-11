@@ -55,7 +55,7 @@ Record mean and minimum accuracy over seeds, accuracy as association count
 rises, and persistent numeric payload. Do not select a winner from one seed
 or one memory count.
 
-## Stage 2: correlated keys (next)
+## Stage 2: correlated keys (implemented; execution pending)
 
 Independent hash-derived patterns are the easiest case. A more revealing test
 must create controlled key similarity:
@@ -67,13 +67,31 @@ must create controlled key similarity:
    association count and value distribution fixed.
 5. Query with exact and noisy cues.
 
+The implementation is in
+`experiments/holographic_state_field/correlated_key_benchmark.py`. It uses
+four families and sweeps target within-family cosine values 0, 0.25, 0.5,
+0.75, and 0.9 across multiple seeds and memory counts. Each family has a
+shared bipolar prototype; individual keys flip coordinates with probability
+(1 - sqrt(rho))/2, giving expected pairwise cosine rho. Value labels cycle
+within each family so the experiment does not accidentally reduce to one
+label per family.
+
 Use the same family/item identities, value assignments, and target similarity
-levels across methods. Because HSF keys are H×W vectors while HRR/HDC keys are
-D-dimensional, generate method-specific vectors from the same family/item
-seeds and verify that their realised pairwise-cosine distributions match the
-target similarity within a stated tolerance. Do not simulate correlation by
-merely giving keys similar-looking strings. Use at least three families and
-ensure keys remain distinct.
+levels across methods. HSF keys have dimension H×W, while HRR/HDC keys have
+dimension H×W×C. Method-specific vectors are generated from the same
+family/item seeds and the realised within-family cosine is recorded for each
+method. This matches the target similarity distribution, not the absolute
+dimensional noise or computational cost; interpret results accordingly.
+Do not simulate correlation by merely giving keys similar-looking strings.
+The benchmark keeps keys distinct for rho<1.
+
+Run:
+
+~~~bash
+pytest -q tests/test_holographic_correlated_keys.py
+python -m experiments.holographic_state_field.correlated_key_benchmark \
+  --out results/hsf_correlated_keys_v1.json
+~~~
 
 ## Stage 3: noise and conflicting updates
 
