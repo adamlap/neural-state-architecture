@@ -27,4 +27,4 @@ jobs:
           tests/test_holographic_state_field.py
           tests/test_holographic_associative_baselines.py
           tests/test_holographic_correlated_keys.py
-          tests/test_holographic_allocation_benchmark.py
+          tests/test_holographic_allocation_benchmark.py\n          tests/test_holographic_plasticity.py
