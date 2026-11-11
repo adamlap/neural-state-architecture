@@ -56,8 +56,28 @@ class _VectorSuperposition:
         self._memory += self._bind(self._key(key), self._code("value", value))
         self.writes += 1
 
-    def retrieve(self, key: str) -> BaselineRetrieval:
-        vector = self._unbind(self._memory, self._key(key))
+    def write_vector(self, key_vector: FloatArray, value: str) -> None:
+        """Write a supplied key vector for controlled representation experiments."""
+        if value not in self.vocabulary:
+            raise KeyError(value)
+        key = np.asarray(key_vector, dtype=np.float32).reshape(-1)
+        if key.size != self.dimension or not np.all(np.isfinite(key)):
+            raise ValueError("key vector must be finite and match the memory dimension")
+        norm = float(np.linalg.norm(key))
+        if norm <= 0:
+            raise ValueError("key vector must have non-zero norm")
+        self._memory += self._bind(key / np.float32(norm), self._code("value", value))
+        self.writes += 1
+
+    def retrieve_vector(self, key_vector: FloatArray) -> BaselineRetrieval:
+        """Retrieve using a supplied key vector."""
+        key = np.asarray(key_vector, dtype=np.float32).reshape(-1)
+        if key.size != self.dimension or not np.all(np.isfinite(key)):
+            raise ValueError("key vector must be finite and match the memory dimension")
+        norm = float(np.linalg.norm(key))
+        if norm <= 0:
+            raise ValueError("key vector must have non-zero norm")
+        vector = self._unbind(self._memory, key / np.float32(norm))
         scores = np.asarray([
             np.dot(vector, self._code("value", v)) for v in self.vocabulary
         ], dtype=np.float32)
