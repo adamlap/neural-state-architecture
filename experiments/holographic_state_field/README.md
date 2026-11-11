@@ -106,3 +106,22 @@ the remaining representation and accounting caveats, as well as the next
 correlated-key experiment:
 
 - [HSF comparative experiment protocol](../../docs/HSF_COMPARATIVE_EXPERIMENT_PROTOCOL.md)
+
+
+## Correlated-key interference experiment
+
+This next-stage experiment generates families of similar bipolar key patterns
+with a controlled expected within-family cosine similarity. It compares HSF,
+HRR, and HDC over several similarity levels, memory loads, and random seeds.
+
+~~~bash
+pytest -q tests/test_holographic_correlated_keys.py
+python -m experiments.holographic_state_field.correlated_key_benchmark \
+  --out results/hsf_correlated_keys_v1.json
+~~~
+
+HSF's cue dimension is the spatial plane (H×W); HRR/HDC use the flattened
+H×W×C dimension. The benchmark reports realised cosine for each method.
+This deliberately tests each representation's response to the same target
+similarity, while acknowledging that their key dimensions and computation
+costs differ. See the comparative protocol for interpretation.
