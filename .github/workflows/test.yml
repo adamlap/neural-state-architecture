@@ -2,7 +2,7 @@ name: NSA tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, research/holographic-state-field]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -87,3 +87,31 @@ jobs:
         run: PYTHONPATH=. python experiments/self_state/run.py --steps 20 --seed 7
       - name: Run native NSA transformer probe
         run: PYTHONPATH=. python experiments/self_state/transformer_probe.py --batch 2 --seq-len 8
+
+      - name: Run HSF unit tests
+        run: >-
+          PYTHONPATH=. python -m pytest -q
+          tests/test_holographic_state_field.py
+          tests/test_holographic_associative_baselines.py
+          tests/test_holographic_correlated_keys.py
+          tests/test_holographic_allocation_benchmark.py
+          tests/test_holographic_plasticity.py
+          tests/test_holographic_dimension_control.py
+          tests/test_holographic_interference_diagnostic.py
+
+      - name: Run HSF research benchmarks
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/research/holographic-state-field') || (github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks)
+        run: |
+          mkdir -p artifacts/hsf-results
+          PYTHONPATH=. python -m experiments.holographic_state_field.correlated_key_benchmark --out artifacts/hsf-results/hsf_correlated_keys_v1.json
+          PYTHONPATH=. python -m experiments.holographic_state_field.allocation_benchmark --out artifacts/hsf-results/hsf_allocation_v1.json
+          PYTHONPATH=. python -m experiments.holographic_state_field.plasticity_benchmark --out artifacts/hsf-results/hsf_plasticity_v1.json
+          PYTHONPATH=. python -m experiments.holographic_state_field.dimension_control_benchmark --out artifacts/hsf-results/hsf_dimension_control_v1.json
+          PYTHONPATH=. python -m experiments.holographic_state_field.interference_diagnostic --out artifacts/hsf-results/hsf_interference_diagnostic_v1.json
+      - name: Upload HSF research results
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/research/holographic-state-field') || (github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hsf-research-results
+          path: artifacts/hsf-results/*.json
+          if-no-files-found: error
