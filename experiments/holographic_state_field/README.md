@@ -161,3 +161,15 @@ across correlated synthetic families. It reports held-out accuracy, training
 cluster purity, occupied units, update count, and prototype payload. It is a
 controlled clustering experiment, not semantic learning or biological
 validation. The map is not connected to the HSF memory field or NSA runtime.
+
+
+## CI policy
+
+The HSF tests are included in the repository's existing `NSA tests`
+workflow because it runs the full `tests/` directory. No separate HSF
+workflow is needed.
+
+For a pull request, the normal test suite runs automatically. To run the
+full HSF research sweeps manually, open **Actions → NSA tests → Run workflow**
+and enable `run_hsf_research_benchmarks`. The raw JSON outputs are uploaded
+as the `hsf-research-results` artifact.
