@@ -26,6 +26,14 @@ DEFAULT_SHAPES = ((16, 16, 32), (16, 8, 64), (8, 8, 128), (8, 16, 64))
 def run(*, seeds=DEFAULT_SEEDS, counts=(16, 32, 64, 128),
         similarities=(0.0, 0.5, 0.75), shapes=DEFAULT_SHAPES):
     """Run all HSF factorizations and flat baselines at equal field element count."""
+    if not seeds or not counts or not similarities or not shapes:
+        raise ValueError("seeds, counts, similarities, and shapes must be non-empty")
+    if any(count < 1 for count in counts):
+        raise ValueError("memory counts must be positive")
+    if any(not 0.0 <= rho < 1.0 for rho in similarities):
+        raise ValueError("similarities must be in [0, 1)")
+    if any(min(shape) <= 0 for shape in shapes):
+        raise ValueError("all field dimensions must be positive")
     total_dimensions = {height * width * channels for height, width, channels in shapes}
     if len(total_dimensions) != 1:
         raise ValueError("all shapes must have the same H*W*C element budget")
