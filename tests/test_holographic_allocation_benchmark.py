@@ -11,7 +11,7 @@ def test_allocation_sweep_holds_total_elements_constant_and_reports_dimensions()
         similarities=(0.0,),
         shapes=((4, 8, 16), (8, 4, 16)),
     )
-    assert result["total_dimensions"] == 256
+    assert result["total_dimensions"] == 512
     hsf = [row for row in result["aggregates"] if row["method"] == "hsf"]
     assert len(hsf) == 2
     assert {row["key_dimension"] for row in hsf} == {16, 32}
