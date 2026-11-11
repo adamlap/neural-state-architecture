@@ -15,7 +15,8 @@ from pathlib import Path
 
 from .correlated_key_benchmark import _run_method
 
-DEFAULT_SEEDS = (7, 17, 37, 73, 137)\nDEFAULT_SHAPES = ((16, 16, 32), (16, 8, 64), (8, 8, 128), (8, 16, 64))
+DEFAULT_SEEDS = (7, 17, 37, 73, 137)
+DEFAULT_SHAPES = ((16, 16, 32), (16, 8, 64), (8, 8, 128), (8, 16, 64))
 
 
 def run(*, seeds=DEFAULT_SEEDS, counts=(16, 32, 64, 128),
