@@ -93,7 +93,7 @@ python -m experiments.holographic_state_field.correlated_key_benchmark \
   --out results/hsf_correlated_keys_v1.json
 ~~~
 
-## Stage 3: noise and conflicting updates
+## Stage 4: noise and conflicting updates
 
 After Stage 2, flip a controlled fraction of cue bits or perturb cue vectors.
 Test repeated writes of the same association separately from conflicting
