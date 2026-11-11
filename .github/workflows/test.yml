@@ -2,7 +2,7 @@ name: NSA tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, research/holographic-state-field]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -89,14 +89,14 @@ jobs:
         run: PYTHONPATH=. python experiments/self_state/transformer_probe.py --batch 2 --seq-len 8
 
       - name: Run HSF research benchmarks
-        if: github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/research/holographic-state-field') || (github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks)
         run: |
           mkdir -p results
           PYTHONPATH=. python -m experiments.holographic_state_field.correlated_key_benchmark --out results/hsf_correlated_keys_v1.json
           PYTHONPATH=. python -m experiments.holographic_state_field.allocation_benchmark --out results/hsf_allocation_v1.json
           PYTHONPATH=. python -m experiments.holographic_state_field.plasticity_benchmark --out results/hsf_plasticity_v1.json
       - name: Upload HSF research results
-        if: github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/research/holographic-state-field') || (github.event_name == 'workflow_dispatch' && inputs.run_hsf_research_benchmarks)
         uses: actions/upload-artifact@v4
         with:
           name: hsf-research-results
