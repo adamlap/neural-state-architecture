@@ -13,12 +13,7 @@ import json
 import statistics
 from pathlib import Path
 
-from .correlated_key_benchmark import (
-    DEFAULT_COUNTS,
-    DEFAULT_SEEDS,
-    DEFAULT_SIMILARITIES,
-    _run_method,
-)
+from .correlated_key_benchmark import _run_method
 
 DEFAULT_SHAPES = ((16, 16, 32), (16, 8, 64), (8, 8, 128), (8, 16, 64))
 
