@@ -69,6 +69,9 @@ class _VectorSuperposition:
         self._memory += self._bind(key / np.float32(norm), self._code("value", value))
         self.writes += 1
 
+    def retrieve(self, key: str) -> BaselineRetrieval:
+        return self.retrieve_vector(self._key(key))
+
     def retrieve_vector(self, key_vector: FloatArray) -> BaselineRetrieval:
         """Retrieve using a supplied key vector."""
         key = np.asarray(key_vector, dtype=np.float32).reshape(-1)
