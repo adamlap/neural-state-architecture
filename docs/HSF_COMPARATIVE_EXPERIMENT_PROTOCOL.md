@@ -259,6 +259,57 @@ is that most of the accuracy still comes from replay volume; the field's advanta
 Buffer selection here is random; prioritised replay (replay the records with the largest recent residual, as hippocampal replay is
 biased toward surprising events) is the obvious next test and is not yet implemented.
 
+## Stage 4f: prioritised replay (implemented and run)
+
+`run_one(..., replay_policy="priority")`: every replay pass re-ranks all records by current prediction error (HSF: distance between
+the target value code and what the field returns; HDC: wrong recalls first, then smallest margin) and replays the worst
+`fraction × n`. Cosine 0.9, 16×32×8, 2 % sparsity, 10 held-out seeds, overall accuracy mean (`results/hsf_priority_replay_v1.json`):
+
+| n | buffer | HSF random | HSF priority | HDC random | HDC priority |
+|---|---|---|---|---|---|
+| 64 | 1/16 | 0.62 | 0.78 | 0.37 | 0.47 |
+| 64 | 1/4 | 0.75 | 0.86 | 0.43 | 0.55 |
+| 64 | 1/2 | 0.84 | 0.98 | 0.59 | 0.76 |
+| 128 | 1/16 | 0.63 | 0.62 | 0.35 | 0.40 |
+| 128 | 1/8 | 0.67 | 0.60 | 0.36 | 0.39 |
+| 128 | 1/4 | 0.66 | 0.73 | 0.46 | 0.45 |
+| 128 | 1/2 | 0.74 | 0.89 | 0.57 | 0.56 |
+
+Prioritising by error helps both methods at n = 64 (HSF +0.10 to +0.14, HDC +0.10 to +0.17) and helps HSF at n = 128 once the buffer
+is a quarter of the records or more (+0.07, +0.15). With a very small buffer at n = 128 it does not help and for HSF is slightly worse
+(0.60 vs 0.67 at 1/8): the worst-error records are the hardest, mutually interfering ones, and replaying only those can over-fit them.
+HDC gains nothing from prioritisation at n = 128 above 1/8. HSF's lead over HDC persists under both policies (priority at 1/2, n = 128:
+0.89 vs 0.56).
+
+## Stage 4g: larger value vocabularies (implemented and run)
+
+HSF needs C >= V channels for V values, which comes out of the key plane (capacity); a flat HDC vector pays no such split.
+`vocabulary_sweep.py` compares equal float budgets (4,096 and 16,384), HSF with C in {V, 2V} and a square-ish key plane, sparsity
+chosen per method on selection seeds, cosine 0.9, 10 disjoint evaluation seeds (`results/hsf_vocabulary_v1.json`). Mean accuracy
+(paired seed wins HSF/HDC):
+
+| V | budget | n | HSF (shape) | HDC | wins |
+|---|---|---|---|---|---|
+| 8 | 4,096 | 64 | 0.99 (16×32×8) | 0.79 | 10 / 0 |
+| 8 | 16,384 | 64 | 1.00 (32×32×16) | 0.88 | 9 / 0 |
+| 32 | 4,096 | 32 | 0.83 (8×16×32) | 0.93 | 2 / 8 |
+| 32 | 4,096 | 64 | 0.65 | 0.79 | 0 / 10 |
+| 32 | 16,384 | 64 | **1.00** (16×32×32) | 0.95 | 8 / 0 |
+| 128 | 4,096 | 32 | 0.38 (4×8×128) | 0.93 | 0 / 10 |
+| 128 | 16,384 | 32 | 0.85 (8×16×128) | 0.98 | 0 / 9 |
+| 128 | 16,384 | 64 | 0.67 | 0.95 | 0 / 10 |
+
+Reading: the HSF advantage is conditional on the vocabulary being small relative to the budget. It holds for V = 8 at both budgets,
+holds for V = 32 only when the budget is 4× larger, and reverses at V = 128 at both budgets (the key plane shrinks to 32-128 cells, so
+capacity falls below the record count). The cause is structural, not a tuning artefact: a V-sized one-hot-like value code spends
+V of the H·W·C floats per cell on the value side. Two fixes are untested: (i) a *distributed value code* (random codes of dimension
+C << V decoded by cleanup against a codebook, as HRR/HDC already do) so C stops scaling with V; (ii) hierarchical values (a small
+field per attribute). Neither belongs in an NSA integration until measured, and an NSA memory whose values are open-ended strings
+would need (i) at minimum.
+
+Gate assessment after 4f/4g: HSF's robustness advantage for correlated keys is real but confined to small closed vocabularies, so for
+NSA's open-ended fact values it is **not yet usable**; the next experiment is the distributed value code at V = 128-1024.
+
 ## Decision gates
 
 Continue developing HSF only if it demonstrates at least one repeatable:

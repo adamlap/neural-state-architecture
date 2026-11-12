@@ -1,0 +1,254 @@
+{
+  "experiment": "hsf_vocabulary_v1",
+  "rho": 0.9,
+  "select_seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "eval_seeds": [
+    11,
+    23,
+    47,
+    59,
+    71,
+    83,
+    97,
+    101,
+    113,
+    127
+  ],
+  "rows": [
+    {
+      "vocab": 8,
+      "budget": 4096,
+      "count": 32,
+      "hsf_shape": [
+        16,
+        16,
+        16
+      ],
+      "key_dim": 256,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.98125,
+      "hsf_min": 0.90625,
+      "hdc_mean": 0.95625,
+      "hdc_min": 0.84375,
+      "paired_hsf_wins": 8,
+      "paired_hdc_wins": 1
+    },
+    {
+      "vocab": 8,
+      "budget": 4096,
+      "count": 64,
+      "hsf_shape": [
+        16,
+        32,
+        8
+      ],
+      "key_dim": 512,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.990625,
+      "hsf_min": 0.953125,
+      "hdc_mean": 0.790625,
+      "hdc_min": 0.640625,
+      "paired_hsf_wins": 10,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 8,
+      "budget": 16384,
+      "count": 32,
+      "hsf_shape": [
+        32,
+        32,
+        16
+      ],
+      "key_dim": 1024,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 1.0,
+      "hsf_min": 1.0,
+      "hdc_mean": 0.9625,
+      "hdc_min": 0.875,
+      "paired_hsf_wins": 5,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 8,
+      "budget": 16384,
+      "count": 64,
+      "hsf_shape": [
+        32,
+        32,
+        16
+      ],
+      "key_dim": 1024,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 1.0,
+      "hsf_min": 1.0,
+      "hdc_mean": 0.8765625,
+      "hdc_min": 0.796875,
+      "paired_hsf_wins": 9,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 32,
+      "budget": 4096,
+      "count": 32,
+      "hsf_shape": [
+        8,
+        16,
+        32
+      ],
+      "key_dim": 128,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.83125,
+      "hsf_min": 0.71875,
+      "hdc_mean": 0.934375,
+      "hdc_min": 0.78125,
+      "paired_hsf_wins": 2,
+      "paired_hdc_wins": 8
+    },
+    {
+      "vocab": 32,
+      "budget": 4096,
+      "count": 64,
+      "hsf_shape": [
+        8,
+        16,
+        32
+      ],
+      "key_dim": 128,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.65,
+      "hsf_min": 0.546875,
+      "hdc_mean": 0.7875,
+      "hdc_min": 0.703125,
+      "paired_hsf_wins": 0,
+      "paired_hdc_wins": 10
+    },
+    {
+      "vocab": 32,
+      "budget": 16384,
+      "count": 32,
+      "hsf_shape": [
+        16,
+        32,
+        32
+      ],
+      "key_dim": 512,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 1.0,
+      "hsf_min": 1.0,
+      "hdc_mean": 0.94375,
+      "hdc_min": 0.875,
+      "paired_hsf_wins": 9,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 32,
+      "budget": 16384,
+      "count": 64,
+      "hsf_shape": [
+        16,
+        32,
+        32
+      ],
+      "key_dim": 512,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.9984375,
+      "hsf_min": 0.984375,
+      "hdc_mean": 0.9515625,
+      "hdc_min": 0.90625,
+      "paired_hsf_wins": 8,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 128,
+      "budget": 4096,
+      "count": 32,
+      "hsf_shape": [
+        4,
+        8,
+        128
+      ],
+      "key_dim": 32,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.375,
+      "hsf_min": 0.25,
+      "hdc_mean": 0.925,
+      "hdc_min": 0.84375,
+      "paired_hsf_wins": 0,
+      "paired_hdc_wins": 10
+    },
+    {
+      "vocab": 128,
+      "budget": 4096,
+      "count": 64,
+      "hsf_shape": [
+        4,
+        8,
+        128
+      ],
+      "key_dim": 32,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.246875,
+      "hsf_min": 0.15625,
+      "hdc_mean": 0.75625,
+      "hdc_min": 0.65625,
+      "paired_hsf_wins": 0,
+      "paired_hdc_wins": 10
+    },
+    {
+      "vocab": 128,
+      "budget": 16384,
+      "count": 32,
+      "hsf_shape": [
+        8,
+        16,
+        128
+      ],
+      "key_dim": 128,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.85,
+      "hsf_min": 0.75,
+      "hdc_mean": 0.98125,
+      "hdc_min": 0.90625,
+      "paired_hsf_wins": 0,
+      "paired_hdc_wins": 9
+    },
+    {
+      "vocab": 128,
+      "budget": 16384,
+      "count": 64,
+      "hsf_shape": [
+        8,
+        16,
+        128
+      ],
+      "key_dim": 128,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.665625,
+      "hsf_min": 0.53125,
+      "hdc_mean": 0.946875,
+      "hdc_min": 0.90625,
+      "paired_hsf_wins": 0,
+      "paired_hdc_wins": 10
+    }
+  ],
+  "boundary": "Synthetic correlated bipolar keys; HSF pays H*W usage floats; random value codes; records replayed 3x."
+}

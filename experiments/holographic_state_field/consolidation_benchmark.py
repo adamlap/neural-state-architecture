@@ -30,7 +30,6 @@ import numpy as np
 from .baselines import HDCMemory, HRRMemory
 from .correlated_key_benchmark import FAMILIES, VOCABULARY, correlated_cues
 from .field import HolographicStateField
-from .supersession_benchmark import _value
 
 DEFAULT_SEEDS = (7, 17, 37, 73, 137)
 DEFAULT_COUNTS = (32, 64, 128, 256)
@@ -38,6 +37,15 @@ DEFAULT_SIMILARITIES = (0.5, 0.9)
 METHODS = ("hsf_delta_replay", "hdc_replay", "hrr_replay", "hsf_whitened", "hdc_replay_big",
            "hsf_sep_delta", "hsf_sep_delta_replay", "hdc_sep_replay", "hsf_sep_homeo", "hsf_sep_homeo_replay")
 REPLAY_PASSES = 3
+REPLAY_POLICIES = ("random", "priority")
+
+
+def vocabulary(size: int = len(VOCABULARY)) -> tuple[str, ...]:
+    return tuple(f"VALUE_{i}" for i in range(size))
+
+
+def _value(i: int, seed: int, vocab: tuple[str, ...], shift: int = 0) -> str:
+    return vocab[((i // FAMILIES) * 3 + (i % FAMILIES) * 5 + seed + shift) % len(vocab)]
 SPARSITY = 0.05
 RIDGE = 1e-3
 HOMEO_FLOOR = 0.02
@@ -59,8 +67,8 @@ class PatternSeparator:
 
 
 class _HSF:
-    def __init__(self, seed, cues, h, w, c, mode: str, separator=None) -> None:
-        self.f = HolographicStateField(VOCABULARY, height=h, width=w, channels=c, seed=seed)
+    def __init__(self, seed, cues, h, w, c, mode: str, separator=None, vocab=VOCABULARY) -> None:
+        self.f = HolographicStateField(vocab, height=h, width=w, channels=c, seed=seed)
         self.cues = {n: (separator(v) if separator else v) for n, v in cues.items()}
         self.mode = mode
         n = h * w
@@ -99,17 +107,28 @@ class _HSF:
     def read(self, name):
         return self.f.retrieve_pattern(self.cues[name]).value
 
+    def begin_replay(self):
+        self._frozen = self.usage.copy()
+
+    def replay_pass(self, subset):
+        for name, value in subset.items():
+            if self.mode == "replay":
+                self.f.write_pattern_delta(self.cues[name], value)
+            elif self.mode == "homeo_replay":
+                self.write(name, value)
+                self.usage[:] = self._frozen               # replay re-uses the learned usage; it does not recount
+
+    def priority(self, name, value) -> float:
+        """Prediction error: distance between the target value code and what the field currently returns."""
+        cue = self.cues[name]
+        k = (cue / np.linalg.norm(cue)).reshape(self.f.height, self.f.width)
+        predicted = np.einsum("hw,hwc->c", k, self.f._field, optimize=True)
+        return float(np.linalg.norm(self.f._value_codes[value] - predicted))
+
     def replay(self, final):
-        if self.mode == "replay":
-            for _ in range(REPLAY_PASSES):
-                for name, value in final.items():
-                    self.f.write_pattern_delta(self.cues[name], value)
-        if self.mode == "homeo_replay":
-            frozen = self.usage.copy()
-            for _ in range(REPLAY_PASSES):
-                for name, value in final.items():
-                    self.write(name, value)
-                    self.usage[:] = frozen                 # replay re-uses the learned usage; it does not recount
+        self.begin_replay()
+        for _ in range(REPLAY_PASSES):
+            self.replay_pass(final)
 
 
 class _Flat:
@@ -142,13 +161,24 @@ class _Flat:
     def read(self, name):
         return self.store.retrieve_vector(self.cues[name]).value
 
+    def begin_replay(self):
+        pass
+
+    def replay_pass(self, subset):
+        for name, value in subset.items():
+            self._correct(name, value)
+
+    def priority(self, name, value) -> float:
+        """Wrong recalls first (confidently wrong highest), then correct ones with the smallest margin."""
+        got = self.store.retrieve_vector(self.cues[name])
+        return 2.0 + got.margin if got.value != value else 1.0 / (1.0 + got.margin)
+
     def replay(self, final):
         for _ in range(REPLAY_PASSES):
-            for name, value in final.items():
-                self._correct(name, value)
+            self.replay_pass(final)
 
 
-def _build(method: str, seed: int, count: int, rho: float, h: int, w: int, c: int):
+def _build(method: str, seed: int, count: int, rho: float, h: int, w: int, c: int, vocab=VOCABULARY):
     n_key, flat = h * w, h * w * c
     if method.startswith("hsf"):
         _, cues, _ = correlated_cues(seed, n_key, count, rho)
@@ -156,13 +186,13 @@ def _build(method: str, seed: int, count: int, rho: float, h: int, w: int, c: in
         mode = "whitened" if method == "hsf_whitened" else ("replay" if method.endswith("replay") else "delta")
         if "homeo" in method:
             mode = "homeo_replay" if method.endswith("replay") else "homeo"
-        mem = _HSF(seed, cues, h, w, c, mode, sep)
+        mem = _HSF(seed, cues, h, w, c, mode, sep, vocab)
         return mem, flat + mem.extra_floats
     dim = flat + n_key * n_key if method.endswith("_big") else flat
     _, cues, _ = correlated_cues(seed, dim, count, rho)
     sep = PatternSeparator(dim, dim, seed) if "_sep" in method else None
     cls = HRRMemory if method.startswith("hrr") else HDCMemory
-    return _Flat(cls(VOCABULARY, dimension=dim, seed=seed), cues, sep), dim
+    return _Flat(cls(vocab, dimension=dim, seed=seed), cues, sep), dim
 
 
 def code_overlap(seed: int, dim: int, count: int, rho: float) -> dict:
@@ -175,25 +205,36 @@ def code_overlap(seed: int, dim: int, count: int, rho: float) -> dict:
     return {"input_cosine": realised, "separated_cosine": statistics.fmean(after) if after else None}
 
 
-def run_one(method, seed, count, rho, h, w, c, update_fraction=0.5, replay_fraction=1.0) -> dict:
-    mem, floats = _build(method, seed, count, rho, h, w, c)
+def run_one(method, seed, count, rho, h, w, c, update_fraction=0.5, replay_fraction=1.0, replay_policy="random", vocab_size=len(VOCABULARY)) -> dict:
+    if replay_policy not in REPLAY_POLICIES:
+        raise ValueError(f"replay_policy must be one of {REPLAY_POLICIES}")
+    vocab = vocabulary(vocab_size)
+    mem, floats = _build(method, seed, count, rho, h, w, c, vocab)
     names = [f"FAMILY_{i % FAMILIES}:ITEM_{i:05d}" for i in range(count)]
-    original = {n: _value(i, seed) for i, n in enumerate(names)}
+    original = {n: _value(i, seed, vocab) for i, n in enumerate(names)}
     rng = np.random.default_rng(np.random.SeedSequence([seed, count, 991]))
     upd_idx = sorted(rng.choice(count, size=max(1, int(round(count * update_fraction))), replace=False).tolist())
     final = dict(original)
     for n in names:
         mem.write(n, original[n])
     for i in upd_idx:
-        final[names[i]] = _value(i, seed, shift=1 + (i % (len(VOCABULARY) - 1)))
+        final[names[i]] = _value(i, seed, vocab, shift=1 + (i % (len(vocab) - 1)))
         mem.write(names[i], final[names[i]])
-    if replay_fraction < 1.0:        # bounded replay buffer: a random subset of the records, chosen without regard to which were updated
-        keep_n = max(1, int(round(count * replay_fraction)))
-        chosen = rng.choice(count, size=keep_n, replace=False)
-        replayed = {names[i]: final[names[i]] for i in sorted(chosen.tolist())}
+    keep_n = max(1, int(round(count * replay_fraction)))
+    if replay_policy == "priority":
+        # Prioritised replay: every pass re-ranks all records by current prediction error and replays the worst
+        # ``keep_n``. Needs the records (or a summary of each) in the buffer, like random replay.
+        mem.begin_replay()
+        for _ in range(REPLAY_PASSES):
+            ranked = sorted(names, key=lambda n: -mem.priority(n, final[n]))[:keep_n]
+            mem.replay_pass({n: final[n] for n in ranked})
     else:
-        replayed = final
-    mem.replay(replayed)
+        if replay_fraction < 1.0:    # bounded random buffer, chosen without regard to which records were updated
+            chosen = rng.choice(count, size=keep_n, replace=False)
+            replayed = {names[i]: final[names[i]] for i in sorted(chosen.tolist())}
+        else:
+            replayed = final
+        mem.replay(replayed)
     upd = {names[i] for i in upd_idx}
     got = {n: mem.read(n) for n in names}
     keep = [n for n in names if n not in upd]
