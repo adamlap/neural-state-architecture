@@ -7,6 +7,11 @@ before 0.6.0 were not documented here; see git history.
 
 ### Added
 
+- Model-call gating in `NSARuntime.step`: `RuntimeConfig(abstain_text=..., reuse_familiar_answers=True, require_full_key_match=True)` (all off by default). Abstain without a model call when
+  no memory key matches; reuse a grounded earlier answer when the retrieved memory state is unchanged and the question is familiar; both after policy enforcement. 2.2x less time, 51 % fewer calls,
+  no fabrication, 0 stale reuse on a re-asked question stream (research/RESEARCH_BENCHMARK_V12.md). `step(remember_prompt=False)` skips fact extraction of the prompt itself.
+- `SpanFactExtractor` / `HybridFactExtractor(span=True)`: model-free span extraction with a vocabulary learned online (small, inconsistent gain on fresh phrasings; off by default).
+- `OllamaInferenceBackend.generate(num_thread=...)` and `NSA_NUM_THREAD`: all cores gave 1.45x median prefill (12/12 paired comparisons) on the measured 6-core machine; flash attention and a q8 KV cache gave no gain.
 - `RuntimeConfig(route_noisy_updates=True)` / `nsa.memory.routing.route_fact`: extracted facts are routed against the memory's current value for the key
   (ignore restatements, hold a near-duplicate value without an update cue until observed twice, write everything else; explicit update cues always
   supersede). On a noisy stream: 1.00 correct / 0 typo corruption (rule extractor, known phrasings) and 0.53 -> 0.75 correct (hybrid 1.5b, held-out).
@@ -60,6 +65,9 @@ before 0.6.0 were not documented here; see git history.
 
 ### Fixed
 
+- `NSARuntime.memory_keys_for`: partial-match ties were broken alphabetically (a question about an unknown entity retrieved another entity's value) and lower-scoring partial matches (other entities' values)
+  were returned as distractors. It now returns only the best-scoring key(s) (trusted first), rejects ambiguous partial matches, tolerates one-character typos in words of 4+ letters, and
+  `require_full_key_match` accepts only fully covered keys. Earlier benchmark numbers that used the old retrieval are re-measured where noted.
 - `RuleFactExtractor`: filler lead-ins ("just to confirm,") no longer leak into the memory key; "is still X" is parsed.
 - `auto_checkpoint` wrote a format that `load_state` could not read; it now uses `save()`.
 - A backend raising `TypeError` was retried without `state`, calling the model twice.
