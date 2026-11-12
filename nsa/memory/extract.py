@@ -54,11 +54,13 @@ _PATTERNS: tuple[tuple[re.Pattern, int, int], ...] = tuple(
         (rf"(.+?)\s+(?:has been|have been|was|were|is|are)\s+(?:now\s+)?(?:updated|changed|switched|moved|rotated|set)\s+to\s+({_VALUE})", 1, 2),
         (rf"(.+?)\s+(?:is|are)\s+now\s+({_VALUE})", 1, 2),
         (rf"(.+?)\s*(?:=|:)\s*({_VALUE})\s*(?:\(.*\))?\s*[.;!]*$", 1, 2),
-        (rf"(.+?)\s+(?:is|are)\s+({_VALUE})\s*[.;!]*$", 1, 2),
+        (rf"(.+?)\s+(?:is|are)\s+(?:still\s+)?({_VALUE})\s*[.;!]*$", 1, 2),
     )
 )
 _USE_AS = re.compile(rf"\b(?:for|on)\s+(.+?),\s*(?:use|set)\s+({_VALUE})\s+as\s+(?:the\s+)?(.+?)(?:[.;!]|$)", re.I)
-_LEAD = re.compile(r"^\s*(?:fyi|reminder|note|update|correction|heads up|btw)\s*[-:,]?\s*", re.I)
+_LEAD = re.compile(
+    r"^\s*(?:(?:fyi|reminder|note|update|correction|heads[- ]up|btw|quick note|please note|just to confirm|to confirm|confirming|"
+    r"as a reminder|for the record|by the way|as of today)\s*[-:,]?\s*)+", re.I)
 _CHANGED_TO = re.compile(rf"\b(?:we|i|they)\s+(?:changed|switched|moved|updated|rotated)\s+(.+?)\s+to\s+({_VALUE})", re.I)
 
 

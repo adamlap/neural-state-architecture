@@ -17,6 +17,7 @@ from nsa.cognition.system_one_runtime import SystemOneController, SystemOneBacke
 from nsa.cognition.tools import ToolRegistry
 from nsa.memory import TemporalMemoryStore
 from nsa.memory.extract import FactExtractor, rank_keys
+from nsa.memory.routing import route_fact
 from nsa.decision import SecurityDecision
 from nsa.taint import authorize_tool_call, join_integrity
 from nsa.ingress import IngressAuthority, IngressEnvelope, content_digest
@@ -54,6 +55,9 @@ class RuntimeConfig:
     # With a NoveltyGate configured: only lines whose novelty is at least this value reach the fact extractor (selective storage). None means
     # the gate only measures (``last_novelty``); every line is still extracted. Lines are scored one by one; the gate learns every line.
     novelty_write_threshold: Optional[float] = None
+    # Route each extracted fact against the memory's current value for its key (nsa/memory/routing.py): ignore restatements, hold a near-duplicate
+    # value without an update cue (likely noise) until it is observed twice, write everything else.
+    route_noisy_updates: bool = False
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -82,6 +86,8 @@ class NSARuntime:
         self.novelty_gate = novelty_gate
         self.last_novelty: Optional[float] = None
         self.gate_stats = {"lines": 0, "extracted": 0, "skipped": 0}
+        self.route_stats = {"written": 0, "ignored": 0, "held": 0, "promoted": 0}
+        self._held: dict[tuple[str, str], int] = {}
         self.ingress = ingress
         self.ingress_rejections: list[tuple[str, str]] = []
         self.backend = backend; self.config = config or RuntimeConfig(); self.state = state or self._state_from_mapping(initial_state or {})
@@ -161,8 +167,26 @@ class NSARuntime:
             # The observation's integrity label becomes the label of every write it produces, so an
             # untrusted source's claims are subject to the memory integrity gate automatically.
             for fact in (self.extractor.extract(text) if text.strip() else ()):
+                kind = fact.kind
+                if self.config.route_noisy_updates:
+                    current = self.memory.current(fact.key)
+                    route = route_fact(str(current.content.get("value")) if current else None, fact.value, fact.kind)
+                    if route == "ignore":
+                        self.route_stats["ignored"] += 1
+                        self._held.pop((fact.key, fact.value.lower()), None)
+                        continue
+                    if route == "hold":
+                        seen = self._held.get((fact.key, fact.value.lower()), 0) + 1
+                        self._held[(fact.key, fact.value.lower())] = seen
+                        if seen < 2:
+                            self.route_stats["held"] += 1
+                            continue
+                        self.route_stats["promoted"] += 1
+                        kind = "update"                                       # restated: a genuine change
+                    else:
+                        self.route_stats["written"] += 1
                 self.memory = self.memory.remember(
-                    fact.key, {"value": fact.value}, kind=fact.kind, provenance_ids=(f"obs-{len(self.history) - 1}",),
+                    fact.key, {"value": fact.value}, kind=kind, provenance_ids=(f"obs-{len(self.history) - 1}",),
                     integrity=self.history[-1].integrity)
 
     def _score_novelty(self, payload: str) -> float:

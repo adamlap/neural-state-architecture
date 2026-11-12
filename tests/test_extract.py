@@ -147,3 +147,10 @@ def test_few_shot_prompt_is_used_only_when_requested():
     LLMFactExtractor(backend).extract("x is 1")
     LLMFactExtractor(backend, few_shot=True).extract("x is 1")
     assert "Example 1" not in seen[0] and "Example 1" in seen[1]
+
+
+def test_filler_lead_ins_do_not_leak_into_the_key_and_still_is_tolerated():
+    r = RuleFactExtractor()
+    assert [(f.key, f.value) for f in r.extract("just to confirm, the cache size for staging is k3m9x2ac")] == [("cache size staging", "k3m9x2ac")]
+    assert [(f.key, f.value) for f in r.extract("Reminder: staging cache size is still k3m9x2ac.")] == [("cache size staging", "k3m9x2ac")]
+    assert r.extract("To confirm, the sky is blue today.") == []
