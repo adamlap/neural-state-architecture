@@ -154,3 +154,16 @@ def test_filler_lead_ins_do_not_leak_into_the_key_and_still_is_tolerated():
     assert [(f.key, f.value) for f in r.extract("just to confirm, the cache size for staging is k3m9x2ac")] == [("cache size staging", "k3m9x2ac")]
     assert [(f.key, f.value) for f in r.extract("Reminder: staging cache size is still k3m9x2ac.")] == [("cache size staging", "k3m9x2ac")]
     assert r.extract("To confirm, the sky is blue today.") == []
+
+
+def test_grounding_drops_facts_whose_value_or_key_is_not_in_the_source():
+    from nsa.memory.extract import is_grounded
+
+    src = "The database port for staging is 5433."
+    assert is_grounded(ExtractedFact("database port staging", "5433"), src)
+    assert not is_grounded(ExtractedFact("database port staging", "9999"), src)          # hallucinated value
+    assert not is_grounded(ExtractedFact("billing admin email", "5433"), src)            # value present, no key word supported
+    backend = SimpleNamespace(generate=lambda p, **kw: SimpleNamespace(text="staging | database port | 5433 | fact\nstaging | cache size | 77777 | fact"))
+    ex = LLMFactExtractor(backend, grounded=True)
+    assert [f.value for f in ex.extract(src)] == ["5433"] and ex.dropped_ungrounded == 1
+    assert len(LLMFactExtractor(backend).extract(src)) == 2                                 # default behaviour unchanged

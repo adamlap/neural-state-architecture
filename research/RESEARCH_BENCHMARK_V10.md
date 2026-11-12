@@ -70,3 +70,19 @@ cell, same decoding for every condition). `typo` = the answer is a typo seen in 
 * On the phrasings the extractor handles, routed memory beats both baselines (vs transcript 21 vs 4, p = 0.001; vs keyword retrieval 19 vs 6, p = 0.015).
 * This transcript is short (about 70 lines), so it is a favourable case for the baselines; the memory's compute and size advantage appears at the long
   histories measured in v8, which are not combined with noise here.
+
+## Extraction grounding (`LLMFactExtractor(grounded=True)`, `results/research-v9-extraction-grounded`)
+A model-extracted fact is kept only if its value occurs in the source text as a whole token and at least one key word occurs too (no extra model call).
+Precision / recall on the extraction-quality benchmark (20 episodes per cell, held-out phrasings):
+
+| model | extractor | recall | precision | spurious per episode |
+|---|---|---|---|---|
+| 1.5b | few-shot LLM | 0.50 | 0.55 | 2.70 |
+| 1.5b | few-shot LLM, grounded | 0.49 | **0.64** | **1.80** |
+| 1.5b | hybrid | 0.73 | 0.77 | 1.45 |
+| 1.5b | hybrid, grounded | 0.73 | **0.81** | **1.10** |
+| 3b | hybrid / hybrid grounded | 0.78 / 0.78 | 0.78 / 0.78 | 1.45 / 1.40 |
+| 3b | few-shot LLM / grounded | 0.60 / 0.60 | 0.64 / 0.66 | 2.20 / 2.05 |
+
+Grounding removes hallucinated values at no recall cost, helping the 1.5b model (precision +0.04 to +0.09) and barely changing 3b, whose remaining spurious
+facts are grounded in the text but wrong (wrong key or wrong line). It does not address coverage, which stays at 0.73-0.78 on held-out phrasings. Off by default.

@@ -24,7 +24,7 @@ from experiments.research_v9.natural_memory_benchmark import CHATTER, ENTITIES, 
 from random import Random
 
 VERSION = "9.1-extraction"
-EXTRACTORS = ("rules", "llm", "llm_fewshot", "hybrid")
+EXTRACTORS = ("rules", "llm", "llm_fewshot", "hybrid", "llm_fewshot_grounded", "hybrid_grounded")
 PHRASINGS = ("train", "heldout")
 DECODING = {"temperature": 0.0, "max_tokens": 512, "num_ctx": 8192}
 
@@ -51,7 +51,9 @@ def make_chunk_episode(seed: int, phrasing: str, lines: int = 10):
 def build_extractor(name: str, backend):
     return {"rules": lambda: RuleFactExtractor(), "llm": lambda: LLMFactExtractor(backend),
             "llm_fewshot": lambda: LLMFactExtractor(backend, few_shot=True),
-            "hybrid": lambda: HybridFactExtractor(backend)}[name]()
+            "hybrid": lambda: HybridFactExtractor(backend),
+            "llm_fewshot_grounded": lambda: LLMFactExtractor(backend, few_shot=True, grounded=True),
+            "hybrid_grounded": lambda: HybridFactExtractor(backend, grounded=True)}[name]()
 
 
 def score(extractor, events, truth) -> dict:

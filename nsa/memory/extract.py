@@ -112,19 +112,36 @@ _LLM_PROMPT_FEWSHOT = (
 )
 
 
+def is_grounded(fact: ExtractedFact, source: str) -> bool:
+    """A model-extracted fact must be supported by its source: the value occurs as a whole token and at least one key word occurs in the text."""
+    text = source.lower()
+    tokens = {t.strip(".,;:") for t in re.findall(r"[a-z0-9_.@:/\-]+", text)}
+    if fact.value.lower() not in tokens:
+        return False
+    words = set(re.findall(r"[a-z0-9]+", text))
+    return any(w in words for w in fact.key.split())
+
+
 class LLMFactExtractor:
-    def __init__(self, backend: Any, *, max_chars: int = 4000, few_shot: bool = False) -> None:
+    def __init__(self, backend: Any, *, max_chars: int = 4000, few_shot: bool = False, grounded: bool = False) -> None:
         self.backend = backend
         self.max_chars = max_chars
         self.few_shot = few_shot
+        self.grounded = grounded
         self.calls = 0
+        self.dropped_ungrounded = 0
 
     def extract(self, text: str) -> list[ExtractedFact]:
         self.calls += 1
         template = _LLM_PROMPT_FEWSHOT if self.few_shot else _LLM_PROMPT
         out = self.backend.generate(template.format(text=text[: self.max_chars]))
         reply = out.text if hasattr(out, "text") else str(out)
-        return parse_llm_facts(reply)
+        facts = parse_llm_facts(reply)
+        if self.grounded:
+            kept = [f for f in facts if is_grounded(f, text[: self.max_chars])]
+            self.dropped_ungrounded += len(facts) - len(kept)
+            facts = kept
+        return facts
 
 
 _FACTUAL_HINT = re.compile(r"(=|:\s*\S|\b(is|are|to|now|should be|runs with|uses?)\b)", re.I)
@@ -139,9 +156,9 @@ def looks_factual(line: str) -> bool:
 class HybridFactExtractor:
     """Rules first; the model only sees factual-looking lines the rules could not parse (one call per text)."""
 
-    def __init__(self, backend: Any, *, few_shot: bool = True, rules: Any = None) -> None:
+    def __init__(self, backend: Any, *, few_shot: bool = True, rules: Any = None, grounded: bool = False) -> None:
         self.rules = rules or RuleFactExtractor()
-        self.llm = LLMFactExtractor(backend, few_shot=few_shot)
+        self.llm = LLMFactExtractor(backend, few_shot=few_shot, grounded=grounded)
 
     @property
     def calls(self) -> int:
@@ -188,6 +205,6 @@ def rank_keys(question: str, keys: Iterable[str], *, limit: int = 3, min_score: 
     return [k for s, k in scored if s >= min_score][:limit]
 
 
-__all__ = ["ExtractedFact", "FactExtractor", "RuleFactExtractor", "LLMFactExtractor", "HybridFactExtractor", "looks_factual",
+__all__ = ["ExtractedFact", "FactExtractor", "RuleFactExtractor", "LLMFactExtractor", "HybridFactExtractor", "looks_factual", "is_grounded",
            "parse_llm_facts",
            "normalize_key", "key_overlap", "rank_keys"]
