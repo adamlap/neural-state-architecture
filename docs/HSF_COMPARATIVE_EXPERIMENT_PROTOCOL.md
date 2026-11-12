@@ -310,6 +310,41 @@ would need (i) at minimum.
 Gate assessment after 4f/4g: HSF's robustness advantage for correlated keys is real but confined to small closed vocabularies, so for
 NSA's open-ended fact values it is **not yet usable**; the next experiment is the distributed value code at V = 128-1024.
 
+## Stage 4h: distributed (short) value codes at large vocabularies (implemented and run)
+
+The Stage 4g failure was caused by forcing C >= V. The field's value codes are random C-dimensional vectors for any vocabulary size and
+decoding is nearest-code against the vocabulary, so C can stay short. `vocabulary_sweep.py --distributed` lets HSF choose C in
+{16, 32, 64} (shape and nothing else selected on selection seeds 1-5) for V in {128, 512, 1024}, against HDC (D = budget), sparsity
+2 % for both, cosine 0.9, n = 64, 10 disjoint evaluation seeds (`results/hsf_distributed_vocabulary_v1.json`):
+
+| V | budget | HSF (shape) | HDC | paired seeds HSF / HDC |
+|---|---|---|---|---|
+| 128 | 4,096 | 0.88 (16×16×16) | 0.76 | 10 / 0 |
+| 128 | 16,384 | 1.00 (32×32×16) | 0.95 | 9 / 0 |
+| 512 | 4,096 | 0.85 (16×16×16) | 0.69 | 10 / 0 |
+| 512 | 16,384 | 1.00 (32×32×16) | 0.94 | 9 / 0 |
+| 1024 | 4,096 | 0.81 (16×16×16) | 0.62 | 10 / 0 |
+| 1024 | 16,384 | 0.99 (32×32×16) | 0.92 | 10 / 0 |
+
+Short codes remove the vocabulary penalty: C = 16 was selected every time and accuracy degrades only slowly with V (0.88 → 0.81 at
+4,096 floats, 1.00 → 0.99 at 16,384). Only about 64 distinct values occur per episode while the decoder must discriminate among all V,
+so the decoding task is the harder one.
+
+Caveats that must travel with this result:
+
+1. **Decoding needs a codebook of candidate values.** An HSF recall returns a C-dimensional vector that is matched against a list of known
+   value codes. For open-ended facts that list is a set of the value strings themselves (or their hashes to strings). Both HSF and HDC
+   regenerate codes deterministically from a seed and neither counts that value store in its float budget; an NSA deployment must keep
+   it. What the field then replaces is the key → value association table, not the values.
+2. Decoding cost is O(V·C) for HSF against O(V·D) for flat HDC at the same budget (HSF is cheaper here).
+3. Same synthetic correlated-key task as before, replay of every record, H·W extra usage floats for HSF.
+
+Gate assessment after 4h: the robustness advantage for correlated keys now holds for large closed vocabularies with short codes, so the
+representation question no longer blocks an NSA integration test. Remaining blockers, in order: (1) real keys (token overlap rather than
+synthetic cosines: do NSA's "entity attribute" keys behave like correlated families after pattern separation?); (2) an open-vocabulary value
+store; (3) the replay buffer must be the NSA episodic log; (4) a comparison against NSA's current exact `TemporalMemoryStore` (the dictionary
+that has perfect recall), where the case for HSF can only be fixed size, graceful degradation and in-field supersession.
+
 ## Decision gates
 
 Continue developing HSF only if it demonstrates at least one repeatable:

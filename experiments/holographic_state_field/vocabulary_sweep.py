@@ -28,9 +28,11 @@ def plane(cells: int) -> tuple[int, int]:
     return h, cells // h
 
 
-def shapes_for(vocab: int, budget: int) -> list[tuple[int, int, int]]:
+def shapes_for(vocab: int, budget: int, *, distributed: bool = False) -> list[tuple[int, int, int]]:
+    """Candidate (H, W, C). Dense codes need C >= V; distributed codes use short random codes (C << V) and rely on
+    nearest-codebook decoding, so C is a free parameter bounded below by the decoding crosstalk (~ sqrt(2 ln V / C))."""
     out = []
-    for c in (vocab, 2 * vocab):
+    for c in ((16, 32, 64) if distributed else (vocab, 2 * vocab)):
         if budget % c == 0 and budget // c >= 16:
             h, w = plane(budget // c)
             out.append((h, w, c))
@@ -47,13 +49,13 @@ def _acc(method, seeds, n, rho, shape, sparsity, vocab):
 
 
 def run(*, vocabs=(8, 32, 128), budgets=(4096, 16384), counts=(32, 64), rho=0.9, sparsities=(0.02, 0.05),
-        select_seeds=SELECT_SEEDS, eval_seeds=EVAL_SEEDS) -> dict:
+        select_seeds=SELECT_SEEDS, eval_seeds=EVAL_SEEDS, distributed: bool = False) -> dict:
     if set(select_seeds) & set(eval_seeds):
         raise ValueError("selection and evaluation seeds must be disjoint")
     rows = []
     for vocab in vocabs:
         for budget in budgets:
-            shapes = shapes_for(vocab, budget)
+            shapes = shapes_for(vocab, budget, distributed=distributed)
             if not shapes:
                 continue
             for n in counts:
@@ -70,15 +72,16 @@ def run(*, vocabs=(8, 32, 128), budgets=(4096, 16384), counts=(32, 64), rho=0.9,
                              "hdc_mean": statistics.fmean(hdc_eval), "hdc_min": min(hdc_eval),
                              "paired_hsf_wins": sum(a > b for a, b in zip(hsf_eval, hdc_eval)),
                              "paired_hdc_wins": sum(b > a for a, b in zip(hsf_eval, hdc_eval))})
-    return {"experiment": "hsf_vocabulary_v1", "rho": rho, "select_seeds": list(select_seeds), "eval_seeds": list(eval_seeds), "rows": rows,
+    return {"experiment": "hsf_distributed_vocabulary_v1" if distributed else "hsf_vocabulary_v1", "rho": rho, "distributed_codes": distributed, "select_seeds": list(select_seeds), "eval_seeds": list(eval_seeds), "rows": rows,
             "boundary": "Synthetic correlated bipolar keys; HSF pays H*W usage floats; random value codes; records replayed 3x."}
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--out", default="results/hsf_vocabulary_v1.json")
+    p.add_argument("--distributed", action="store_true", help="short value codes (C in 16/32/64) with V in 128/512/1024")
     args = p.parse_args()
-    result = run()
+    result = run(vocabs=(128, 512, 1024), counts=(64,), sparsities=(0.02,), distributed=True) if args.distributed else run()
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
