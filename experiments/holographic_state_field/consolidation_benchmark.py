@@ -175,7 +175,7 @@ def code_overlap(seed: int, dim: int, count: int, rho: float) -> dict:
     return {"input_cosine": realised, "separated_cosine": statistics.fmean(after) if after else None}
 
 
-def run_one(method, seed, count, rho, h, w, c, update_fraction=0.5) -> dict:
+def run_one(method, seed, count, rho, h, w, c, update_fraction=0.5, replay_fraction=1.0) -> dict:
     mem, floats = _build(method, seed, count, rho, h, w, c)
     names = [f"FAMILY_{i % FAMILIES}:ITEM_{i:05d}" for i in range(count)]
     original = {n: _value(i, seed) for i, n in enumerate(names)}
@@ -187,7 +187,13 @@ def run_one(method, seed, count, rho, h, w, c, update_fraction=0.5) -> dict:
     for i in upd_idx:
         final[names[i]] = _value(i, seed, shift=1 + (i % (len(VOCABULARY) - 1)))
         mem.write(names[i], final[names[i]])
-    mem.replay(final)
+    if replay_fraction < 1.0:        # bounded replay buffer: a random subset of the records, chosen without regard to which were updated
+        keep_n = max(1, int(round(count * replay_fraction)))
+        chosen = rng.choice(count, size=keep_n, replace=False)
+        replayed = {names[i]: final[names[i]] for i in sorted(chosen.tolist())}
+    else:
+        replayed = final
+    mem.replay(replayed)
     upd = {names[i] for i in upd_idx}
     got = {n: mem.read(n) for n in names}
     keep = [n for n in names if n not in upd]

@@ -236,6 +236,29 @@ Gate assessment after 4d: the robustness gate is met for correlated keys, with r
 Next: bounded-buffer replay; a larger vocabulary (which needs more channels, shifting the shape trade-off); then the NSA
 integration test.
 
+## Stage 4e: bounded replay buffer (implemented and run)
+
+Real consolidation does not replay everything. `run_one(..., replay_fraction=f)` replays a random subset of the records (chosen
+without regard to which were updated). Cosine 0.9, 16×32×8, 2 % sparsity (the 4d configuration), the 10 held-out seeds of 4d,
+overall accuracy mean (`results/hsf_bounded_replay_v1.json`):
+
+| n | replay fraction | HSF sep+homeo+replay | HDC sep+replay |
+|---|---|---|---|
+| 64 | 1/16 | 0.62 | 0.37 |
+| 64 | 1/4 | 0.75 | 0.43 |
+| 64 | 1/2 | 0.84 | 0.59 |
+| 64 | all | 0.99 | 0.79 |
+| 128 | 1/16 | 0.63 | 0.35 |
+| 128 | 1/4 | 0.66 | 0.46 |
+| 128 | 1/2 | 0.74 | 0.57 |
+| 128 | all | 0.93 | 0.72 |
+
+HSF's lead survives a bounded buffer at every size tested (+0.17 to +0.28), but both methods degrade monotonically as the buffer
+shrinks: with 1/4 of the records replayed, HSF at n=128 is no better (0.66) than HDC with a full buffer (0.72). The practical reading
+is that most of the accuracy still comes from replay volume; the field's advantage is that each replayed record is worth more.
+Buffer selection here is random; prioritised replay (replay the records with the largest recent residual, as hippocampal replay is
+biased toward surprising events) is the obvious next test and is not yet implemented.
+
 ## Decision gates
 
 Continue developing HSF only if it demonstrates at least one repeatable:
