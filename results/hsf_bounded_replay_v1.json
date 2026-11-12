@@ -1,0 +1,104 @@
+{
+  "experiment": "hsf_bounded_replay_v1",
+  "rho": 0.9,
+  "shape": [
+    16,
+    32,
+    8
+  ],
+  "sparsity": 0.02,
+  "seeds": [
+    11,
+    23,
+    47,
+    59,
+    71,
+    83,
+    97,
+    101,
+    113,
+    127
+  ],
+  "rows": [
+    {
+      "count": 64,
+      "replay_fraction": 0.0625,
+      "hsf_sep_homeo_replay": 0.6234375,
+      "hsf_sep_homeo_replay_min": 0.484375,
+      "hdc_sep_replay": 0.371875,
+      "hdc_sep_replay_min": 0.25
+    },
+    {
+      "count": 64,
+      "replay_fraction": 0.125,
+      "hsf_sep_homeo_replay": 0.721875,
+      "hsf_sep_homeo_replay_min": 0.625,
+      "hdc_sep_replay": 0.3875,
+      "hdc_sep_replay_min": 0.3125
+    },
+    {
+      "count": 64,
+      "replay_fraction": 0.25,
+      "hsf_sep_homeo_replay": 0.7546875,
+      "hsf_sep_homeo_replay_min": 0.625,
+      "hdc_sep_replay": 0.4328125,
+      "hdc_sep_replay_min": 0.359375
+    },
+    {
+      "count": 64,
+      "replay_fraction": 0.5,
+      "hsf_sep_homeo_replay": 0.8421875,
+      "hsf_sep_homeo_replay_min": 0.765625,
+      "hdc_sep_replay": 0.5875,
+      "hdc_sep_replay_min": 0.53125
+    },
+    {
+      "count": 64,
+      "replay_fraction": 1.0,
+      "hsf_sep_homeo_replay": 0.990625,
+      "hsf_sep_homeo_replay_min": 0.953125,
+      "hdc_sep_replay": 0.790625,
+      "hdc_sep_replay_min": 0.640625
+    },
+    {
+      "count": 128,
+      "replay_fraction": 0.0625,
+      "hsf_sep_homeo_replay": 0.6328125,
+      "hsf_sep_homeo_replay_min": 0.5703125,
+      "hdc_sep_replay": 0.34765625,
+      "hdc_sep_replay_min": 0.234375
+    },
+    {
+      "count": 128,
+      "replay_fraction": 0.125,
+      "hsf_sep_homeo_replay": 0.66953125,
+      "hsf_sep_homeo_replay_min": 0.53125,
+      "hdc_sep_replay": 0.3640625,
+      "hdc_sep_replay_min": 0.2890625
+    },
+    {
+      "count": 128,
+      "replay_fraction": 0.25,
+      "hsf_sep_homeo_replay": 0.65859375,
+      "hsf_sep_homeo_replay_min": 0.6171875,
+      "hdc_sep_replay": 0.45703125,
+      "hdc_sep_replay_min": 0.40625
+    },
+    {
+      "count": 128,
+      "replay_fraction": 0.5,
+      "hsf_sep_homeo_replay": 0.73515625,
+      "hsf_sep_homeo_replay_min": 0.640625,
+      "hdc_sep_replay": 0.5734375,
+      "hdc_sep_replay_min": 0.4609375
+    },
+    {
+      "count": 128,
+      "replay_fraction": 1.0,
+      "hsf_sep_homeo_replay": 0.9265625,
+      "hsf_sep_homeo_replay_min": 0.828125,
+      "hdc_sep_replay": 0.715625,
+      "hdc_sep_replay_min": 0.6328125
+    }
+  ]
+}

@@ -1,0 +1,1718 @@
+{
+  "experiment": "organic_dog_test_v2",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "delays": [
+    3,
+    8,
+    15,
+    25
+  ],
+  "table": {
+    "stored|mid|3": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|mid|8": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|mid|15": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|mid|25": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|slow|3": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 0.9982638888888888
+    },
+    "stored|slow|8": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|slow|15": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|slow|25": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|multi|3": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|multi|8": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|multi|15": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "stored|multi|25": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "trace|mid|3": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "trace|mid|8": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "trace|mid|15": {
+      "valenced_accuracy": 0.7465277777777778,
+      "decoy_accuracy": 0.984375
+    },
+    "trace|mid|25": {
+      "valenced_accuracy": 0.18055555555555555,
+      "decoy_accuracy": 0.9791666666666666
+    },
+    "trace|slow|3": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "trace|slow|8": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "trace|slow|15": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "trace|slow|25": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 0.9965277777777778
+    },
+    "trace|multi|3": {
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    "trace|multi|8": {
+      "valenced_accuracy": 0.9930555555555556,
+      "decoy_accuracy": 0.9947916666666667
+    },
+    "trace|multi|15": {
+      "valenced_accuracy": 0.8958333333333334,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    "trace|multi|25": {
+      "valenced_accuracy": 0.7708333333333334,
+      "decoy_accuracy": 0.9739583333333334
+    }
+  },
+  "onset_detection": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "runs": [
+      {
+        "seed": 0,
+        "events": 150,
+        "detected": 150,
+        "recall": 1.0,
+        "precision": 1.0
+      },
+      {
+        "seed": 1,
+        "events": 150,
+        "detected": 150,
+        "recall": 1.0,
+        "precision": 1.0
+      },
+      {
+        "seed": 2,
+        "events": 150,
+        "detected": 150,
+        "recall": 1.0,
+        "precision": 1.0
+      },
+      {
+        "seed": 3,
+        "events": 150,
+        "detected": 150,
+        "recall": 1.0,
+        "precision": 1.0
+      },
+      {
+        "seed": 4,
+        "events": 150,
+        "detected": 150,
+        "recall": 1.0,
+        "precision": 1.0
+      },
+      {
+        "seed": 5,
+        "events": 150,
+        "detected": 150,
+        "recall": 1.0,
+        "precision": 1.0
+      },
+      {
+        "seed": 6,
+        "events": 150,
+        "detected": 150,
+        "recall": 1.0,
+        "precision": 1.0
+      },
+      {
+        "seed": 7,
+        "events": 150,
+        "detected": 150,
+        "recall": 1.0,
+        "precision": 1.0
+      }
+    ]
+  },
+  "runs": [
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "stored",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 3,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 8,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 0,
+      "valenced_accuracy": 0.5,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 1,
+      "valenced_accuracy": 0.8055555555555556,
+      "decoy_accuracy": 0.9444444444444444
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 2,
+      "valenced_accuracy": 0.8888888888888888,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 3,
+      "valenced_accuracy": 0.7222222222222222,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 4,
+      "valenced_accuracy": 0.8333333333333334,
+      "decoy_accuracy": 0.9444444444444444
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 5,
+      "valenced_accuracy": 0.7222222222222222,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 6,
+      "valenced_accuracy": 0.6666666666666666,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 15,
+      "seed": 7,
+      "valenced_accuracy": 0.8333333333333334,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 0,
+      "valenced_accuracy": 0.3055555555555556,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 1,
+      "valenced_accuracy": 0.1111111111111111,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 2,
+      "valenced_accuracy": 0.16666666666666666,
+      "decoy_accuracy": 0.9722222222222222
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 3,
+      "valenced_accuracy": 0.2222222222222222,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 4,
+      "valenced_accuracy": 0.1388888888888889,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 5,
+      "valenced_accuracy": 0.05555555555555555,
+      "decoy_accuracy": 0.9722222222222222
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 6,
+      "valenced_accuracy": 0.3611111111111111,
+      "decoy_accuracy": 0.9305555555555556
+    },
+    {
+      "binding": "trace",
+      "variant": "mid",
+      "delay": 25,
+      "seed": 7,
+      "valenced_accuracy": 0.08333333333333333,
+      "decoy_accuracy": 0.9722222222222222
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 3,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 8,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 15,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "slow",
+      "delay": 25,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 2,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 3,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 3,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 1,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 2,
+      "valenced_accuracy": 0.9722222222222222,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 3,
+      "valenced_accuracy": 0.9722222222222222,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 5,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 8,
+      "seed": 7,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 0,
+      "valenced_accuracy": 0.7777777777777778,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 1,
+      "valenced_accuracy": 0.9444444444444444,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 2,
+      "valenced_accuracy": 0.9166666666666666,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 3,
+      "valenced_accuracy": 0.7777777777777778,
+      "decoy_accuracy": 0.9722222222222222
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 4,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 0.9722222222222222
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 5,
+      "valenced_accuracy": 0.9722222222222222,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 6,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 0.9861111111111112
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 15,
+      "seed": 7,
+      "valenced_accuracy": 0.7777777777777778,
+      "decoy_accuracy": 0.9722222222222222
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 0,
+      "valenced_accuracy": 0.6944444444444444,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 1,
+      "valenced_accuracy": 0.8055555555555556,
+      "decoy_accuracy": 0.9444444444444444
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 2,
+      "valenced_accuracy": 0.9722222222222222,
+      "decoy_accuracy": 0.9305555555555556
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 3,
+      "valenced_accuracy": 0.6944444444444444,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 4,
+      "valenced_accuracy": 0.8888888888888888,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 5,
+      "valenced_accuracy": 0.5277777777777778,
+      "decoy_accuracy": 0.9444444444444444
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 6,
+      "valenced_accuracy": 0.9722222222222222,
+      "decoy_accuracy": 1.0
+    },
+    {
+      "binding": "trace",
+      "variant": "multi",
+      "delay": 25,
+      "seed": 7,
+      "valenced_accuracy": 0.6111111111111112,
+      "decoy_accuracy": 0.9722222222222222
+    }
+  ],
+  "boundary": "Toy world; non-overlapping events; oracle cue-end time for the learners (detection is scored separately)."
+}

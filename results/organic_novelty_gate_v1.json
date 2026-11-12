@@ -1,0 +1,99 @@
+{
+  "experiment": "organic_novelty_gate_v1",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "call_rate": 0.2,
+  "rows": [
+    {
+      "length": 300,
+      "detector": "field",
+      "floats": 65536,
+      "auc": 0.8628733105959985,
+      "auc_min": 0.8429275088312851,
+      "recall_at_budget": 0.42236213341647516,
+      "false_call_rate": 0.0941293398079611,
+      "important_share": 0.32333333333333336
+    },
+    {
+      "length": 300,
+      "detector": "token_set",
+      "floats": 232,
+      "auc": 0.8397626869460174,
+      "auc_min": 0.8221507352941176,
+      "recall_at_budget": 0.3216205910468287,
+      "false_call_rate": 0.14180442159030965,
+      "important_share": 0.32333333333333336
+    },
+    {
+      "length": 300,
+      "detector": "knn",
+      "floats": 76800,
+      "auc": 0.8264721459248753,
+      "auc_min": 0.8031245335588836,
+      "recall_at_budget": 0.42931939077931763,
+      "false_call_rate": 0.0906194752059639,
+      "important_share": 0.32333333333333336
+    },
+    {
+      "length": 300,
+      "detector": "random",
+      "floats": 0,
+      "auc": 0.5017450817971254,
+      "auc_min": 0.41360266679934327,
+      "recall_at_budget": 0.2007526712197175,
+      "false_call_rate": 0.19943177143542512,
+      "important_share": 0.32333333333333336
+    },
+    {
+      "length": 2000,
+      "detector": "field",
+      "floats": 65536,
+      "auc": 0.868323225089594,
+      "auc_min": 0.8556078423296332,
+      "recall_at_budget": 0.5638170990697978,
+      "false_call_rate": 0.12119426117458745,
+      "important_share": 0.17825
+    },
+    {
+      "length": 2000,
+      "detector": "token_set",
+      "floats": 804,
+      "auc": 0.8684869756041491,
+      "auc_min": 0.8592217684515973,
+      "recall_at_budget": 0.4222670200122115,
+      "false_call_rate": 0.15193848639826524,
+      "important_share": 0.17825
+    },
+    {
+      "length": 2000,
+      "detector": "knn",
+      "floats": 512000,
+      "auc": 0.8804168242820154,
+      "auc_min": 0.8724304973273241,
+      "recall_at_budget": 0.5769661643783337,
+      "false_call_rate": 0.11833276802547787,
+      "important_share": 0.17825
+    },
+    {
+      "length": 2000,
+      "detector": "random",
+      "floats": 0,
+      "auc": 0.49344106568363016,
+      "auc_min": 0.4633235041242376,
+      "recall_at_budget": 0.19225221347326177,
+      "false_call_rate": 0.2017083755478478,
+      "important_share": 0.17825
+    }
+  ],
+  "boundary": "Synthetic conversation, opaque values, hashed trigram cues; no LLM is called - this scores the gate's ranking of events."
+}

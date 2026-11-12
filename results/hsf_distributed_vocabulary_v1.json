@@ -1,0 +1,141 @@
+{
+  "experiment": "hsf_distributed_vocabulary_v1",
+  "rho": 0.9,
+  "distributed_codes": true,
+  "select_seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "eval_seeds": [
+    11,
+    23,
+    47,
+    59,
+    71,
+    83,
+    97,
+    101,
+    113,
+    127
+  ],
+  "rows": [
+    {
+      "vocab": 128,
+      "budget": 4096,
+      "count": 64,
+      "hsf_shape": [
+        16,
+        16,
+        16
+      ],
+      "key_dim": 256,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.878125,
+      "hsf_min": 0.796875,
+      "hdc_mean": 0.75625,
+      "hdc_min": 0.65625,
+      "paired_hsf_wins": 10,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 128,
+      "budget": 16384,
+      "count": 64,
+      "hsf_shape": [
+        32,
+        32,
+        16
+      ],
+      "key_dim": 1024,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 1.0,
+      "hsf_min": 1.0,
+      "hdc_mean": 0.946875,
+      "hdc_min": 0.90625,
+      "paired_hsf_wins": 9,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 512,
+      "budget": 4096,
+      "count": 64,
+      "hsf_shape": [
+        16,
+        16,
+        16
+      ],
+      "key_dim": 256,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.846875,
+      "hsf_min": 0.703125,
+      "hdc_mean": 0.6921875,
+      "hdc_min": 0.640625,
+      "paired_hsf_wins": 10,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 512,
+      "budget": 16384,
+      "count": 64,
+      "hsf_shape": [
+        32,
+        32,
+        16
+      ],
+      "key_dim": 1024,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.9984375,
+      "hsf_min": 0.984375,
+      "hdc_mean": 0.9359375,
+      "hdc_min": 0.84375,
+      "paired_hsf_wins": 9,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 1024,
+      "budget": 4096,
+      "count": 64,
+      "hsf_shape": [
+        16,
+        16,
+        16
+      ],
+      "key_dim": 256,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.8140625,
+      "hsf_min": 0.6875,
+      "hdc_mean": 0.6234375,
+      "hdc_min": 0.5,
+      "paired_hsf_wins": 10,
+      "paired_hdc_wins": 0
+    },
+    {
+      "vocab": 1024,
+      "budget": 16384,
+      "count": 64,
+      "hsf_shape": [
+        32,
+        32,
+        16
+      ],
+      "key_dim": 1024,
+      "hsf_sparsity": 0.02,
+      "hdc_sparsity": 0.02,
+      "hsf_mean": 0.990625,
+      "hsf_min": 0.96875,
+      "hdc_mean": 0.9203125,
+      "hdc_min": 0.84375,
+      "paired_hsf_wins": 10,
+      "paired_hdc_wins": 0
+    }
+  ],
+  "boundary": "Synthetic correlated bipolar keys; HSF pays H*W usage floats; random value codes; records replayed 3x."
+}

@@ -1,0 +1,5068 @@
+{
+  "experiment": "organic_dog_test_v1",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "aggregate": {
+    "organic": {
+      "floats": 1824,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0,
+      "morph_monotone_corr": 0.9868591522816759,
+      "valenced_after_distractors": 1.0,
+      "learning_curve": [
+        0.7666666666666667,
+        0.95,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "curve_events": [
+        25,
+        50,
+        100,
+        200,
+        400
+      ]
+    },
+    "organic_no_replay": {
+      "floats": 1024,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0,
+      "morph_monotone_corr": 0.987545137074137,
+      "valenced_after_distractors": 1.0,
+      "learning_curve": [
+        0.6625,
+        0.89375,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "curve_events": [
+        25,
+        50,
+        100,
+        200,
+        400
+      ]
+    },
+    "organic_write_all": {
+      "floats": 1824,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0,
+      "morph_monotone_corr": 0.9859911076881896,
+      "valenced_after_distractors": 1.0,
+      "learning_curve": [
+        0.7666666666666667,
+        0.95,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "curve_events": [
+        25,
+        50,
+        100,
+        200,
+        400
+      ]
+    },
+    "knn_fifo": {
+      "floats": 1800,
+      "valenced_accuracy": 0.9979166666666666,
+      "decoy_accuracy": 0.9802083333333333,
+      "morph_monotone_corr": 0.948637074663567,
+      "valenced_after_distractors": 0.0,
+      "learning_curve": [
+        0.8,
+        0.94375,
+        0.9916666666666666,
+        0.96875,
+        0.99375
+      ],
+      "curve_events": [
+        25,
+        50,
+        100,
+        200,
+        400
+      ]
+    },
+    "knn_random": {
+      "floats": 1800,
+      "valenced_accuracy": 0.95,
+      "decoy_accuracy": 1.0,
+      "morph_monotone_corr": 0.9177124586222256,
+      "valenced_after_distractors": 0.8291666666666666,
+      "learning_curve": [
+        0.8,
+        0.94375,
+        0.9541666666666666,
+        0.98125,
+        0.9520833333333334
+      ],
+      "curve_events": [
+        25,
+        50,
+        100,
+        200,
+        400
+      ]
+    },
+    "knn_surprise": {
+      "floats": 1800,
+      "valenced_accuracy": 0.9979166666666666,
+      "decoy_accuracy": 1.0,
+      "morph_monotone_corr": 0.9444196487356183,
+      "valenced_after_distractors": 1.0,
+      "learning_curve": [
+        0.8104166666666666,
+        0.94375,
+        1.0,
+        0.9979166666666666,
+        0.9979166666666666
+      ],
+      "curve_events": [
+        25,
+        50,
+        100,
+        200,
+        400
+      ]
+    },
+    "knn_all": {
+      "floats": 0,
+      "valenced_accuracy": 1.0,
+      "decoy_accuracy": 1.0,
+      "morph_monotone_corr": 0.9412411867876724,
+      "valenced_after_distractors": 1.0,
+      "learning_curve": [
+        0.8,
+        0.94375,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "curve_events": [
+        25,
+        50,
+        100,
+        200,
+        400
+      ]
+    },
+    "none": {
+      "floats": 0,
+      "valenced_accuracy": 0.0,
+      "decoy_accuracy": 1.0,
+      "morph_monotone_corr": 0.0,
+      "valenced_after_distractors": 0.0,
+      "learning_curve": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "curve_events": [
+        25,
+        50,
+        100,
+        200,
+        400
+      ]
+    }
+  },
+  "runs": [
+    {
+      "agent": "organic",
+      "seed": 0,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.987731648177348
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9915350507918653
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9924144376819168
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9868077339566205
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.991453758527208
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9879936056151728,
+        "morph_response": [
+          0.9224854298177722,
+          0.647686512183372,
+          0.05537662029943047,
+          -0.7083395858510748,
+          -1.017363112014057
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9911375997488905,
+        "morph_response": [
+          0.9269731599302538,
+          0.6827841753069653,
+          0.03269799194077588,
+          -0.60971706828686,
+          -1.026568393797665
+        ]
+      }
+    },
+    {
+      "agent": "organic",
+      "seed": 1,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9769187561681097
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9769605061045308
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9788902565417564
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9819759129590455
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.976921326989615
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9745587444567029,
+        "morph_response": [
+          0.8951442473291381,
+          0.7603749448618897,
+          0.21871040639142855,
+          -0.6546107554868414,
+          -0.9466825490134195
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9800998374356027,
+        "morph_response": [
+          0.935898814253143,
+          0.8037006699797944,
+          0.1709804441407046,
+          -0.6114307037835572,
+          -0.9700464498481164
+        ]
+      }
+    },
+    {
+      "agent": "organic",
+      "seed": 2,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9917232044711831
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9906194894990634
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9904345522594667
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9911355053684163
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9988351242194293
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9947064377450046,
+        "morph_response": [
+          0.9599428965778389,
+          0.6367272606664967,
+          0.010735645855374842,
+          -0.563765419834898,
+          -0.9326980584097164
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9932133690819874,
+        "morph_response": [
+          1.0130945344456024,
+          0.6639483181946084,
+          -0.05005478989549967,
+          -0.6107083306639595,
+          -0.9630273970367985
+        ]
+      }
+    },
+    {
+      "agent": "organic",
+      "seed": 3,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9950965226547317
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9953771863334486
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9971362677655587
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9968735163840903
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9942370778142738
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9936168824247978,
+        "morph_response": [
+          0.9726017415795917,
+          0.6271194299718074,
+          -0.017304072729000874,
+          -0.6232124742011735,
+          -0.9530965578640469
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9951546550687757,
+        "morph_response": [
+          0.9866225530626949,
+          0.6308760327974067,
+          -0.020480718999936445,
+          -0.5874009643402918,
+          -0.9578108792097414
+        ]
+      }
+    },
+    {
+      "agent": "organic",
+      "seed": 4,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.995671332278631
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9866712263693784
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9941606533340901
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9959541888600367
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9928707156336941
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9898237877152091,
+        "morph_response": [
+          1.0302143610111962,
+          0.6892181610206439,
+          -0.023757028313734635,
+          -0.653337924138024,
+          -0.9259517581260283
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9911953425350836,
+        "morph_response": [
+          1.0115568084933073,
+          0.6458891051594597,
+          0.11240852484448893,
+          -0.6611068406589246,
+          -0.9713391132479763
+        ]
+      }
+    },
+    {
+      "agent": "organic",
+      "seed": 5,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.9973113063885257
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9970519924439472
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.993248242011771
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9945568752165114
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9923448429760933
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9930181643659696,
+        "morph_response": [
+          1.0006672848046314,
+          0.6870480517510779,
+          0.06543863555311992,
+          -0.5963030231038964,
+          -0.9598092236467645
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9910732955084491,
+        "morph_response": [
+          1.034775044140159,
+          0.6950928042702609,
+          0.05581465060555659,
+          -0.6663715263195727,
+          -0.9728981023191138
+        ]
+      }
+    },
+    {
+      "agent": "organic",
+      "seed": 6,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9901478951134995
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9772122055031663
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9887056944443153
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.986447888523929
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9859713085031425
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9863754937957273,
+        "morph_response": [
+          0.9362609622386037,
+          0.6973659612381139,
+          -0.01533481272744903,
+          -0.6750879271161563,
+          -0.9530645980716858
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9852711856781132,
+        "morph_response": [
+          0.9380164332498254,
+          0.7259425048438235,
+          -0.023146129682653505,
+          -0.6873393635649,
+          -0.9874354140041092
+        ]
+      }
+    },
+    {
+      "agent": "organic",
+      "seed": 7,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9714910722252277
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9648172664481565
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9630690617198793
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9714331725102002
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9633327841632865
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9776569334534363,
+        "morph_response": [
+          0.8752974781606152,
+          0.5384741239779645,
+          -0.3043259290316603,
+          -0.886861142611617,
+          -1.0245599731439243
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9759374195136306,
+        "morph_response": [
+          0.8653215332148969,
+          0.5334297500651675,
+          -0.27988605206868455,
+          -0.8851245953805843,
+          -0.9871241825585843
+        ]
+      }
+    },
+    {
+      "agent": "organic",
+      "seed": 8,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9847839950183984
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9839974580981394
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9807604979230223
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9895036848196787
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.986244114579609
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9842574825188001,
+        "morph_response": [
+          0.9794903237269822,
+          0.7214285158130802,
+          0.0225359691228451,
+          -0.7387706030614561,
+          -0.978795516020821
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9785311826514245,
+        "morph_response": [
+          0.9513964475259523,
+          0.7242466036354794,
+          -0.031103664791117955,
+          -0.7692468808149343,
+          -0.9335931519781053
+        ]
+      }
+    },
+    {
+      "agent": "organic",
+      "seed": 9,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.983271106737785
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9875734123409904
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9937923197764562
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.982889045594467
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9889565223515693
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9865839907259384,
+        "morph_response": [
+          0.9504663680464603,
+          0.6865582180718697,
+          0.12269633229710643,
+          -0.6361651619553318,
+          -0.9099161200923649
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9856244982102694,
+        "morph_response": [
+          0.9394398398350788,
+          0.7075704451967834,
+          -0.07194913286858919,
+          -0.6458644872602358,
+          -0.9344980363120144
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 0,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6458333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9887378218587716
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8958333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9919953052361565
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9939680399613029
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9890128973744897
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9915862851006427
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9880022560011568,
+        "morph_response": [
+          0.926286305451696,
+          0.6369134637824089,
+          0.01889605482364575,
+          -0.7735990372931948,
+          -1.0876772224691869
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9921591951528836,
+        "morph_response": [
+          0.9179225692217553,
+          0.6413515619016458,
+          -0.005554727975335298,
+          -0.6799050150289823,
+          -1.109277758304367
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 1,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.976947108565594
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9583333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9821355637328556
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9822879474269332
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9830422400705116
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9757282106306701
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9745731234069517,
+        "morph_response": [
+          0.8831840347739437,
+          0.7585941949538965,
+          0.2509478590648364,
+          -0.583580193902385,
+          -0.888847951371828
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9809131707063422,
+        "morph_response": [
+          0.9383949985480187,
+          0.8000707094112677,
+          0.22881440527149755,
+          -0.5310819733008202,
+          -0.9182387353160509
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 2,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.5416666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9916024823116829
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9905263753486121
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9912450900199209
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9900784817749959
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9981848124488236
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9946176130576875,
+        "morph_response": [
+          0.9260522936995912,
+          0.5935551040993983,
+          -0.02200177239073063,
+          -0.573499058052806,
+          -0.9112784475697021
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9922035105842559,
+        "morph_response": [
+          0.9435347176179113,
+          0.569560589896323,
+          -0.10726978846544159,
+          -0.6715404954458598,
+          -0.9596916115683021
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 3,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7708333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9948291505682085
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8541666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9970626571151618
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9987757323643462
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9982470341318628
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9958222630673519
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9942733338242343,
+        "morph_response": [
+          1.043757535193988,
+          0.6775751245180875,
+          0.007510980128959531,
+          -0.6178870222199057,
+          -0.9775333426397022
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9965746934919668,
+        "morph_response": [
+          1.0148321443000643,
+          0.6241883860797895,
+          -0.05314110010934703,
+          -0.5799915979259046,
+          -1.0050909423562644
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 4,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7916666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9946471197637793
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9866898248823786
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9951829535833245
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9956706323464638
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9951537982663777
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9947426395679915,
+        "morph_response": [
+          1.0459761880316403,
+          0.6650270401099218,
+          0.013603713513129822,
+          -0.5880129702300888,
+          -0.9345609707576238
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9940867427677215,
+        "morph_response": [
+          1.035063116815772,
+          0.6147872964246553,
+          0.0970786350002713,
+          -0.6358581712471338,
+          -0.9654265335009075
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 5,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7708333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9981015249411886
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9974252130557134
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9945387019379576
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9956809997040718
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.993014096496622
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9939520984492667,
+        "morph_response": [
+          1.016226345619073,
+          0.6674369438100515,
+          0.060943871193911515,
+          -0.5799669958336103,
+          -0.9156460325269369
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.991741067997429,
+        "morph_response": [
+          1.0176713559946993,
+          0.6556992600604424,
+          0.042107390215892104,
+          -0.6438325462944988,
+          -0.9248023523485434
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 6,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9909302735376531
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.979657742930969
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9910775984248897
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.987642703025561
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9885819652475184
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9872129521180569,
+        "morph_response": [
+          0.970824846098214,
+          0.7033000306609609,
+          -0.018101295831129547,
+          -0.6707817587942341,
+          -0.9427848111171387
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9864562066801487,
+        "morph_response": [
+          0.9674211348961032,
+          0.727695720305617,
+          -0.03983106802583695,
+          -0.6923677336704955,
+          -0.9969937360433473
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 7,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6458333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9733944538384255
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8958333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9707753227806606
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9626500892936642
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9697132649378568
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9583296800285822
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9750707594374891,
+        "morph_response": [
+          0.9229216281026488,
+          0.513320923781042,
+          -0.3300758834363006,
+          -0.8786428908412702,
+          -0.983359193876943
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9741567952520179,
+        "morph_response": [
+          0.8682668961203701,
+          0.4426133214812511,
+          -0.33626652744252716,
+          -0.8864025177561986,
+          -0.9580734299536425
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 8,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9856366194438619
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8541666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9852299538789702
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9824830211119483
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9904406899770627
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9878094559582776
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9854684232008066,
+        "morph_response": [
+          0.9959618459799238,
+          0.719904900155118,
+          0.031611527229988,
+          -0.7560853881464372,
+          -1.0169456439098004
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9822678526743718,
+        "morph_response": [
+          0.9494512781315646,
+          0.7181983987098243,
+          0.008159610628663827,
+          -0.7445960793840266,
+          -0.9669342166472248
+        ]
+      }
+    },
+    {
+      "agent": "organic_no_replay",
+      "seed": 9,
+      "floats": 1024,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.4583333333333333,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9802255243601652
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9863659387196484
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9926566916139065
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9817208958263122
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9903973622771512
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9875381716777293,
+        "morph_response": [
+          0.9649153236471747,
+          0.7253086638840647,
+          0.200950838569579,
+          -0.5386906434496677,
+          -0.8940232711678097
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9886672940182127,
+        "morph_response": [
+          0.9491379066836915,
+          0.7348911042645918,
+          0.016034715318406407,
+          -0.5437442920404244,
+          -0.8972474368540402
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 0,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9878785883966655
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9918529522728464
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9935616849947476
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.986829824909403
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9875877870095944
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9864688430543207,
+        "morph_response": [
+          0.9618583668664442,
+          0.7340094824277976,
+          0.12109228836857501,
+          -0.6334877824205877,
+          -0.9664295599096642
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9848974913477165,
+        "morph_response": [
+          0.8336439104141836,
+          0.7103635088291577,
+          0.12298390896509447,
+          -0.44466608426911963,
+          -0.8127362277303245
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 1,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9761925504451435
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.979925134907648
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9800590028353143
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9801146739752651
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.973140911574722
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9705111754441224,
+        "morph_response": [
+          0.9453608054381893,
+          0.8701285389637087,
+          0.2887204597026455,
+          -0.6049571938521937,
+          -0.9367410153569716
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9698295853835202,
+        "morph_response": [
+          0.66537471468588,
+          0.6130420437974268,
+          0.1746421244679789,
+          -0.5327883076838748,
+          -0.8463164032298814
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 2,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9917543487997558
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9898710889067268
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9916586411519772
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9890190734582402
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9967569780686936
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9938408840501054,
+        "morph_response": [
+          1.0297868970933395,
+          0.7074766589716387,
+          0.032279125499224674,
+          -0.5588948167764182,
+          -0.9355430284971114
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9910999799621819,
+        "morph_response": [
+          0.7678929209455738,
+          0.4614181546712292,
+          -0.17485069898640068,
+          -0.6610254865921327,
+          -0.9256423548057168
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 3,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9952231741260698
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9954442108043426
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9962177265459639
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9973244069920459
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9925939487210361
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9904634133285589,
+        "morph_response": [
+          1.0238376277896954,
+          0.7024141714897582,
+          -0.04102419235434481,
+          -0.7223719106271226,
+          -1.0538801891099516
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9918993148207629,
+        "morph_response": [
+          0.8180523504524512,
+          0.5375037864573895,
+          -0.150034918335883,
+          -0.6072991767512429,
+          -0.9511779815916981
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 4,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.995522508430295
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9860909634936498
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.993591846018684
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9946948251979244
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.991561665745204
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9908577835845847,
+        "morph_response": [
+          1.0462037607516022,
+          0.677732586555036,
+          -0.020958608541406853,
+          -0.6503563624072087,
+          -0.9263220389045091
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9915081145300348,
+        "morph_response": [
+          0.8653173623358855,
+          0.5173583085098157,
+          0.045640393222686315,
+          -0.6026045094620516,
+          -0.8357041720768769
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 5,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.9979063346131372
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.997313789170826
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9934038581681285
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9950976259627761
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.990423302061146
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9920329393234607,
+        "morph_response": [
+          1.0804066407507762,
+          0.7921483214742032,
+          0.1395715328225137,
+          -0.5657593224268694,
+          -0.9961978268671179
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9915898811430071,
+        "morph_response": [
+          0.7698845159214273,
+          0.5328421707395622,
+          0.0020378796438932554,
+          -0.5409441165666324,
+          -0.8286074460656749
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 6,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9903951531088108
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9736647479014043
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9902678489768177
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9853439742559749
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9865236246610237
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9878289111737648,
+        "morph_response": [
+          0.9255773485927264,
+          0.6735435395237976,
+          -0.06241767396600573,
+          -0.6932599333807485,
+          -0.9987245602638207
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9841915211519686,
+        "morph_response": [
+          0.8074267164181967,
+          0.62823056640091,
+          -0.041984372951301134,
+          -0.6251959350990822,
+          -0.8784327977587815
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 7,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9715993045753437
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9666877116470611
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9660204856761354
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.974053007313935
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9644240880516968
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9808287641950932,
+        "morph_response": [
+          0.8925293126014736,
+          0.5206642141483542,
+          -0.3029637567939676,
+          -0.9215835704650726,
+          -1.0786916625779337
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9803437961873639,
+        "morph_response": [
+          0.7182655108300935,
+          0.34486155404753466,
+          -0.2749454434549567,
+          -0.7607797607333829,
+          -0.8599557383899167
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 8,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9852018890860451
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.982819221264958
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9808051635385393
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.990060176822239
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9860982076246958
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9835717034257423,
+        "morph_response": [
+          0.9607471604282382,
+          0.718539823817931,
+          0.010332313172709393,
+          -0.7832272909567309,
+          -1.0412534704124565
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9771879570663932,
+        "morph_response": [
+          0.8041296816296876,
+          0.6576568729494522,
+          -0.016165585211909403,
+          -0.6445151885387373,
+          -0.8152065164068573
+        ]
+      }
+    },
+    {
+      "agent": "organic_write_all",
+      "seed": 9,
+      "floats": 1824,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9824454617861071
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9879151167093008
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9922619512252312
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9816288612084544
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9850836720728471
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9835066593021436,
+        "morph_response": [
+          0.9809009328448154,
+          0.6833572305419983,
+          0.07526472463256645,
+          -0.7772445601127478,
+          -0.9959246364891658
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9831773319222848,
+        "morph_response": [
+          0.855907491663693,
+          0.6091867110302552,
+          -0.12805673601901402,
+          -0.6881833285025563,
+          -0.8945853863039993
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 0,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7083333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9831451971757146
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.96875,
+          "morph_monotone_corr": 0.9033151445174668
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9304787039544631
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9090346369168514
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.8955103028180829
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9486830796522058,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.0015172742323881587,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 1,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.75,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9010084940511449
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.875,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.9115193940679346
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9439894681312728
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.8541666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9385902682123072
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9214643921718938
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 0.9583333333333334,
+        "morph_monotone_corr": 0.9344156086100807,
+        "morph_response": [
+          0.8604705703039713,
+          1.0,
+          -0.015033691125014625,
+          -0.5610708883414399,
+          -0.6371049182420719
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 2,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7708333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9456771731208065
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9091372900969896
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383148632568364
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.920373460647664
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.9375,
+          "decoy_accuracy": 0.8333333333333334,
+          "morph_monotone_corr": 0.9325035404716513
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.9791666666666666,
+        "decoy_accuracy": 0.8541666666666666,
+        "morph_monotone_corr": 0.946559613922927,
+        "morph_response": [
+          0.8501593486052262,
+          -0.13144412030861588,
+          -0.3047063751033871,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 3,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8125,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9769477454967623
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9375,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9196531606368157
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9474885153503316
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486828373051103
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.9207194888517227
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 0.9895833333333334,
+        "morph_monotone_corr": 0.947465182855484,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.11342325178642398,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 4,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 0.96875,
+          "morph_monotone_corr": 0.9968571627139041
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9664563789043759
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9166666666666666,
+          "morph_monotone_corr": 0.9628504069637341
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9579016957699633
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9607871139746532
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9699538599860105,
+        "morph_response": [
+          0.7931998240912902,
+          0.4798782553575387,
+          -0.214377116254461,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 5,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.8958333333333334,
+          "morph_monotone_corr": 0.9851975528922007
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486820791239717
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9440139338668122
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9091372900969896
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9439050449398281
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.930937093020261,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.4386847006756464,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 6,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7708333333333334,
+          "decoy_accuracy": 0.8854166666666666,
+          "morph_monotone_corr": 0.8824677938363009
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.8390437452350876
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9614879736678247
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9688376410931755
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9678390042313412
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.957491424051005,
+        "morph_response": [
+          0.8354590551746499,
+          0.5481918286291656,
+          -0.4447876541238976,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 7,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8958333333333334,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9723482788631872
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9262369052104902
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.9166666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9303375198946656
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9308516947673662
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486820814342454
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9475770965195114,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.10807781648047717,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 8,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7916666666666666,
+          "decoy_accuracy": 0.8958333333333334,
+          "morph_monotone_corr": 0.9813603339456265
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9460724360393622
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9502688075653073
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9166666666666666,
+          "morph_monotone_corr": 0.8855248305380417
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9538266905623961
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9592552810488424,
+        "morph_response": [
+          0.8576300630538277,
+          0.7222635814517258,
+          -0.09384612598816038,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_fifo",
+      "seed": 9,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.7071067811865476
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486831859197458
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9162308948374367
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9090426454252418
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9440325069693418,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.22223076069976624,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 0,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7083333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9831451971757146
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.96875,
+          "morph_monotone_corr": 0.9033151445174668
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9206941105648879
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.9469042456389624
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9871745605106821
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9866099642144333,
+        "morph_response": [
+          0.7727737352091744,
+          0.5379245812367779,
+          0.11614381713923626,
+          -0.5299809638832732,
+          -0.7562573837909573
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.7916666666666666,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9702965013551791,
+        "morph_response": [
+          0.7894430742561466,
+          0.5286167056171712,
+          0.3240455477569863,
+          0.11406573958365646,
+          -0.4852947891224016
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 1,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.75,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9010084940511449
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.875,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.9115193940679346
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9383148632568364
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9440625184243712
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.8541666666666666,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.9137026244721248
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.8333333333333334,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9532809837827223,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.6616606220707036,
+          0.043817999474406115,
+          -0.07337893323414191
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.8333333333333334,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.6372365996032797,
+        "morph_response": [
+          0.5977756985296462,
+          0.6651983538192242,
+          0.7837922005189745,
+          0.4229036272734878,
+          0.3795588696381122
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 2,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7708333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9456771731208065
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9091372900969896
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383148632568364
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.8125,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9306707528016309
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9475214388720393
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9209715918670891,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.552651210546073,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.9583333333333334,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9525123970551734,
+        "morph_response": [
+          0.650413448177761,
+          0.4846611202987292,
+          0.3186840405918582,
+          0.133572074633408,
+          -0.43507408509099266
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 3,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8125,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9769477454967623
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9375,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9196531606368157
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.9583333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.944027415621524
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.948678090461539
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9091170016501068
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.8333333333333334,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9091372900969896,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.6666666666666666,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.8333333333333334,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9539445464569877,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.4442519736708684,
+          -0.5057078302504617,
+          -0.669544852359798
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 4,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 0.96875,
+          "morph_monotone_corr": 0.9968571627139041
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9664563789043759
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9381113515730231
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9564196384506288
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.7071067811865475
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.8333333333333334,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.7071067811865476,
+        "morph_response": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.6740597708711674
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.8333333333333334,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9242660584887339,
+        "morph_response": [
+          0.49723154998243685,
+          0.47151902516304195,
+          0.43681216832576936,
+          0.3850252623858754,
+          0.22703995279780417
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 5,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.8958333333333334,
+          "morph_monotone_corr": 0.9851975528922007
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486820791239717
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486828222264194
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.947480465780183
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383726305796631
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9385441840374089,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.3295660059699859,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.8333333333333334,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9475230490512176,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.11069133317679691,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 6,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7708333333333334,
+          "decoy_accuracy": 0.8854166666666666,
+          "morph_monotone_corr": 0.8824677938363009
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.8390437452350876
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9911748521766408
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9166666666666666,
+          "morph_monotone_corr": 0.9576578072983178
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383347907120031
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9486831284448028,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.001337087000960376,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.8541666666666666,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9858630989673615,
+        "morph_response": [
+          0.5902029474095959,
+          0.028984007731405092,
+          -0.3481574927011973,
+          -0.6112556446227179,
+          -0.8875493307509466
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 7,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8958333333333334,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9723482788631872
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9262369052104902
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.9166666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9206211878221109
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9166666666666666,
+          "morph_monotone_corr": 0.9206576651195967
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9440066297105179
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9475540229808603,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.10920115645128177,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.6666666666666666,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9367063732824552,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.6580562119129558,
+          -0.3947085746164644,
+          -0.5566535082295432
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 8,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7916666666666666,
+          "decoy_accuracy": 0.8958333333333334,
+          "morph_monotone_corr": 0.9813603339456265
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9460724360393622
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9489567533819357
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9337810594644573
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9522218161414381
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.944650517909488,
+        "morph_response": [
+          0.600762920598654,
+          0.49361376390906214,
+          -0.5238872017365245,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.8541666666666666,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9023029138768197,
+        "morph_response": [
+          0.0,
+          -0.2283344341623943,
+          -0.7849165700816974,
+          -0.8389540628391048,
+          -0.8091858507685199
+        ]
+      }
+    },
+    {
+      "agent": "knn_random",
+      "seed": 9,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.7071067811865476
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9569541192188116
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9440234822216236
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.881433319791506
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9205861217019146,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.5566572477477985,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.8333333333333334,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.8739735580047497,
+        "morph_response": [
+          1.0,
+          -0.12333733345161901,
+          -1.0,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 0,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6458333333333334,
+          "decoy_accuracy": 0.9270833333333334,
+          "morph_monotone_corr": 0.982648964684425
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.8958333333333334,
+          "morph_monotone_corr": 0.9033151445174668
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9303979078979693
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9205409280408696
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383735174724974
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9091372900969896,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.6666666666666666,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9091372900969896,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.6666666666666666,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 1,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7916666666666666,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9000141407232183
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.875,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9404039710948522
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9389715946095645
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9398715627860945
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9326964301012036
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9350194534892899,
+        "morph_response": [
+          0.8539840609621296,
+          0.9759358069538706,
+          -0.20381668140896136,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9382220955644618,
+        "morph_response": [
+          0.8605675647073309,
+          0.9294296875859175,
+          0.15309837372017202,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 2,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7708333333333334,
+          "decoy_accuracy": 0.9583333333333334,
+          "morph_monotone_corr": 0.9457210066658706
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9206856581372898
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9479166666666666,
+          "morph_monotone_corr": 0.9304825671474752
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9306032956118204
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9440692946159644
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.9791666666666666,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9475092183744536,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.11135034256865477,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9305003904544151,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.4442063119278223,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 3,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8125,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9769477454967623
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9375,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9419557374568548
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9440576312221614
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9438244259561781
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486813729677217
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9441621985984168,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.21908770542045897,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9439445783681005,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.22433737377785268,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 4,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 0.8333333333333334,
+          "morph_monotone_corr": 0.9968571627139041
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 0.9583333333333334,
+          "morph_monotone_corr": 0.9659479721870782
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9302076151528195
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.943766101440406
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9302298869454948
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9486804755577068,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.005454522827295731,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 0.9895833333333334,
+        "morph_monotone_corr": 0.9380421999633415,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.3377615494126646,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 5,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.7291666666666666,
+          "morph_monotone_corr": 0.9800333207176466
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9533271074190279
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9576207043017179
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9596899781356548
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9544202619895641
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9610242725013587,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.084871774696455,
+          -0.722543489782382,
+          -0.8861058736284803
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9564625103228128,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.19950770063936396,
+          -0.7630411238865177,
+          -0.8801883113172062
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 6,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8958333333333334,
+          "decoy_accuracy": 0.8645833333333334,
+          "morph_monotone_corr": 0.883764888316207
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.96875,
+          "morph_monotone_corr": 0.8398553734947628
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9455175235418279
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9055883735070901
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9218942715245187
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.966763665521616,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.3235963050909071,
+          -0.5833123150044967,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9721751591740531,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.1038237211746063,
+          -0.5908126868670464,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 7,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8958333333333334,
+          "decoy_accuracy": 0.9166666666666666,
+          "morph_monotone_corr": 0.9655961334346199
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9263510179985237
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9206882142540342
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9475104865575611
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9089428509642752
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9206432885652407,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.5560646410992317,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9383120184942069,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.3333798175706477,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 8,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7916666666666666,
+          "decoy_accuracy": 0.8541666666666666,
+          "morph_monotone_corr": 0.9814656835028911
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9771736541315315
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9443381753308793
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9083194032904314
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9486794905763052
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9383148632568364,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.3333333333333333,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9474935515398006,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.11209219641281642,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_surprise",
+      "seed": 9,
+      "floats": 1800,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 0.8229166666666666,
+          "morph_monotone_corr": 0.8614837120762856
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.484070354184416
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9736033206186424
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9667335040482311
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9681111928504242
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9729417613942752,
+        "morph_response": [
+          1.0,
+          0.5179459479038532,
+          -0.20931477279915023,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9680517174817511,
+        "morph_response": [
+          1.0,
+          0.5420216793723379,
+          -0.3269887918254776,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 0,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7083333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9831451971757146
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.96875,
+          "morph_monotone_corr": 0.9033151445174668
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9206941105648879
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9440531780644094
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.8660254037844387
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9486832980505138,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.0,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.938292343934159,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.3337011398345086,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 1,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.75,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9010084940511449
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.875,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.9115193940679346
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9439894681312728
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9441406998560565
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9091372900969896
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9474739296139756,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.11301451380934517,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9204019776691392,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.5585626063247042,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 2,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7708333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9456771731208065
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9091372900969896
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.9479166666666666,
+          "morph_monotone_corr": 0.9383148632568364
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9382554946349138
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9440073394294881
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9475183079793639,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.11091767538360897,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9305442423207444,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.4436546090223102,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 3,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8125,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9769477454967623
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9375,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9196531606368157
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.944027415621524
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.947555004610911
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9441026483065487
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9440231062700624,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.2224569089448312,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9475525520728719,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.10927237912134306,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 4,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 0.96875,
+          "morph_monotone_corr": 0.9968571627139041
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9664563789043759
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9381678061365578
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.938384344940356
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383148632568364
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9304358008699456,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.4450178133865899,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9441008556002182,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.22057976331738915,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 5,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 0.8958333333333334,
+          "morph_monotone_corr": 0.9851975528922007
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486820791239717
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383148632568364
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383820626715361
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383148632568364
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9486832980505138,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.0,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9486832980505138,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.0,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 6,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7708333333333334,
+          "decoy_accuracy": 0.8854166666666666,
+          "morph_monotone_corr": 0.8824677938363009
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 0.9895833333333334,
+          "morph_monotone_corr": 0.8390437452350876
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9475921532200705
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.938641634813082
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486829412854187
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9305291534904238,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.4438445110655054,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.8816187596116237,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.8886117127269504,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 7,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.8958333333333334,
+          "decoy_accuracy": 0.9791666666666666,
+          "morph_monotone_corr": 0.9723482788631872
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9262369052104902
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9205904626061618
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9306071887950824
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9439939710966345
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9383148632568364,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.3333333333333333,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9440803875456596,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.22107543564979895,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 8,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.7916666666666666,
+          "decoy_accuracy": 0.8958333333333334,
+          "morph_monotone_corr": 0.9813603339456265
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.9791666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9460724360393622
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9489583625322336
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.8660254037844387
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383148632568364
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9383148632568364,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.3333333333333333,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.944098146969841,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.2206454199579251,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "knn_all",
+      "seed": 9,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.6666666666666666,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.7071067811865476
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.8333333333333334,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9486831859197458
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9383148632568364
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 1.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": 0.9439694768429777
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.938435247038252,
+        "morph_response": [
+          1.0,
+          1.0,
+          0.3313606408529263,
+          -1.0,
+          -1.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 1.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": 0.9475317074333697,
+        "morph_response": [
+          1.0,
+          1.0,
+          -0.11027678564017256,
+          -1.0,
+          -1.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 0,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 1,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 2,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 3,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 4,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 5,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 6,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 7,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 8,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "agent": "none",
+      "seed": 9,
+      "floats": 0,
+      "curve": [
+        {
+          "events": 25,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 50,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 100,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 200,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        },
+        {
+          "events": 400,
+          "valenced_accuracy": 0.0,
+          "decoy_accuracy": 1.0,
+          "morph_monotone_corr": -0.0
+        }
+      ],
+      "final": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "after_distractors": {
+        "valenced_accuracy": 0.0,
+        "decoy_accuracy": 1.0,
+        "morph_monotone_corr": -0.0,
+        "morph_response": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  ],
+  "boundary": "Toy world with synthetic prototypes; measures learning, generalisation and selectivity under a float budget, not awareness."
+}

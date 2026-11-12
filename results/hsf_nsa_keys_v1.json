@@ -1,0 +1,318 @@
+{
+  "experiment": "hsf_nsa_keys_v1",
+  "seeds": [
+    11,
+    23,
+    47,
+    59,
+    71,
+    83,
+    97,
+    101,
+    113,
+    127
+  ],
+  "rows": [
+    {
+      "n_keys": 40,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "exact",
+      "floats": 10880,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": null,
+      "mean_separated_cosine": null
+    },
+    {
+      "n_keys": 40,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "hsf_additive",
+      "floats": 4096,
+      "accuracy_mean": 0.17250000000000001,
+      "accuracy_min": 0.075,
+      "updated_accuracy_mean": 0.135,
+      "mean_key_cosine": 0.10195385638940842,
+      "mean_separated_cosine": null
+    },
+    {
+      "n_keys": 40,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "hsf_sep_delta",
+      "floats": 4096,
+      "accuracy_mean": 0.8099999999999999,
+      "accuracy_min": 0.725,
+      "updated_accuracy_mean": 0.89,
+      "mean_key_cosine": 0.10195385638940842,
+      "mean_separated_cosine": 0.0977416221730602
+    },
+    {
+      "n_keys": 40,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "hsf_sep_homeo_replay",
+      "floats": 4352,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": 0.10195385638940842,
+      "mean_separated_cosine": 0.0977416221730602
+    },
+    {
+      "n_keys": 40,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "hdc_sep_replay",
+      "floats": 4096,
+      "accuracy_mean": 0.9974999999999999,
+      "accuracy_min": 0.975,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": 0.10357060485872446,
+      "mean_separated_cosine": 0.09426952503860378
+    },
+    {
+      "n_keys": 40,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "exact",
+      "floats": 41600,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": null,
+      "mean_separated_cosine": null
+    },
+    {
+      "n_keys": 40,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "hsf_additive",
+      "floats": 16384,
+      "accuracy_mean": 0.20249999999999999,
+      "accuracy_min": 0.075,
+      "updated_accuracy_mean": 0.15,
+      "mean_key_cosine": 0.1039099943738592,
+      "mean_separated_cosine": null
+    },
+    {
+      "n_keys": 40,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "hsf_sep_delta",
+      "floats": 16384,
+      "accuracy_mean": 0.8975,
+      "accuracy_min": 0.825,
+      "updated_accuracy_mean": 0.9349999999999999,
+      "mean_key_cosine": 0.1039099943738592,
+      "mean_separated_cosine": 0.09503017763057962
+    },
+    {
+      "n_keys": 40,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "hsf_sep_homeo_replay",
+      "floats": 17408,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": 0.1039099943738592,
+      "mean_separated_cosine": 0.09503017763057962
+    },
+    {
+      "n_keys": 40,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "hdc_sep_replay",
+      "floats": 16384,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": 0.10367803963187797,
+      "mean_separated_cosine": 0.09436790606914422
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "exact",
+      "floats": 21760,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": null,
+      "mean_separated_cosine": null
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "hsf_additive",
+      "floats": 4096,
+      "accuracy_mean": 0.075,
+      "accuracy_min": 0.05,
+      "updated_accuracy_mean": 0.065,
+      "mean_key_cosine": 0.10624244695137361,
+      "mean_separated_cosine": null
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "hsf_sep_delta",
+      "floats": 4096,
+      "accuracy_mean": 0.52625,
+      "accuracy_min": 0.45,
+      "updated_accuracy_mean": 0.7150000000000001,
+      "mean_key_cosine": 0.10624244695137361,
+      "mean_separated_cosine": 0.09728578866164707
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "hsf_sep_homeo_replay",
+      "floats": 4352,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": 0.10624244695137361,
+      "mean_separated_cosine": 0.09728578866164707
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        16,
+        16,
+        16
+      ],
+      "method": "hdc_sep_replay",
+      "floats": 4096,
+      "accuracy_mean": 0.95875,
+      "accuracy_min": 0.9125,
+      "updated_accuracy_mean": 0.9625,
+      "mean_key_cosine": 0.105397304684606,
+      "mean_separated_cosine": 0.0948057858229768
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "exact",
+      "floats": 83200,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": null,
+      "mean_separated_cosine": null
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "hsf_additive",
+      "floats": 16384,
+      "accuracy_mean": 0.07625,
+      "accuracy_min": 0.0625,
+      "updated_accuracy_mean": 0.057499999999999996,
+      "mean_key_cosine": 0.10615060501545337,
+      "mean_separated_cosine": null
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "hsf_sep_delta",
+      "floats": 16384,
+      "accuracy_mean": 0.71875,
+      "accuracy_min": 0.575,
+      "updated_accuracy_mean": 0.8375,
+      "mean_key_cosine": 0.10615060501545337,
+      "mean_separated_cosine": 0.0952699297833952
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "hsf_sep_homeo_replay",
+      "floats": 17408,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": 0.10615060501545337,
+      "mean_separated_cosine": 0.0952699297833952
+    },
+    {
+      "n_keys": 80,
+      "shape": [
+        32,
+        32,
+        16
+      ],
+      "method": "hdc_sep_replay",
+      "floats": 16384,
+      "accuracy_mean": 1.0,
+      "accuracy_min": 1.0,
+      "updated_accuracy_mean": 1.0,
+      "mean_key_cosine": 0.10551234924189781,
+      "mean_separated_cosine": 0.09507473743827188
+    }
+  ],
+  "boundary": "NSA-style 'entity attribute' keys from a 10x8 grid, token-sum cues, opaque string values, open-vocabulary value store; the exact dictionary is perfect by construction and is not budget-matched."
+}
