@@ -28,7 +28,7 @@ from pathlib import Path
 from random import Random
 
 from nsa import NSA, RuntimeConfig
-from nsa.memory.extract import HybridFactExtractor, LLMFactExtractor, RuleFactExtractor, normalize_key
+from nsa.memory.extract import HybridFactExtractor, RuleFactExtractor, normalize_key
 from nsa.organic import NoveltyGate
 
 from experiments.research_v9.natural_memory_benchmark import (

@@ -46,3 +46,27 @@ and the extractor did not parse "is still X" and let lead-ins such as "just to c
 * Not measured: end-to-end answer accuracy with a model in the loop; larger models; real (not synthetic) transcription noise. A genuine near-value change
   stated *without* an update cue is delayed until mentioned twice.
 * Changing the rule extractor (lead-ins, "still") means earlier v9 rule-extractor figures are not exactly reproducible with the current code.
+
+## End to end with a model answering (`experiments/research_v10/end_to_end.py`, `results/research-v10.1-end-to-end-1.5b.json`)
+qwen2.5:1.5b answers "what is the current value of <key>?" for 6 sampled keys per episode after ingesting a noisy timeline (8 seeds, 48 questions per
+cell, same decoding for every condition). `typo` = the answer is a typo seen in the stream.
+
+| phrasing | condition | accuracy (95 % CI) | typo answered |
+|---|---|---|---|
+| train | transcript | 0.46 (0.33-0.60) | 0.17 |
+| train | keyword retrieval (3 lines) | 0.54 (0.40-0.67) | 0.27 |
+| train | NSA hybrid, no routing | 0.46 (0.33-0.60) | 0.29 |
+| train | **NSA hybrid, routed** | **0.81 (0.68-0.90)** | **0.00** |
+| heldout | transcript | 0.77 (0.63-0.87) | 0.04 |
+| heldout | keyword retrieval | **0.81 (0.68-0.90)** | 0.10 |
+| heldout | NSA hybrid, no routing | 0.38 (0.25-0.52) | 0.35 |
+| heldout | NSA hybrid, routed | 0.56 (0.42-0.69) | 0.10 |
+
+* Routing helps at the answer level: routed vs unrouted memory, +0.35 on train (17 vs 0 discordant questions, p < 0.001) and +0.18 on held-out
+  (11 vs 2, p = 0.022). It eliminates answers that repeat a typo on train.
+* **On held-out phrasings the routed memory still loses to simply reading the transcript or retrieving the matching lines** (0.56 vs 0.77 and 0.81; 4 vs 14 and
+  2 vs 14 discordant, p = 0.03 and 0.004). The 1.5B extractor misses facts on unfamiliar wording, so the memory is incomplete; routing cleans what was
+  stored but cannot add what was never extracted. Extraction coverage is the bottleneck, not noise handling.
+* On the phrasings the extractor handles, routed memory beats both baselines (vs transcript 21 vs 4, p = 0.001; vs keyword retrieval 19 vs 6, p = 0.015).
+* This transcript is short (about 70 lines), so it is a favourable case for the baselines; the memory's compute and size advantage appears at the long
+  histories measured in v8, which are not combined with noise here.

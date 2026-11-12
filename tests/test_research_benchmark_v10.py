@@ -24,3 +24,19 @@ def test_run_validates_and_unknown_extractor_is_rejected():
         v10.run(seeds=())
     with pytest.raises(ValueError):
         v10.run_one("nope", None, "train", 0)
+
+
+def test_end_to_end_episode_runs_all_conditions_with_a_fake_model():
+    from types import SimpleNamespace
+
+    from experiments.research_v10 import end_to_end as e2e
+
+    class _Fake:
+        model = "fake"
+        last = None
+
+        def generate(self, prompt, **kw):
+            return SimpleNamespace(text="VALUE=NOPE" if "Extract every fact" not in prompt and "Example 1" not in prompt else "NONE", raw_response={})
+
+    rows = e2e.run_episode(_Fake(), 1, "train", n_questions=2)
+    assert {r["condition"] for r in rows} == set(e2e.CONDITIONS) and len(rows) == 8
