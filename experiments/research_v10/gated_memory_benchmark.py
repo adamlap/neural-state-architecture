@@ -45,7 +45,7 @@ def typo(value: str, rng: Random) -> str:
     return value[:i] + rng.choice([c for c in "abcdefghjkmnpqrstuvwxyz23456789" if c != value[i]]) + value[i + 1:]
 
 
-def make_stream(seed: int, phrasing: str, n_facts: int = 20, reminders: int = 20, updates: int = 4, poisoned: int = 2, near_updates: int = 2):
+def make_stream(seed: int, phrasing: str, n_facts: int = 20, reminders: int = 20, updates: int = 4, poisoned: int = 2, near_updates: int = 2, chatter: int = 10):
     """Return ``(events, truth, typo_values)``; events are ``(text, source)``; truth maps normalised key -> final trusted value.
 
     The stream is a timeline: each reminder restates the value that is *current at that point* (half with a one-character typo), a genuine update
@@ -59,7 +59,7 @@ def make_stream(seed: int, phrasing: str, n_facts: int = 20, reminders: int = 20
     value = {c: _token(rng) for c in chosen}
     events = [(rng.choice(FACT_T[phrasing]).format(ent=e, attr=a, val=value[(e, a)]), "chat") for e, a in chosen]
     typos: set[str] = set()
-    slots = ["reminder"] * reminders + ["update"] * (updates - near_updates) + ["near_update"] * near_updates + ["poisoned"] * poisoned + ["chatter"] * 10
+    slots = ["reminder"] * reminders + ["update"] * (updates - near_updates) + ["near_update"] * near_updates + ["poisoned"] * poisoned + ["chatter"] * chatter
     rng.shuffle(slots)
     for slot in slots:
         c = rng.choice(chosen)
