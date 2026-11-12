@@ -136,6 +136,28 @@ and implement the gate inside `NSARuntime` (decide *observe-only / write to memo
 benchmarks (v7/v9 style streams) with a real model and report calls saved against answer accuracy at equal budget; (3) replace the lexical
 cue with embeddings of continuous sensory input for the organic world.
 
+## Experiment 4: the stream learner inside the runtime (`nsa/organic.py`, `NSARuntime.observe_signal`, `experiments/organic/runtime_stream_test.py`)
+
+Library pieces: `TrailingField` (leaky trace), `StreamLearner` (trailing field → sparse code → ONE fixed delta-rule vector, surprise-gated writes, 1,024 floats,
+no per-event storage) and `NSARuntime(stream_learner=...)` / `observe_signal(vector, outcome=None, source=..., integrity=...)`. Two NSA-specific couplings: the learner's
+prediction error (an EMA of |error| on outcomes) becomes the runtime's soft-state `uncertainty` (and `confidence = 1 - uncertainty`); and an outcome arriving on an
+UNTRUSTED channel (`untrusted_sources`, explicit `integrity`, or the signed-ingress rule) is observed but never updates the learner, the same integrity logic as the memory gate.
+`results/organic_runtime_stream_v1.json`, 8 seeds, 300 events, the dog world driven entirely through the runtime API:
+
+| measurement | result |
+|---|---|
+| learning, fast trace (λ .8), delay 3 | valenced 1.00, decoy 1.00; curve 0.66 / 0.86 / 1.00 / 1.00 / 1.00 at 25 / 50 / 100 / 200 / 300 events |
+| learning, slow trace (λ .95), delay 15 | valenced 1.00, decoy 1.00; curve 0.70 / 0.88 / 0.96 / 1.00 / 1.00 |
+| soft-state uncertainty vs. true error (rank correlation over checkpoints) | 0.92 (delay 3), 0.94 (delay 15) |
+| spoofed sensor (a second channel replays every other outcome with the sign flipped), channel labelled untrusted | valenced **1.00** (worst seed 1.00); 146 spoofed outcomes blocked per run |
+| same attack, all channels trusted (default) | valenced **0.47** (worst seed 0.33) |
+
+* The runtime integration reproduces the standalone result (same algorithm), so wrapping it did not change the learning.
+* The uncertainty signal is useful in this world: it falls as the learner stops being surprised and tracks actual error, which is the first measurable "knows when it is wrong" signal in the
+  stream path (checked at 5 checkpoints per run; a small number of points per correlation).
+* As with memory writes, the trust boundary is the label: the spoofed channel is correctly labelled untrusted at ingress. A sensor that lies about *which channel it is* is not covered.
+* Toy world, hand-set constants, oracle outcomes timing, delays up to 15 (the trace horizon limits longer delays, see Experiment 2).
+
 ## Wrapping a language model (design)
 Earlier NSA results are a constraint here: showing serialised state *text* to an LLM did not help (v1.2, v4.2); what helped was state that
 **controls** something. So the organic module should not be pasted into the prompt. Three coupling modes, in order of what the evidence
