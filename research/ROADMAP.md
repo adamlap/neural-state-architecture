@@ -33,6 +33,12 @@ Negative results stay: the state *text* helps nothing, and the benefit comes fro
 6. **Longitudinal behaviour.** Multi-session tasks with consolidation (sleep replay) — does consolidated memory beat raw logs
    at fixed memory budget?
 
+## Status update (2026-11)
+Done since the first roadmap: signed ingress (`nsa/ingress.py`), routing of extracted facts against the memory's current value, a familiarity gate, a continuous-stream learner in the runtime
+(`NSARuntime.observe_signal`), 7B results with opaque values, and long-history + noise (v11). Open, in order: (1) extraction coverage on unfamiliar phrasing (the held-out gap persists at 7B: routed
+0.64 vs transcript 0.82); (2) multi-timescale trace selection for mixed delays; (3) end-to-end gating of model calls inside `NSARuntime`; (4) HSF as an in-network memory (docs/HSF_COMPARATIVE_EXPERIMENT_PROTOCOL.md);
+(5) a native (non-WSL) and GPU run of the speed benchmarks, since the timing numbers here are CPU-only WSL numbers.
+
 ## What this project can and cannot claim
 
 AGI and consciousness are not established and are not claimed (see `research/CLAIMS_AND_EVIDENCE.md`,
