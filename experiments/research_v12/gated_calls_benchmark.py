@@ -80,11 +80,14 @@ def run_session(backend, seed: int, gated: bool) -> dict:
     for line, _ in facts:
         agent.observe(line, source="chat")
     truth = dict(values)
+    version = {c: 0 for c in values}               # bumped by every genuine update
+    answered_at: dict = {}                         # (entity, attribute) -> truth version when the model last produced an answer
     rows = []
     for ev in events:
         if ev[0] == "update":
             agent.observe(ev[1], source="chat")
             truth[(ev[2], ev[3])] = ev[4]
+            version[(ev[2], ev[3])] += 1
             continue
         _, q, e, a = ev
         before = dict(agent.call_stats)
@@ -95,8 +98,13 @@ def run_session(backend, seed: int, gated: bool) -> dict:
         reused = agent.call_stats["reused"] > before["reused"]
         abstained = agent.call_stats["abstained"] > before["abstained"]
         correct = (("UNKNOWN" in res.text.upper()) if not known else lenient_correct(res.text, truth[(e, a)]))
+        # stale reuse = an answer reused after the truth for that key changed; reused_wrong = a reused answer that was wrong at its origin
+        stale = bool(reused and known and answered_at.get((e, a), version[(e, a)]) != version[(e, a)])
+        if known and not reused and not abstained:
+            answered_at[(e, a)] = version[(e, a)]
         rows.append({"seed": seed, "condition": "gated" if gated else "always_call", "known": known, "correct": bool(correct), "reused": reused,
-                     "abstained": abstained, "stale_reuse": bool(reused and known and not lenient_correct(res.text, truth[(e, a)])),
+                     "abstained": abstained, "stale_reuse": stale, "reused_wrong": bool(reused and known and not correct),
+                     "abstained_known": bool(abstained and known),
                      "hallucinated": (not known) and "UNKNOWN" not in res.text.upper(), "latency": latency, "question": q, "response": res.text})
     return {"rows": rows, "call_stats": agent.call_stats}
 
@@ -112,7 +120,8 @@ def summarize(rows: list[dict]) -> dict:
                   "reused": sum(r["reused"] for r in rs), "abstained": sum(r["abstained"] for r in rs),
                   "known_accuracy": k / len(known) if known else None, "known_ci95": list(wilson(k, len(known))) if known else None,
                   "hallucination_rate": sum(r["hallucinated"] for r in unknown) / len(unknown) if unknown else None,
-                  "stale_reuse": sum(r["stale_reuse"] for r in rs), "mean_latency_s": statistics.fmean(r["latency"] for r in rs),
+                  "stale_reuse": sum(r["stale_reuse"] for r in rs), "reused_wrong": sum(r["reused_wrong"] for r in rs),
+                  "abstained_on_known": sum(r["abstained_known"] for r in rs), "mean_latency_s": statistics.fmean(r["latency"] for r in rs),
                   "total_time_s": sum(r["latency"] for r in rs)}
     return out
 
@@ -145,7 +154,8 @@ def main() -> None:
     out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     for c, v in result["summary"].items():
         print(f"{c:<12} questions {v['questions']:>4}  model calls {v['model_calls']:>4}  reused {v['reused']:>3}  abstained {v['abstained']:>3}  "
-              f"known acc {v['known_accuracy']:.2f}  halluc {v['hallucination_rate']:.2f}  stale reuse {v['stale_reuse']}  total {v['total_time_s']:.0f}s")
+              f"known acc {v['known_accuracy']:.2f}  halluc {v['hallucination_rate']:.2f}  stale reuse {v['stale_reuse']}  reused-wrong {v['reused_wrong']}  "
+              f"abstained-on-known {v['abstained_on_known']}  total {v['total_time_s']:.0f}s")
 
 
 if __name__ == "__main__":

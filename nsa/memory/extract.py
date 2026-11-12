@@ -255,12 +255,12 @@ def parse_llm_facts(reply: str) -> list[ExtractedFact]:
 
 
 def key_overlap(question: str, key: str) -> float:
-    """Fraction of the key's tokens covered by the question (0..1). A key token also counts as covered by a one-character typo of itself (both >= 5 letters)."""
+    """Fraction of the key's tokens covered by the question (0..1). A key token also counts as covered by a one-character typo of itself (both >= 4 letters)."""
     from .routing import edit_distance
 
     q, k = normalize_key(question).split(), key.split()
     qs = set(q)
-    covered = sum(1 for t in k if t in qs or (len(t) >= 5 and any(len(w) >= 5 and edit_distance(t, w, 1) <= 1 for w in q)))
+    covered = sum(1 for t in k if t in qs or (len(t) >= 4 and any(len(w) >= 4 and edit_distance(t, w, 1) <= 1 for w in q)))
     return covered / len(k) if k else 0.0
 
 

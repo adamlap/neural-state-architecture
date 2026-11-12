@@ -274,6 +274,12 @@ class NSARuntime:
     def _remember_answer(self, prompt: str, memory_keys: Sequence[str], text: str) -> None:
         if not (self.config.reuse_familiar_answers and self.memory is not None and memory_keys):
             return
+        # Cache only an answer that is grounded in the retrieved memory (it contains one of the retrieved values). Reuse would otherwise
+        # repeat a model's mistake for as long as the memory state stays the same.
+        lowered = text.lower()
+        values = [str(self.memory.current(k).content.get("value", "")).lower() for k in memory_keys if self.memory.current(k)]
+        if not any(v and v in lowered for v in values):
+            return
         from nsa.organic import cue
         epoch = self._memory_epoch(memory_keys)
         self._answer_cache.setdefault(epoch, []).append((cue(prompt), text))
@@ -439,7 +445,7 @@ class NSARuntime:
         raw_text = self._generate(self._prompt(model_prompt, in_flight=True, memory_present=bool(memory_context)))
         self.call_stats["model_calls"] += 1
         text = raw_text.text if hasattr(raw_text, "text") else (str(raw_text) if not isinstance(raw_text, str) else raw_text)
-        self._remember_answer(prompt, memory_keys, text)
+        self._remember_answer(prompt, memory_keys, text)   # only grounded answers are cached
         if self.config.auto_update_semantic_state:
             self.state = replace(self.state, semantic=SemanticState(text), provenance=self.state.provenance.extend(transformation="llm.generate"), step=self.state.step+1); self._run_cognitive_transition(text, confidence=self.state.soft.confidence)
         self._cce.set_state(self.state); self._sync_canonical(); self.trace.append({"step": self.state.step, "prompt": prompt, "response": text, "blocked": False})

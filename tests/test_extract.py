@@ -223,3 +223,10 @@ def test_typo_tolerant_coverage_and_strict_full_match_mode():
     lenient = _agent()
     lenient.observe("The log level for auth is debug1.", source="chat")
     assert lenient.memory_keys_for("What is the log level for zebra?") == ["auth level log"]       # default mode keeps the unique partial match (documented trade-off)
+
+
+def test_four_letter_words_tolerate_a_one_character_typo():
+    from nsa.memory.extract import key_overlap
+
+    assert key_overlap("What is the cace size for reports?", "cache reports size") == 1.0
+    assert key_overlap("What is the cace size for reports?", "queue reports size") < 1.0
