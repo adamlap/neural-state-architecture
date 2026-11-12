@@ -143,6 +143,46 @@ class HolographicStateField:
             },
         )
 
+    def write_pattern_delta(self, pattern: FloatArray, value: str, *, rate: float = 1.0) -> float:
+        """Error-correcting (delta-rule) write: store only what the field does not already predict.
+
+            F <- F + rate * K (x) (V(value) - F.K)
+
+        With a unit-norm cue and ``rate=1`` the field afterwards returns exactly ``V(value)`` for this
+        cue, whatever it returned before. Consequences that the additive (Hebbian) write does not have:
+
+        * supersession in place: rewriting a key with a new value replaces the old one without an
+          external index and without knowing the old value;
+        * idempotence: repeating a write changes nothing (no unbounded reinforcement);
+        * decorrelation: for similar cues only the component not explained by earlier writes is stored.
+
+        This is the classical Widrow-Hoff / Kaczmarz update of a correlation-matrix memory, not a new
+        learning rule. One pass is exact for the *latest* write only: a later write with a
+        non-orthogonal cue perturbs earlier associations by (cue overlap) x (its residual). At most
+        H*W linearly independent cues can be satisfied simultaneously. Returns the residual norm
+        (0 means the field already held this association).
+        """
+        if value not in self._value_codes:
+            raise KeyError(f"value {value!r} is not in the fixed vocabulary")
+        if not np.isfinite(rate) or not 0.0 < rate <= 1.0:
+            raise ValueError("rate must be in (0, 1]")
+        cue = np.asarray(pattern, dtype=np.float32).reshape(-1)
+        if cue.size != self._spatial_size or not np.all(np.isfinite(cue)):
+            raise ValueError("pattern must be finite and match the spatial dimension")
+        norm = float(np.linalg.norm(cue))
+        if norm <= 0:
+            raise ValueError("pattern must have non-zero norm")
+        spatial = (cue / np.float32(norm)).reshape(self.height, self.width)
+        predicted = np.einsum("hw,hwc->c", spatial, self._field, optimize=True)
+        residual = self._value_codes[value] - predicted
+        self._field += np.float32(rate) * spatial[:, :, None] * residual[None, None, :]
+        self.writes += 1
+        return float(np.linalg.norm(residual))
+
+    def write_delta(self, key: str, value: str, *, rate: float = 1.0) -> float:
+        """Delta-rule write for a string key; see ``write_pattern_delta``."""
+        return self.write_pattern_delta(self._key_pattern(key).reshape(-1), value, rate=rate)
+
     def reinforce(self, key: str, value: str, *, amount: float = 0.1) -> None:
         """Strengthen an association with another small Hebbian-like trace."""
         self.write(key, value, strength=amount)

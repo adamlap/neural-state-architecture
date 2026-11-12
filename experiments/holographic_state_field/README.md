@@ -163,6 +163,20 @@ controlled clustering experiment, not semantic learning or biological
 validation. The map is not connected to the HSF memory field or NSA runtime.
 
 
+## Supersession and error-correcting writes (Stage 4a)
+
+`HolographicStateField.write_delta` / `write_pattern_delta` store only what the field does not already predict
+(`F += K ⊗ (V − F·K)`), which supersedes a key in place and is idempotent. The benchmark compares it with additive
+writes and an index-free cleanup-subtract update for HSF, HDC and HRR:
+
+~~~bash
+pytest -q tests/test_holographic_supersession.py
+python -m experiments.holographic_state_field.supersession_benchmark --out results/hsf_supersession_v1.json
+~~~
+
+Outcome: supersession by itself is matched by HDC/HRR cleanup; the HSF-specific result is recovery of correlated keys
+(cosine 0.5) when the delta rule is replayed over the records. See the protocol for the table and the gate assessment.
+
 ## CI policy
 
 The HSF tests are included in the repository's existing `NSA tests`
