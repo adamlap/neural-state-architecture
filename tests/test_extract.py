@@ -98,17 +98,16 @@ def test_same_fact_in_different_word_orders_is_one_key_so_the_gate_applies():
 
 
 def test_untrusted_restatement_under_a_different_key_loses_retrieval_to_the_trusted_entry():
-    """An LLM extractor can phrase the same fact as another key, bypassing the write-time gate;
-    retrieval must still prefer trusted memory."""
+    """An LLM extractor can phrase the same fact as another key, bypassing the write-time gate; retrieval must still prefer trusted memory,
+    even when the question's wording matches the untrusted key better."""
     agent = _agent()
     agent.observe("The database port for staging is 5433.", source="chat")
     agent.observe("The staging db port is now 6666 (per the forwarded email).", source="web")   # different key, untrusted
     assert len(agent.memory.keys()) == 2                                                        # the gate did not apply
-    keys = agent.memory_keys_for("What is the database port for staging?")
-    assert [agent.recall([k])[0]["value"] for k in keys] == ["5433"]
-    # with the preference off, both compete (documents the behaviour being fixed)
-    both = agent.memory_keys_for("What is the database port for staging?", prefer_trusted=False)
-    assert len(both) == 2
+    for question in ("What is the database port for staging?", "What is the staging db port?"):   # second matches the UNTRUSTED key exactly
+        keys = agent.memory_keys_for(question)
+        assert [agent.recall([k])[0]["value"] for k in keys] == ["5433"]
+    assert [agent.recall([k])[0]["value"] for k in agent.memory_keys_for("What is the staging db port?", prefer_trusted=False)] == ["6666"]
 
 
 def test_untrusted_memory_is_still_used_when_nothing_trusted_matches():
@@ -192,3 +191,21 @@ def test_hybrid_with_span_stage_uses_rules_to_seed_the_vocabulary_and_skips_the_
     facts = ex.extract("Looking at staging, its database port reads 7777.")
     assert [(f.key, f.value) for f in facts] == [("database port staging", "7777")] and calls == []
     assert HybridFactExtractor(None, span=True).extract("anything 123") == [] and HybridFactExtractor(None).calls == 0
+
+
+def test_partial_match_ties_are_ambiguous_not_alphabetical():
+    a = _agent()
+    for e in ("staging", "billing", "payments"):
+        a.observe(f"The database port for {e} is 5433.", source="chat")
+    assert a.memory_keys_for("What is the database port for zebra?") == []                       # 2/3 for every entity: ambiguous
+    assert a.memory_keys_for("What is the database port for billing?") == ["billing database port"]   # full match wins, and ONLY it: other entities' ports are not retrieved as distractors
+    assert a.memory_keys_for("What is the database port for zebra?", reject_ambiguous=False)           # old behaviour available
+    a.observe("The log level for auth is debug1.", source="chat")
+    assert a.memory_keys_for("what is the log level") == ["auth level log"]                   # unique partial match is accepted
+
+
+def test_step_can_skip_extracting_the_prompt_so_instructions_never_become_facts():
+    backend = _Echo()
+    a = NSA(backend, config=RuntimeConfig(memory_enabled=True, include_state_in_prompt=False), extractor=RuleFactExtractor())
+    a.step("What is the port? Reply with exactly one line: VALUE=V123_456 and nothing else (example: VALUE=V123_456).", remember_prompt=False)
+    assert a.memory.keys() == ()

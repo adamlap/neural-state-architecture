@@ -16,7 +16,7 @@ from nsa.core.state_codec import decode_state, encode_state
 from nsa.cognition.system_one_runtime import SystemOneController, SystemOneBackend, SystemOneTick
 from nsa.cognition.tools import ToolRegistry
 from nsa.memory import TemporalMemoryStore
-from nsa.memory.extract import FactExtractor, rank_keys
+from nsa.memory.extract import FactExtractor, rank_keys, rank_scored
 from nsa.memory.routing import route_fact
 from nsa.decision import SecurityDecision
 from nsa.taint import authorize_tool_call, join_integrity
@@ -161,7 +161,7 @@ class NSARuntime:
         return replace(state, provenance=state.provenance.extend(transformation="cce.heartbeat"), step=state.step + 1)
 
     def observe(self, payload: Any, *, source: str = "text", confidence: float = 1.0, provenance: str = "local",
-                integrity: Optional[IntegrityLabel] = None, envelope: Optional[IngressEnvelope] = None) -> None:
+                integrity: Optional[IntegrityLabel] = None, envelope: Optional[IngressEnvelope] = None, extract: bool = True) -> None:
         if envelope is not None:
             if self.ingress is None:
                 raise RuntimeError("an envelope was supplied but no IngressAuthority is configured")
@@ -176,7 +176,7 @@ class NSARuntime:
         self.history.append(CognitiveInputEvent(payload, source=source, confidence=confidence, provenance=provenance, integrity=integrity)); self.state = replace(self.state, soft=replace(self.state.soft, confidence=confidence, uncertainty=1.0-confidence), provenance=self.state.provenance.extend(source=source), step=self.state.step+1); self._run_cognitive_transition(payload, confidence=confidence); self._cce.set_state(self.state); self._sync_canonical()
         if isinstance(payload, str) and self.novelty_gate is not None:
             self.last_novelty = self._score_novelty(payload)
-        if self.extractor is not None and self.memory is not None and isinstance(payload, str):
+        if extract and self.extractor is not None and self.memory is not None and isinstance(payload, str):
             text = payload if self.novelty_gate is None or self.config.novelty_write_threshold is None else self._novel_lines(payload)
             # The observation's integrity label becomes the label of every write it produces, so an
             # untrusted source's claims are subject to the memory integrity gate automatically.
@@ -277,7 +277,7 @@ class NSARuntime:
         while sum(len(v) for v in self._answer_cache.values()) > self.config.reuse_cache_size:
             self._answer_cache.pop(next(iter(self._answer_cache)))
 
-    def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True) -> list[str]:
+    def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True, reject_ambiguous: bool = True) -> list[str]:
         """Memory keys that best match a natural-language question (token overlap).
 
         With ``prefer_trusted`` (default), a key whose current value was written under an UNTRUSTED label is used
@@ -289,11 +289,19 @@ class NSARuntime:
         if self.memory is None:
             return []
         n = self.config.memory_limit if limit is None else limit
-        ranked = rank_keys(text, self.memory.keys(), limit=max(n, 1) * 4)
+        pool = rank_scored(text, self.memory.keys())
         if prefer_trusted:
-            trusted = [k for k in ranked if self.memory.current(k).content.get("integrity", "TRUSTED") == "TRUSTED"]
+            trusted = [(sc, k) for sc, k in pool if self.memory.current(k).content.get("integrity", "TRUSTED") == "TRUSTED"]
             if trusted:
-                ranked = trusted
+                pool = trusted
+        if pool:
+            # Only the best-matching key(s): lower-scoring partial matches are other entities' values (e.g. the same attribute of another entity) and only distract the model.
+            pool = [(sc, k) for sc, k in pool if sc >= pool[0][0] - 1e-9]
+            if reject_ambiguous and pool[0][0] < 1.0 and len(pool) > 1:
+                # Several keys tie on a PARTIAL match ("database port for zebra" matches every entity's database port equally). Picking one by name would silently
+                # answer about the wrong entity; return nothing so the caller can abstain or ask.
+                return []
+        ranked = [k for _, k in pool]
         return ranked[:n]
 
     def context_integrity(self) -> IntegrityLabel:
@@ -408,8 +416,8 @@ class NSARuntime:
             return self.backend.generate(model_prompt, state=self.state.summary())
         return self.backend.generate(model_prompt)
 
-    def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = (), memory_keys: Sequence[str] = (), auto_memory: bool = False) -> AgentResult:
-        self.observe(prompt)
+    def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = (), memory_keys: Sequence[str] = (), auto_memory: bool = False, remember_prompt: bool = True) -> AgentResult:
+        self.observe(prompt, extract=remember_prompt)
         if auto_memory and not memory_keys:
             memory_keys = self.memory_keys_for(prompt)
         memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit) if self.memory is not None and memory_keys else ""

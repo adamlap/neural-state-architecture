@@ -260,6 +260,12 @@ def key_overlap(question: str, key: str) -> float:
     return len(q & k) / len(k) if k else 0.0
 
 
+def rank_scored(question: str, keys: Iterable[str], *, min_score: float = 0.5) -> list[tuple[float, str]]:
+    """(score, key) pairs, best first, for keys whose token overlap with the question reaches ``min_score``."""
+    scored = sorted(((key_overlap(question, k), k) for k in keys), key=lambda t: (-t[0], t[1]))
+    return [(sc, k) for sc, k in scored if sc >= min_score]
+
+
 def rank_keys(question: str, keys: Iterable[str], *, limit: int = 3, min_score: float = 0.5) -> list[str]:
     scored = sorted(((key_overlap(question, k), k) for k in keys), key=lambda t: (-t[0], t[1]))
     return [k for s, k in scored if s >= min_score][:limit]
@@ -267,4 +273,4 @@ def rank_keys(question: str, keys: Iterable[str], *, limit: int = 3, min_score: 
 
 __all__ = ["ExtractedFact", "FactExtractor", "RuleFactExtractor", "LLMFactExtractor", "HybridFactExtractor", "SpanFactExtractor", "looks_factual", "is_grounded",
            "parse_llm_facts",
-           "normalize_key", "key_overlap", "rank_keys"]
+           "normalize_key", "key_overlap", "rank_keys", "rank_scored"]
