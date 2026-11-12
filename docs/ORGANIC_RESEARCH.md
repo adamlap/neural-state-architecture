@@ -51,9 +51,36 @@ Limits: a toy world with synthetic prototypes and one outcome per event; the tra
 constant; thresholds and constants were not tuned for either side; results are not language and not a model of awareness.
 
 ## Where the "trailing field" matters
-Only the field's decaying trace lets the delayed outcome bind to the cue (`test_trailing_field_still_holds_the_cue...`: the cue-end state and
-the state at outcome time have cosine > 0.95). A multi-timescale version (several λ), prediction of the *next field state* rather than the
+**Correction to Experiment 1:** v1 captured the cue-end key and handed it to the learning step after the delay, so the trailing field did
+not mediate the binding there; the claim in the paragraph below was only demonstrated by v2. A multi-timescale version (several λ), prediction of the *next field state* rather than the
 outcome, and delays longer than the trace are the next measurements.
+
+## Experiment 2: does the trailing field really bind the delayed outcome? (`experiments/organic/dog_test_v2.py`)
+
+Two agents differ only in the key used when the outcome arrives: `stored` (the cue-end key kept in an eligibility buffer, v1's behaviour) and
+`trace` (true trace conditioning: the live field state at outcome time, the cue surviving only as a decaying trace). Field time constants:
+`mid` (λ = .8), `slow` (.95), `multi` (concatenation of .5/.8/.95, each normalised), plus `slower` (.99) in the long-delay probe.
+8 seeds (probe: 6), 400 events (probe: 300), valenced-cue accuracy (decoy accuracy stayed ≥ 0.98 throughout), `results/organic_dog_test_v2.json`,
+`results/organic_dog_test_v2_long_delay.json`.
+
+| key | delay 3 | 8 | 15 | 25 | 40 | 60 | 100 |
+|---|---|---|---|---|---|---|---|
+| stored (any field) | 1.00 | 1.00 | 1.00 | 1.00 | - | - | - |
+| trace, mid (.8) | 1.00 | 1.00 | 0.80 | **0.17** | - | - | - |
+| trace, slow (.95) | 1.00 | 1.00 | 1.00 | 1.00 | 0.99 | 0.62 | 0.18 |
+| trace, slower (.99) | - | - | - | 1.00 | 1.00 | 1.00 | 0.99 |
+| trace, multi (.5/.8/.95) | 1.00 | 0.98 | 0.95 | 0.77 (0.69) | 0.49 | 0.28 | 0.12 |
+| trace, (.8/.95/.99) | - | - | - | 0.98 | 0.96 | 0.90 | 0.59 |
+
+1. **The trace binds only while it lasts.** A fast trace gives full accuracy at delay 3-8 and collapses at 15-25 (0.80 → 0.17); a trace whose
+   time constant is matched to the delay holds (λ = .95 to delay 40, λ = .99 past 100). The mechanism works and has a measurable horizon of about
+   1-2 trace time constants; the explicit eligibility buffer has no such limit but stores a key per pending event.
+2. **Concatenating timescales hurts** (multi is worse than slow at every long delay): the fast components are noise at outcome time and dilute
+   the key. A multi-timescale field needs *selection or learned weighting* of timescales (e.g. weight each trace by how well it predicts the
+   outcome), not an equal-weight sum. Not yet implemented.
+3. **Self-detected events** (next-input prediction error as a z-score above its running mean) found every cue onset with no false alarms
+   (recall 1.00, precision 1.00 over 8 seeds). That is a ceiling result: the cues are large relative to the noise, so it shows the mechanism
+   works, not that it is robust. A noise/amplitude sweep is the next test.
 
 ## Wrapping a language model (design, not implemented)
 Earlier NSA results are a constraint here: showing serialised state *text* to an LLM did not help (v1.2, v4.2); what helped was state that
@@ -61,3 +88,10 @@ Earlier NSA results are a constraint here: showing serialised state *text* to an
 supports: (1) gating - the field's surprise/novelty decides *whether* to call the LLM, retrieve, or abstain (cf. v7); (2) selective context -
 the field decides what is written to and retrieved from NSA's memory instead of a transcript (cf. v8); (3) latent injection - the field state
 is projected into the LLM's embedding space as soft-prompt vectors (needs a model whose weights we can run and a trained projection).
+
+## Branch note: using the field to keep a large LLM mostly out of memory (not started)
+The same machinery could, in principle, predict which parts of a large model the current input needs so the rest stays on disk: a small
+predictive field over the input/context that selects experts (mixture-of-experts routing) or attention heads and MLP neurons ("contextual
+sparsity"). NSA's current residency layer only prefetches layers in sequence and measured neutral on a dense model, so the promising targets
+are MoE models and learned contextual sparsity, evaluated by memory resident, latency and answer quality against llama.cpp-style mmap.
+It needs a trainable predictor and a model with sparse structure; treat as a separate branch.
