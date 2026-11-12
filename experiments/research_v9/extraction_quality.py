@@ -25,7 +25,7 @@ from random import Random
 
 VERSION = "9.1-extraction"
 EXTRACTORS = ("rules", "llm", "llm_fewshot", "hybrid", "llm_fewshot_grounded", "hybrid_grounded", "rules_span", "hybrid_span")
-PHRASINGS = ("train", "heldout", "test")
+PHRASINGS = ("train", "heldout", "test", "test2")
 DECODING = {"temperature": 0.0, "max_tokens": 512, "num_ctx": 8192}
 
 
