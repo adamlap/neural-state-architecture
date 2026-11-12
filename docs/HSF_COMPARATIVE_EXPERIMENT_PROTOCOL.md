@@ -213,6 +213,29 @@ replay on a wide key plane*, pending replication (more seeds, sparsity/shape swe
 Next: (1) that replication; (2) replay from a bounded buffer instead of all records; (3) only then an NSA integration test in
 which the key is a fact key and the value a vocabulary-free code.
 
+## Stage 4d: replication with the baseline tuned (implemented and run)
+
+`replication_sweep.py` gives **both** methods their own tuning: separator sparsity in {2, 5, 10, 20 %} for each, and for HSF
+the field shape in {16×16×16, 16×32×8} at a fixed 4,096 field floats (32×32×4 is excluded because it has fewer channels than the
+8-value vocabulary). The best configuration per method is chosen on selection seeds 1-5 and then evaluated on 10 *different*
+seeds, so the reported numbers are not selected on their own data. Raw: `results/hsf_replication_v1.json`.
+
+| cosine | n | HSF best config | HSF mean (worst) | HDC mean (worst) | paired seeds HSF / tie / HDC |
+|---|---|---|---|---|---|
+| 0.9 | 64 | 16×32×8, 2 % | 0.99 (0.95) | 0.79 (0.64) | 10 / 0 / 0 |
+| 0.9 | 128 | 16×32×8, 2 % | 0.93 (0.83) | 0.72 (0.63) | 10 / 0 / 0 |
+| 0.5 | 64 | 16×16×16, 2 % | 1.00 (1.00) | 1.00 (1.00) | 0 / 10 / 0 |
+| 0.5 | 128 | 16×16×16, 2 % | 1.00 (0.99) | 0.97 (0.92) | 9 / 1 / 0 |
+
+The Stage 4c advantage **replicates** at cosine 0.9 (HSF better on all 10 held-out seeds, +0.20-0.21 mean) and the cosine-0.5
+disadvantage seen in 4c disappears once sparsity is tuned for both (sparser, 2 %, is best for both methods). It still is not a
+statement about the real world: HSF pays H·W extra floats, HDC has no homeostatic counterpart, only n ≤ 128 and one key family
+structure were swept, replay re-presents every record, and the task is a closed 8-value vocabulary.
+
+Gate assessment after 4d: the robustness gate is met for correlated keys, with replication, for this synthetic task.
+Next: bounded-buffer replay; a larger vocabulary (which needs more channels, shifting the shape trade-off); then the NSA
+integration test.
+
 ## Decision gates
 
 Continue developing HSF only if it demonstrates at least one repeatable:

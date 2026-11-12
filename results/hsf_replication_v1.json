@@ -1,0 +1,124 @@
+{
+  "experiment": "hsf_replication_v1",
+  "select_seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "eval_seeds": [
+    11,
+    23,
+    47,
+    59,
+    71,
+    83,
+    97,
+    101,
+    113,
+    127
+  ],
+  "sparsities": [
+    0.02,
+    0.05,
+    0.1,
+    0.2
+  ],
+  "shapes": [
+    [
+      16,
+      16,
+      16
+    ],
+    [
+      16,
+      32,
+      8
+    ]
+  ],
+  "field_floats": 4096,
+  "rows": [
+    {
+      "rho": 0.9,
+      "count": 64,
+      "hsf_best_shape": [
+        16,
+        32,
+        8
+      ],
+      "hsf_best_sparsity": 0.02,
+      "hdc_best_sparsity": 0.02,
+      "hsf_select": 0.921875,
+      "hdc_select": 0.821875,
+      "hsf_eval_mean": 0.990625,
+      "hdc_eval_mean": 0.790625,
+      "hsf_eval_min": 0.953125,
+      "hdc_eval_min": 0.640625,
+      "paired_wins_hsf": 10,
+      "paired_ties": 0,
+      "paired_wins_hdc": 0
+    },
+    {
+      "rho": 0.9,
+      "count": 128,
+      "hsf_best_shape": [
+        16,
+        32,
+        8
+      ],
+      "hsf_best_sparsity": 0.02,
+      "hdc_best_sparsity": 0.02,
+      "hsf_select": 0.8828125,
+      "hdc_select": 0.653125,
+      "hsf_eval_mean": 0.9265625,
+      "hdc_eval_mean": 0.715625,
+      "hsf_eval_min": 0.828125,
+      "hdc_eval_min": 0.6328125,
+      "paired_wins_hsf": 10,
+      "paired_ties": 0,
+      "paired_wins_hdc": 0
+    },
+    {
+      "rho": 0.5,
+      "count": 64,
+      "hsf_best_shape": [
+        16,
+        16,
+        16
+      ],
+      "hsf_best_sparsity": 0.02,
+      "hdc_best_sparsity": 0.02,
+      "hsf_select": 1.0,
+      "hdc_select": 1.0,
+      "hsf_eval_mean": 1.0,
+      "hdc_eval_mean": 1.0,
+      "hsf_eval_min": 1.0,
+      "hdc_eval_min": 1.0,
+      "paired_wins_hsf": 0,
+      "paired_ties": 10,
+      "paired_wins_hdc": 0
+    },
+    {
+      "rho": 0.5,
+      "count": 128,
+      "hsf_best_shape": [
+        16,
+        16,
+        16
+      ],
+      "hsf_best_sparsity": 0.02,
+      "hdc_best_sparsity": 0.02,
+      "hsf_select": 1.0,
+      "hdc_select": 0.978125,
+      "hsf_eval_mean": 0.9984375,
+      "hdc_eval_mean": 0.9734375,
+      "hsf_eval_min": 0.9921875,
+      "hdc_eval_min": 0.921875,
+      "paired_wins_hsf": 9,
+      "paired_ties": 1,
+      "paired_wins_hdc": 0
+    }
+  ],
+  "boundary": "Synthetic correlated bipolar keys, 8-value vocabulary, all records replayed 3 times; HSF also pays H*W usage floats."
+}
