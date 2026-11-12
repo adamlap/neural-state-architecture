@@ -345,6 +345,33 @@ synthetic cosines: do NSA's "entity attribute" keys behave like correlated famil
 store; (3) the replay buffer must be the NSA episodic log; (4) a comparison against NSA's current exact `TemporalMemoryStore` (the dictionary
 that has perfect recall), where the case for HSF can only be fixed size, graceful degradation and in-field supersession.
 
+## Stage 5a: NSA's real fact keys (implemented and run)
+
+`nsa_keys_benchmark.py` uses the normalised "entity attribute" keys NSA's extractor produces (10 entities × 8 attributes, e.g.
+"admin billing email"). A cue is the normalised sum of random codes of the key's tokens, so correlation comes from shared words.
+Values are opaque strings with a hashed short code and an open-vocabulary store of the strings seen. Half the keys are rewritten, the
+records replayed, 10 held-out seeds (`results/hsf_nsa_keys_v1.json`). Accuracy mean (worst seed):
+
+| keys | HSF additive | HSF sep+delta | HSF sep+homeo+replay | HDC sep+replay | exact dictionary |
+|---|---|---|---|---|---|
+| 40, 4,096 floats | 0.17 | 0.81 | **1.00 (1.00)** | 1.00 (0.97) | 1.00 |
+| 80, 4,096 floats | 0.07 | 0.53 | **1.00 (1.00)** | 0.96 (0.91) | 1.00 |
+| 80, 16,384 floats | 0.08 | 0.72 | 1.00 (1.00) | 1.00 (1.00) | 1.00 |
+
+Findings:
+
+1. **Real keys are not the hard regime.** Mean pairwise key cosine is 0.10-0.11 (not 0.9), and separation barely changes it (0.10 → 0.10).
+   The correlated-family advantage measured in Stage 4 does not describe NSA's keys.
+2. **The HSF advantage over HDC mostly vanishes**: 1.00 vs 1.00, and 1.00 vs 0.96 at 80 keys in the smallest budget (worst seed 1.00 vs 0.91).
+3. **What matters for real keys is the error-driven write plus replay**, not separation: the additive write fails (0.07-0.17, old and new values
+   superpose), a single-pass delta write degrades with load (0.53 at 80 keys), replay restores it to 1.00.
+4. The exact dictionary is perfect; the approximate memories reach the same accuracy in 4,096-4,352 floats against a 10,880-21,760-float
+   reference for key and value codes (a real dictionary also stores the strings). The compression is real but is not a recall advantage.
+
+Gate assessment after 5a: for NSA's actual keys the case for HSF over the exact store and over HDC is **fixed size and in-memory
+supersession**, not accuracy. That is a modest case; it becomes decisive only when the memory must be *inside* a network (no external
+dictionary available, differentiable, constant per-step cost), which is the Path B question, not an NSA-memory question.
+
 ## Decision gates
 
 Continue developing HSF only if it demonstrates at least one repeatable:
