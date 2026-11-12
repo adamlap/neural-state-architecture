@@ -24,7 +24,8 @@ from experiments.research_v9.natural_memory_benchmark import CHATTER, ENTITIES, 
 from random import Random
 
 VERSION = "9.1-extraction"
-EXTRACTORS = ("rules", "llm", "llm_fewshot", "hybrid", "llm_fewshot_grounded", "hybrid_grounded", "rules_span", "hybrid_span")
+EXTRACTORS = ("rules", "llm", "llm_fewshot", "hybrid", "llm_fewshot_grounded", "hybrid_grounded", "rules_span", "hybrid_span",
+              "hybrid_perline", "hybrid_perline_repair")
 PHRASINGS = ("train", "heldout", "test", "test2")
 DECODING = {"temperature": 0.0, "max_tokens": 512, "num_ctx": 8192}
 
@@ -55,7 +56,9 @@ def build_extractor(name: str, backend):
             "llm_fewshot_grounded": lambda: LLMFactExtractor(backend, few_shot=True, grounded=True),
             "hybrid_grounded": lambda: HybridFactExtractor(backend, grounded=True),
             "rules_span": lambda: HybridFactExtractor(None, span=True),
-            "hybrid_span": lambda: HybridFactExtractor(backend, span=True)}[name]()
+            "hybrid_span": lambda: HybridFactExtractor(backend, span=True),
+            "hybrid_perline": lambda: HybridFactExtractor(backend, per_line=True),
+            "hybrid_perline_repair": lambda: HybridFactExtractor(backend, span=True, per_line=True, repair_keys=True, grounded=True)}[name]()
 
 
 WARMUP_LINES = 12
@@ -122,7 +125,7 @@ def run(args):
         for name in (getattr(args, "extractors", None) or EXTRACTORS):
             if name == "rules" and model != args.models[0]:
                 continue                                    # model-independent; run once
-            for phrasing in PHRASINGS:
+            for phrasing in (getattr(args, "phrasings", None) or PHRASINGS):
                 for seed in args.seeds:
                     events, truth = make_chunk_episode(seed, phrasing, args.lines)
                     res = score(build_extractor(name, backend), events, truth, warmup_text(seed))
@@ -143,6 +146,7 @@ def main():
     p.add_argument("--seeds", nargs="+", type=int, default=list(range(7, 27)))
     p.add_argument("--lines", type=int, default=10)
     p.add_argument("--extractors", nargs="+", default=None, choices=EXTRACTORS)
+    p.add_argument("--phrasings", nargs="+", default=None, choices=PHRASINGS)
     p.add_argument("--timeout", type=float, default=300.0)
     p.add_argument("--out", default="results/research-v9-extraction")
     p.add_argument("--ollama-url", default=None)

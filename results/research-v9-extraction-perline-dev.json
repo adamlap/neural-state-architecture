@@ -1,0 +1,128 @@
+[
+  {
+    "model": "qwen2.5:1.5b",
+    "extractor": "hybrid",
+    "phrasing": "train",
+    "recall": 1.0,
+    "precision": 1.0
+  },
+  {
+    "model": "qwen2.5:1.5b",
+    "extractor": "hybrid",
+    "phrasing": "heldout",
+    "recall": 0.7384615384615385,
+    "precision": 0.7741935483870968
+  },
+  {
+    "model": "qwen2.5:1.5b",
+    "extractor": "hybrid",
+    "phrasing": "test",
+    "recall": 0.3106060606060606,
+    "precision": 0.47126436781609193
+  },
+  {
+    "model": "qwen2.5:1.5b",
+    "extractor": "hybrid_perline",
+    "phrasing": "train",
+    "recall": 1.0,
+    "precision": 1.0
+  },
+  {
+    "model": "qwen2.5:1.5b",
+    "extractor": "hybrid_perline",
+    "phrasing": "heldout",
+    "recall": 0.7307692307692307,
+    "precision": 0.7307692307692307
+  },
+  {
+    "model": "qwen2.5:1.5b",
+    "extractor": "hybrid_perline",
+    "phrasing": "test",
+    "recall": 0.3939393939393939,
+    "precision": 0.611764705882353
+  },
+  {
+    "model": "qwen2.5:1.5b",
+    "extractor": "hybrid_perline_repair",
+    "phrasing": "train",
+    "recall": 1.0,
+    "precision": 1.0
+  },
+  {
+    "model": "qwen2.5:1.5b",
+    "extractor": "hybrid_perline_repair",
+    "phrasing": "heldout",
+    "recall": 0.6153846153846154,
+    "precision": 0.6201550387596899
+  },
+  {
+    "model": "qwen2.5:1.5b",
+    "extractor": "hybrid_perline_repair",
+    "phrasing": "test",
+    "recall": 0.42424242424242425,
+    "precision": 0.509090909090909
+  },
+  {
+    "model": "qwen2.5:3b",
+    "extractor": "hybrid",
+    "phrasing": "train",
+    "recall": 1.0,
+    "precision": 1.0
+  },
+  {
+    "model": "qwen2.5:3b",
+    "extractor": "hybrid",
+    "phrasing": "heldout",
+    "recall": 0.7615384615384615,
+    "precision": 0.7674418604651163
+  },
+  {
+    "model": "qwen2.5:3b",
+    "extractor": "hybrid",
+    "phrasing": "test",
+    "recall": 0.2878787878787879,
+    "precision": 0.475
+  },
+  {
+    "model": "qwen2.5:3b",
+    "extractor": "hybrid_perline",
+    "phrasing": "train",
+    "recall": 1.0,
+    "precision": 1.0
+  },
+  {
+    "model": "qwen2.5:3b",
+    "extractor": "hybrid_perline",
+    "phrasing": "heldout",
+    "recall": 0.5923076923076923,
+    "precision": 0.6581196581196581
+  },
+  {
+    "model": "qwen2.5:3b",
+    "extractor": "hybrid_perline",
+    "phrasing": "test",
+    "recall": 0.3106060606060606,
+    "precision": 0.5694444444444444
+  },
+  {
+    "model": "qwen2.5:3b",
+    "extractor": "hybrid_perline_repair",
+    "phrasing": "train",
+    "recall": 1.0,
+    "precision": 1.0
+  },
+  {
+    "model": "qwen2.5:3b",
+    "extractor": "hybrid_perline_repair",
+    "phrasing": "heldout",
+    "recall": 0.5846153846153846,
+    "precision": 0.59375
+  },
+  {
+    "model": "qwen2.5:3b",
+    "extractor": "hybrid_perline_repair",
+    "phrasing": "test",
+    "recall": 0.3939393939393939,
+    "precision": 0.5
+  }
+]

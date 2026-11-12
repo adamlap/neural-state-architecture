@@ -233,3 +233,20 @@ def test_four_letter_words_tolerate_a_one_character_typo():
 
     assert key_overlap("What is the cace size for reports?", "cache reports size") == 1.0
     assert key_overlap("What is the cace size for reports?", "queue reports size") < 1.0
+
+
+def test_per_line_mode_makes_one_call_per_leftover_line_and_repairs_the_key_from_the_source_line():
+    from nsa.memory.extract import HybridFactExtractor
+
+    prompts = []
+
+    def gen(prompt, **kw):
+        prompts.append(prompt)
+        return SimpleNamespace(text="cache | size | k3m9x2ab | fact")          # the model drops the entity
+
+    ex = HybridFactExtractor(SimpleNamespace(generate=gen), span=True, per_line=True, repair_keys=True)
+    ex.warm("The cache size for billing is zz11.\nThe cache size for staging is yy22.")      # learns: cache, size, billing, staging
+    facts = ex.extract("Ticket 4411: k3m9x2ab is what billing uses for the cache size.\nlunch at noon?")   # two value-like tokens: the span stage declines
+    assert [(f.key, f.value) for f in facts] == [("billing cache size", "k3m9x2ab")] and len(prompts) == 1
+    plain = HybridFactExtractor(SimpleNamespace(generate=gen), per_line=True)
+    assert [f.key for f in plain.extract("Ticket 4411: k3m9x2ab is what billing uses for the cache size.")] == ["cache size"]   # no repair by default

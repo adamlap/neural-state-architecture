@@ -201,10 +201,20 @@ def looks_factual(line: str) -> bool:
 class HybridFactExtractor:
     """Rules first; the model only sees factual-looking lines the rules could not parse (one call per text)."""
 
-    def __init__(self, backend: Any, *, few_shot: bool = True, rules: Any = None, grounded: bool = False, span: bool = False) -> None:
+    def __init__(self, backend: Any, *, few_shot: bool = True, rules: Any = None, grounded: bool = False, span: bool = False,
+                 per_line: bool = False, repair_keys: bool = False) -> None:
+        self.per_line = per_line
+        self.repair_keys = repair_keys
         self.rules = rules or RuleFactExtractor()
         self.llm = LLMFactExtractor(backend, few_shot=few_shot, grounded=grounded) if backend is not None else None
         self.span = SpanFactExtractor() if span else None
+
+    def _repair(self, fact: ExtractedFact, line: str) -> ExtractedFact:
+        """Anchor a model-produced key to the source line: use the line's words that belong to the learned entity/attribute vocabulary (needs span=True and a warm vocabulary)."""
+        if not (self.repair_keys and self.span is not None and self.span.vocab):
+            return fact
+        kept = {w for w in re.findall(r"[a-z]+", line.lower()) if w in self.span.vocab and w not in _STOP}
+        return ExtractedFact(normalize_key(" ".join(kept)), fact.value, fact.kind) if len(kept) >= 2 else fact
 
     def warm(self, text: str) -> None:
         """Seed the span vocabulary from text the pattern rules understand (no effect without ``span=True``)."""
@@ -235,6 +245,13 @@ class HybridFactExtractor:
                 facts += found
             elif looks_factual(line):
                 leftovers.append(line)
+        if leftovers and self.llm is not None and self.per_line:
+            # One model call per leftover line: a small model extracts more reliably from a single line than from eight, and the source line is known,
+            # so the key can be repaired from it (an LLM often drops the entity or adds a cue word such as "new").
+            for line in leftovers:
+                for fact in self.llm.extract(line):
+                    facts.append(self._repair(fact, line))
+            return facts
         if leftovers and self.llm is not None:
             facts += self.llm.extract("\n".join(leftovers))
         return facts
