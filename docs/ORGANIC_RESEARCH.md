@@ -99,7 +99,44 @@ trace conditioning: the live field state at outcome time). 8 seeds (probe 6), 30
    precision stays 0.6-0.95). **The predictive detector gives no advantage over the trivial baseline in this world**, so "surprise from the
    stream" is so far not shown to be a better event signal than energy.
 
-## Wrapping a language model (design, not implemented)
+## Experiment 3: the first LLM wrapper (v0) - a familiarity gate (`experiments/organic/novelty_gate.py`)
+
+The wrapper does not feed the field to the LLM; it *gates* it, following the earlier NSA finding that state shown to a model does nothing while
+state that controls something does. `NoveltyGate` is a fixed-size (256×256 = 65,536 floats) autoassociative linear memory trained online with
+the delta rule on hashed character-trigram cues; an event's novelty is `‖x − W x‖` (what the memory cannot reconstruct), after which the memory learns
+it. It decides which events deserve an LLM call or a memory write. No LLM is called in this benchmark; it scores how well each detector ranks events
+by importance on a synthetic conversation stream (facts, reminders - same value, sometimes with a typo or other phrasing - updates, chatter;
+important = first mention of a key or an update to a different value; 10 seeds; `results/organic_novelty_gate_v1.json`).
+
+| stream | detector | memory floats | ROC AUC (worst seed) | recall at a 20 % call budget | false-call rate |
+|---|---|---|---|---|---|
+| 300 lines | **field gate** | 65,536 | **0.863** (0.843) | 0.42 | 0.09 |
+| | exact token-set novelty | 232 | 0.840 | 0.32 | 0.14 |
+| | nearest-neighbour over all stored lines | 76,800 | 0.826 | 0.43 | 0.09 |
+| | random | 0 | 0.502 | 0.20 | 0.20 |
+| 2000 lines | field gate | 65,536 | 0.868 (0.856) | 0.56 | 0.12 |
+| | exact token-set novelty | 804 | 0.868 | 0.42 | 0.15 |
+| | nearest-neighbour over all stored lines | 512,000 | 0.880 | 0.58 | 0.12 |
+| | random | 0 | 0.493 | 0.19 | 0.20 |
+
+Reading, with limits stated:
+
+1. **The gate works and its cost is constant.** It ranks important events far above chance (AUC 0.86-0.87) at a fixed 65,536 floats while the
+   nearest-neighbour detector grows from 76,800 to 512,000 floats for the same quality (AUC 0.88 at 2000 lines, 0.826 at 300).
+2. **It is not better than simple baselines.** At 2000 lines the exact token-set detector ties it on AUC with a few hundred stored tokens, and the
+   nearest-neighbour detector is slightly better. The field's measurable edge is at the call budget (recall 0.56 vs 0.42 for the token set), where
+   typo'd reminders are familiar to a distributed memory but "new tokens" to the set.
+3. **Sensitivity:** the learning rate matters (AUC at 300 lines: 0.81 / 0.86 / 0.88 for η = .25 / .5 / 1.0; at 2000 lines 0.85 / 0.86 / 0.86). Not tuned for any detector.
+4. The ceiling here is about 0.88 for every detector: some "important" events (a first mention that looks like earlier text, an update whose phrasing
+   repeats earlier updates) are lexically indistinguishable from reminders; telling them apart needs the key-value structure, i.e. the memory
+   itself, not a lexical familiarity score.
+
+What this is *not*: an end-to-end test with an LLM in the loop, nor a compute saving yet. Next: (1) merge this branch's field code with `main`
+and implement the gate inside `NSARuntime` (decide *observe-only / write to memory / call the model* from the novelty score); (2) run the existing
+benchmarks (v7/v9 style streams) with a real model and report calls saved against answer accuracy at equal budget; (3) replace the lexical
+cue with embeddings of continuous sensory input for the organic world.
+
+## Wrapping a language model (design)
 Earlier NSA results are a constraint here: showing serialised state *text* to an LLM did not help (v1.2, v4.2); what helped was state that
 **controls** something. So the organic module should not be pasted into the prompt. Three coupling modes, in order of what the evidence
 supports: (1) gating - the field's surprise/novelty decides *whether* to call the LLM, retrieve, or abstain (cf. v7); (2) selective context -
