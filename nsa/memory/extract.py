@@ -144,6 +144,51 @@ class LLMFactExtractor:
         return facts
 
 
+_STOP = frozenset(
+    "the a an of for to in on at by with as is are was were be been being has have had set currently now still this that it its their our we you i per from into "
+    "over under again yesterday today morning earlier new old one and or so but if then than there here which who what when where how not no yes also just very "
+    "confirmed noted reads configured reports uses use runs run should would could can will may might did does do get got".split())
+_SPAN_UPDATE_CUES = frozenset(
+    "now moved replaced swapped bumped changed supersedes superseded retired updated switched migrated rotated new correction".split())
+_SPAN_VALUE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.@:/\-]*")
+
+
+class SpanFactExtractor:
+    """Model-free span extraction for phrasings the patterns do not cover.
+
+    A line with exactly one value-like token (it contains a digit, or is an address) yields a fact whose key is the line's remaining content words, but
+    only words from a *vocabulary learned online* from earlier confident extractions (``learn``) are kept, and at least two must remain. The vocabulary is what
+    keeps filler ("runbook", "service", "team") out of keys; with an empty vocabulary nothing is extracted (cold start falls through to the model).
+    Update vs fact comes from cue words ("now", "moved", "replaced", "swapped", ...).
+    """
+
+    def __init__(self, vocabulary: Iterable[str] = (), *, min_words: int = 2) -> None:
+        self.vocab: set[str] = {w.lower() for w in vocabulary}
+        self.min_words = min_words
+
+    def learn(self, key: str) -> None:
+        self.vocab.update(w for w in key.split() if w not in _STOP)
+
+    def extract(self, text: str) -> list[ExtractedFact]:
+        if not self.vocab:
+            return []
+        facts = []
+        for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
+            tokens = [t.strip(".,;:()'\"") for t in _SPAN_VALUE.findall(sentence)]
+            candidates = [t for t in tokens if t and (any(c.isdigit() for c in t) or "@" in t)]
+            values = {t.lower(): t for t in candidates}
+            if len(values) != 1:
+                continue
+            value = next(iter(values.values()))
+            words = [w.replace("'s", "") for w in re.findall(r"[a-z]+(?:'s)?", sentence.lower())]
+            keys = [w for w in words if w in self.vocab and w not in _STOP]
+            if len(set(keys)) < self.min_words:
+                continue
+            kind = "update" if any(w in _SPAN_UPDATE_CUES for w in words) else "fact"
+            facts.append(ExtractedFact(normalize_key(" ".join(keys)), value, kind))
+        return facts
+
+
 _FACTUAL_HINT = re.compile(r"(=|:\s*\S|\b(is|are|to|now|should be|runs with|uses?)\b)", re.I)
 _VALUE_HINT = re.compile(r"[A-Za-z]*\d[\w.@:/\-]*|\S+@\S+")
 
@@ -156,13 +201,21 @@ def looks_factual(line: str) -> bool:
 class HybridFactExtractor:
     """Rules first; the model only sees factual-looking lines the rules could not parse (one call per text)."""
 
-    def __init__(self, backend: Any, *, few_shot: bool = True, rules: Any = None, grounded: bool = False) -> None:
+    def __init__(self, backend: Any, *, few_shot: bool = True, rules: Any = None, grounded: bool = False, span: bool = False) -> None:
         self.rules = rules or RuleFactExtractor()
-        self.llm = LLMFactExtractor(backend, few_shot=few_shot, grounded=grounded)
+        self.llm = LLMFactExtractor(backend, few_shot=few_shot, grounded=grounded) if backend is not None else None
+        self.span = SpanFactExtractor() if span else None
+
+    def warm(self, text: str) -> None:
+        """Seed the span vocabulary from text the pattern rules understand (no effect without ``span=True``)."""
+        if self.span is not None:
+            for line in text.splitlines():
+                for fact in self.rules.extract(line):
+                    self.span.learn(fact.key)
 
     @property
     def calls(self) -> int:
-        return self.llm.calls
+        return self.llm.calls if self.llm is not None else 0
 
     def extract(self, text: str) -> list[ExtractedFact]:
         facts: list[ExtractedFact] = []
@@ -173,9 +226,16 @@ class HybridFactExtractor:
             found = self.rules.extract(line)
             if found:
                 facts += found
+                if self.span is not None:
+                    for fact in found:
+                        self.span.learn(fact.key)
+                continue
+            found = self.span.extract(line) if self.span is not None else []
+            if found:
+                facts += found
             elif looks_factual(line):
                 leftovers.append(line)
-        if leftovers:
+        if leftovers and self.llm is not None:
             facts += self.llm.extract("\n".join(leftovers))
         return facts
 
@@ -205,6 +265,6 @@ def rank_keys(question: str, keys: Iterable[str], *, limit: int = 3, min_score: 
     return [k for s, k in scored if s >= min_score][:limit]
 
 
-__all__ = ["ExtractedFact", "FactExtractor", "RuleFactExtractor", "LLMFactExtractor", "HybridFactExtractor", "looks_factual", "is_grounded",
+__all__ = ["ExtractedFact", "FactExtractor", "RuleFactExtractor", "LLMFactExtractor", "HybridFactExtractor", "SpanFactExtractor", "looks_factual", "is_grounded",
            "parse_llm_facts",
            "normalize_key", "key_overlap", "rank_keys"]

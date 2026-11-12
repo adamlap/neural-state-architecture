@@ -167,3 +167,28 @@ def test_grounding_drops_facts_whose_value_or_key_is_not_in_the_source():
     ex = LLMFactExtractor(backend, grounded=True)
     assert [f.value for f in ex.extract(src)] == ["5433"] and ex.dropped_ungrounded == 1
     assert len(LLMFactExtractor(backend).extract(src)) == 2                                 # default behaviour unchanged
+
+
+def test_span_extractor_needs_a_vocabulary_and_keeps_only_known_words():
+    from nsa.memory.extract import SpanFactExtractor
+
+    sp = SpanFactExtractor()
+    assert sp.extract("Per the runbook, staging has its database port set to 5433.") == []         # cold start: nothing
+    sp.learn("database port staging")
+    sp.learn("admin billing email")
+    f = sp.extract("Per the runbook, staging has its database port set to 5433.")
+    assert [(x.key, x.value, x.kind) for x in f] == [("database port staging", "5433", "fact")]    # 'runbook' never reaches the key
+    assert sp.extract("Ops moved the database port on staging over to 6000.")[0].kind == "update"
+    assert sp.extract("lunch at 12 in staging?") == []                                             # one known word is not enough
+    assert sp.extract("staging database port 5433 or 6000") == []                                  # two candidate values: ambiguous
+
+
+def test_hybrid_with_span_stage_uses_rules_to_seed_the_vocabulary_and_skips_the_model():
+    from nsa.memory.extract import HybridFactExtractor
+
+    calls = []
+    ex = HybridFactExtractor(SimpleNamespace(generate=lambda p, **kw: calls.append(p) or SimpleNamespace(text="NONE")), span=True)
+    ex.warm("The database port for staging is 5433.")
+    facts = ex.extract("Looking at staging, its database port reads 7777.")
+    assert [(f.key, f.value) for f in facts] == [("database port staging", "7777")] and calls == []
+    assert HybridFactExtractor(None, span=True).extract("anything 123") == [] and HybridFactExtractor(None).calls == 0

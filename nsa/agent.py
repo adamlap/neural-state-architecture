@@ -58,6 +58,16 @@ class RuntimeConfig:
     # Route each extracted fact against the memory's current value for its key (nsa/memory/routing.py): ignore restatements, hold a near-duplicate
     # value without an update cue (likely noise) until it is observed twice, write everything else.
     route_noisy_updates: bool = False
+    # Model-call gating in step() (after policy enforcement, so security still comes first). Only applies when memory is used for the step
+    # (``memory_keys`` given or ``auto_memory=True``).
+    #   abstain_text: if ``auto_memory`` finds no matching memory key, return this text WITHOUT calling the model.
+    #   reuse_familiar_answers: if the retrieved memory state (keys and their versions) is unchanged since an earlier call and the question's wording is familiar
+    #   (character-trigram cosine >= ``reuse_similarity``), return the earlier answer WITHOUT calling the model. Any write to a retrieved key invalidates it.
+    # Both need NumPy only for reuse. Default off.
+    abstain_text: Optional[str] = None
+    reuse_familiar_answers: bool = False
+    reuse_similarity: float = 0.95
+    reuse_cache_size: int = 256
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -85,6 +95,8 @@ class NSARuntime:
         self.extractor = extractor
         self.stream_learner = stream_learner
         self.signal_stats = {"signals": 0, "outcomes": 0, "learning_blocked": 0}
+        self.call_stats = {"model_calls": 0, "reused": 0, "abstained": 0}
+        self._answer_cache: dict[tuple, list] = {}
         self.novelty_gate = novelty_gate
         self.last_novelty: Optional[float] = None
         self.gate_stats = {"lines": 0, "extracted": 0, "skipped": 0}
@@ -230,6 +242,41 @@ class NSARuntime:
                                                          confidence=1.0 - float(self.stream_learner.uncertainty)))
         return prediction
 
+    def _memory_epoch(self, keys: Sequence[str]) -> tuple:
+        out = []
+        for k in keys:
+            cur = self.memory.current(k) if self.memory is not None else None
+            out.append((k, int(cur.content.get("version", 0)) if cur else 0))
+        return tuple(sorted(out))
+
+    def _gate_model_call(self, prompt: str, memory_keys: Sequence[str], auto_memory: bool):
+        """Return ``(kind, text)`` to answer without the model, or None to call it."""
+        if self.memory is None:
+            return None
+        if auto_memory and not memory_keys and self.config.abstain_text is not None:
+            self.call_stats["abstained"] += 1
+            return "abstained", self.config.abstain_text
+        if not (self.config.reuse_familiar_answers and memory_keys):
+            return None
+        from nsa.organic import cue
+        entries = self._answer_cache.get(self._memory_epoch(memory_keys), ())
+        if entries:
+            c = cue(prompt)
+            for cached_cue, text in entries:
+                if float(c @ cached_cue) >= self.config.reuse_similarity:
+                    self.call_stats["reused"] += 1
+                    return "reused", text
+        return None
+
+    def _remember_answer(self, prompt: str, memory_keys: Sequence[str], text: str) -> None:
+        if not (self.config.reuse_familiar_answers and self.memory is not None and memory_keys):
+            return
+        from nsa.organic import cue
+        epoch = self._memory_epoch(memory_keys)
+        self._answer_cache.setdefault(epoch, []).append((cue(prompt), text))
+        while sum(len(v) for v in self._answer_cache.values()) > self.config.reuse_cache_size:
+            self._answer_cache.pop(next(iter(self._answer_cache)))
+
     def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True) -> list[str]:
         """Memory keys that best match a natural-language question (token overlap).
 
@@ -371,8 +418,15 @@ class NSARuntime:
         if self.policy_engine:
             decision = self.policy_engine.enforce(prompt, context=context, state=self.state)
             if decision.decision.value in {"deny", "require_approval"}: self.trace.append({"step": self.state.step, "prompt": prompt, "blocked": True}); return AgentResult("", self.state, decision=decision, trace_id=len(self.trace), blocked=True)
+        gated = self._gate_model_call(prompt, memory_keys, auto_memory)
+        if gated is not None:
+            kind, text = gated
+            self.trace.append({"step": self.state.step, "prompt": prompt, "response": text, "blocked": False, "gated": kind})
+            return AgentResult(text, self.state, decision=decision, trace_id=len(self.trace))
         raw_text = self._generate(self._prompt(model_prompt, in_flight=True, memory_present=bool(memory_context)))
+        self.call_stats["model_calls"] += 1
         text = raw_text.text if hasattr(raw_text, "text") else (str(raw_text) if not isinstance(raw_text, str) else raw_text)
+        self._remember_answer(prompt, memory_keys, text)
         if self.config.auto_update_semantic_state:
             self.state = replace(self.state, semantic=SemanticState(text), provenance=self.state.provenance.extend(transformation="llm.generate"), step=self.state.step+1); self._run_cognitive_transition(text, confidence=self.state.soft.confidence)
         self._cce.set_state(self.state); self._sync_canonical(); self.trace.append({"step": self.state.step, "prompt": prompt, "response": text, "blocked": False})

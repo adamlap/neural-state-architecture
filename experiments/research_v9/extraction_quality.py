@@ -24,8 +24,8 @@ from experiments.research_v9.natural_memory_benchmark import CHATTER, ENTITIES, 
 from random import Random
 
 VERSION = "9.1-extraction"
-EXTRACTORS = ("rules", "llm", "llm_fewshot", "hybrid", "llm_fewshot_grounded", "hybrid_grounded")
-PHRASINGS = ("train", "heldout")
+EXTRACTORS = ("rules", "llm", "llm_fewshot", "hybrid", "llm_fewshot_grounded", "hybrid_grounded", "rules_span", "hybrid_span")
+PHRASINGS = ("train", "heldout", "test")
 DECODING = {"temperature": 0.0, "max_tokens": 512, "num_ctx": 8192}
 
 
@@ -53,10 +53,23 @@ def build_extractor(name: str, backend):
             "llm_fewshot": lambda: LLMFactExtractor(backend, few_shot=True),
             "hybrid": lambda: HybridFactExtractor(backend),
             "llm_fewshot_grounded": lambda: LLMFactExtractor(backend, few_shot=True, grounded=True),
-            "hybrid_grounded": lambda: HybridFactExtractor(backend, grounded=True)}[name]()
+            "hybrid_grounded": lambda: HybridFactExtractor(backend, grounded=True),
+            "rules_span": lambda: HybridFactExtractor(None, span=True),
+            "hybrid_span": lambda: HybridFactExtractor(backend, span=True)}[name]()
 
 
-def score(extractor, events, truth) -> dict:
+WARMUP_LINES = 12
+
+
+def warmup_text(seed: int) -> str:
+    """Train-phrased lines (different values/keys than the scored episode) that seed the span vocabulary, as earlier conversation would."""
+    events, _ = make_chunk_episode(seed + 100003, "train", WARMUP_LINES)
+    return "\n".join(t for t, _ in events)
+
+
+def score(extractor, events, truth, warm: str | None = None) -> dict:
+    if warm and hasattr(extractor, "warm"):
+        extractor.warm(warm)
     start = time.perf_counter()
     got = set()
     for text, _ in chunk_events(events):
@@ -112,7 +125,7 @@ def run(args):
             for phrasing in PHRASINGS:
                 for seed in args.seeds:
                     events, truth = make_chunk_episode(seed, phrasing, args.lines)
-                    res = score(build_extractor(name, backend), events, truth)
+                    res = score(build_extractor(name, backend), events, truth, warmup_text(seed))
                     records.append(Record(model if name != "rules" else "none", name, phrasing, seed, **res))
                     print(f"{model} {name} {phrasing} s={seed} hit={res['hit']}/{res['truth']} spurious={res['spurious']} calls={res['calls']}", flush=True)
     (root / "raw.jsonl").write_text("\n".join(json.dumps(asdict(r)) for r in records) + "\n", encoding="utf-8")
