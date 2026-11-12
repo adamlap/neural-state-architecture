@@ -51,6 +51,9 @@ class RuntimeConfig:
     # verified envelope: unsigned observe()/remember() calls are labelled UNTRUSTED, even if they
     # pass integrity=TRUSTED explicitly. See nsa/ingress.py.
     require_signed_ingress: bool = False
+    # With a NoveltyGate configured: only lines whose novelty is at least this value reach the fact extractor (selective storage). None means
+    # the gate only measures (``last_novelty``); every line is still extracted. Lines are scored one by one; the gate learns every line.
+    novelty_write_threshold: Optional[float] = None
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -74,8 +77,11 @@ class NSARuntime:
                  config: Optional[RuntimeConfig] = None, continuous_transition: Optional[Callable[[CanonicalState], CanonicalState]] = None,
                  system_one: Optional[SystemOneController] = None, system_one_backend: Optional[SystemOneBackend] = None,
                  system_one_tools: Optional[ToolRegistry] = None, ingress: Optional[IngressAuthority] = None,
-                 extractor: Optional[FactExtractor] = None) -> None:
+                 extractor: Optional[FactExtractor] = None, novelty_gate: Any = None) -> None:
         self.extractor = extractor
+        self.novelty_gate = novelty_gate
+        self.last_novelty: Optional[float] = None
+        self.gate_stats = {"lines": 0, "extracted": 0, "skipped": 0}
         self.ingress = ingress
         self.ingress_rejections: list[tuple[str, str]] = []
         self.backend = backend; self.config = config or RuntimeConfig(); self.state = state or self._state_from_mapping(initial_state or {})
@@ -148,13 +154,29 @@ class NSARuntime:
         if envelope is None and self.config.require_signed_ingress:
             integrity = IntegrityLabel.UNTRUSTED       # a TRUSTED label needs a verified envelope
         self.history.append(CognitiveInputEvent(payload, source=source, confidence=confidence, provenance=provenance, integrity=integrity)); self.state = replace(self.state, soft=replace(self.state.soft, confidence=confidence, uncertainty=1.0-confidence), provenance=self.state.provenance.extend(source=source), step=self.state.step+1); self._run_cognitive_transition(payload, confidence=confidence); self._cce.set_state(self.state); self._sync_canonical()
+        if isinstance(payload, str) and self.novelty_gate is not None:
+            self.last_novelty = self._score_novelty(payload)
         if self.extractor is not None and self.memory is not None and isinstance(payload, str):
+            text = payload if self.novelty_gate is None or self.config.novelty_write_threshold is None else self._novel_lines(payload)
             # The observation's integrity label becomes the label of every write it produces, so an
             # untrusted source's claims are subject to the memory integrity gate automatically.
-            for fact in self.extractor.extract(payload):
+            for fact in (self.extractor.extract(text) if text.strip() else ()):
                 self.memory = self.memory.remember(
                     fact.key, {"value": fact.value}, kind=fact.kind, provenance_ids=(f"obs-{len(self.history) - 1}",),
                     integrity=self.history[-1].integrity)
+
+    def _score_novelty(self, payload: str) -> float:
+        """Novelty of the observation (max over its lines); the gate learns every line exactly once."""
+        self._line_scores = [(line, self.novelty_gate.observe(line)) for line in payload.splitlines() if line.strip()] or [(payload, 0.0)]
+        self.gate_stats["lines"] += len(self._line_scores)
+        score = max(sc for _, sc in self._line_scores)
+        return score
+
+    def _novel_lines(self, payload: str) -> str:
+        keep = [line for line, sc in self._line_scores if sc >= self.config.novelty_write_threshold]
+        self.gate_stats["extracted"] += len(keep)
+        self.gate_stats["skipped"] += len(self._line_scores) - len(keep)
+        return "\n".join(keep)
 
     def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True) -> list[str]:
         """Memory keys that best match a natural-language question (token overlap).

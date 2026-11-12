@@ -7,6 +7,9 @@ before 0.6.0 were not documented here; see git history.
 
 ### Added
 
+- `nsa.organic.NoveltyGate` (needs NumPy) and `NSARuntime(novelty_gate=...)` / `RuntimeConfig(novelty_write_threshold=...)`: a fixed-size
+  familiarity memory scores each observed line; with a threshold only novel lines reach the fact extractor (selective storage). Opt-in; default
+  unchanged. Halves extractor work on a noisy stream and cuts typo corruption but does not improve overall correctness (research/RESEARCH_BENCHMARK_V10.md).
 - Fact extraction (`nsa/memory/extract.py`): `RuleFactExtractor`, `LLMFactExtractor`, `NSARuntime(extractor=...)`.
   `observe()` writes the extracted facts to canonical memory with the observation's integrity label, so untrusted
   sources hit the memory gate automatically; `TemporalMemoryStore.keys()`, `NSARuntime.memory_keys_for()` and
