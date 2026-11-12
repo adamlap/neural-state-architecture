@@ -77,12 +77,16 @@ def run_episode(backend, seed: int, lines: int, num_ctx: int, cap: int, n_questi
                 found = a.memory_keys_for(key)
                 prompt = f"RETRIEVED_MEMORY=\n{a.memory.render(found) if found else 'NO_RELEVANT_MEMORY'}\n\n{q}"
             row = {"seed": seed, "lines": lines, "num_ctx": num_ctx, "key": key, "condition": cond, "expected": truth[key], "skipped": skipped,
-                   "correct": False, "typo_answered": False, "truncated": False, "prompt_tokens": None, "prompt_eval_ms": None, "response": ""}
+                   "correct": False, "typo_answered": False, "truncated": False, "silently_truncated": False, "prompt_chars": len(prompt),
+                   "prompt_tokens": None, "prompt_eval_ms": None, "response": ""}
             if not skipped:
                 out = backend.generate(prompt)
                 g = backend.last
+                # Ollama can drop most of an over-long prompt without reporting a full context (observed: ~4.1k tokens evaluated for a ~14k-token prompt at
+                # num_ctx 8192), so also compare the evaluated token count with a character-based estimate.
+                silent = bool(g.prompt_tokens) and g.prompt_tokens < 0.6 * (len(prompt) / CHARS_PER_TOKEN)
                 row.update(correct=lenient_correct(out.text, truth[key]), typo_answered=any(t.lower() in out.text.lower() for t in typos),
-                           truncated=g.truncated, prompt_tokens=g.prompt_tokens, prompt_eval_ms=g.prompt_eval_ms, response=out.text)
+                           truncated=g.truncated, silently_truncated=silent, prompt_tokens=g.prompt_tokens, prompt_eval_ms=g.prompt_eval_ms, response=out.text)
             rows.append(row)
     return rows
 
@@ -101,7 +105,7 @@ def summarize(rows: list[dict]) -> dict:
                     "n": len(run), "skipped": len(rs) - len(run), "accuracy": k / len(run) if run else None,
                     "accuracy_ci95": list(wilson(k, len(run))) if run else None,
                     "typo_answered": sum(r["typo_answered"] for r in run) / len(run) if run else None,
-                    "truncated_rate": sum(r["truncated"] for r in run) / len(run) if run else None,
+                    "truncated_rate": sum(r["truncated"] or r.get("silently_truncated", False) for r in run) / len(run) if run else None,
                     "prompt_tokens_mean": statistics.fmean(r["prompt_tokens"] for r in run) if run else None,
                     "prompt_eval_ms_mean": statistics.fmean(r["prompt_eval_ms"] for r in run) if run else None}
     return out

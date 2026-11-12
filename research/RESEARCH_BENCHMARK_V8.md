@@ -27,3 +27,8 @@ are skipped and excluded from accuracy.
 * **Generic keyword retrieval (`rag_lines`) matches canonical memory on these non-adversarial tasks.** Retrieval itself is not what is
   special about NSA's memory; what the canonical store adds is supersession, the integrity gate (v5, v6) and abstention (v7).
 * Memory is server-side and includes the weights; differences across `num_ctx` are the KV cache. One CPU-only machine, one run per cell.
+
+## Note: silent truncation is under-reported
+`FixedDecodingBackend.truncated` is set when the evaluated token count reaches `num_ctx - 1`. In v11 a ~14k-token transcript at `num_ctx` 8192 was evaluated as ~4.1k tokens with the flag unset
+(Ollama dropped most of the prompt). Prefer comparing `prompt_tokens` with a character-based estimate (v11 records `silently_truncated` this way). v8's truncation labels (`T`) were derived from
+the same flag and are conservative; its accuracy numbers are unaffected.
