@@ -108,6 +108,7 @@ class StreamLearner:
         self.floats = sparse_dim
         self.uncertainty = 1.0
         self.updates = self.outcomes = 0
+        self.seen = np.zeros(sparse_dim, dtype=np.float32)     # how often each code unit has taken part in a learning step (written or not)
 
     def _code(self):
         np = _numpy()
@@ -122,11 +123,21 @@ class StreamLearner:
     def predict(self) -> float:
         return float(self.M @ self._code())
 
+    def familiarity(self) -> float:
+        """0..1: how well the current input's active units have been seen in learning steps (0 = never seen; ~1 = seen many times).
+
+        Distinct from the prediction: an input learned to mean "nothing happens" has a prediction near 0 but high familiarity; a never-seen input has both near 0.
+        """
+        active = self._code() > 0
+        n = float(self.seen[active].mean()) if active.any() else 0.0
+        return float(1.0 - _numpy().exp(-n / 3.0))
+
     def learn(self, outcome: float, *, enabled: bool = True) -> float:
         """Bind ``outcome`` to the current field state; returns the prediction error (before the update)."""
         code = self._code()
         error = float(outcome) - float(self.M @ code)
         self.outcomes += 1
+        self.seen += (code > 0)
         self.uncertainty += 0.1 * (min(1.0, abs(error)) - self.uncertainty)
         if enabled and abs(error) > self.theta:
             self.M += self.eta * error * code / float(code @ code)

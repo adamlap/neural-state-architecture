@@ -174,6 +174,31 @@ UNTRUSTED channel (`untrusted_sources`, explicit `integrity`, or the signed-ingr
 * As with memory writes, the trust boundary is the label: the spoofed channel is correctly labelled untrusted at ingress. A sensor that lies about *which channel it is* is not covered.
 * Toy world, hand-set constants, oracle outcomes timing, delays up to 15 (the trace horizon limits longer delays, see Experiment 2).
 
+## Experiment 5: does uncertainty decide where costly deliberation should go? (`experiments/organic/dual_process_test.py`)
+The dog world runs through `NSARuntime.observe_signal`. Outcome feedback arrives only when the agent *queries* (a costly deliberation: an LLM call, an expert, a human). At event 300 half of the rewarding
+and aversive cues flip meaning, so earlier habit becomes wrong. Policies at cue end: `always` (cost ceiling / accuracy ceiling), `never`, `gated` (query when the input is unfamiliar -
+`StreamLearner.familiarity()` - plus a 3 % audit and a burst of queries after a surprising error), `gated_state` (the audit rate follows the runtime's soft-state uncertainty, the EMA of recent
+|error|), and `random` / `periodic` baselines **matched to the gated policy's query count on the same seed**. Scores on the **valenced cues only** (decoys are two thirds of events and a policy that
+never learns already gets them right: my first scoring on all events gave "never" 0.67 and was misleading). Developed on seeds 0-9, scored once on unseen seeds 100-109
+(`results/organic_dual_process_v1.json`):
+
+| policy | queries (of 600) | accuracy before shift | just after shift | end | recovery (events, median) | recovered |
+|---|---|---|---|---|---|---|
+| always | 600 | 1.00 | 0.84 | 1.00 | 10.5 | 100 % |
+| never | 0 | 0.00 | 0.00 | 0.00 | - | 0 % |
+| gated | 78 | 0.87 | 0.59 | 0.68 | 102 | 90 % |
+| random, matched to gated | 81 | 0.82 | 0.61 | 0.76 | 70.5 | 100 % |
+| gated_state | 115 | 0.90 | 0.66 | 0.76 | 23 | 90 % |
+| random, matched to gated_state | 114 | 0.87 | 0.66 | 0.81 | 53.5 | 100 % |
+| periodic, matched to gated_state | 115 | 0.92 | 0.67 | 0.83 | 26.5 | 100 % |
+
+* **The compute saving is real:** gating reaches 0.87-0.90 accuracy on valenced cues with 13-19 % of the queries of always-asking.
+* **The claim that uncertainty allocates the budget better than a schedule is not supported here.** At an equal budget, periodic querying is as accurate before the shift (0.92 vs 0.90) and clearly better at the end (0.83 vs 0.76);
+  random querying is on par before the shift and better at the end. Gating helped before the shift on the development seeds (0.89 vs 0.81-0.85) but not on the unseen ones against periodic.
+* **Why:** an input the system is familiar with but now wrong about never looks uncertain, so a shift is only caught by audits. Letting the runtime's soft-state uncertainty raise the audit rate (`gated_state`) shortens recovery
+  (median 102 -> 23 events) but costs more queries and still ends below the baselines.
+* This needs explicit change detection (a signal that the *world* changed, e.g. a burst of errors across several cues) rather than per-input familiarity; not built. One toy world, a perfect oracle, hand-set constants, 10 seeds.
+
 ## Wrapping a language model (design)
 Earlier NSA results are a constraint here: showing serialised state *text* to an LLM did not help (v1.2, v4.2); what helped was state that
 **controls** something. So the organic module should not be pasted into the prompt. Three coupling modes, in order of what the evidence

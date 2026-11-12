@@ -1,0 +1,96 @@
+{
+  "experiment": "organic_dual_process_v1",
+  "seeds": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109
+  ],
+  "events": 600,
+  "shift_at": 300,
+  "summary": {
+    "always": {
+      "queries": 600.0,
+      "queries_after_shift": 300.0,
+      "acc_before_shift": 1.0,
+      "acc_right_after_shift": 0.8374141651359392,
+      "acc_end": 1.0,
+      "decoy_acc_end": 1.0,
+      "recovery_events_median": 10.5,
+      "recovered_share": 1.0
+    },
+    "never": {
+      "queries": 0.0,
+      "queries_after_shift": 0.0,
+      "acc_before_shift": 0.0,
+      "acc_right_after_shift": 0.0,
+      "acc_end": 0.0,
+      "decoy_acc_end": 1.0,
+      "recovery_events_median": null,
+      "recovered_share": 0.0
+    },
+    "gated": {
+      "queries": 78.0,
+      "queries_after_shift": 23.0,
+      "acc_before_shift": 0.8707357105042443,
+      "acc_right_after_shift": 0.5867913262066489,
+      "acc_end": 0.6751101573198838,
+      "decoy_acc_end": 1.0,
+      "recovery_events_median": 102,
+      "recovered_share": 0.9
+    },
+    "gated_state": {
+      "queries": 114.9,
+      "queries_after_shift": 37.9,
+      "acc_before_shift": 0.9017031996335797,
+      "acc_right_after_shift": 0.658883886424209,
+      "acc_end": 0.7582429674543031,
+      "decoy_acc_end": 1.0,
+      "recovery_events_median": 23,
+      "recovered_share": 0.9
+    },
+    "random": {
+      "queries": 114.2,
+      "queries_after_shift": 56.4,
+      "acc_before_shift": 0.8670024003129415,
+      "acc_right_after_shift": 0.6612365516801001,
+      "acc_end": 0.8056888194448538,
+      "decoy_acc_end": 1.0,
+      "recovery_events_median": 53.5,
+      "recovered_share": 1.0
+    },
+    "periodic": {
+      "queries": 115.0,
+      "queries_after_shift": 57.5,
+      "acc_before_shift": 0.91720126740149,
+      "acc_right_after_shift": 0.6717885743288969,
+      "acc_end": 0.8272611804132455,
+      "decoy_acc_end": 1.0,
+      "recovery_events_median": 26.5,
+      "recovered_share": 1.0
+    },
+    "random_vs_gated": {
+      "queries": 81.3,
+      "queries_after_shift": 40.1,
+      "acc_before_shift": 0.8184830512243323,
+      "acc_right_after_shift": 0.606830596971726,
+      "acc_end": 0.7593991497308143,
+      "decoy_acc_end": 1.0,
+      "recovery_events_median": 70.5,
+      "recovered_share": 1.0
+    }
+  },
+  "constants": {
+    "familiarity_tau": 0.5,
+    "audit": 0.03,
+    "burst": 6,
+    "surprise": 0.5
+  },
+  "boundary": "Toy world, perfect oracle, hand-set constants; query counts matched to the gated policy for random and periodic."
+}

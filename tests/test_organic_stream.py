@@ -88,3 +88,25 @@ def test_explicit_integrity_and_signed_ingress_rule_apply_to_signals():
 def test_signal_api_requires_a_configured_learner():
     with pytest.raises(RuntimeError):
         NSA(_Echo()).observe_signal(np.ones(4, dtype=np.float32))
+
+
+def test_familiarity_separates_never_seen_inputs_from_inputs_learned_to_mean_nothing():
+    rng = np.random.default_rng(0)
+    learner = StreamLearner(24, lam=0.8, seed=1)
+    seen_proto = rng.standard_normal(24).astype(np.float32)
+    new_proto = rng.standard_normal(24).astype(np.float32)
+
+    def present(proto, outcome=None):
+        for _ in range(4):
+            learner.observe(proto + 0.3 * rng.standard_normal(24).astype(np.float32))
+        for _ in range(3):
+            learner.observe(0.2 * rng.standard_normal(24).astype(np.float32))
+        if outcome is not None:
+            learner.learn(outcome)
+
+    for _ in range(20):
+        present(seen_proto, outcome=0.0)                       # always "nothing happens": no write, but the input becomes familiar
+    present(seen_proto)
+    fam_seen, pred_seen = learner.familiarity(), learner.predict()
+    present(new_proto)
+    assert fam_seen > 0.6 and abs(pred_seen) < 0.2 and learner.familiarity() < fam_seen - 0.3 and learner.updates == 0
