@@ -91,3 +91,22 @@ facts are grounded in the text but wrong (wrong key or wrong line). It does not 
 Known phrasings: routed memory 1.00 vs transcript 0.75 and keyword retrieval 0.67 (18 vs 0 and 24 vs 0 discordant, p < 0.001); held-out: routed memory 0.64 vs transcript 0.82 and keyword
 retrieval 0.76 (8 vs 21, p = 0.024; 11 vs 20, p = 0.15). The 4-seed result in the section above (held-out 0.75 vs 0.79) did not hold up at this sample size. Extraction coverage on unfamiliar
 wording is still the bottleneck at 7B, though it is smaller than at 1.5b.
+
+## Extraction coverage on a frozen test set (`results/research-v9-extraction-span`, 20 episodes per cell)
+A third phrasing set, `test`, was written *before* the span extractor was designed and was never used for tuning; it is scored once here. Recall / precision of extracted (key, value) pairs:
+
+| extractor | model | `train` | `heldout` (looked at while developing) | **`test` (frozen)** |
+|---|---|---|---|---|
+| rules | - | 1.00 / 1.00 | 0.16 / 1.00 | **0.00** / 0.00 |
+| span only (rules + model-free span stage) | - | 1.00 / 1.00 | 0.45 / 0.63 | 0.27 / 0.43 |
+| hybrid (rules, then few-shot LLM on leftovers) | 1.5b | 1.00 / 1.00 | 0.74 / 0.77 | **0.31** / 0.47 |
+| hybrid | 3b | 1.00 / 1.00 | 0.76 / 0.77 | **0.29** / 0.47 |
+| hybrid + span stage | 1.5b | 1.00 / 1.00 | 0.64 / 0.65 | **0.42** / 0.51 |
+| hybrid + span stage | 3b | 1.00 / 1.00 | 0.62 / 0.62 | **0.39** / 0.49 |
+
+* **The earlier "0.73-0.79 recall on held-out phrasings" overstated generalisation.** That set had been examined repeatedly during development; on genuinely fresh wording the hybrid recovers about 0.3.
+  Every claim in this repository about held-out extraction coverage should be read as an upper bound from a set that was looked at.
+* The model-free span stage (`SpanFactExtractor`: one value-like token per line, key words restricted to a vocabulary learned online from confident extractions) adds recall on fresh wording
+  (hybrid 0.31 -> 0.42 at 1.5b, 0.29 -> 0.39 at 3b; precision 0.47 -> 0.51) but lowers both on the set it was developed against (0.74 -> 0.64). The gain is small and inconsistent; it is off by default.
+* Coverage of unseen phrasing remains the open limit of NSA's natural-language memory. Plausible directions (untested): a larger or instruction-tuned extractor, a verification pass that
+  re-reads each source line against the extracted fact, and asking the user to confirm a fact when no extractor is confident.
