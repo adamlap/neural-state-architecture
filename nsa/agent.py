@@ -81,8 +81,10 @@ class NSARuntime:
                  config: Optional[RuntimeConfig] = None, continuous_transition: Optional[Callable[[CanonicalState], CanonicalState]] = None,
                  system_one: Optional[SystemOneController] = None, system_one_backend: Optional[SystemOneBackend] = None,
                  system_one_tools: Optional[ToolRegistry] = None, ingress: Optional[IngressAuthority] = None,
-                 extractor: Optional[FactExtractor] = None, novelty_gate: Any = None) -> None:
+                 extractor: Optional[FactExtractor] = None, novelty_gate: Any = None, stream_learner: Any = None) -> None:
         self.extractor = extractor
+        self.stream_learner = stream_learner
+        self.signal_stats = {"signals": 0, "outcomes": 0, "learning_blocked": 0}
         self.novelty_gate = novelty_gate
         self.last_novelty: Optional[float] = None
         self.gate_stats = {"lines": 0, "extracted": 0, "skipped": 0}
@@ -201,6 +203,32 @@ class NSARuntime:
         self.gate_stats["extracted"] += len(keep)
         self.gate_stats["skipped"] += len(self._line_scores) - len(keep)
         return "\n".join(keep)
+
+    def observe_signal(self, vector: Any, *, outcome: Optional[float] = None, source: str = "sensor",
+                       integrity: Optional[IntegrityLabel] = None) -> float:
+        """Feed one step of a continuous signal to the stream learner; return its current prediction.
+
+        With an ``outcome``, the learner binds it to whatever its trailing field still holds. The prediction error becomes the runtime's soft-state
+        ``uncertainty`` (surprise). A signal from an UNTRUSTED channel (``untrusted_sources`` or ``integrity``) can be observed and predicted from, but
+        its outcomes never update the learner: an untrusted sensor cannot teach the system (cf. the memory integrity gate).
+        """
+        if self.stream_learner is None:
+            raise RuntimeError("no stream_learner configured")
+        if integrity is None:
+            integrity = IntegrityLabel.UNTRUSTED if source in self.config.untrusted_sources else IntegrityLabel.TRUSTED
+        if self.config.require_signed_ingress:
+            integrity = IntegrityLabel.UNTRUSTED
+        self.stream_learner.observe(vector)
+        self.signal_stats["signals"] += 1
+        prediction = self.stream_learner.predict()
+        if outcome is not None:
+            trusted = integrity is IntegrityLabel.TRUSTED
+            self.stream_learner.learn(outcome, enabled=trusted)
+            self.signal_stats["outcomes"] += 1
+            self.signal_stats["learning_blocked"] += 0 if trusted else 1
+            self.state = replace(self.state, soft=replace(self.state.soft, uncertainty=float(self.stream_learner.uncertainty),
+                                                         confidence=1.0 - float(self.stream_learner.uncertainty)))
+        return prediction
 
     def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True) -> list[str]:
         """Memory keys that best match a natural-language question (token overlap).

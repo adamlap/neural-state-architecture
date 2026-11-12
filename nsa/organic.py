@@ -64,4 +64,74 @@ class NoveltyGate:
         return float(np.linalg.norm(residual))
 
 
-__all__ = ["NoveltyGate", "cue"]
+class TrailingField:
+    """Leaky trace of a continuous input stream: ``z <- lam * z + (1 - lam) * x``.
+
+    The trace keeps recent input present for a while, so a *delayed* outcome can bind to the cue that preceded it (trace conditioning). A trace binds
+    only while it lasts and only while earlier events have decayed: roughly one to two time constants (docs/ORGANIC_RESEARCH.md, Experiment 2).
+    """
+
+    def __init__(self, dim: int, lam: float = 0.95) -> None:
+        if dim <= 0 or not 0.0 < lam < 1.0:
+            raise ValueError("dim must be positive and lam in (0, 1)")
+        self.lam = float(lam)
+        self.z = _numpy().zeros(int(dim), dtype=_numpy().float32)
+
+    def step(self, x):
+        np = _numpy()
+        self.z = self.lam * self.z + (1.0 - self.lam) * np.asarray(x, dtype=np.float32)
+        return self.z
+
+    def key(self):
+        np = _numpy()
+        n = float(np.linalg.norm(self.z))
+        return self.z / n if n > 1e-8 else self.z.copy()
+
+
+class StreamLearner:
+    """Learns signal -> outcome associations from a continuous stream with ONE fixed vector.
+
+    Pipeline: trailing field -> fixed random expansion with k-winners-take-all (a sparse code) -> a single memory vector ``M`` updated by the delta rule
+    only when the prediction error exceeds ``theta`` (surprise-gated writes). Nothing is stored per event; memory is ``sparse_dim`` floats.
+    ``predict()`` uses the current field state; ``learn(outcome)`` binds the outcome to the *live* field state, i.e. to whatever the trace still holds.
+    ``uncertainty`` is an exponential moving average of the absolute prediction error on outcomes (a calibrated-by-construction surprise signal).
+    """
+
+    def __init__(self, dim: int, *, lam: float = 0.95, sparse_dim: int = 1024, sparsity: float = 0.05, eta: float = 0.5, theta: float = 0.15,
+                 seed: int = 0) -> None:
+        np = _numpy()
+        self.field = TrailingField(dim, lam)
+        self.W = np.random.default_rng(seed + 9001).standard_normal((sparse_dim, dim)).astype(np.float32)
+        self.k = max(1, int(round(sparse_dim * sparsity)))
+        self.M = np.zeros(sparse_dim, dtype=np.float32)
+        self.eta, self.theta = float(eta), float(theta)
+        self.floats = sparse_dim
+        self.uncertainty = 1.0
+        self.updates = self.outcomes = 0
+
+    def _code(self):
+        np = _numpy()
+        drive = self.W @ self.field.key()
+        code = np.zeros_like(drive)
+        code[np.argpartition(drive, -self.k)[-self.k:]] = 1.0
+        return code / np.sqrt(self.k)
+
+    def observe(self, x) -> None:
+        self.field.step(x)
+
+    def predict(self) -> float:
+        return float(self.M @ self._code())
+
+    def learn(self, outcome: float, *, enabled: bool = True) -> float:
+        """Bind ``outcome`` to the current field state; returns the prediction error (before the update)."""
+        code = self._code()
+        error = float(outcome) - float(self.M @ code)
+        self.outcomes += 1
+        self.uncertainty += 0.1 * (min(1.0, abs(error)) - self.uncertainty)
+        if enabled and abs(error) > self.theta:
+            self.M += self.eta * error * code / float(code @ code)
+            self.updates += 1
+        return error
+
+
+__all__ = ["NoveltyGate", "TrailingField", "StreamLearner", "cue"]
