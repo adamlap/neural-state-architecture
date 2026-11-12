@@ -6,6 +6,7 @@ from experiments.research_common import memory_guard as mg
 @pytest.fixture(autouse=True)
 def _guard_on(monkeypatch):
     monkeypatch.delenv("NSA_BENCH_NO_GUARD", raising=False)
+    monkeypatch.setattr(mg, "wait_until_unloaded", lambda *a, **k: True)       # never poll a real server from a unit test
 
 
 def _meminfo(tmp_path, kib):
@@ -53,3 +54,24 @@ def test_the_measured_7b_run_would_have_been_refused_on_an_8_gib_vm(tmp_path, mo
     with pytest.raises(SystemExit):
         mg.prepare_model("http://localhost:11434", "qwen2.5:7b", 8192, meminfo_path=_meminfo(tmp_path, int(6.8 * gib / 1024)))
     assert mg.estimate_need_bytes(int(4.36 * gib), 8192) > 6.86e9      # never below what was measured
+
+
+def test_guard_waits_for_the_unload_to_finish_before_measuring(tmp_path, monkeypatch):
+    """Regression: the 7B suite was refused because available memory was read before the previous model had been freed."""
+    gib = 2**30
+    calls = {"n": 0}
+
+    def fake_get(url, payload=None, timeout=10.0):
+        if url.endswith("/api/ps"):
+            calls["n"] += 1
+            return {"models": [{"name": "old"}]} if calls["n"] < 3 else {"models": []}
+        return {}
+
+    monkeypatch.setattr(mg, "_get", fake_get)
+    monkeypatch.undo()                                                          # restore the real wait for this test only
+    monkeypatch.setattr(mg, "_get", fake_get)
+    monkeypatch.delenv("NSA_BENCH_NO_GUARD", raising=False)
+    monkeypatch.setattr(mg, "model_weight_bytes", lambda url, model: int(1 * gib))
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    info = mg.prepare_model("http://localhost:11434", "m", 2048, meminfo_path=_meminfo(tmp_path, int(9 * gib / 1024)))
+    assert calls["n"] >= 3 and info["unloaded"] == ["old"]

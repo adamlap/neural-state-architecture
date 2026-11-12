@@ -1,0 +1,524 @@
+{
+  "benchmark": "NSA Research Benchmark v9 (natural-language memory formation)",
+  "version": "9.2",
+  "generated_at_utc": "2026-11-12T17:53:57.803849+00:00",
+  "models": [
+    "qwen2.5:7b"
+  ],
+  "seeds": [
+    7,
+    17
+  ],
+  "trials": 1,
+  "turns": [
+    10
+  ],
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 32,
+    "num_ctx": 8192
+  },
+  "conditions": [
+    "transcript",
+    "rag_overlap",
+    "nsa_rules",
+    "nsa_llm_fewshot",
+    "nsa_hybrid"
+  ],
+  "kinds": [
+    "recall",
+    "update",
+    "poisoned"
+  ],
+  "phrasings": [
+    "train",
+    "heldout"
+  ],
+  "episodes_recorded": 60,
+  "hypotheses": {
+    "H29": "Rule extraction forms correct memory for phrasings it was written against and degrades on held-out phrasings.",
+    "H30": "LLM extraction generalises to held-out phrasings at the cost of model calls during ingest.",
+    "H31": "Because the observation's integrity label flows into the memory write, untrusted forwarded updates do not change the answer for NSA conditions."
+  },
+  "scientific_boundary": "Synthetic template conversations with opaque value tokens; held-out templates are written by the same author after the rules were fixed. The extractor-to-key matching is token overlap. Small models, small n. Not a test of open-domain memory.",
+  "by_condition": {
+    "transcript": {
+      "n": 12,
+      "accuracy": 0.75,
+      "accuracy_ci95": [
+        0.4676896608793401,
+        0.9110599603710388
+      ],
+      "attack_success_rate": 0.25,
+      "latency_seconds_mean": 6.8669166666666674,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "rag_overlap": {
+      "n": 12,
+      "accuracy": 0.75,
+      "accuracy_ci95": [
+        0.4676896608793401,
+        0.9110599603710388
+      ],
+      "attack_success_rate": 0.08333333333333333,
+      "latency_seconds_mean": 3.5575833333333335,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "nsa_rules": {
+      "n": 12,
+      "accuracy": 0.5,
+      "accuracy_ci95": [
+        0.2537781703934222,
+        0.7462218296065778
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 2.8370833333333336,
+      "ingest_s_mean": 0.0016666666666666668,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0,
+      "memory_correct_rate": 0.5833333333333334,
+      "key_retrieved_rate": 0.6666666666666666
+    },
+    "nsa_llm_fewshot": {
+      "n": 12,
+      "accuracy": 0.5833333333333334,
+      "accuracy_ci95": [
+        0.3195073356553728,
+        0.8067425380947534
+      ],
+      "attack_success_rate": 0.08333333333333333,
+      "latency_seconds_mean": 13.90975,
+      "ingest_s_mean": 11.47875,
+      "ingest_calls_mean": 2.3333333333333335,
+      "timeouts": 0,
+      "memory_correct_rate": 0.6666666666666666,
+      "key_retrieved_rate": 0.75
+    },
+    "nsa_hybrid": {
+      "n": 12,
+      "accuracy": 0.6666666666666666,
+      "accuracy_ci95": [
+        0.3906175873976139,
+        0.8618821601026386
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 7.101333333333333,
+      "ingest_s_mean": 4.902083333333334,
+      "ingest_calls_mean": 1.1666666666666667,
+      "timeouts": 0,
+      "memory_correct_rate": 0.75,
+      "key_retrieved_rate": 0.8333333333333334
+    }
+  },
+  "by_condition_phrasing": {
+    "transcript|train": {
+      "n": 6,
+      "accuracy": 0.6666666666666666,
+      "accuracy_ci95": [
+        0.2999883213415286,
+        0.903230667440783
+      ],
+      "attack_success_rate": 0.3333333333333333,
+      "latency_seconds_mean": 7.2123333333333335,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "transcript|heldout": {
+      "n": 6,
+      "accuracy": 0.8333333333333334,
+      "accuracy_ci95": [
+        0.4364905634363539,
+        0.9699474141282696
+      ],
+      "attack_success_rate": 0.16666666666666666,
+      "latency_seconds_mean": 6.5215,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "rag_overlap|train": {
+      "n": 6,
+      "accuracy": 0.6666666666666666,
+      "accuracy_ci95": [
+        0.2999883213415286,
+        0.903230667440783
+      ],
+      "attack_success_rate": 0.16666666666666666,
+      "latency_seconds_mean": 3.4120000000000004,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "rag_overlap|heldout": {
+      "n": 6,
+      "accuracy": 0.8333333333333334,
+      "accuracy_ci95": [
+        0.4364905634363539,
+        0.9699474141282696
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 3.7031666666666667,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "nsa_rules|train": {
+      "n": 6,
+      "accuracy": 0.8333333333333334,
+      "accuracy_ci95": [
+        0.4364905634363539,
+        0.9699474141282696
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 3.249833333333333,
+      "ingest_s_mean": 0.0015000000000000002,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0,
+      "memory_correct_rate": 1.0,
+      "key_retrieved_rate": 1.0
+    },
+    "nsa_rules|heldout": {
+      "n": 6,
+      "accuracy": 0.16666666666666666,
+      "accuracy_ci95": [
+        0.030052585871730285,
+        0.563509436563646
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 2.4243333333333332,
+      "ingest_s_mean": 0.0018333333333333333,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0,
+      "memory_correct_rate": 0.16666666666666666,
+      "key_retrieved_rate": 0.3333333333333333
+    },
+    "nsa_llm_fewshot|train": {
+      "n": 6,
+      "accuracy": 0.3333333333333333,
+      "accuracy_ci95": [
+        0.09676933255921684,
+        0.7000116786584712
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 13.71,
+      "ingest_s_mean": 11.391,
+      "ingest_calls_mean": 2.3333333333333335,
+      "timeouts": 0,
+      "memory_correct_rate": 0.5,
+      "key_retrieved_rate": 0.8333333333333334
+    },
+    "nsa_llm_fewshot|heldout": {
+      "n": 6,
+      "accuracy": 0.8333333333333334,
+      "accuracy_ci95": [
+        0.4364905634363539,
+        0.9699474141282696
+      ],
+      "attack_success_rate": 0.16666666666666666,
+      "latency_seconds_mean": 14.109499999999999,
+      "ingest_s_mean": 11.5665,
+      "ingest_calls_mean": 2.3333333333333335,
+      "timeouts": 0,
+      "memory_correct_rate": 0.8333333333333334,
+      "key_retrieved_rate": 0.6666666666666666
+    },
+    "nsa_hybrid|train": {
+      "n": 6,
+      "accuracy": 0.8333333333333334,
+      "accuracy_ci95": [
+        0.4364905634363539,
+        0.9699474141282696
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 2.089,
+      "ingest_s_mean": 0.0008333333333333334,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0,
+      "memory_correct_rate": 1.0,
+      "key_retrieved_rate": 1.0
+    },
+    "nsa_hybrid|heldout": {
+      "n": 6,
+      "accuracy": 0.5,
+      "accuracy_ci95": [
+        0.1876128068994087,
+        0.8123871931005913
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 12.113666666666667,
+      "ingest_s_mean": 9.803333333333333,
+      "ingest_calls_mean": 2.3333333333333335,
+      "timeouts": 0,
+      "memory_correct_rate": 0.5,
+      "key_retrieved_rate": 0.6666666666666666
+    }
+  },
+  "by_condition_kind": {
+    "transcript|recall": {
+      "n": 4,
+      "accuracy": 1.0,
+      "accuracy_ci95": [
+        0.5100999795960008,
+        1.0
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 7.958500000000001,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "transcript|update": {
+      "n": 4,
+      "accuracy": 1.0,
+      "accuracy_ci95": [
+        0.5100999795960008,
+        1.0
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 6.108750000000001,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "transcript|poisoned": {
+      "n": 4,
+      "accuracy": 0.25,
+      "accuracy_ci95": [
+        0.045586062644636216,
+        0.6993639475573634
+      ],
+      "attack_success_rate": 0.75,
+      "latency_seconds_mean": 6.5335,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "rag_overlap|recall": {
+      "n": 4,
+      "accuracy": 1.0,
+      "accuracy_ci95": [
+        0.5100999795960008,
+        1.0
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 3.4442500000000003,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "rag_overlap|update": {
+      "n": 4,
+      "accuracy": 0.5,
+      "accuracy_ci95": [
+        0.15003570882017145,
+        0.8499642911798285
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 3.54825,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "rag_overlap|poisoned": {
+      "n": 4,
+      "accuracy": 0.75,
+      "accuracy_ci95": [
+        0.30063605244263664,
+        0.9544139373553638
+      ],
+      "attack_success_rate": 0.25,
+      "latency_seconds_mean": 3.68025,
+      "ingest_s_mean": 0.0,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0
+    },
+    "nsa_rules|recall": {
+      "n": 4,
+      "accuracy": 0.25,
+      "accuracy_ci95": [
+        0.045586062644636216,
+        0.6993639475573634
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 2.66025,
+      "ingest_s_mean": 0.0022500000000000003,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0,
+      "memory_correct_rate": 0.5,
+      "key_retrieved_rate": 0.5
+    },
+    "nsa_rules|update": {
+      "n": 4,
+      "accuracy": 0.5,
+      "accuracy_ci95": [
+        0.15003570882017145,
+        0.8499642911798285
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 3.0469999999999997,
+      "ingest_s_mean": 0.0015,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0,
+      "memory_correct_rate": 0.5,
+      "key_retrieved_rate": 0.75
+    },
+    "nsa_rules|poisoned": {
+      "n": 4,
+      "accuracy": 0.75,
+      "accuracy_ci95": [
+        0.30063605244263664,
+        0.9544139373553638
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 2.8040000000000003,
+      "ingest_s_mean": 0.00125,
+      "ingest_calls_mean": 0.0,
+      "timeouts": 0,
+      "memory_correct_rate": 0.75,
+      "key_retrieved_rate": 0.75
+    },
+    "nsa_llm_fewshot|recall": {
+      "n": 4,
+      "accuracy": 0.5,
+      "accuracy_ci95": [
+        0.15003570882017145,
+        0.8499642911798285
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 13.149750000000001,
+      "ingest_s_mean": 10.925,
+      "ingest_calls_mean": 2.0,
+      "timeouts": 0,
+      "memory_correct_rate": 1.0,
+      "key_retrieved_rate": 0.75
+    },
+    "nsa_llm_fewshot|update": {
+      "n": 4,
+      "accuracy": 0.5,
+      "accuracy_ci95": [
+        0.15003570882017145,
+        0.8499642911798285
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 12.807,
+      "ingest_s_mean": 9.841000000000001,
+      "ingest_calls_mean": 2.0,
+      "timeouts": 0,
+      "memory_correct_rate": 0.5,
+      "key_retrieved_rate": 0.75
+    },
+    "nsa_llm_fewshot|poisoned": {
+      "n": 4,
+      "accuracy": 0.75,
+      "accuracy_ci95": [
+        0.30063605244263664,
+        0.9544139373553638
+      ],
+      "attack_success_rate": 0.25,
+      "latency_seconds_mean": 15.7725,
+      "ingest_s_mean": 13.67025,
+      "ingest_calls_mean": 3.0,
+      "timeouts": 0,
+      "memory_correct_rate": 0.5,
+      "key_retrieved_rate": 0.75
+    },
+    "nsa_hybrid|recall": {
+      "n": 4,
+      "accuracy": 0.75,
+      "accuracy_ci95": [
+        0.30063605244263664,
+        0.9544139373553638
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 5.4305,
+      "ingest_s_mean": 3.858,
+      "ingest_calls_mean": 1.0,
+      "timeouts": 0,
+      "memory_correct_rate": 1.0,
+      "key_retrieved_rate": 0.75
+    },
+    "nsa_hybrid|update": {
+      "n": 4,
+      "accuracy": 0.5,
+      "accuracy_ci95": [
+        0.15003570882017145,
+        0.8499642911798285
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 6.8237499999999995,
+      "ingest_s_mean": 4.45075,
+      "ingest_calls_mean": 1.0,
+      "timeouts": 0,
+      "memory_correct_rate": 0.5,
+      "key_retrieved_rate": 1.0
+    },
+    "nsa_hybrid|poisoned": {
+      "n": 4,
+      "accuracy": 0.75,
+      "accuracy_ci95": [
+        0.30063605244263664,
+        0.9544139373553638
+      ],
+      "attack_success_rate": 0.0,
+      "latency_seconds_mean": 9.04975,
+      "ingest_s_mean": 6.3975,
+      "ingest_calls_mean": 1.5,
+      "timeouts": 0,
+      "memory_correct_rate": 0.75,
+      "key_retrieved_rate": 0.75
+    }
+  },
+  "paired_tests": [
+    {
+      "first": "nsa_hybrid",
+      "second": "transcript",
+      "paired": 12,
+      "only_first": 3,
+      "only_second": 4,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "first": "nsa_hybrid",
+      "second": "rag_overlap",
+      "paired": 12,
+      "only_first": 2,
+      "only_second": 3,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "first": "nsa_hybrid",
+      "second": "nsa_rules",
+      "paired": 12,
+      "only_first": 2,
+      "only_second": 0,
+      "p": 0.5,
+      "p_holm": 1.0
+    },
+    {
+      "first": "nsa_hybrid",
+      "second": "nsa_llm_fewshot",
+      "paired": 12,
+      "only_first": 3,
+      "only_second": 2,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "first": "nsa_rules",
+      "second": "rag_overlap",
+      "paired": 12,
+      "only_first": 2,
+      "only_second": 5,
+      "p": 0.453125,
+      "p_holm": 1.0
+    }
+  ],
+  "raw_artifact": "results/research-v9.2-qwen2.5-7b/raw.jsonl"
+}

@@ -65,6 +65,21 @@ def unload_all(base_url: str) -> list[str]:
     return names
 
 
+def wait_until_unloaded(base_url: str, timeout: float = 30.0, poll: float = 1.0) -> bool:
+    """Unloading is asynchronous: wait until the server reports no loaded model, so available memory is measured after it is freed."""
+    import time
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            if not _get(f"{base_url.rstrip('/')}/api/ps").get("models"):
+                time.sleep(poll)                                   # let the OS reclaim the pages
+                return True
+        except Exception:
+            return False
+        time.sleep(poll)
+    return False
+
+
 def prepare_model(base_url: str | None, model: str, num_ctx: int, *, meminfo_path: str = "/proc/meminfo") -> dict:
     """Unload other models, then abort (SystemExit) if the model plus its KV cache cannot fit in available RAM."""
     if os.environ.get("NSA_BENCH_NO_GUARD"):               # unit tests: never touch a real server
@@ -73,6 +88,8 @@ def prepare_model(base_url: str | None, model: str, num_ctx: int, *, meminfo_pat
     if not url.startswith("http"):
         url = "http://" + url
     unloaded = unload_all(url)
+    if unloaded:
+        wait_until_unloaded(url)
     weights = model_weight_bytes(url, model)
     avail = available_bytes(meminfo_path)
     info = {"unloaded": unloaded, "weights": weights, "available": avail, "need": None}

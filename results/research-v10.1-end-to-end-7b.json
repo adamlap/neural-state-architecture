@@ -1,0 +1,2050 @@
+{
+  "experiment": "v10_end_to_end",
+  "model": "qwen2.5:7b",
+  "seeds": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 32,
+    "num_ctx": 8192
+  },
+  "summary": {
+    "train|transcript": {
+      "n": 24,
+      "accuracy": 0.625,
+      "accuracy_ci95": [
+        0.42709619037907065,
+        0.7884086656636855
+      ],
+      "typo_answered": 0.125
+    },
+    "train|rag_overlap": {
+      "n": 24,
+      "accuracy": 0.7083333333333334,
+      "accuracy_ci95": [
+        0.5083193634129031,
+        0.8508553966583573
+      ],
+      "typo_answered": 0.08333333333333333
+    },
+    "train|nsa_hybrid": {
+      "n": 24,
+      "accuracy": 0.625,
+      "accuracy_ci95": [
+        0.42709619037907065,
+        0.7884086656636855
+      ],
+      "typo_answered": 0.375
+    },
+    "train|nsa_hybrid_routed": {
+      "n": 24,
+      "accuracy": 1.0,
+      "accuracy_ci95": [
+        0.8620194241710247,
+        1.0
+      ],
+      "typo_answered": 0.0
+    },
+    "heldout|transcript": {
+      "n": 24,
+      "accuracy": 0.7916666666666666,
+      "accuracy_ci95": [
+        0.5952915551476453,
+        0.9075531089521192
+      ],
+      "typo_answered": 0.08333333333333333
+    },
+    "heldout|rag_overlap": {
+      "n": 24,
+      "accuracy": 0.7916666666666666,
+      "accuracy_ci95": [
+        0.5952915551476453,
+        0.9075531089521192
+      ],
+      "typo_answered": 0.08333333333333333
+    },
+    "heldout|nsa_hybrid": {
+      "n": 24,
+      "accuracy": 0.4166666666666667,
+      "accuracy_ci95": [
+        0.24467347246538232,
+        0.6116566235061137
+      ],
+      "typo_answered": 0.5
+    },
+    "heldout|nsa_hybrid_routed": {
+      "n": 24,
+      "accuracy": 0.75,
+      "accuracy_ci95": [
+        0.5510017468789357,
+        0.8800079652065768
+      ],
+      "typo_answered": 0.125
+    }
+  },
+  "paired_tests": {
+    "train|nsa_hybrid_routed vs nsa_hybrid": {
+      "paired": 24,
+      "only_first": 9,
+      "only_second": 0,
+      "p": 0.00390625
+    },
+    "train|nsa_hybrid_routed vs transcript": {
+      "paired": 24,
+      "only_first": 9,
+      "only_second": 0,
+      "p": 0.00390625
+    },
+    "train|nsa_hybrid_routed vs rag_overlap": {
+      "paired": 24,
+      "only_first": 7,
+      "only_second": 0,
+      "p": 0.015625
+    },
+    "heldout|nsa_hybrid_routed vs nsa_hybrid": {
+      "paired": 24,
+      "only_first": 8,
+      "only_second": 0,
+      "p": 0.0078125
+    },
+    "heldout|nsa_hybrid_routed vs transcript": {
+      "paired": 24,
+      "only_first": 3,
+      "only_second": 4,
+      "p": 1.0
+    },
+    "heldout|nsa_hybrid_routed vs rag_overlap": {
+      "paired": 24,
+      "only_first": 4,
+      "only_second": 5,
+      "p": 1.0
+    }
+  },
+  "rows": [
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "cache gateway size",
+      "condition": "transcript",
+      "expected": "X878-wyc",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=X878-wyc"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "cache gateway size",
+      "condition": "rag_overlap",
+      "expected": "X878-wyc",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=X878-wyc"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "cache gateway size",
+      "condition": "nsa_hybrid",
+      "expected": "X878-wyc",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=X878-wyc"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "cache gateway size",
+      "condition": "nsa_hybrid_routed",
+      "expected": "X878-wyc",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=X878-wyc"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "cache reports size",
+      "condition": "transcript",
+      "expected": "RC8y-4pm",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=RC86-4pm"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "cache reports size",
+      "condition": "rag_overlap",
+      "expected": "RC8y-4pm",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=RC8654pm"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "cache reports size",
+      "condition": "nsa_hybrid",
+      "expected": "RC8y-4pm",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=RC8y-4pm"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "cache reports size",
+      "condition": "nsa_hybrid_routed",
+      "expected": "RC8y-4pm",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=RC8y-4pm"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "admin email staging",
+      "condition": "transcript",
+      "expected": "Q517-d4e",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=Q517-d4e"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "admin email staging",
+      "condition": "rag_overlap",
+      "expected": "Q517-d4e",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=8U87-3a7"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "admin email staging",
+      "condition": "nsa_hybrid",
+      "expected": "Q517-d4e",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=Q517-d4e"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "admin email staging",
+      "condition": "nsa_hybrid_routed",
+      "expected": "Q517-d4e",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=Q517-d4e"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "auth owner team",
+      "condition": "transcript",
+      "expected": "E814-5c7",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=E814-5cp"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "auth owner team",
+      "condition": "rag_overlap",
+      "expected": "E814-5c7",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=E814-5c7"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "auth owner team",
+      "condition": "nsa_hybrid",
+      "expected": "E814-5c7",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=E814z5c7"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "auth owner team",
+      "condition": "nsa_hybrid_routed",
+      "expected": "E814-5c7",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=E814-5c7"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "database mailer port",
+      "condition": "transcript",
+      "expected": "9487-uvk",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=9487-uvk"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "database mailer port",
+      "condition": "rag_overlap",
+      "expected": "9487-uvk",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=9487-uvk"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "database mailer port",
+      "condition": "nsa_hybrid",
+      "expected": "9487-uvk",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=9487-uv5"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "database mailer port",
+      "condition": "nsa_hybrid_routed",
+      "expected": "9487-uvk",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=9487-uvk"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "auth database port",
+      "condition": "transcript",
+      "expected": "CC96-3e7",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=CC96-3e7"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "auth database port",
+      "condition": "rag_overlap",
+      "expected": "CC96-3e7",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=CC96-3e7"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "auth database port",
+      "condition": "nsa_hybrid",
+      "expected": "CC96-3e7",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=CC96-5e7"
+    },
+    {
+      "seed": 0,
+      "phrasing": "train",
+      "key": "auth database port",
+      "condition": "nsa_hybrid_routed",
+      "expected": "CC96-3e7",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=CC96-3e7"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "database port reports",
+      "condition": "transcript",
+      "expected": "4H91-fuv",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4H91-fuv"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "database port reports",
+      "condition": "rag_overlap",
+      "expected": "4H91-fuv",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4H91-fuv"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "database port reports",
+      "condition": "nsa_hybrid",
+      "expected": "4H91-fuv",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=4H9f-fuv"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "database port reports",
+      "condition": "nsa_hybrid_routed",
+      "expected": "4H91-fuv",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4H91-fuv"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "level log uploads",
+      "condition": "transcript",
+      "expected": "QN10-uuw",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=QN10-uuw"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "level log uploads",
+      "condition": "rag_overlap",
+      "expected": "QN10-uuw",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=QN10-uuw"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "level log uploads",
+      "condition": "nsa_hybrid",
+      "expected": "QN10-uuw",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=Qc10-uuw"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "level log uploads",
+      "condition": "nsa_hybrid_routed",
+      "expected": "QN10-uuw",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=QN10-uuw"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "api gateway region",
+      "condition": "transcript",
+      "expected": "S656-vug",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=S656-vug"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "api gateway region",
+      "condition": "rag_overlap",
+      "expected": "S656-vug",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=S656-vug"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "api gateway region",
+      "condition": "nsa_hybrid",
+      "expected": "S656-vug",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=S656-vcg"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "api gateway region",
+      "condition": "nsa_hybrid_routed",
+      "expected": "S656-vug",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=S656-vug"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "cache scheduler size",
+      "condition": "transcript",
+      "expected": "6542-b59",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=6542-b59"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "cache scheduler size",
+      "condition": "rag_overlap",
+      "expected": "6542-b59",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=6542-b59"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "cache scheduler size",
+      "condition": "nsa_hybrid",
+      "expected": "6542-b59",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=6542-b59"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "cache scheduler size",
+      "condition": "nsa_hybrid_routed",
+      "expected": "6542-b59",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=6542-b59"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "name queue scheduler",
+      "condition": "transcript",
+      "expected": "JY80-w92",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JY80-w92"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "name queue scheduler",
+      "condition": "rag_overlap",
+      "expected": "JY80-w92",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=EV80-3dm"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "name queue scheduler",
+      "condition": "nsa_hybrid",
+      "expected": "JY80-w92",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JY80-w92"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "name queue scheduler",
+      "condition": "nsa_hybrid_routed",
+      "expected": "JY80-w92",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JY80-w92"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "cache gateway size",
+      "condition": "transcript",
+      "expected": "C944-n7k",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=C944-n7k"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "cache gateway size",
+      "condition": "rag_overlap",
+      "expected": "C944-n7k",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=C944-n7k"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "cache gateway size",
+      "condition": "nsa_hybrid",
+      "expected": "C944-n7k",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=C944-n7k"
+    },
+    {
+      "seed": 0,
+      "phrasing": "heldout",
+      "key": "cache gateway size",
+      "condition": "nsa_hybrid_routed",
+      "expected": "C944-n7k",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=C944-n7k"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api region scheduler",
+      "condition": "transcript",
+      "expected": "QT91-myy",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=WP33-kpp"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api region scheduler",
+      "condition": "rag_overlap",
+      "expected": "QT91-myy",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=WP33-kpp"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api region scheduler",
+      "condition": "nsa_hybrid",
+      "expected": "QT91-myy",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=QT91-myy"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api region scheduler",
+      "condition": "nsa_hybrid_routed",
+      "expected": "QT91-myy",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=QT91-myy"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "scheduler seconds timeout",
+      "condition": "transcript",
+      "expected": "E631-ve5",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=Ek31-ve5"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "scheduler seconds timeout",
+      "condition": "rag_overlap",
+      "expected": "E631-ve5",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=E631-ve5"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "scheduler seconds timeout",
+      "condition": "nsa_hybrid",
+      "expected": "E631-ve5",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=E631-ae5"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "scheduler seconds timeout",
+      "condition": "nsa_hybrid_routed",
+      "expected": "E631-ve5",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=E631-ve5"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api billing region",
+      "condition": "transcript",
+      "expected": "WX27-aqa",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=WX27-aqa"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api billing region",
+      "condition": "rag_overlap",
+      "expected": "WX27-aqa",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=WX27-aqa"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api billing region",
+      "condition": "nsa_hybrid",
+      "expected": "WX27-aqa",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=WX27maqa"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api billing region",
+      "condition": "nsa_hybrid_routed",
+      "expected": "WX27-aqa",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=WX27-aqa"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "cache size staging",
+      "condition": "transcript",
+      "expected": "9892-7gz",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=9892-7gz"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "cache size staging",
+      "condition": "rag_overlap",
+      "expected": "9892-7gz",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=9892-7gz"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "cache size staging",
+      "condition": "nsa_hybrid",
+      "expected": "9892-7gz",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=r892-7gz"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "cache size staging",
+      "condition": "nsa_hybrid_routed",
+      "expected": "9892-7gz",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=9892-7gz"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api payments region",
+      "condition": "transcript",
+      "expected": "KU32-chr",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=KU32-chr"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api payments region",
+      "condition": "rag_overlap",
+      "expected": "KU32-chr",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=KU32-chr"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api payments region",
+      "condition": "nsa_hybrid",
+      "expected": "KU32-chr",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=KU32-chr"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "api payments region",
+      "condition": "nsa_hybrid_routed",
+      "expected": "KU32-chr",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=KU32-chr"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "billing name queue",
+      "condition": "transcript",
+      "expected": "BW31-ayd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=BW31-ayd"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "billing name queue",
+      "condition": "rag_overlap",
+      "expected": "BW31-ayd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=BW31-ayd"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "billing name queue",
+      "condition": "nsa_hybrid",
+      "expected": "BW31-ayd",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=BW31rayd"
+    },
+    {
+      "seed": 1,
+      "phrasing": "train",
+      "key": "billing name queue",
+      "condition": "nsa_hybrid_routed",
+      "expected": "BW31-ayd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=BW31-ayd"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api region staging",
+      "condition": "transcript",
+      "expected": "SV99-c7y",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=SV99-c7y"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api region staging",
+      "condition": "rag_overlap",
+      "expected": "SV99-c7y",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=SV99-c7y"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api region staging",
+      "condition": "nsa_hybrid",
+      "expected": "SV99-c7y",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=SV99-v7y"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api region staging",
+      "condition": "nsa_hybrid_routed",
+      "expected": "SV99-c7y",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=SV99-v7y"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "owner team uploads",
+      "condition": "transcript",
+      "expected": "3W80-3q2",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=UB86-vhj"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "owner team uploads",
+      "condition": "rag_overlap",
+      "expected": "3W80-3q2",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=3W80-3q2"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "owner team uploads",
+      "condition": "nsa_hybrid",
+      "expected": "3W80-3q2",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=HU85-cde"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "owner team uploads",
+      "condition": "nsa_hybrid_routed",
+      "expected": "3W80-3q2",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=HU85-cde"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api payments region",
+      "condition": "transcript",
+      "expected": "AS71-s2t",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=AS71-s2t"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api payments region",
+      "condition": "rag_overlap",
+      "expected": "AS71-s2t",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=AS71-s2t"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api payments region",
+      "condition": "nsa_hybrid",
+      "expected": "AS71-s2t",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=AS71-s2t"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api payments region",
+      "condition": "nsa_hybrid_routed",
+      "expected": "AS71-s2t",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=AS71-s2t"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "billing owner team",
+      "condition": "transcript",
+      "expected": "HU85-cde",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=HU85-cde"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "billing owner team",
+      "condition": "rag_overlap",
+      "expected": "HU85-cde",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=HU85-cde"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "billing owner team",
+      "condition": "nsa_hybrid",
+      "expected": "HU85-cde",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=HU85-cde"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "billing owner team",
+      "condition": "nsa_hybrid_routed",
+      "expected": "HU85-cde",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=HU85-cde"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api region search",
+      "condition": "transcript",
+      "expected": "WD14-8bd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=WD14-8bd"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api region search",
+      "condition": "rag_overlap",
+      "expected": "WD14-8bd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=WD14-8bd"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api region search",
+      "condition": "nsa_hybrid",
+      "expected": "WD14-8bd",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=WD14t8bd"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "api region search",
+      "condition": "nsa_hybrid_routed",
+      "expected": "WD14-8bd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=WD14-8bd"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "billing level log",
+      "condition": "transcript",
+      "expected": "FS65-f6p",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=FS65-f6p"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "billing level log",
+      "condition": "rag_overlap",
+      "expected": "FS65-f6p",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=FS65-f6p"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "billing level log",
+      "condition": "nsa_hybrid",
+      "expected": "FS65-f6p",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=D98j-pvg"
+    },
+    {
+      "seed": 1,
+      "phrasing": "heldout",
+      "key": "billing level log",
+      "condition": "nsa_hybrid_routed",
+      "expected": "FS65-f6p",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=ZCn0-awm"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "admin email payments",
+      "condition": "transcript",
+      "expected": "Q281-tyf",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=Q281-tyf"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "admin email payments",
+      "condition": "rag_overlap",
+      "expected": "Q281-tyf",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=Q281-tyf"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "admin email payments",
+      "condition": "nsa_hybrid",
+      "expected": "Q281-tyf",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=Q281-tyf"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "admin email payments",
+      "condition": "nsa_hybrid_routed",
+      "expected": "Q281-tyf",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=Q281-tyf"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "admin email search",
+      "condition": "transcript",
+      "expected": "JB33-v39",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JB33-v39"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "admin email search",
+      "condition": "rag_overlap",
+      "expected": "JB33-v39",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JB33-v39"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "admin email search",
+      "condition": "nsa_hybrid",
+      "expected": "JB33-v39",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JB33-v39"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "admin email search",
+      "condition": "nsa_hybrid_routed",
+      "expected": "JB33-v39",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JB33-v39"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "mailer seconds timeout",
+      "condition": "transcript",
+      "expected": "GN54-sbk",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=GN54-sbk"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "mailer seconds timeout",
+      "condition": "rag_overlap",
+      "expected": "GN54-sbk",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=GN544sbk"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "mailer seconds timeout",
+      "condition": "nsa_hybrid",
+      "expected": "GN54-sbk",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=GN544sbk"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "mailer seconds timeout",
+      "condition": "nsa_hybrid_routed",
+      "expected": "GN54-sbk",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=GN54-sbk"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "cache payments size",
+      "condition": "transcript",
+      "expected": "4W50-q9r",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4W50-q9r"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "cache payments size",
+      "condition": "rag_overlap",
+      "expected": "4W50-q9r",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4W50-q9r"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "cache payments size",
+      "condition": "nsa_hybrid",
+      "expected": "4W50-q9r",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4W50-q9r"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "cache payments size",
+      "condition": "nsa_hybrid_routed",
+      "expected": "4W50-q9r",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4W50-q9r"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "auth level log",
+      "condition": "transcript",
+      "expected": "GE40-cre",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=EJ27-n4e"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "auth level log",
+      "condition": "rag_overlap",
+      "expected": "GE40-cre",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=GE40-cre"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "auth level log",
+      "condition": "nsa_hybrid",
+      "expected": "GE40-cre",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=GE40-cre"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "auth level log",
+      "condition": "nsa_hybrid_routed",
+      "expected": "GE40-cre",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=GE40-cre"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "level log staging",
+      "condition": "transcript",
+      "expected": "CY25-d4e",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=AB36-3qp"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "level log staging",
+      "condition": "rag_overlap",
+      "expected": "CY25-d4e",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=CY25-d4e"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "level log staging",
+      "condition": "nsa_hybrid",
+      "expected": "CY25-d4e",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=CY25-d4e"
+    },
+    {
+      "seed": 2,
+      "phrasing": "train",
+      "key": "level log staging",
+      "condition": "nsa_hybrid_routed",
+      "expected": "CY25-d4e",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=CY25-d4e"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email gateway",
+      "condition": "transcript",
+      "expected": "TV38-h5a",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=TV38-h5a"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email gateway",
+      "condition": "rag_overlap",
+      "expected": "TV38-h5a",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=TV33-f5a"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email gateway",
+      "condition": "nsa_hybrid",
+      "expected": "TV38-h5a",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=TV38-h5a"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email gateway",
+      "condition": "nsa_hybrid_routed",
+      "expected": "TV38-h5a",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=TV38-h5a"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email mailer",
+      "condition": "transcript",
+      "expected": "AW13-92b",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=5U44-p7h"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email mailer",
+      "condition": "rag_overlap",
+      "expected": "AW13-92b",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=AW13-92b"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email mailer",
+      "condition": "nsa_hybrid",
+      "expected": "AW13-92b",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=AW13-92b"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email mailer",
+      "condition": "nsa_hybrid_routed",
+      "expected": "AW13-92b",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=AW13-92b"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "owner payments team",
+      "condition": "transcript",
+      "expected": "FR27-e7a",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=FR27-e7a"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "owner payments team",
+      "condition": "rag_overlap",
+      "expected": "FR27-e7a",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=FR27-e7a"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "owner payments team",
+      "condition": "nsa_hybrid",
+      "expected": "FR27-e7a",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=5U44-p7h"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "owner payments team",
+      "condition": "nsa_hybrid_routed",
+      "expected": "FR27-e7a",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=5U44-p7h"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "cache mailer size",
+      "condition": "transcript",
+      "expected": "7T56-6z9",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=7T56-6z9"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "cache mailer size",
+      "condition": "rag_overlap",
+      "expected": "7T56-6z9",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=T422-s2d"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "cache mailer size",
+      "condition": "nsa_hybrid",
+      "expected": "7T56-6z9",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=7Tt6-6z9"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "cache mailer size",
+      "condition": "nsa_hybrid_routed",
+      "expected": "7T56-6z9",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=7T56-6z9"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email uploads",
+      "condition": "transcript",
+      "expected": "2C20-9hv",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=2C20-98v"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email uploads",
+      "condition": "rag_overlap",
+      "expected": "2C20-9hv",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=2C20-9hv"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email uploads",
+      "condition": "nsa_hybrid",
+      "expected": "2C20-9hv",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=2C20-98v"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "admin email uploads",
+      "condition": "nsa_hybrid_routed",
+      "expected": "2C20-9hv",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=2C20-98v"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "mailer owner team",
+      "condition": "transcript",
+      "expected": "5U44-p7h",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=5U44-p7h"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "mailer owner team",
+      "condition": "rag_overlap",
+      "expected": "5U44-p7h",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=5U44-p7h"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "mailer owner team",
+      "condition": "nsa_hybrid",
+      "expected": "5U44-p7h",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=5U44-p7h"
+    },
+    {
+      "seed": 2,
+      "phrasing": "heldout",
+      "key": "mailer owner team",
+      "condition": "nsa_hybrid_routed",
+      "expected": "5U44-p7h",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=5U44-p7h"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "billing level log",
+      "condition": "transcript",
+      "expected": "JU33-kpn",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JU33-kpn"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "billing level log",
+      "condition": "rag_overlap",
+      "expected": "JU33-kpn",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JU33-kpn"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "billing level log",
+      "condition": "nsa_hybrid",
+      "expected": "JU33-kpn",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JU33-kpn"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "billing level log",
+      "condition": "nsa_hybrid_routed",
+      "expected": "JU33-kpn",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=JU33-kpn"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "name queue uploads",
+      "condition": "transcript",
+      "expected": "5S23-yrs",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=5S23-6rs"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "name queue uploads",
+      "condition": "rag_overlap",
+      "expected": "5S23-yrs",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=5S23-yrs"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "name queue uploads",
+      "condition": "nsa_hybrid",
+      "expected": "5S23-yrs",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=5S23-6rs"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "name queue uploads",
+      "condition": "nsa_hybrid_routed",
+      "expected": "5S23-yrs",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=5S23-yrs"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "name queue staging",
+      "condition": "transcript",
+      "expected": "9960-ep4",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=HT35-ep2"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "name queue staging",
+      "condition": "rag_overlap",
+      "expected": "9960-ep4",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=HT35-ep2"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "name queue staging",
+      "condition": "nsa_hybrid",
+      "expected": "9960-ep4",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=9960-ep4"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "name queue staging",
+      "condition": "nsa_hybrid_routed",
+      "expected": "9960-ep4",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=9960-ep4"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "api region uploads",
+      "condition": "transcript",
+      "expected": "GC43-4k4",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=GC43-4k4"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "api region uploads",
+      "condition": "rag_overlap",
+      "expected": "GC43-4k4",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=GC43-4kf"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "api region uploads",
+      "condition": "nsa_hybrid",
+      "expected": "GC43-4k4",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=GC43-4k4"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "api region uploads",
+      "condition": "nsa_hybrid_routed",
+      "expected": "GC43-4k4",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=GC43-4k4"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "cache size uploads",
+      "condition": "transcript",
+      "expected": "FS74yh7u",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=FS74-h7u"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "cache size uploads",
+      "condition": "rag_overlap",
+      "expected": "FS74yh7u",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=FS74-h7u"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "cache size uploads",
+      "condition": "nsa_hybrid",
+      "expected": "FS74yh7u",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=FS74yh7u"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "cache size uploads",
+      "condition": "nsa_hybrid_routed",
+      "expected": "FS74yh7u",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=FS74yh7u"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "gateway name queue",
+      "condition": "transcript",
+      "expected": "SZ26-jjd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=SZ26-jjd"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "gateway name queue",
+      "condition": "rag_overlap",
+      "expected": "SZ26-jjd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=SZ26-jjd"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "gateway name queue",
+      "condition": "nsa_hybrid",
+      "expected": "SZ26-jjd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=SZ26-jjd"
+    },
+    {
+      "seed": 3,
+      "phrasing": "train",
+      "key": "gateway name queue",
+      "condition": "nsa_hybrid_routed",
+      "expected": "SZ26-jjd",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=SZ26-jjd"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "cache mailer size",
+      "condition": "transcript",
+      "expected": "SN97-aca",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=SN97-aca"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "cache mailer size",
+      "condition": "rag_overlap",
+      "expected": "SN97-aca",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=SN97-aca"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "cache mailer size",
+      "condition": "nsa_hybrid",
+      "expected": "SN97-aca",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=SNm7-aca"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "cache mailer size",
+      "condition": "nsa_hybrid_routed",
+      "expected": "SN97-aca",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=SN97-aca"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "owner team uploads",
+      "condition": "transcript",
+      "expected": "QD68-c3x",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=QD68-c3x"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "owner team uploads",
+      "condition": "rag_overlap",
+      "expected": "QD68-c3x",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=QD68-c3x"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "owner team uploads",
+      "condition": "nsa_hybrid",
+      "expected": "QD68-c3x",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=QD68-c3x"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "owner team uploads",
+      "condition": "nsa_hybrid_routed",
+      "expected": "QD68-c3x",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=QD68-c3x"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "owner search team",
+      "condition": "transcript",
+      "expected": "PX77-eut",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=QZ83-djc"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "owner search team",
+      "condition": "rag_overlap",
+      "expected": "PX77-eut",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=PX77-eut"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "owner search team",
+      "condition": "nsa_hybrid",
+      "expected": "PX77-eut",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=PX77-eut"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "owner search team",
+      "condition": "nsa_hybrid_routed",
+      "expected": "PX77-eut",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=PX77-eut"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "auth seconds timeout",
+      "condition": "transcript",
+      "expected": "XJ91-cyk",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=XJ91-cyk"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "auth seconds timeout",
+      "condition": "rag_overlap",
+      "expected": "XJ91-cyk",
+      "correct": false,
+      "typo_answered": false,
+      "response": "VALUE=J91-cyk"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "auth seconds timeout",
+      "condition": "nsa_hybrid",
+      "expected": "XJ91-cyk",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=4J91-cyk"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "auth seconds timeout",
+      "condition": "nsa_hybrid_routed",
+      "expected": "XJ91-cyk",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=4J91-cyk"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "level log search",
+      "condition": "transcript",
+      "expected": "EA50-qf4",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=9A50-qf4"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "level log search",
+      "condition": "rag_overlap",
+      "expected": "EA50-qf4",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=9A50-qf4"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "level log search",
+      "condition": "nsa_hybrid",
+      "expected": "EA50-qf4",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=EA50rqf4"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "level log search",
+      "condition": "nsa_hybrid_routed",
+      "expected": "EA50-qf4",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=EA50-qf4"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "name queue uploads",
+      "condition": "transcript",
+      "expected": "4H15-yaf",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4H15-yaf"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "name queue uploads",
+      "condition": "rag_overlap",
+      "expected": "4H15-yaf",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4H15-yaf"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "name queue uploads",
+      "condition": "nsa_hybrid",
+      "expected": "4H15-yaf",
+      "correct": false,
+      "typo_answered": true,
+      "response": "VALUE=4m15-yaf"
+    },
+    {
+      "seed": 3,
+      "phrasing": "heldout",
+      "key": "name queue uploads",
+      "condition": "nsa_hybrid_routed",
+      "expected": "4H15-yaf",
+      "correct": true,
+      "typo_answered": false,
+      "response": "VALUE=4H15-yaf"
+    }
+  ],
+  "boundary": "Synthetic noisy conversations, opaque values, a 1.5B model; 6 sampled questions per episode."
+}

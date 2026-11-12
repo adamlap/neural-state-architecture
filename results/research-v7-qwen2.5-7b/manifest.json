@@ -1,0 +1,212 @@
+{
+  "benchmark": "NSA Research Benchmark v7 (evidence-gated abstention)",
+  "version": "7.0",
+  "generated_at_utc": "2026-11-12T17:46:58.183519+00:00",
+  "models": [
+    "qwen2.5:7b"
+  ],
+  "seeds": [
+    7,
+    17,
+    37
+  ],
+  "trials": 2,
+  "distractors": [
+    10
+  ],
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 32,
+    "num_ctx": 8192
+  },
+  "abstain_above": 0.5,
+  "instructions": {
+    "generic": "Reply with exactly one line: VALUE= followed by the value token and nothing else (example: VALUE=V123_456). The value token never includes VERSION or STATUS. If the value is not in the information provided, reply VALUE=UNKNOWN.",
+    "keyed": "Reply with exactly one line: VALUE= followed by the value token and nothing else (example: VALUE=V123_456). The value token never includes VERSION or STATUS. Only if RETRIEVED_MEMORY is exactly NO_RELEVANT_MEMORY, reply VALUE=UNKNOWN instead.",
+    "none": "Reply with exactly one line: VALUE= followed by the value token and nothing else (example: VALUE=V123_456). The value token never includes VERSION or STATUS."
+  },
+  "condition_instruction": {
+    "transcript": "generic",
+    "memory_generic": "generic",
+    "memory_keyed": "keyed",
+    "state_gated": "none"
+  },
+  "conditions": [
+    "transcript",
+    "memory_generic",
+    "memory_keyed",
+    "state_gated"
+  ],
+  "kinds": [
+    "recall",
+    "supersession",
+    "unanswerable"
+  ],
+  "episodes_recorded": 72,
+  "hypotheses": {
+    "H24": "Small models fabricate an answer for an unobserved key in a substantial share of episodes, with or without being told memory is empty.",
+    "H25": "State-gated abstention removes fabrication without reducing answerable accuracy and avoids the model call when evidence is absent."
+  },
+  "scientific_boundary": "state_gated abstains on a deterministic rule, so its zero hallucination rate is structural; the uncertainty signal is retrieval coverage, not a calibrated confidence. Measured: how far ungated conditions are from it, over-abstention, and compute saved.",
+  "by_condition": {
+    "transcript": {
+      "n": 18,
+      "latency_seconds_mean": 6.974888888888889,
+      "model_call_rate": 1.0,
+      "timeouts": 0,
+      "answerable_n": 12,
+      "answerable_accuracy": 1.0,
+      "answerable_ci95": [
+        0.7574992425007574,
+        0.9999999999999998
+      ],
+      "over_abstention_rate": 0.0,
+      "unanswerable_n": 6,
+      "hallucination_rate": 0.0,
+      "hallucination_ci95": [
+        0.0,
+        0.3903430336530645
+      ]
+    },
+    "memory_generic": {
+      "n": 18,
+      "latency_seconds_mean": 2.9859444444444443,
+      "model_call_rate": 1.0,
+      "timeouts": 0,
+      "answerable_n": 12,
+      "answerable_accuracy": 0.4166666666666667,
+      "answerable_ci95": [
+        0.19325746190524656,
+        0.6804926643446271
+      ],
+      "over_abstention_rate": 0.0,
+      "unanswerable_n": 6,
+      "hallucination_rate": 0.0,
+      "hallucination_ci95": [
+        0.0,
+        0.3903430336530645
+      ]
+    },
+    "memory_keyed": {
+      "n": 18,
+      "latency_seconds_mean": 1.5410555555555556,
+      "model_call_rate": 1.0,
+      "timeouts": 0,
+      "answerable_n": 12,
+      "answerable_accuracy": 0.5,
+      "answerable_ci95": [
+        0.2537781703934222,
+        0.7462218296065778
+      ],
+      "over_abstention_rate": 0.0,
+      "unanswerable_n": 6,
+      "hallucination_rate": 0.0,
+      "hallucination_ci95": [
+        0.0,
+        0.3903430336530645
+      ]
+    },
+    "state_gated": {
+      "n": 18,
+      "latency_seconds_mean": 0.7536666666666667,
+      "model_call_rate": 0.6666666666666666,
+      "timeouts": 0,
+      "answerable_n": 12,
+      "answerable_accuracy": 0.5,
+      "answerable_ci95": [
+        0.2537781703934222,
+        0.7462218296065778
+      ],
+      "over_abstention_rate": 0.0,
+      "unanswerable_n": 6,
+      "hallucination_rate": 0.0,
+      "hallucination_ci95": [
+        0.0,
+        0.3903430336530645
+      ]
+    }
+  },
+  "paired_tests": [
+    {
+      "metric": "correct",
+      "first": "state_gated",
+      "second": "memory_generic",
+      "paired": 12,
+      "only_first": 2,
+      "only_second": 1,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "metric": "correct",
+      "first": "state_gated",
+      "second": "memory_keyed",
+      "paired": 12,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "metric": "correct",
+      "first": "state_gated",
+      "second": "transcript",
+      "paired": 12,
+      "only_first": 0,
+      "only_second": 6,
+      "p": 0.03125,
+      "p_holm": 0.125
+    },
+    {
+      "metric": "correct",
+      "first": "memory_keyed",
+      "second": "memory_generic",
+      "paired": 12,
+      "only_first": 2,
+      "only_second": 1,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "metric": "hallucinated",
+      "first": "state_gated",
+      "second": "memory_generic",
+      "paired": 6,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "metric": "hallucinated",
+      "first": "state_gated",
+      "second": "memory_keyed",
+      "paired": 6,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "metric": "hallucinated",
+      "first": "state_gated",
+      "second": "transcript",
+      "paired": 6,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0,
+      "p_holm": 1.0
+    },
+    {
+      "metric": "hallucinated",
+      "first": "memory_keyed",
+      "second": "memory_generic",
+      "paired": 6,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0,
+      "p_holm": 1.0
+    }
+  ],
+  "raw_artifact": "results/research-v7-qwen2.5-7b/raw.jsonl"
+}
