@@ -7,9 +7,12 @@ before 0.6.0 were not documented here; see git history.
 
 ### Added
 
+- `RuntimeConfig(route_noisy_updates=True)` / `nsa.memory.routing.route_fact`: extracted facts are routed against the memory's current value for the key
+  (ignore restatements, hold a near-duplicate value without an update cue until observed twice, write everything else; explicit update cues always
+  supersede). On a noisy stream: 1.00 correct / 0 typo corruption (rule extractor, known phrasings) and 0.53 -> 0.75 correct (hybrid 1.5b, held-out).
 - `nsa.organic.NoveltyGate` (needs NumPy) and `NSARuntime(novelty_gate=...)` / `RuntimeConfig(novelty_write_threshold=...)`: a fixed-size
   familiarity memory scores each observed line; with a threshold only novel lines reach the fact extractor (selective storage). Opt-in; default
-  unchanged. Halves extractor work on a noisy stream and cuts typo corruption but does not improve overall correctness (research/RESEARCH_BENCHMARK_V10.md).
+  unchanged. Halves extractor work on a noisy stream but drops genuine updates; routing (above) is the accurate mechanism (research/RESEARCH_BENCHMARK_V10.md).
 - Fact extraction (`nsa/memory/extract.py`): `RuleFactExtractor`, `LLMFactExtractor`, `NSARuntime(extractor=...)`.
   `observe()` writes the extracted facts to canonical memory with the observation's integrity label, so untrusted
   sources hit the memory gate automatically; `TemporalMemoryStore.keys()`, `NSARuntime.memory_keys_for()` and
@@ -57,6 +60,7 @@ before 0.6.0 were not documented here; see git history.
 
 ### Fixed
 
+- `RuleFactExtractor`: filler lead-ins ("just to confirm,") no longer leak into the memory key; "is still X" is parsed.
 - `auto_checkpoint` wrote a format that `load_state` could not read; it now uses `save()`.
 - A backend raising `TypeError` was retried without `state`, calling the model twice.
 - Missing `Mapping` import in `nsa.runtime.inference.ollama`.
