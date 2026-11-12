@@ -99,6 +99,22 @@ trace conditioning: the live field state at outcome time). 8 seeds (probe 6), 30
    precision stays 0.6-0.95). **The predictive detector gives no advantage over the trivial baseline in this world**, so "surprise from the
    stream" is so far not shown to be a better event signal than energy.
 
+## Experiment 2c: selecting timescales by signal-to-noise (`dog_test_v4.py`, `results/organic_dog_test_v4.json`)
+Mixed delays 3 / 15 / 40 / 80 / 150, four traces (λ .8 / .95 / .99 / .995), 8 seeds, 600 events, valenced-cue accuracy overall and by delay:
+
+| learner | overall | d=3 | 15 | 40 | 80 | 150 |
+|---|---|---|---|---|---|---|
+| single .8 | 0.66 | 1.00 | 0.98 | 0.06 | 0.38 | 0.52 |
+| single .95 | 0.88 | 1.00 | 1.00 | 1.00 | 0.69 | 0.60 |
+| single .99 | **0.96** | 0.96 | 0.98 | 0.88 | 1.00 | 1.00 |
+| single .995 | 0.84 | 0.81 | 0.94 | 0.71 | 0.90 | 0.88 |
+| joint codes (one sparse code per trace, one delta-rule vector) | **0.97** | 1.00 | 1.00 | 1.00 | 0.81 | 0.98 |
+| SNR-gated joint (a trace takes part only if its norm exceeds 1.5x its idle noise floor) | 0.96 | 1.00 | 1.00 | 1.00 | 0.81 | 0.96 |
+
+**Negative result for the hypothesis:** gating timescales by signal-to-noise gives no gain over plain joint codes (0.96 vs 0.97), and in this world a single slow trace (λ .99) already
+reaches 0.96. The differences among the top three are within seed noise. No selection mechanism is needed *here*; whether it is needed depends on event spacing (v2 found λ .99 failing at delay 3
+when events were closely spaced, 0.67), so this should not be read as a general result about timescale selection.
+
 ## Experiment 3: the first LLM wrapper (v0) - a familiarity gate (`experiments/organic/novelty_gate.py`)
 
 The wrapper does not feed the field to the LLM; it *gates* it, following the earlier NSA finding that state shown to a model does nothing while

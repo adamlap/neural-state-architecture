@@ -119,7 +119,7 @@ def run(args):
         inner = OllamaInferenceBackend(model=model, base_url=args.ollama_url, timeout_sec=args.timeout) \
             if args.ollama_url else OllamaInferenceBackend(model=model, timeout_sec=args.timeout)
         backend = FixedDecodingBackend(inner, **DECODING)
-        for name in EXTRACTORS:
+        for name in (getattr(args, "extractors", None) or EXTRACTORS):
             if name == "rules" and model != args.models[0]:
                 continue                                    # model-independent; run once
             for phrasing in PHRASINGS:
@@ -142,6 +142,7 @@ def main():
     p.add_argument("--models", nargs="+", default=["qwen2.5:1.5b"])
     p.add_argument("--seeds", nargs="+", type=int, default=list(range(7, 27)))
     p.add_argument("--lines", type=int, default=10)
+    p.add_argument("--extractors", nargs="+", default=None, choices=EXTRACTORS)
     p.add_argument("--timeout", type=float, default=300.0)
     p.add_argument("--out", default="results/research-v9-extraction")
     p.add_argument("--ollama-url", default=None)

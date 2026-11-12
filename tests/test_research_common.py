@@ -181,3 +181,27 @@ def test_episode_builders_use_opaque_values_when_asked():
     assert v3(7, "supersession_current", 5, values="opaque")[2] != v3(7, "supersession_current", 5)[2]
     assert "EVIL" not in v5(7, "poisoned", "plain", 5, values="opaque")[3] and v5(7, "poisoned", "plain", 5)[3].endswith("_EVIL")
     assert not v7(7, "supersession", 5, values="opaque")[2].endswith("_CURRENT")
+
+
+def test_num_thread_reaches_the_ollama_payload_only_when_set(monkeypatch):
+    import json as _json
+    import urllib.request
+    from nsa.runtime.inference.ollama import BackendMode, OllamaInferenceBackend
+    from experiments.research_common.backends import FixedDecodingBackend
+
+    sent = []
+
+    class _Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return b'{"response": "VALUE=X"}'
+
+    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=None: sent.append(_json.loads(req.data.decode("utf-8"))) or _Resp())
+    inner = object.__new__(OllamaInferenceBackend)
+    inner.mode, inner.model_name, inner.base_url, inner.timeout_sec = BackendMode.OLLAMA, "m", "http://x", 5.0
+    monkeypatch.delenv("NSA_NUM_THREAD", raising=False)
+    FixedDecodingBackend(inner).generate("p")
+    FixedDecodingBackend(inner, num_thread=6).generate("p")
+    monkeypatch.setenv("NSA_NUM_THREAD", "4")
+    FixedDecodingBackend(inner).generate("p")
+    assert [o["options"].get("num_thread") for o in sent] == [None, 6, 4]

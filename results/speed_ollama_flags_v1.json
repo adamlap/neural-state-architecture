@@ -1,0 +1,248 @@
+{
+  "experiment": "ollama_flags_v1",
+  "cores": 6,
+  "repeats": 2,
+  "rows": [
+    {
+      "config": "default",
+      "model": "qwen2.5:1.5b",
+      "tokens": 120,
+      "threads": "default",
+      "prefill_tok_s": 230.15616838319895,
+      "decode_tok_s": 52.37522079798059,
+      "prompt_tokens": 149,
+      "resident_mib": 1115.7799987792969
+    },
+    {
+      "config": "default",
+      "model": "qwen2.5:1.5b",
+      "tokens": 120,
+      "threads": 6,
+      "prefill_tok_s": 334.8768565764831,
+      "decode_tok_s": 65.7345737797592,
+      "prompt_tokens": 149,
+      "resident_mib": 1115.7799987792969
+    },
+    {
+      "config": "default",
+      "model": "qwen2.5:1.5b",
+      "tokens": 1000,
+      "threads": "default",
+      "prefill_tok_s": 185.39098307773742,
+      "decode_tok_s": 70.91192043323261,
+      "prompt_tokens": 946,
+      "resident_mib": 1115.7799987792969
+    },
+    {
+      "config": "default",
+      "model": "qwen2.5:1.5b",
+      "tokens": 1000,
+      "threads": 6,
+      "prefill_tok_s": 269.2338365896114,
+      "decode_tok_s": 86.95849536179958,
+      "prompt_tokens": 946,
+      "resident_mib": 1115.7799987792969
+    },
+    {
+      "config": "default",
+      "model": "qwen2.5:3b",
+      "tokens": 120,
+      "threads": "default",
+      "prefill_tok_s": 65.69281989691544,
+      "decode_tok_s": 28.012069258704884,
+      "prompt_tokens": 149,
+      "resident_mib": 2063.899998664856
+    },
+    {
+      "config": "default",
+      "model": "qwen2.5:3b",
+      "tokens": 120,
+      "threads": 6,
+      "prefill_tok_s": 139.07205629641481,
+      "decode_tok_s": 42.970881994599594,
+      "prompt_tokens": 149,
+      "resident_mib": 2063.899998664856
+    },
+    {
+      "config": "default",
+      "model": "qwen2.5:3b",
+      "tokens": 1000,
+      "threads": "default",
+      "prefill_tok_s": 84.956344384363,
+      "decode_tok_s": 37.524704365058795,
+      "prompt_tokens": 946,
+      "resident_mib": 2063.899998664856
+    },
+    {
+      "config": "default",
+      "model": "qwen2.5:3b",
+      "tokens": 1000,
+      "threads": 6,
+      "prefill_tok_s": 122.21954297361947,
+      "decode_tok_s": 26.189719029124017,
+      "prompt_tokens": 946,
+      "resident_mib": 2063.899998664856
+    },
+    {
+      "config": "flash_attention",
+      "model": "qwen2.5:1.5b",
+      "tokens": 120,
+      "threads": "default",
+      "prefill_tok_s": 206.99866256232096,
+      "decode_tok_s": 48.086848578971725,
+      "prompt_tokens": 149,
+      "resident_mib": 1115.7799987792969
+    },
+    {
+      "config": "flash_attention",
+      "model": "qwen2.5:1.5b",
+      "tokens": 120,
+      "threads": 6,
+      "prefill_tok_s": 328.3071094904444,
+      "decode_tok_s": 68.63889421097295,
+      "prompt_tokens": 149,
+      "resident_mib": 1115.7799987792969
+    },
+    {
+      "config": "flash_attention",
+      "model": "qwen2.5:1.5b",
+      "tokens": 1000,
+      "threads": "default",
+      "prefill_tok_s": 177.7872528108057,
+      "decode_tok_s": 68.48479332919584,
+      "prompt_tokens": 946,
+      "resident_mib": 1115.7799987792969
+    },
+    {
+      "config": "flash_attention",
+      "model": "qwen2.5:1.5b",
+      "tokens": 1000,
+      "threads": 6,
+      "prefill_tok_s": 258.64115424801435,
+      "decode_tok_s": 90.78110826033958,
+      "prompt_tokens": 946,
+      "resident_mib": 1115.7799987792969
+    },
+    {
+      "config": "flash_attention",
+      "model": "qwen2.5:3b",
+      "tokens": 120,
+      "threads": "default",
+      "prefill_tok_s": 103.11648661784878,
+      "decode_tok_s": 39.0582529734761,
+      "prompt_tokens": 149,
+      "resident_mib": 2063.899998664856
+    },
+    {
+      "config": "flash_attention",
+      "model": "qwen2.5:3b",
+      "tokens": 120,
+      "threads": 6,
+      "prefill_tok_s": 137.6452976293864,
+      "decode_tok_s": 38.70364654201286,
+      "prompt_tokens": 149,
+      "resident_mib": 2063.899998664856
+    },
+    {
+      "config": "flash_attention",
+      "model": "qwen2.5:3b",
+      "tokens": 1000,
+      "threads": "default",
+      "prefill_tok_s": 82.85567448885227,
+      "decode_tok_s": 35.46814884565264,
+      "prompt_tokens": 946,
+      "resident_mib": 2063.899998664856
+    },
+    {
+      "config": "flash_attention",
+      "model": "qwen2.5:3b",
+      "tokens": 1000,
+      "threads": 6,
+      "prefill_tok_s": 117.42261325210576,
+      "decode_tok_s": 42.44808401758813,
+      "prompt_tokens": 946,
+      "resident_mib": 2063.899998664856
+    },
+    {
+      "config": "flash_attention+kv_q8",
+      "model": "qwen2.5:1.5b",
+      "tokens": 120,
+      "threads": "default",
+      "prefill_tok_s": 208.01656809893757,
+      "decode_tok_s": 63.28129520015322,
+      "prompt_tokens": 149,
+      "resident_mib": 1060.359998703003
+    },
+    {
+      "config": "flash_attention+kv_q8",
+      "model": "qwen2.5:1.5b",
+      "tokens": 120,
+      "threads": 6,
+      "prefill_tok_s": 306.22173225427014,
+      "decode_tok_s": 76.80836831000468,
+      "prompt_tokens": 149,
+      "resident_mib": 1060.359998703003
+    },
+    {
+      "config": "flash_attention+kv_q8",
+      "model": "qwen2.5:1.5b",
+      "tokens": 1000,
+      "threads": "default",
+      "prefill_tok_s": 135.2633746803332,
+      "decode_tok_s": 59.97145772013262,
+      "prompt_tokens": 946,
+      "resident_mib": 1060.359998703003
+    },
+    {
+      "config": "flash_attention+kv_q8",
+      "model": "qwen2.5:1.5b",
+      "tokens": 1000,
+      "threads": 6,
+      "prefill_tok_s": 180.86798777477603,
+      "decode_tok_s": 72.74137416866472,
+      "prompt_tokens": 946,
+      "resident_mib": 1060.359998703003
+    },
+    {
+      "config": "flash_attention+kv_q8",
+      "model": "qwen2.5:3b",
+      "tokens": 120,
+      "threads": "default",
+      "prefill_tok_s": 90.44282227138035,
+      "decode_tok_s": 12.361085262989754,
+      "prompt_tokens": 149,
+      "resident_mib": 1992.479998588562
+    },
+    {
+      "config": "flash_attention+kv_q8",
+      "model": "qwen2.5:3b",
+      "tokens": 120,
+      "threads": 6,
+      "prefill_tok_s": 147.69916243010823,
+      "decode_tok_s": 52.54632376590045,
+      "prompt_tokens": 149,
+      "resident_mib": 1992.479998588562
+    },
+    {
+      "config": "flash_attention+kv_q8",
+      "model": "qwen2.5:3b",
+      "tokens": 1000,
+      "threads": "default",
+      "prefill_tok_s": 63.86990505988858,
+      "decode_tok_s": 34.930763164153035,
+      "prompt_tokens": 946,
+      "resident_mib": 1992.479998588562
+    },
+    {
+      "config": "flash_attention+kv_q8",
+      "model": "qwen2.5:3b",
+      "tokens": 1000,
+      "threads": 6,
+      "prefill_tok_s": 90.78663331801746,
+      "decode_tok_s": 35.95912788624344,
+      "prompt_tokens": 946,
+      "resident_mib": 1992.479998588562
+    }
+  ],
+  "boundary": "One CPU-only WSL machine; median of a few runs; prompts are synthetic text; the existing Ollama server was stopped and is not restarted."
+}

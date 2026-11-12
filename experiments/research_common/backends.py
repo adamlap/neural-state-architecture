@@ -1,6 +1,7 @@
 """Decoding wrapper so every benchmark condition is generated identically."""
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -38,13 +39,16 @@ class FixedDecodingBackend:
     which differs from anything reconstructed afterwards (e.g. via agent._prompt()).
     """
 
-    def __init__(self, inner: Any, *, temperature: float = 0.0, max_tokens: int = 32, num_ctx: int | None = 32768, retry_delay: float = 5.0, max_retries: int = 3):
+    def __init__(self, inner: Any, *, temperature: float = 0.0, max_tokens: int = 32, num_ctx: int | None = 32768, retry_delay: float = 5.0, max_retries: int = 3,
+                 num_thread: int | None = None):
         self.inner = inner
         self.model = getattr(inner, "model", getattr(inner, "model_name", "unknown"))
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.num_ctx = num_ctx
         self.retry_delay = retry_delay
+        # CPU threads for the server (env NSA_NUM_THREAD overrides the default of 'server decides'); see docs/ORGANIC_RESEARCH.md / results/README.md (speed)
+        self.num_thread = num_thread or (int(os.environ["NSA_NUM_THREAD"]) if os.environ.get("NSA_NUM_THREAD") else None)
         self.max_retries = max_retries
         self.last: Generation | None = None
 
@@ -52,6 +56,8 @@ class FixedDecodingBackend:
         kwargs: dict[str, Any] = {"max_tokens": self.max_tokens, "temperature": self.temperature}
         if self.num_ctx is not None:
             kwargs["num_ctx"] = self.num_ctx
+        if self.num_thread:
+            kwargs["num_thread"] = self.num_thread
         if state is not None:
             kwargs["state"] = state
         try:
