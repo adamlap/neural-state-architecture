@@ -237,12 +237,13 @@ because the runner reached 6.9 GB resident and swapped; `memory_guard` was recal
   attack call in 83 % (plain prompt) and 75 % (defended prompt) of injected episodes (1.5b/3b: 45-67 %). The runtime gate executed **0** of them (Wilson upper bound
   0.14; paired Holm p < 0.001 both prompts) at no utility cost (benign task completion 1.00). The defensive prompt reduced susceptibility only slightly (0.83 -> 0.75).
 * **Memory poisoning (v5, 336 episodes):** the governed store again has attack success 0.00 (transcript 0.43, transcript with a warning 0.36, ungated store 0.25) and
-  1.00 accuracy on the poisoned tasks. **The 7B utility numbers are not usable**: from the memory block it truncates `V007_NEW` to `V007`, so legitimate-update tasks score
-  0.00 under *both* memory conditions, and the ungated attack rate is understated for the same reason. A rerun with values without suffixes is needed.
+  1.00 accuracy on the poisoned tasks. **The 7B memory-utility numbers are not usable, and the cause is verified:** from the memory block the 7B drops the suffix of values named `V007_NEW` / `V007_CURRENT`, so legitimate-update tasks
+  score 0.00 under *both* memory conditions, and the ungated attack rate is understated for the same reason. `experiments/research_common/value_name_probe.py` (10 updates each): `_CURRENT` 0/10,
+  `_NEW` 5/10, numeric suffix `_007` 10/10, opaque token 10/10. The v5/v7/v8 value names collide with the render's own annotation words (`STATUS=CURRENT`); it is a benchmark artefact, not a property of the 7B or of the memory.
+  A rerun with opaque values is still needed for 7B utility numbers.
 * **Abstention (v7, 72 episodes, distractors = 10):** hallucination on unanswerable questions is 0.00 in **every** condition, including prompt-based abstention (the 1.5b/llama
   models failed here); the state gate no longer has a fabrication to remove for this model, only compute to save (no model call on a third of episodes, 0.8 s vs 7.0 s for the
-  transcript). Memory accuracy is 0.42-0.50 against 1.00 for the transcript: the same `_CURRENT`-value sensitivity (memory recall 8/8 correct, "current value after an update" 0/8,
-  checked in the v8 data).
+  transcript). Memory accuracy is 0.42-0.50 against 1.00 for the transcript: the value-name artefact above (memory recall 8/8 correct, "current value after an update" 0/8, checked in the v8 data).
 * **Natural-language memory (v9.2, 12 questions per cell):** too small to compare conditions (all CIs overlap). Hybrid memory forms the correct value for 1.00 of train-phrased
   and 0.50 of held-out episodes; on poisoned episodes the transcript is attacked 75 % of the time and the NSA conditions 0-8 %.
 * **v10 end to end (24 questions per cell):** routed memory 1.00 (known phrasings) and **0.75 (held-out)**, level with the full transcript (0.79) and keyword retrieval (0.79) on
@@ -251,4 +252,4 @@ because the runner reached 6.9 GB resident and swapped; `memory_guard` was recal
 * **Memory and speed (v8, 2 seeds):** the loaded 7B is 4.7 GiB at num_ctx 2048 and 5.2 GiB at 8192 (server RSS 4.9 / 5.4 GiB), so for this GQA model the context budget saves only
   ~0.5 GiB between these settings (1.5b: 1.0 GiB between 2048 and 32768); the speed result is larger: transcript prompt processing 58 s at 100 events against 2.0 s for retrieval (29x),
   and 7.3 s vs 2.0 s at 10 events. Transcripts truncated by a 2048 window score 0.00 at 100 events, as with the small models. `temporal_memory` scores 0.50 here because of the same
-  `_CURRENT` sensitivity (recall 8/8, supersession 0/8).
+  value-name artefact (recall 8/8, supersession 0/8).
