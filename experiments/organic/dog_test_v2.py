@@ -89,6 +89,20 @@ def episode_keys(world: d1.World, lambdas, kind: int, delay: int, *, noise=d1.CU
     return cue_end, f.key()
 
 
+def stream_event(world: d1.World, field: MultiField, kind: int, delay: int):
+    """One event inside a CONTINUOUS stream: the field is not reset, so traces of earlier events are still present.
+
+    (The first version of this experiment re-created the field for every event, which removed all cross-event contamination and
+    inflated the slow-trace results; see docs/ORGANIC_RESEARCH.md.)
+    """
+    settle(world.rng, field, int(world.rng.integers(*d1.GAP)))
+    for _ in range(d1.CUE_STEPS):
+        field.step(world.cue_sample(kind, d1.CUE_NOISE))
+    cue_end = field.key()
+    settle(world.rng, field, delay)
+    return cue_end, field.key()
+
+
 def kind_stream(world: d1.World, n: int):
     for _ in range(n):
         yield int(world.rng.integers(0, d1.N_VALENCED)) if world.rng.random() < 1 / 3 else int(world.rng.integers(d1.N_VALENCED, d1.N_VALENCED + d1.N_DECOY))
@@ -110,8 +124,10 @@ def evaluate(agent: Learner, world: d1.World, delay: int) -> dict:
 def run_one(binding: str, variant: str, delay: int, seed: int, n_events: int = 400) -> dict:
     world = d1.World.make(seed)
     agent = Learner(seed, variant, binding)
+    field = MultiField(agent.lambdas)
+    settle(world.rng, field, 20)
     for kind in kind_stream(world, n_events):
-        cue_end, at_outcome = episode_keys(world, agent.lambdas, kind, delay)
+        cue_end, at_outcome = stream_event(world, field, kind, delay)
         agent.learn(cue_end if binding == "stored" else at_outcome, float(world.valence[kind]))
     return {"binding": binding, "variant": variant, "delay": delay, "seed": seed, **evaluate(agent, world, delay)}
 

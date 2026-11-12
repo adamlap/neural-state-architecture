@@ -1,0 +1,687 @@
+{
+  "experiment": "organic_dog_test_v3",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "delays": [
+    3,
+    15,
+    40,
+    80
+  ],
+  "table": {
+    "single_0.8": {
+      "valenced": 0.7083333333333334,
+      "decoy": 0.9907407407407408,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.2222222222222222,
+        "80": 0.027777777777777776
+      }
+    },
+    "single_0.95": {
+      "valenced": 0.8935185185185185,
+      "decoy": 0.9976851851851851,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.3611111111111111
+      }
+    },
+    "single_0.99": {
+      "valenced": 0.9398148148148149,
+      "decoy": 0.9722222222222222,
+      "by_delay": {
+        "3": 0.9583333333333334,
+        "15": 0.9305555555555555,
+        "40": 0.8611111111111112,
+        "80": 1.0
+      }
+    },
+    "concat_pre": {
+      "valenced": 0.9027777777777778,
+      "decoy": 0.9884259259259259,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.8888888888888888,
+        "80": 0.5277777777777778
+      }
+    },
+    "joint_codes": {
+      "valenced": 0.9490740740740741,
+      "decoy": 0.9953703703703703,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.6944444444444445
+      }
+    },
+    "expert_mix": {
+      "valenced": 0.8981481481481483,
+      "decoy": 0.9976851851851851,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.9722222222222222,
+        "80": 0.4166666666666667
+      }
+    }
+  },
+  "detection": {
+    "rows": [
+      {
+        "detector": "predictive",
+        "cue_scale": 0.25,
+        "base_noise": 0.2,
+        "recall": 0.184375,
+        "precision": 0.95
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 0.25,
+        "base_noise": 0.2,
+        "recall": 0.215625,
+        "precision": 0.9396718146718147
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 0.25,
+        "base_noise": 0.5,
+        "recall": 0.025,
+        "precision": 0.7708333333333333
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 0.25,
+        "base_noise": 0.5,
+        "recall": 0.018750000000000003,
+        "precision": 0.5833333333333333
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 0.25,
+        "base_noise": 0.8,
+        "recall": 0.025,
+        "precision": 0.7291666666666666
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 0.25,
+        "base_noise": 0.8,
+        "recall": 0.025,
+        "precision": 0.7708333333333333
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 0.5,
+        "base_noise": 0.2,
+        "recall": 0.996875,
+        "precision": 0.9938271604938271
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 0.5,
+        "base_noise": 0.2,
+        "recall": 0.996875,
+        "precision": 0.9938271604938271
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 0.5,
+        "base_noise": 0.5,
+        "recall": 0.065625,
+        "precision": 0.8535714285714285
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 0.5,
+        "base_noise": 0.5,
+        "recall": 0.071875,
+        "precision": 0.8616071428571428
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 0.5,
+        "base_noise": 0.8,
+        "recall": 0.0375,
+        "precision": 0.875
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 0.5,
+        "base_noise": 0.8,
+        "recall": 0.034375,
+        "precision": 0.8666666666666667
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 1.0,
+        "base_noise": 0.2,
+        "recall": 1.0,
+        "precision": 1.0
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 1.0,
+        "base_noise": 0.2,
+        "recall": 0.996875,
+        "precision": 0.9938271604938271
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 1.0,
+        "base_noise": 0.5,
+        "recall": 0.996875,
+        "precision": 0.9938271604938271
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 1.0,
+        "base_noise": 0.5,
+        "recall": 0.996875,
+        "precision": 0.9938271604938271
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 1.0,
+        "base_noise": 0.8,
+        "recall": 0.234375,
+        "precision": 0.9654761904761905
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 1.0,
+        "base_noise": 0.8,
+        "recall": 0.225,
+        "precision": 0.9503861003861004
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 1.5,
+        "base_noise": 0.2,
+        "recall": 1.0,
+        "precision": 0.9969135802469136
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 1.5,
+        "base_noise": 0.2,
+        "recall": 0.996875,
+        "precision": 0.9938271604938271
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 1.5,
+        "base_noise": 0.5,
+        "recall": 1.0,
+        "precision": 1.0
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 1.5,
+        "base_noise": 0.5,
+        "recall": 0.996875,
+        "precision": 0.9938271604938271
+      },
+      {
+        "detector": "predictive",
+        "cue_scale": 1.5,
+        "base_noise": 0.8,
+        "recall": 0.996875,
+        "precision": 0.9938271604938271
+      },
+      {
+        "detector": "norm",
+        "cue_scale": 1.5,
+        "base_noise": 0.8,
+        "recall": 0.996875,
+        "precision": 0.9938271604938271
+      }
+    ],
+    "z_thresh": 4.0
+  },
+  "runs": [
+    {
+      "learner": "single_0.8",
+      "seed": 0,
+      "valenced": 0.8333333333333334,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "single_0.8",
+      "seed": 1,
+      "valenced": 0.6666666666666666,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "single_0.8",
+      "seed": 2,
+      "valenced": 0.7222222222222222,
+      "decoy": 0.9722222222222222,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.3333333333333333,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "single_0.8",
+      "seed": 3,
+      "valenced": 0.6666666666666666,
+      "decoy": 0.9861111111111112,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "single_0.8",
+      "seed": 4,
+      "valenced": 0.6944444444444444,
+      "decoy": 0.9861111111111112,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.0,
+        "80": 0.16666666666666666
+      }
+    },
+    {
+      "learner": "single_0.8",
+      "seed": 5,
+      "valenced": 0.6666666666666666,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "single_0.95",
+      "seed": 0,
+      "valenced": 0.8333333333333334,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "single_0.95",
+      "seed": 1,
+      "valenced": 0.8333333333333334,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "single_0.95",
+      "seed": 2,
+      "valenced": 0.8611111111111112,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.16666666666666666
+      }
+    },
+    {
+      "learner": "single_0.95",
+      "seed": 3,
+      "valenced": 0.9166666666666666,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.5
+      }
+    },
+    {
+      "learner": "single_0.95",
+      "seed": 4,
+      "valenced": 0.9722222222222222,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.8333333333333334
+      }
+    },
+    {
+      "learner": "single_0.95",
+      "seed": 5,
+      "valenced": 0.9444444444444444,
+      "decoy": 0.9861111111111112,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.6666666666666666
+      }
+    },
+    {
+      "learner": "single_0.99",
+      "seed": 0,
+      "valenced": 1.0,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "single_0.99",
+      "seed": 1,
+      "valenced": 0.8611111111111112,
+      "decoy": 0.9583333333333334,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.16666666666666666,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "single_0.99",
+      "seed": 2,
+      "valenced": 0.8888888888888888,
+      "decoy": 0.9722222222222222,
+      "by_delay": {
+        "3": 1.0,
+        "15": 0.6666666666666666,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "single_0.99",
+      "seed": 3,
+      "valenced": 0.8888888888888888,
+      "decoy": 0.9861111111111112,
+      "by_delay": {
+        "3": 0.75,
+        "15": 0.9166666666666666,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "single_0.99",
+      "seed": 4,
+      "valenced": 1.0,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "single_0.99",
+      "seed": 5,
+      "valenced": 1.0,
+      "decoy": 0.9166666666666666,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "concat_pre",
+      "seed": 0,
+      "valenced": 0.8333333333333334,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "concat_pre",
+      "seed": 1,
+      "valenced": 0.8888888888888888,
+      "decoy": 0.9305555555555556,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.5,
+        "80": 0.8333333333333334
+      }
+    },
+    {
+      "learner": "concat_pre",
+      "seed": 2,
+      "valenced": 0.9444444444444444,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.6666666666666666
+      }
+    },
+    {
+      "learner": "concat_pre",
+      "seed": 3,
+      "valenced": 0.8888888888888888,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.3333333333333333
+      }
+    },
+    {
+      "learner": "concat_pre",
+      "seed": 4,
+      "valenced": 0.8611111111111112,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.8333333333333334,
+        "80": 0.3333333333333333
+      }
+    },
+    {
+      "learner": "concat_pre",
+      "seed": 5,
+      "valenced": 1.0,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "joint_codes",
+      "seed": 0,
+      "valenced": 0.8333333333333334,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "joint_codes",
+      "seed": 1,
+      "valenced": 1.0,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "joint_codes",
+      "seed": 2,
+      "valenced": 0.8611111111111112,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.16666666666666666
+      }
+    },
+    {
+      "learner": "joint_codes",
+      "seed": 3,
+      "valenced": 1.0,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "joint_codes",
+      "seed": 4,
+      "valenced": 1.0,
+      "decoy": 0.9861111111111112,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "joint_codes",
+      "seed": 5,
+      "valenced": 1.0,
+      "decoy": 0.9861111111111112,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "expert_mix",
+      "seed": 0,
+      "valenced": 0.8333333333333334,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "expert_mix",
+      "seed": 1,
+      "valenced": 0.8055555555555556,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 0.8333333333333334,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "expert_mix",
+      "seed": 2,
+      "valenced": 0.8333333333333334,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.0
+      }
+    },
+    {
+      "learner": "expert_mix",
+      "seed": 3,
+      "valenced": 1.0,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 1.0
+      }
+    },
+    {
+      "learner": "expert_mix",
+      "seed": 4,
+      "valenced": 0.9722222222222222,
+      "decoy": 1.0,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.8333333333333334
+      }
+    },
+    {
+      "learner": "expert_mix",
+      "seed": 5,
+      "valenced": 0.9444444444444444,
+      "decoy": 0.9861111111111112,
+      "by_delay": {
+        "3": 1.0,
+        "15": 1.0,
+        "40": 1.0,
+        "80": 0.6666666666666666
+      }
+    }
+  ],
+  "boundary": "Toy world; per-cue-type delays fixed; oracle cue-end time for the learners."
+}

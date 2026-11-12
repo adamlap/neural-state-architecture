@@ -55,32 +55,49 @@ constant; thresholds and constants were not tuned for either side; results are n
 not mediate the binding there; the claim in the paragraph below was only demonstrated by v2. A multi-timescale version (several λ), prediction of the *next field state* rather than the
 outcome, and delays longer than the trace are the next measurements.
 
-## Experiment 2: does the trailing field really bind the delayed outcome? (`experiments/organic/dog_test_v2.py`)
+## Experiment 2: does the trailing field really bind the delayed outcome? (`dog_test_v2.py`, `dog_test_v3.py`)
 
-Two agents differ only in the key used when the outcome arrives: `stored` (the cue-end key kept in an eligibility buffer, v1's behaviour) and
-`trace` (true trace conditioning: the live field state at outcome time, the cue surviving only as a decaying trace). Field time constants:
-`mid` (λ = .8), `slow` (.95), `multi` (concatenation of .5/.8/.95, each normalised), plus `slower` (.99) in the long-delay probe.
-8 seeds (probe: 6), 400 events (probe: 300), valenced-cue accuracy (decoy accuracy stayed ≥ 0.98 throughout), `results/organic_dog_test_v2.json`,
-`results/organic_dog_test_v2_long_delay.json`.
+**Methodological correction.** The first version of this experiment re-created the field for every event, which removed all contamination from
+earlier events and made slow traces look perfect (and v1 handed the cue-end key to the learning step, so no trace was involved at all). The
+numbers below are from a **continuous stream** in which the field persists across events. Earlier figures in this repository history
+(slow trace perfect at delay 25-100) were artefacts and are superseded.
 
-| key | delay 3 | 8 | 15 | 25 | 40 | 60 | 100 |
-|---|---|---|---|---|---|---|---|
-| stored (any field) | 1.00 | 1.00 | 1.00 | 1.00 | - | - | - |
-| trace, mid (.8) | 1.00 | 1.00 | 0.80 | **0.17** | - | - | - |
-| trace, slow (.95) | 1.00 | 1.00 | 1.00 | 1.00 | 0.99 | 0.62 | 0.18 |
-| trace, slower (.99) | - | - | - | 1.00 | 1.00 | 1.00 | 0.99 |
-| trace, multi (.5/.8/.95) | 1.00 | 0.98 | 0.95 | 0.77 (0.69) | 0.49 | 0.28 | 0.12 |
-| trace, (.8/.95/.99) | - | - | - | 0.98 | 0.96 | 0.90 | 0.59 |
+Two agents differ only in the key used when the outcome arrives: `stored` (the cue-end key kept in an eligibility buffer) and `trace` (true
+trace conditioning: the live field state at outcome time). 8 seeds (probe 6), 300-400 events, valenced-cue accuracy; decoy accuracy stayed
+≥ 0.97 except where noted. `results/organic_dog_test_v2.json`, `results/organic_dog_test_v2_long_delay.json`.
 
-1. **The trace binds only while it lasts.** A fast trace gives full accuracy at delay 3-8 and collapses at 15-25 (0.80 → 0.17); a trace whose
-   time constant is matched to the delay holds (λ = .95 to delay 40, λ = .99 past 100). The mechanism works and has a measurable horizon of about
-   1-2 trace time constants; the explicit eligibility buffer has no such limit but stores a key per pending event.
-2. **Concatenating timescales hurts** (multi is worse than slow at every long delay): the fast components are noise at outcome time and dilute
-   the key. A multi-timescale field needs *selection or learned weighting* of timescales (e.g. weight each trace by how well it predicts the
-   outcome), not an equal-weight sum. Not yet implemented.
-3. **Self-detected events** (next-input prediction error as a z-score above its running mean) found every cue onset with no false alarms
-   (recall 1.00, precision 1.00 over 8 seeds). That is a ceiling result: the cues are large relative to the noise, so it shows the mechanism
-   works, not that it is robust. A noise/amplitude sweep is the next test.
+| key | delay 3 | 15 | 25 | 40 | 60 | 100 |
+|---|---|---|---|---|---|---|
+| stored (any field) | 1.00 | 1.00 | 1.00 | - | - | - |
+| trace, fast (λ .8) | 1.00 | 0.68 | 0.18 | 0.15 | 0.11 | 0.19 |
+| trace, slow (λ .95) | 1.00 | 1.00 | 1.00 | 1.00 | 0.69 | 0.26 |
+| trace, very slow (λ .99) | **0.67** | 0.96 | 0.97 | 1.00 | 1.00 | 1.00 |
+| trace, equal-weight sum (.5/.8/.95) | 1.00 | 0.90 | 0.75 | 0.48 | 0.32 | 0.10 |
+| trace, equal-weight sum (.8/.95/.99) | 1.00 | 0.99 | 0.94 | 0.91 | 0.81 | 0.62 |
+
+1. **A trace binds only while it lasts and only while it is clean.** A trace must be slow enough to still hold the cue at outcome time and fast
+   enough that earlier events have decayed: λ .8 fails beyond delay ~10, λ .99 fails at delay 3 (0.67, contaminated by previous events), and each
+   timescale has a window. The eligibility buffer has no such window but costs a stored key per pending event.
+2. **Mixed delays** (cue types with outcome delays 3/15/40/80, `results/organic_dog_test_v3.json`, 6 seeds), valenced accuracy overall and by delay:
+
+| learner | overall | d=3 | d=15 | d=40 | d=80 |
+|---|---|---|---|---|---|
+| single λ .8 | 0.71 | 1.00 | 1.00 | 0.22 | 0.03 |
+| single λ .95 | 0.89 | 1.00 | 1.00 | 1.00 | 0.36 |
+| single λ .99 | 0.94 | 0.96 | 0.93 | 0.86 | 1.00 |
+| equal-weight concatenation | 0.90 | 1.00 | 1.00 | 0.89 | 0.53 |
+| **joint codes** (one sparse code per timescale, one delta-rule vector) | **0.95** | 1.00 | 1.00 | 1.00 | 0.69 |
+| expert mixture (weights exp(-βerr)) | 0.90 | 1.00 | 1.00 | 0.97 | 0.42 |
+
+   Giving each timescale its own sparse code and letting a single delta rule assign the weights is the best of the combinations at short and
+   medium delays and ties the best single trace overall (0.95 vs 0.94); it does not recover the longest delay (0.69 vs 1.00 for λ .99).
+   The online expert-weighting scheme was no better than equal-weight concatenation. No combination dominates; the differences between the
+   top three are small for 6 seeds.
+3. **Self-detected events** (`dog_test_v3.py`, 4 seeds): a learned next-input predictor and a plain z-score of the input norm detect cue
+   onsets equally well. Both are perfect at cue amplitude ≥ 1 with noise ≤ 0.5 and at amplitude 0.5 with noise 0.2, and both collapse when the
+   signal-to-noise ratio falls to ~1 or below (recall 0.03-0.23 at amplitude 0.25-0.5 with noise ≥ 0.5, and at amplitude 1.0 with noise 0.8;
+   precision stays 0.6-0.95). **The predictive detector gives no advantage over the trivial baseline in this world**, so "surprise from the
+   stream" is so far not shown to be a better event signal than energy.
 
 ## Wrapping a language model (design, not implemented)
 Earlier NSA results are a constraint here: showing serialised state *text* to an LLM did not help (v1.2, v4.2); what helped was state that
