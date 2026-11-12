@@ -68,6 +68,9 @@ class RuntimeConfig:
     reuse_familiar_answers: bool = False
     reuse_similarity: float = 0.95
     reuse_cache_size: int = 256
+    # When True, memory_keys_for accepts only keys whose every token is covered by the question (typos tolerated). Stops "the database port for zebra" from
+    # answering with the only entity that happens to have a database port. Recommended with abstain_text.
+    require_full_key_match: bool = False
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -294,6 +297,8 @@ class NSARuntime:
             trusted = [(sc, k) for sc, k in pool if self.memory.current(k).content.get("integrity", "TRUSTED") == "TRUSTED"]
             if trusted:
                 pool = trusted
+        if pool and self.config.require_full_key_match and pool[0][0] < 1.0 - 1e-9:
+            return []
         if pool:
             # Only the best-matching key(s): lower-scoring partial matches are other entities' values (e.g. the same attribute of another entity) and only distract the model.
             pool = [(sc, k) for sc, k in pool if sc >= pool[0][0] - 1e-9]

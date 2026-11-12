@@ -255,9 +255,13 @@ def parse_llm_facts(reply: str) -> list[ExtractedFact]:
 
 
 def key_overlap(question: str, key: str) -> float:
-    """Token-overlap score between a question and a normalised key (0..1, fraction of key tokens present)."""
-    q, k = set(normalize_key(question).split()), set(key.split())
-    return len(q & k) / len(k) if k else 0.0
+    """Fraction of the key's tokens covered by the question (0..1). A key token also counts as covered by a one-character typo of itself (both >= 5 letters)."""
+    from .routing import edit_distance
+
+    q, k = normalize_key(question).split(), key.split()
+    qs = set(q)
+    covered = sum(1 for t in k if t in qs or (len(t) >= 5 and any(len(w) >= 5 and edit_distance(t, w, 1) <= 1 for w in q)))
+    return covered / len(k) if k else 0.0
 
 
 def rank_scored(question: str, keys: Iterable[str], *, min_score: float = 0.5) -> list[tuple[float, str]]:

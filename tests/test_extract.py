@@ -209,3 +209,17 @@ def test_step_can_skip_extracting_the_prompt_so_instructions_never_become_facts(
     a = NSA(backend, config=RuntimeConfig(memory_enabled=True, include_state_in_prompt=False), extractor=RuleFactExtractor())
     a.step("What is the port? Reply with exactly one line: VALUE=V123_456 and nothing else (example: VALUE=V123_456).", remember_prompt=False)
     assert a.memory.keys() == ()
+
+
+def test_typo_tolerant_coverage_and_strict_full_match_mode():
+    from nsa.memory.extract import key_overlap
+
+    assert key_overlap("What is the databse port for staging?", "database port staging") == 1.0        # one-character typo still covers
+    assert key_overlap("What is the database port for zebra?", "database port staging") < 1.0
+    strict = NSA(_Echo(), config=RuntimeConfig(memory_enabled=True, require_full_key_match=True), extractor=RuleFactExtractor())
+    strict.observe("The log level for auth is debug1.", source="chat")
+    assert strict.memory_keys_for("What is the log level for zebra?") == []                       # unique partial match, but it is another entity
+    assert strict.memory_keys_for("what is the log level for auth") == ["auth level log"]
+    lenient = _agent()
+    lenient.observe("The log level for auth is debug1.", source="chat")
+    assert lenient.memory_keys_for("What is the log level for zebra?") == ["auth level log"]       # default mode keeps the unique partial match (documented trade-off)
