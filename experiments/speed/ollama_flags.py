@@ -25,9 +25,10 @@ WORDS = ("the staging database port is set to a value that operations changed la
          "rotated the api region for reports gateway mailer scheduler uploads ").split()
 
 
-def prompt_of(tokens: int) -> str:
+def prompt_of(tokens: int, salt: int = 0) -> str:
+    """A prompt whose FIRST tokens are unique per call: Ollama reuses the KV cache for a shared prefix, so a unique suffix would measure the cache, not prefill."""
     n = int(tokens * 0.75)
-    return " ".join(WORDS[i % len(WORDS)] + (str(i) if i % 17 == 0 else "") for i in range(n)) + "\n\nSummarise in one word."
+    return f"Request {salt}-{salt * 7919 % 10007}. " + " ".join(WORDS[(i + salt) % len(WORDS)] + (str(i) if i % 17 == 0 else "") for i in range(n)) + "\n\nSummarise in one word."
 
 
 def post(url: str, payload: dict, timeout: float = 900.0) -> dict:
@@ -70,13 +71,14 @@ def measure(base: str, model: str, tokens: int, threads: int | None, repeats: in
     opts = {"temperature": 0.0, "num_predict": 24, "num_ctx": 4096}
     if threads:
         opts["num_thread"] = threads
-    p = prompt_of(tokens)
     post(f"{base}/api/generate", {"model": model, "prompt": "warm up", "stream": False, "options": opts})   # load + warm
     runs = []
     for i in range(repeats):
-        r = post(f"{base}/api/generate", {"model": model, "prompt": p + f" ({i})", "stream": False, "options": opts})   # distinct suffix defeats prefix cache
+        r = post(f"{base}/api/generate", {"model": model, "prompt": prompt_of(tokens, i + 1), "stream": False, "options": opts})   # unique prefix defeats the cache
         runs.append(r)
-    pe = [r["prompt_eval_count"] / (r["prompt_eval_duration"] / 1e9) for r in runs if r.get("prompt_eval_duration")]
+    expected = runs[0]["prompt_eval_count"]
+    # a run that evaluated far fewer tokens than the first was served (mostly) from the prefix cache and says nothing about prefill speed
+    pe = [r["prompt_eval_count"] / (r["prompt_eval_duration"] / 1e9) for r in runs if r.get("prompt_eval_duration") and r["prompt_eval_count"] >= 0.8 * expected]
     ev = [r["eval_count"] / (r["eval_duration"] / 1e9) for r in runs if r.get("eval_duration")]
     mem = next((m["size"] for m in get(f"{base}/api/ps").get("models", []) if m["name"] == model), None)
     return {"prefill_tok_s": statistics.median(pe), "decode_tok_s": statistics.median(ev), "prompt_tokens": runs[-1]["prompt_eval_count"],
