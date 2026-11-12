@@ -42,9 +42,14 @@ def model_weight_bytes(base_url: str, model: str) -> int | None:
     return None
 
 
+# Measured on this machine (llama.cpp via Ollama, CPU): qwen2.5:7b (4.36 GiB weights) at num_ctx 8192 had a 6.86 GB resident set. Weights + a
+# 70 KB/token KV estimate only explains ~4.9 GiB; the rest (~2 GiB) is compute buffers and runtime overhead, so it is added explicitly.
+RUNTIME_OVERHEAD_BYTES = {"small": int(0.5 * 2**30), "large": int(2.0 * 2**30)}
+
+
 def estimate_need_bytes(weights: int, num_ctx: int) -> int:
-    per_token = KV_BYTES_PER_TOKEN["large" if weights >= 3.5 * 2**30 else "small"]
-    return weights + num_ctx * per_token + MARGIN_BYTES
+    size = "large" if weights >= 3.5 * 2**30 else "small"
+    return weights + RUNTIME_OVERHEAD_BYTES[size] + num_ctx * KV_BYTES_PER_TOKEN[size] + MARGIN_BYTES
 
 
 def unload_all(base_url: str) -> list[str]:

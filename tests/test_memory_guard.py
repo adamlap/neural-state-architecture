@@ -43,3 +43,13 @@ def test_remote_servers_are_never_blocked_on_local_memory(tmp_path, monkeypatch)
     monkeypatch.setattr(mg, "unload_all", lambda url: [])
     monkeypatch.setattr(mg, "model_weight_bytes", lambda url, model: 40 * gib)
     assert mg.prepare_model("http://gpu-box:11434", "big", 32768, meminfo_path=_meminfo(tmp_path, 1024))["need"] > 0
+
+
+def test_the_measured_7b_run_would_have_been_refused_on_an_8_gib_vm(tmp_path, monkeypatch):
+    """Regression: the 7B at num_ctx 8192 used 6.86 GB resident and exhausted a 7.9 GiB WSL VM with ~6.8 GiB 'available'."""
+    gib = 2**30
+    monkeypatch.setattr(mg, "unload_all", lambda url: [])
+    monkeypatch.setattr(mg, "model_weight_bytes", lambda url, model: int(4.36 * gib))
+    with pytest.raises(SystemExit):
+        mg.prepare_model("http://localhost:11434", "qwen2.5:7b", 8192, meminfo_path=_meminfo(tmp_path, int(6.8 * gib / 1024)))
+    assert mg.estimate_need_bytes(int(4.36 * gib), 8192) > 6.86e9      # never below what was measured
