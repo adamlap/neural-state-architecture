@@ -286,14 +286,18 @@ class NSARuntime:
         while sum(len(v) for v in self._answer_cache.values()) > self.config.reuse_cache_size:
             self._answer_cache.pop(next(iter(self._answer_cache)))
 
-    def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True, reject_ambiguous: bool = True) -> list[str]:
+    def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True, top_only: bool = False,
+                        reject_ambiguous: bool = False) -> list[str]:
         """Memory keys that best match a natural-language question (token overlap).
 
-        With ``prefer_trusted`` (default), a key whose current value was written under an UNTRUSTED label is used
-        only if no TRUSTED key matches the question. This closes a gap in the write-time gate: an extractor
-        (especially an LLM) may phrase the same fact as a *different* key, so an untrusted restatement never meets
-        the trusted entry it contradicts. At retrieval time the question decides which keys compete, and trusted
-        ones win.
+        With ``prefer_trusted`` (default), a key whose current value was written under an UNTRUSTED label is used only if no TRUSTED key matches the
+        question. This closes a gap in the write-time gate: an extractor (especially an LLM) may phrase the same fact as a *different* key, so an untrusted
+        restatement never meets the trusted entry it contradicts. At retrieval time the question decides which keys compete, and trusted ones win.
+
+        Default: up to ``memory_limit`` best-matching keys are returned, so the model can resolve an ambiguous question itself (measured: removing those
+        extra candidates lowered routed-memory answer accuracy on noisy streams, 6 vs 2 and 6 vs 1 discordant questions, not significant). Opt-in stricter modes:
+        ``top_only`` keeps only the best-scoring key(s); ``reject_ambiguous`` returns nothing when several keys tie on a *partial* match (so a question about an unknown
+        entity cannot silently answer about another one); ``RuntimeConfig.require_full_key_match`` accepts only keys the question fully covers (used with abstain_text).
         """
         if self.memory is None:
             return []
@@ -303,17 +307,14 @@ class NSARuntime:
             trusted = [(sc, k) for sc, k in pool if self.memory.current(k).content.get("integrity", "TRUSTED") == "TRUSTED"]
             if trusted:
                 pool = trusted
-        if pool and self.config.require_full_key_match and pool[0][0] < 1.0 - 1e-9:
-            return []
-        if pool:
-            # Only the best-matching key(s): lower-scoring partial matches are other entities' values (e.g. the same attribute of another entity) and only distract the model.
+        if pool and self.config.require_full_key_match:
+            pool = [(sc, k) for sc, k in pool if sc >= 1.0 - 1e-9]
+            top_only = True
+        if pool and top_only:
             pool = [(sc, k) for sc, k in pool if sc >= pool[0][0] - 1e-9]
-            if reject_ambiguous and pool[0][0] < 1.0 and len(pool) > 1:
-                # Several keys tie on a PARTIAL match ("database port for zebra" matches every entity's database port equally). Picking one by name would silently
-                # answer about the wrong entity; return nothing so the caller can abstain or ask.
-                return []
-        ranked = [k for _, k in pool]
-        return ranked[:n]
+        if pool and reject_ambiguous and pool[0][0] < 1.0 - 1e-9 and sum(1 for sc, _ in pool if sc == pool[0][0]) > 1:
+            return []
+        return [k for _, k in pool[: max(n, 1) * 4]][:n]
 
     def context_integrity(self) -> IntegrityLabel:
         """Join of the integrity labels of the observations the model is shown (the prompt window)."""

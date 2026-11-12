@@ -107,7 +107,8 @@ def test_untrusted_restatement_under_a_different_key_loses_retrieval_to_the_trus
     for question in ("What is the database port for staging?", "What is the staging db port?"):   # second matches the UNTRUSTED key exactly
         keys = agent.memory_keys_for(question)
         assert [agent.recall([k])[0]["value"] for k in keys] == ["5433"]
-    assert [agent.recall([k])[0]["value"] for k in agent.memory_keys_for("What is the staging db port?", prefer_trusted=False)] == ["6666"]
+    both = [agent.recall([k])[0]["value"] for k in agent.memory_keys_for("What is the staging db port?", prefer_trusted=False)]
+    assert both[0] == "6666" and set(both) == {"6666", "5433"}                                    # without the preference the untrusted key ranks first
 
 
 def test_untrusted_memory_is_still_used_when_nothing_trusted_matches():
@@ -193,15 +194,17 @@ def test_hybrid_with_span_stage_uses_rules_to_seed_the_vocabulary_and_skips_the_
     assert HybridFactExtractor(None, span=True).extract("anything 123") == [] and HybridFactExtractor(None).calls == 0
 
 
-def test_partial_match_ties_are_ambiguous_not_alphabetical():
+def test_default_retrieval_returns_candidates_and_the_strict_modes_are_opt_in():
     a = _agent()
     for e in ("staging", "billing", "payments"):
         a.observe(f"The database port for {e} is 5433.", source="chat")
-    assert a.memory_keys_for("What is the database port for zebra?") == []                       # 2/3 for every entity: ambiguous
-    assert a.memory_keys_for("What is the database port for billing?") == ["billing database port"]   # full match wins, and ONLY it: other entities' ports are not retrieved as distractors
-    assert a.memory_keys_for("What is the database port for zebra?", reject_ambiguous=False)           # old behaviour available
+    default = a.memory_keys_for("What is the database port for billing?")
+    assert default[0] == "billing database port" and len(default) == 3                      # candidates kept: the model can resolve ambiguity
+    assert a.memory_keys_for("What is the database port for billing?", top_only=True) == ["billing database port"]
+    assert a.memory_keys_for("What is the database port for zebra?")                         # default: candidates for the model to weigh
+    assert a.memory_keys_for("What is the database port for zebra?", reject_ambiguous=True) == []   # opt-in: ambiguous partial match -> nothing
     a.observe("The log level for auth is debug1.", source="chat")
-    assert a.memory_keys_for("what is the log level") == ["auth level log"]                   # unique partial match is accepted
+    assert a.memory_keys_for("what is the log level", reject_ambiguous=True) == ["auth level log"]   # unique partial match accepted
 
 
 def test_step_can_skip_extracting_the_prompt_so_instructions_never_become_facts():

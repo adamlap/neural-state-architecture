@@ -110,3 +110,9 @@ A third phrasing set, `test`, was written *before* the span extractor was design
   (hybrid 0.31 -> 0.42 at 1.5b, 0.29 -> 0.39 at 3b; precision 0.47 -> 0.51) but lowers both on the set it was developed against (0.74 -> 0.64). The gain is small and inconsistent; it is off by default.
 * Coverage of unseen phrasing remains the open limit of NSA's natural-language memory. Plausible directions (untested): a larger or instruction-tuned extractor, a verification pass that
   re-reads each source line against the extracted fact, and asking the user to confirm a fact when no extractor is confident.
+
+## Retrieval variant experiment (`results/research-v10.2-end-to-end-1.5b.json`)
+Same 8 seeds as the 1.5b end-to-end run above, with `memory_keys_for` changed to return only the best-scoring key(s) and to reject ambiguous partial matches. Routed memory fell from 0.81 to 0.73
+(known phrasings) and from 0.56 to 0.46 (held-out): old-only vs new-only correct questions 6 vs 2 (p = 0.29) and 6 vs 1 (p = 0.125); the transcript and keyword-retrieval rows did not move.
+Not significant, but consistent; the older candidate-list behaviour (the model resolves ambiguity itself) was restored as the default and the stricter modes kept opt-in. The v10.1 numbers above were
+produced with the default behaviour that is in the code today.

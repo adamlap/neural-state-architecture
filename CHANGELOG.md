@@ -65,9 +65,9 @@ before 0.6.0 were not documented here; see git history.
 
 ### Fixed
 
-- `NSARuntime.memory_keys_for`: partial-match ties were broken alphabetically (a question about an unknown entity retrieved another entity's value) and lower-scoring partial matches (other entities' values)
-  were returned as distractors. It now returns only the best-scoring key(s) (trusted first), rejects ambiguous partial matches, tolerates one-character typos in words of 4+ letters, and
-  `require_full_key_match` accepts only fully covered keys. Earlier benchmark numbers that used the old retrieval are re-measured where noted.
+- `NSARuntime.memory_keys_for`: tolerates one-character typos in words of 4+ letters; new opt-in `top_only`, `reject_ambiguous` and `RuntimeConfig.require_full_key_match` stop a question about an
+  unknown entity from silently answering about another one (partial-match ties were broken alphabetically). The default keeps returning up to `memory_limit` candidate keys: making top-only/reject the
+  default lowered routed-memory answer accuracy on noisy streams (6 vs 2 and 6 vs 1 discordant questions on the same seeds, not significant), so it was reverted.
 - `RuleFactExtractor`: filler lead-ins ("just to confirm,") no longer leak into the memory key; "is still X" is parsed.
 - `auto_checkpoint` wrote a format that `load_state` could not read; it now uses `save()`.
 - A backend raising `TypeError` was retried without `state`, calling the model twice.
