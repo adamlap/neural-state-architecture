@@ -146,6 +146,73 @@ Next falsification steps: (1) replay-pass sweep and a recursive-least-squares wr
 must be counted in the budget); (2) the same replay budget given to HDC/HRR as record re-insertion; (3) only if (1)–(2) hold,
 connect the replay buffer to NSA's consolidation path, where records are available during "sleep".
 
+## Stage 4b: falsification of 4a, whitened writes and pattern separation (implemented and run)
+
+`experiments/holographic_state_field/consolidation_benchmark.py`, same protocol as 4a (overall accuracy, 5 seeds,
+16×16×16 field, flat D=4096 unless stated). Raw data: `results/hsf_consolidation_v1.json`.
+
+| cosine | n | HSF delta+replay | HDC replay | HRR replay | HSF whitened (69,632 floats) | HDC replay, 69,632 floats | HSF separated+replay | HDC separated+replay |
+|---|---|---|---|---|---|---|---|---|
+| 0.5 | 64 | 0.99 | 0.98 | 0.97 | 1.00 | 0.98 | 1.00 | 1.00 |
+| 0.5 | 256 | 0.70 | 0.84 | 0.87 | 1.00 | 0.97 | 0.75 | 0.94 |
+| 0.9 | 64 | 0.27 | 0.34 | 0.29 | **1.00** | 0.46 | 0.72 | 0.79 |
+| 0.9 | 256 | 0.20 | 0.24 | 0.21 | **1.00** | 0.36 | 0.34 | 0.61 |
+
+1. **The Stage 4a "HSF-specific" result is falsified.** Given the same three replay passes (error-driven re-insertion), HDC and
+   HRR recover correlated keys as well as the replayed delta rule at cosine 0.5 and better at high load. The earlier gap came
+   from giving replay to HSF only.
+2. **The whitened write is the first result the flat memories do not match.** Keeping the inverse cue covariance `P` and writing
+   the residual along `P·k` gives exact recall and in-place supersession for *every* similarity level tested, in one pass with no
+   replay, up to n = H·W. At the same float budget (field + P = 69,632) HDC with replay reaches 0.36–0.46 at cosine 0.9.
+   Two limits, both measured: (a) capacity is hard: past n = H·W accuracy falls to 0.73 (n=384) and 0.59 (n=512), although it
+   stays similarity-independent (0.74 at cosine 0.9, where budget-matched HDC is at 0.14); (b) **at n = H·W the budget equals an
+   explicit table** of n (key, value) vector pairs (n·(H·W + C) floats), which also recalls perfectly. Within capacity the
+   whitened field is therefore not a compression win; what it offers is fixed size, no key storage or scan, exact supersession
+   and similarity-independent degradation past capacity.
+3. **Pattern separation helps every method, HDC most.** A fixed random expansion with 5 % k-winners-take-all lowers
+   within-family cosine from 0.89 to 0.58 (0.50 → 0.27) and lifts replayed accuracy at cosine 0.9 from ~0.3 to 0.72–0.91 at
+   n ≤ 64. It is not HSF-specific.
+
+Gate assessment after 4b: capacity gate not met; robustness gate met **only** by the whitened write and only by paying
+(H·W)² floats; update gate met in the same form. Plain HSF, replayed or not, has no advantage over HDC/HRR.
+
+Brain-inspired reading (analogy, not a biological claim): the three ingredients that worked are the ones a hippocampal-cortical
+account names - sparse pattern separation (dentate gyrus), error-driven plasticity, and decorrelation of cues (what `P` computes;
+in cortex attributed to lateral inhibition / anti-Hebbian learning). The open research question is whether decorrelation can be
+had *cheaply*: `P` is a full matrix here. Candidates, in order: (i) whiten in the sparse separated space, where the cue covariance
+is close to diagonal, so a diagonal or banded `P` may suffice; (ii) a low-rank `P` tracking only the family prototypes;
+(iii) a local anti-Hebbian rule that learns `P` online. Each must beat budget-matched HDC with separation and replay, which is now
+the baseline to beat.
+
+## Stage 4c: cheap decorrelation - separation + homeostatic writes + replay (implemented and run)
+
+Candidate (i) from 4b, in its simplest form: keep one usage count per key unit (H·W extra floats, counted) and scale each write
+by `1 / (floor + usage)`, so units that are active for many cues learn less and a write lands on the units that distinguish the
+cue. This is a diagonal stand-in for `P` (analogy: homeostatic / activity-dependent plasticity). Because HSF's limit is its key
+dimension, the field is also reshaped to 16×32×8 (512 key units, same 4,096 field floats).
+
+Overall accuracy mean / worst seed, 5 seeds, `results/hsf_consolidation_wide_v1.json`:
+
+| cosine | n | HSF sep+homeo+replay (4,608 floats) | HSF sep+delta+replay (4,096) | HDC sep+replay (4,096) | HDC replay (4,096) |
+|---|---|---|---|---|---|
+| 0.9 | 32 | **0.99 / 0.94** | 0.94 / 0.91 | 0.91 / 0.81 | 0.29 / 0.25 |
+| 0.9 | 64 | **0.97 / 0.86** | 0.85 / 0.77 | 0.79 / 0.69 | 0.34 / 0.17 |
+| 0.9 | 128 | **0.91 / 0.76** | 0.68 / 0.56 | 0.71 / 0.62 | 0.24 / 0.18 |
+| 0.9 | 256 | 0.69 / 0.55 | 0.45 / 0.38 | 0.61 / 0.57 | 0.24 / 0.20 |
+| 0.5 | 256 | 0.97 / 0.86 | 0.93 / 0.82 | 0.94 / 0.93 | 0.84 / 0.80 |
+
+This is the first configuration in which an HSF variant beats the strongest baseline at a near-equal budget: at cosine 0.9 it
+leads HDC with separation and replay by 0.08–0.20 for n ≤ 256. Caveats that must travel with the number: 12.5 % more floats
+(the usage vector); one shape, one sparsity (5 %), one floor, none tuned for either side; C = 8 equals the vocabulary size, so
+this shape has no room for a larger vocabulary; at cosine 0.5 HDC is as good and more stable across seeds (worst seed 0.93 vs
+0.86); replay re-presents all records; the homeostatic rule has no obvious counterpart for elementwise binding, so HDC did not
+get one. On the 16×16×16 shape the same HSF variant only ties HDC (0.69 vs 0.71 at n = 128) and loses at n = 256.
+
+Gate assessment after 4c: the robustness gate is met for highly similar keys by *pattern separation + homeostatic delta writes +
+replay on a wide key plane*, pending replication (more seeds, sparsity/shape sweeps for both methods, larger vocabularies).
+Next: (1) that replication; (2) replay from a bounded buffer instead of all records; (3) only then an NSA integration test in
+which the key is a fact key and the value a vocabulary-free code.
+
 ## Decision gates
 
 Continue developing HSF only if it demonstrates at least one repeatable:
