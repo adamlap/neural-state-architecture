@@ -86,3 +86,8 @@ Precision / recall on the extraction-quality benchmark (20 episodes per cell, he
 
 Grounding removes hallucinated values at no recall cost, helping the 1.5b model (precision +0.04 to +0.09) and barely changing 3b, whose remaining spurious
 facts are grounded in the text but wrong (wrong key or wrong line). It does not address coverage, which stays at 0.73-0.78 on held-out phrasings. Off by default.
+
+## 7B end to end, larger sample (`results/research-v10.1-end-to-end-large-qwen2.5-7b.json`, 12 seeds, 72 questions per cell)
+Known phrasings: routed memory 1.00 vs transcript 0.75 and keyword retrieval 0.67 (18 vs 0 and 24 vs 0 discordant, p < 0.001); held-out: routed memory 0.64 vs transcript 0.82 and keyword
+retrieval 0.76 (8 vs 21, p = 0.024; 11 vs 20, p = 0.15). The 4-seed result in the section above (held-out 0.75 vs 0.79) did not hold up at this sample size. Extraction coverage on unfamiliar
+wording is still the bottleneck at 7B, though it is smaller than at 1.5b.

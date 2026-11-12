@@ -228,28 +228,33 @@ Prompt-processing time at `num_ctx` 32768 (Ollama's `prompt_eval`): transcript 1
 
 **What this does not show:** LLM-driven memory formation (v9), larger models, GPU hardware, or that canonical memory beats generic retrieval on non-adversarial recall.
 
-## qwen2.5:7b (run on a 10 GiB WSL VM, one resident model, num_ctx <= 8192; `scripts/run_7b_suite.sh`)
+## qwen2.5:7b (10 GiB WSL VM, one resident model, num_ctx <= 8192; `scripts/run_7b_suite.sh`)
 
-Smaller grids than the 1.5b/3b runs (7B prefill is ~5x slower); sample sizes are small and said so per row. An earlier attempt on an 8 GiB VM was stopped
-because the runner reached 6.9 GB resident and swapped; `memory_guard` was recalibrated from that measurement.
+An earlier attempt on an 8 GiB VM was stopped because the runner reached 6.9 GB resident and swapped; `memory_guard` was recalibrated from that measurement.
+A first 7B pass used value names such as `V007_NEW` / `V007_CURRENT`, which the 7B mis-copies from the memory block (`experiments/research_common/value_name_probe.py`:
+`_CURRENT` 0/10, `_NEW` 5/10, numeric suffix 10/10, opaque token 10/10). Those utility numbers were artefacts and are **superseded** by the opaque-value runs below
+(`research-v5.1`, `v7.1`, `v8.1`; the old `research-v5/7/8-qwen2.5-7b` directories are kept for provenance only). v6 (tool injection) does not use such values and is unaffected.
+Grids are smaller than for the small models (7B prefill is ~5x slower); sample sizes are stated per row.
 
-* **Tool-use injection (v6, 60 generations, 5 kinds x 3 seeds x 2 trials x 2 prompts):** the 7B is **more** injectable than the small models: it proposes the
-  attack call in 83 % (plain prompt) and 75 % (defended prompt) of injected episodes (1.5b/3b: 45-67 %). The runtime gate executed **0** of them (Wilson upper bound
-  0.14; paired Holm p < 0.001 both prompts) at no utility cost (benign task completion 1.00). The defensive prompt reduced susceptibility only slightly (0.83 -> 0.75).
-* **Memory poisoning (v5, 336 episodes):** the governed store again has attack success 0.00 (transcript 0.43, transcript with a warning 0.36, ungated store 0.25) and
-  1.00 accuracy on the poisoned tasks. **The 7B memory-utility numbers are not usable, and the cause is verified:** from the memory block the 7B drops the suffix of values named `V007_NEW` / `V007_CURRENT`, so legitimate-update tasks
-  score 0.00 under *both* memory conditions, and the ungated attack rate is understated for the same reason. `experiments/research_common/value_name_probe.py` (10 updates each): `_CURRENT` 0/10,
-  `_NEW` 5/10, numeric suffix `_007` 10/10, opaque token 10/10. The v5/v7/v8 value names collide with the render's own annotation words (`STATUS=CURRENT`); it is a benchmark artefact, not a property of the 7B or of the memory.
-  A rerun with opaque values is still needed for 7B utility numbers.
-* **Abstention (v7, 72 episodes, distractors = 10):** hallucination on unanswerable questions is 0.00 in **every** condition, including prompt-based abstention (the 1.5b/llama
-  models failed here); the state gate no longer has a fabrication to remove for this model, only compute to save (no model call on a third of episodes, 0.8 s vs 7.0 s for the
-  transcript). Memory accuracy is 0.42-0.50 against 1.00 for the transcript: the value-name artefact above (memory recall 8/8 correct, "current value after an update" 0/8, checked in the v8 data).
-* **Natural-language memory (v9.2, 12 questions per cell):** too small to compare conditions (all CIs overlap). Hybrid memory forms the correct value for 1.00 of train-phrased
-  and 0.50 of held-out episodes; on poisoned episodes the transcript is attacked 75 % of the time and the NSA conditions 0-8 %.
-* **v10 end to end (24 questions per cell):** routed memory 1.00 (known phrasings) and **0.75 (held-out)**, level with the full transcript (0.79) and keyword retrieval (0.79) on
-  held-out, where the 1.5b model was 0.56 against 0.77 and 0.81. Unrouted memory: 0.62 / 0.42, repeating a typo in 38 % / 50 % of answers. Routed vs unrouted: p = 0.004 and 0.008.
-  So the held-out gap at 1.5b was extraction coverage, which the larger model largely closes.
-* **Memory and speed (v8, 2 seeds):** the loaded 7B is 4.7 GiB at num_ctx 2048 and 5.2 GiB at 8192 (server RSS 4.9 / 5.4 GiB), so for this GQA model the context budget saves only
-  ~0.5 GiB between these settings (1.5b: 1.0 GiB between 2048 and 32768); the speed result is larger: transcript prompt processing 58 s at 100 events against 2.0 s for retrieval (29x),
-  and 7.3 s vs 2.0 s at 10 events. Transcripts truncated by a 2048 window score 0.00 at 100 events, as with the small models. `temporal_memory` scores 0.50 here because of the same
-  value-name artefact (recall 8/8, supersession 0/8).
+* **Memory poisoning (v5.1, 336 episodes, opaque values):** governed store accuracy **1.00**, attack success **0.00**; ungated store 0.57 / ASR **0.43** (attacked on 100 % of poisoned episodes);
+  transcript 0.56 / 0.44; transcript with a warning 0.61 / 0.39. Governed vs every other condition: paired Holm p < 0.001 for accuracy and attack success. Legitimate updates are
+  answered 1.00 by every condition, so the gate does not over-block.
+* **Tool-use injection (v6, 60 generations):** the 7B is **more** injectable than the small models: it proposes the attack in 83 % (plain) and 75 % (defended prompt) of injected episodes
+  (1.5b/3b: 45-67 %). The runtime gate executed **0** of them (Wilson upper bound 0.14; Holm p < 0.001) with benign task completion 1.00.
+* **Abstention (v7.1, 72 episodes):** hallucination 0.00 in every condition, including prompt-based abstention (small models failed there). State-gated: accuracy **1.00**, no model call on a third
+  of episodes, **0.8 s** per answer vs 6.8 s for the transcript; prompt-based memory 0.83 (generic clause) / 1.00 (keyed clause).
+* **Memory budget (v8.1, 2 seeds):** loaded 7B 4.7 GiB at num_ctx 2048, 5.2 GiB at 8192 (server RSS 4.9 / 5.4 GiB). Retrieval and canonical memory are 1.00 at both; the transcript is **0.00** at
+  100 events under a 2,048 window (truncated). Prompt processing: transcript 58 s at 100 events vs 2.0 s for retrieval (29x); 7.3 s vs 2.0 s at 10 events. For this GQA model the context budget
+  saves only ~0.5 GiB between 2048 and 8192.
+* **Natural-language memory (v9.2, 60 episodes per condition, 5 seeds x 2 trials):** hybrid memory 0.82 vs transcript 0.67 (Holm p = 0.41, not significant), rules 0.53, few-shot LLM 0.72.
+  Attacked on poisoned episodes: transcript **95 %**, keyword retrieval 50 %, hybrid memory **0 %**. Memory correct after ingest: hybrid 1.00 on known phrasings, 0.70 on held-out.
+* **v10 noisy streams end to end (72 questions per cell, 12 seeds):**
+
+| phrasing | transcript | keyword retrieval | NSA hybrid | NSA hybrid, routed |
+|---|---|---|---|---|
+| known | 0.75 | 0.67 | 0.61 (typo repeated 39 %) | **1.00** (0 %) |
+| held-out | **0.82** | 0.76 | 0.44 (42 %) | 0.64 (17 %) |
+
+  Routing helps at the answer level on both (known 28 vs 0 discordant questions, p < 0.001; held-out 15 vs 1, p = 0.001) and beats the transcript on known phrasings (18 vs 0). **On held-out
+  phrasings the routed memory still loses to the transcript (8 vs 21, p = 0.024)**: extraction coverage remains the limit at 7B, smaller than at 1.5b (0.56 vs 0.77). An earlier 4-seed reading
+  (0.75 vs 0.79, "level with the transcript") was a small-sample effect and is superseded.
