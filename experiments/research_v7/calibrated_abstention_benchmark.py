@@ -38,11 +38,11 @@ from nsa.runtime.inference.ollama import OllamaInferenceBackend
 
 from experiments.research_common.backends import FixedDecodingBackend
 from experiments.research_common.memory_guard import prepare_model
-from experiments.research_common.episodes import facts, pool_size
+from experiments.research_common.episodes import facts, new_value, pool_size
 from experiments.research_common.grading import extract, lenient_correct
 from experiments.research_common.stats import holm, mcnemar_exact, wilson
 
-VERSION = "7.0"
+VERSION = "7.1"
 DECODING = {"temperature": 0.0, "max_tokens": 32, "num_ctx": 32768}
 CONDITIONS = ("transcript", "memory_generic", "memory_keyed", "state_gated")
 KINDS = ("recall", "supersession", "unanswerable")
@@ -59,13 +59,13 @@ INSTRUCTION = {
 CONDITION_INSTRUCTION = {"transcript": "generic", "memory_generic": "generic", "memory_keyed": "keyed", "state_gated": "none"}
 
 
-def make_episode(seed: int, kind: str, distractors: int):
+def make_episode(seed: int, kind: str, distractors: int, values: str = "suffix"):
     pairs = facts(seed, pool_size(distractors))
     key, old = pairs[0]
     lines = [f"FACT: {key} has value {old}."]
     expected = old
     if kind == "supersession":
-        expected = f"V{seed % 1000:03d}_CURRENT"
+        expected = new_value(seed, "current", values, "CURRENT")
         lines.append(f"UPDATE: {key} now has value {expected}; the previous value is obsolete.")
     lines += [f"DISTRACTOR: {k} has value {v}." for k, v in pairs[1:distractors + 1]]
     if kind == "unanswerable":
@@ -202,7 +202,7 @@ def run(args):
     root = Path(args.out)
     root.mkdir(parents=True, exist_ok=True)
     raw, sidecar = root / "raw.jsonl", root / "config.json"
-    signature = {"version": VERSION, "decoding": DECODING, "abstain_above": ABSTAIN_ABOVE, "instructions": INSTRUCTION}
+    signature = {"version": VERSION, "decoding": DECODING, "abstain_above": ABSTAIN_ABOVE, "instructions": INSTRUCTION, "values": getattr(args, "values", "suffix")}
     if getattr(args, "summarize_only", False):
         return write_manifest(root, args, _load(raw))
     if sidecar.exists() and json.loads(sidecar.read_text()) != signature:
@@ -222,7 +222,7 @@ def run(args):
                 for kind in KINDS:
                     for d in args.distractors:
                         for trial in range(args.trials):
-                            lines, question, expected, key = make_episode(seed + trial * 100003, kind, d)
+                            lines, question, expected, key = make_episode(seed + trial * 100003, kind, d, getattr(args, "values", "suffix"))
                             for condition in CONDITIONS:
                                 if (model, seed, condition, kind, d, trial) in done:
                                     continue
@@ -255,7 +255,8 @@ def main():
     p.add_argument("--timeout", type=float, default=300.0)
     p.add_argument("--num-ctx", type=int, default=None, help="override the context size (KV-cache memory); default is the benchmark's own")
     p.add_argument("--summarize-only", action="store_true")
-    p.add_argument("--out", default="results/research-v7")
+    p.add_argument("--values", choices=("suffix", "opaque"), default="opaque", help="value-name style (opaque avoids names that mimic render annotations)")
+    p.add_argument("--out", default="results/research-v7.1")
     p.add_argument("--ollama-url", default=None)
     run(p.parse_args())
 

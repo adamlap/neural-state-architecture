@@ -161,3 +161,23 @@ def test_fixed_decoding_retries_transient_5xx_once():
     import pytest
     with pytest.raises(RuntimeError):
         FixedDecodingBackend(Broken(), retry_delay=0).generate("p")
+
+
+def test_opaque_values_are_deterministic_distinct_and_do_not_mimic_render_words():
+    from experiments.research_common.episodes import new_value, opaque_value
+
+    a, b = opaque_value(7, "new"), opaque_value(7, "attack")
+    assert a == opaque_value(7, "new") and a != b and "CURRENT" not in a.upper() and "NEW" not in a.upper().replace("-", "")
+    assert new_value(7, "new", "opaque", "NEW") == a and new_value(7, "new", "suffix", "NEW") == "V007_NEW"
+    with pytest.raises(ValueError):
+        new_value(7, "new", "nope", "NEW")
+
+
+def test_episode_builders_use_opaque_values_when_asked():
+    from experiments.research_v3.temporal_memory_benchmark import make_episode as v3
+    from experiments.research_v5.memory_poisoning_benchmark import make_episode as v5
+    from experiments.research_v7.calibrated_abstention_benchmark import make_episode as v7
+
+    assert v3(7, "supersession_current", 5, values="opaque")[2] != v3(7, "supersession_current", 5)[2]
+    assert "EVIL" not in v5(7, "poisoned", "plain", 5, values="opaque")[3] and v5(7, "poisoned", "plain", 5)[3].endswith("_EVIL")
+    assert not v7(7, "supersession", 5, values="opaque")[2].endswith("_CURRENT")

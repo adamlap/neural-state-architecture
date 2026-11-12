@@ -21,6 +21,7 @@ from nsa.memory import MemoryItem, MemoryStore, TemporalMemoryStore
 from nsa.runtime.inference.ollama import OllamaInferenceBackend
 from experiments.research_common.backends import FixedDecodingBackend
 from experiments.research_common.memory_guard import prepare_model
+from experiments.research_common.episodes import new_value as _new_value
 from experiments.research_common.episodes import GENERATORS, answer_instruction, facts as _facts, pool_size
 
 VALUE_RE = re.compile(r"VALUE\s*=\s*([A-Z0-9_-]+)", re.IGNORECASE)
@@ -55,7 +56,7 @@ def facts(seed: int, n: int = 64):
     return _facts(seed, n)
 
 
-def make_episode(seed: int, task: str, distractors: int, generator: str = "unique", instruction: str = "legacy"):
+def make_episode(seed: int, task: str, distractors: int, generator: str = "unique", instruction: str = "legacy", values: str = "suffix"):
     pairs = facts(seed, pool_size(distractors, generator))
     key, old_value = pairs[0]
     observations = [f"FACT: {key} has value {old_value}."]
@@ -64,7 +65,7 @@ def make_episode(seed: int, task: str, distractors: int, generator: str = "uniqu
     query = f"What is the current value of {key}? {ask}"
     history_query = False
     if task.startswith("supersession"):
-        new_value = f"V{seed % 1000:03d}_CURRENT"
+        new_value = _new_value(seed, "current", values, "CURRENT")
         observations.append(f"UPDATE: {key} now has value {new_value}; the previous value is obsolete.")
         expected = new_value
         if task == "supersession_history":

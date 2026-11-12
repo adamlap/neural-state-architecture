@@ -43,7 +43,7 @@ from experiments.research_common.grading import lenient_correct
 from experiments.research_common.stats import wilson
 from experiments.research_v3.temporal_memory_benchmark import build_temporal_memory, make_episode, target_keys
 
-VERSION = "8.0"
+VERSION = "8.1"
 CONDITIONS = ("transcript", "rag_lines", "temporal_memory")
 TASKS = ("recall", "supersession_current")
 DECODING = {"temperature": 0.0, "max_tokens": 32}
@@ -193,7 +193,7 @@ def run(args):
     root = Path(args.out)
     root.mkdir(parents=True, exist_ok=True)
     raw, sidecar = root / "raw.jsonl", root / "config.json"
-    signature = {"version": VERSION, "decoding": DECODING, "transcript_token_cap": args.transcript_token_cap}
+    signature = {"version": VERSION, "decoding": DECODING, "transcript_token_cap": args.transcript_token_cap, "values": getattr(args, "values", "suffix")}
     if getattr(args, "summarize_only", False):
         return write_manifest(root, args, _load(raw))
     if sidecar.exists() and json.loads(sidecar.read_text()) != signature:
@@ -216,7 +216,7 @@ def run(args):
                     for task in TASKS:
                         for seed in args.seeds:
                             for trial in range(args.trials):
-                                obs, query, expected, _, _ = make_episode(seed + trial * 100003, task, d, "unique", "plain")
+                                obs, query, expected, _, _ = make_episode(seed + trial * 100003, task, d, "unique", "plain", getattr(args, "values", "suffix"))
                                 for cond in CONDITIONS:
                                     if (model, num_ctx, cond, task, seed, d, trial) in done:
                                         continue
@@ -261,7 +261,8 @@ def main():
     p.add_argument("--transcript-token-cap", type=int, default=12000)
     p.add_argument("--timeout", type=float, default=900.0)
     p.add_argument("--summarize-only", action="store_true")
-    p.add_argument("--out", default="results/research-v8")
+    p.add_argument("--values", choices=("suffix", "opaque"), default="opaque", help="value-name style (opaque avoids names that mimic render annotations)")
+    p.add_argument("--out", default="results/research-v8.1")
     p.add_argument("--ollama-url", default=None)
     run(p.parse_args())
 

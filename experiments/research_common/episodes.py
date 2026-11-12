@@ -69,3 +69,24 @@ def answer_instruction(style: str = "legacy", *, multi: bool = False) -> str:
         return INSTRUCTIONS[style][1 if multi else 0]
     except KeyError as exc:
         raise ValueError(f"instruction style must be one of {sorted(INSTRUCTIONS)}") from exc
+
+
+VALUE_STYLES = ("suffix", "opaque")
+
+
+def opaque_value(seed: int, role: str) -> str:
+    """Deterministic opaque value token such as ``KM42-q7x``.
+
+    Value names like ``V007_CURRENT`` / ``V007_NEW`` collide with the memory render's own annotation words (``STATUS=CURRENT``) and a 7B model
+    copies them wrongly (0/10 and 5/10 in experiments/research_common/value_name_probe.py) while opaque tokens are copied exactly (10/10). Use
+    ``values="opaque"`` for any new value that a model must read back from a rendered memory.
+    """
+    rng = Random(f"{seed}|{role}")
+    return "".join(rng.choice("ABCDEFGHJKMNPQRSTUVWXYZ") for _ in range(2)) + str(rng.randint(10, 99)) + "-" + \
+        "".join(rng.choice("abcdefghjkmnpqrstuvwxyz23456789") for _ in range(3))
+
+
+def new_value(seed: int, role: str, style: str, suffix: str) -> str:
+    if style not in VALUE_STYLES:
+        raise ValueError(f"values must be one of {VALUE_STYLES}")
+    return opaque_value(seed, role) if style == "opaque" else f"V{seed % 1000:03d}_{suffix}"
