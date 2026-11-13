@@ -116,3 +116,20 @@ Same 8 seeds as the 1.5b end-to-end run above, with `memory_keys_for` changed to
 (known phrasings) and from 0.56 to 0.46 (held-out): old-only vs new-only correct questions 6 vs 2 (p = 0.29) and 6 vs 1 (p = 0.125); the transcript and keyword-retrieval rows did not move.
 Not significant, but consistent; the older candidate-list behaviour (the model resolves ambiguity itself) was restored as the default and the stricter modes kept opt-in. The v10.1 numbers above were
 produced with the default behaviour that is in the code today.
+
+## Frozen `test2` set: can better extraction close the coverage gap? (`results/research-v9-extraction-test2`, 20 episodes per cell, scored once)
+`test2` was written before the per-line extractor and key repair were built. The finalists were fixed in advance and scored once. Recall / precision of extracted (key, value) pairs:
+
+| model | hybrid (rules, then few-shot LLM on leftover lines, chunked) | + per-line calls | + span stage | + per-line and key repair (vocabulary-anchored, grounded) |
+|---|---|---|---|---|
+| rules only | 0.00 / 0.00 | | | |
+| qwen2.5:1.5b | 0.23 / 0.45 | 0.24 / 0.46 | 0.32 / 0.48 | 0.32 / 0.49 |
+| qwen2.5:3b | 0.21 / 0.42 | 0.23 / 0.53 | 0.32 / 0.48 | 0.31 / 0.48 |
+| qwen2.5:7b | 0.31 / **0.66** | 0.34 / **0.70** | 0.33 / 0.50 | 0.35 / 0.53 |
+
+* **Recall stays between 0.21 and 0.35 for every extractor and every model size.** The span stage and key repair add about +0.09 recall at 1.5b and 3b (+0.02-0.04 at 7B); per-line calls add little recall
+  but raise precision (3b 0.42 -> 0.53, 7B 0.66 -> 0.70); a bigger model mainly buys precision, not coverage.
+* On the earlier `test` set (used for development) the same ordering held (1.5b hybrid 0.31 -> per-line 0.39 / repair 0.42), so there is no sign that the gains were an artefact of that set, but they are small.
+* Diagnosis on `test` with the 3b model (63 true facts): 30 % extracted exactly, **32 % with the right value but a wrong key** (entity dropped, an extra word such as "new"), 38 % missed entirely.
+  Key repair addresses the middle category; the last remains.
+* Conclusion: extraction alone has a ceiling of roughly 0.3 recall on unseen templated wording at these sizes. The pragmatic fix is architectural (next section): do not depend on extraction coverage.
