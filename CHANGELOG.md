@@ -7,6 +7,8 @@ before 0.6.0 were not documented here; see git history.
 
 ### Added
 
+- `RuntimeConfig(provenance_window=N)`: fold old provenance into a hash chain so `observe()` cost stays flat with agent age (it was linear: every transition hashed the full history). Digests of never-folded states are unchanged. Inverted line index for `lines_for` (0.1 ms at 10k lines vs 30 ms scan); `step(retrieval_query=...)`.
+- v13 (research/RESEARCH_BENCHMARK_V13.md): `retrieve_lines` through the runtime on 100/1,000/3,000-line histories, 1.5b and 7b. Confirmed at 100 lines on unreadable phrasing (p<0.001); not a reliable gain at 1,000+ lines (7b slightly worse on known phrasing, n.s.). CUSUM change detector for the dual-process test: inconclusive.
 - `RuntimeConfig(retrieve_lines=k)` / `NSARuntime.lines_for`: add the k most similar raw observations to the memory prompt. Memory + lines scored 0.92 / 0.79 (known / held-out phrasings, 1.5b) vs routed memory alone 0.79 / 0.56
   and equals the transcript on held-out wording at a constant ~260-token prompt (research/RESEARCH_BENCHMARK_V10.md). Off by default.
 - `HybridFactExtractor(per_line=True, repair_keys=True)`: one model call per leftover line and vocabulary-anchored key repair (small precision/recall gains; frozen-set recall still 0.21-0.35 for every extractor and model size).
