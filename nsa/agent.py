@@ -82,6 +82,12 @@ class RuntimeConfig:
     # current memory (up to ``pin_memory_max`` keys, first-seen order, compact) at the start of every memory-backed prompt instead of the retrieved rows: the text is the
     # same from call to call, so a server with a KV prefix cache (Ollama, llama.cpp) only evaluates the question. Measured 1.6x (7B, accuracy unchanged) and 1.8x (1.5B, but
     # accuracy 1.00 -> 0.79 with 80 distractor rows): use with a model that can pick a row out of the whole memory; a memory update in the middle re-evaluates the rest once.
+    # ``auto_tune``: pick the measured-good options for the attached model (nsa/autotune.py): threads, provenance window, answer reuse, and by model size either a pinned
+    # memory prefix (>= 7B) or raw-line fallback (< 7B). Explicitly set fields are never overridden.
+    auto_tune: bool = False
+    # ``answer_from_memory``: a plain lookup whose words are all covered by exactly ONE stored key (plus filler such as "what is the") is answered with the stored value and
+    # no model call (after policy enforcement, like the other gates). Anything else in the question ("why", "previous", a second entity, a format request) goes to the model.
+    answer_from_memory: bool = False
     compact_memory: bool = False
     pin_memory_prefix: bool = False
     pin_memory_max: int = 200
@@ -123,7 +129,7 @@ class NSARuntime:
         self._held: dict[tuple[str, str], int] = {}
         self.ingress = ingress
         self.ingress_rejections: list[tuple[str, str]] = []
-        self.backend = backend; self.config = config or RuntimeConfig(); self.state = state or self._state_from_mapping(initial_state or {})
+        self.backend = backend; self.config = config or RuntimeConfig(); self.config = __import__('nsa.autotune', fromlist=['auto_config']).auto_config(backend, self.config) if self.config.auto_tune else self.config; self.state = state or self._state_from_mapping(initial_state or {})
         self.policy_engine = policy_engine or (PolicyEngine(policy) if policy else None); self.checkpoint = checkpoint; self.history: list[CognitiveInputEvent] = []; self.trace: list[dict[str, Any]] = []
         self.system_one = (system_one or SystemOneController(system_one_backend)) if self.config.system_one_enabled else None
         self.system_one_tools = system_one_tools
@@ -281,6 +287,11 @@ class NSARuntime:
         if auto_memory and not memory_keys and self.config.abstain_text is not None:
             self.call_stats["abstained"] += 1
             return "abstained", self.config.abstain_text
+        if self.config.answer_from_memory and memory_keys:
+            direct = self._direct_answer(prompt, memory_keys)
+            if direct is not None:
+                self.call_stats["direct"] = self.call_stats.get("direct", 0) + 1
+                return "direct", direct
         if not (self.config.reuse_familiar_answers and memory_keys):
             return None
         from nsa.organic import cue
@@ -292,6 +303,20 @@ class NSARuntime:
                     self.call_stats["reused"] += 1
                     return "reused", text
         return None
+
+    _LOOKUP_FILLER = frozenset("what whats is s the a an of for in on tell me give show us please current currently now value set to and which".split())
+
+    def _direct_answer(self, query: str, memory_keys: Sequence[str]) -> Optional[str]:
+        """The stored value, if ``query`` asks for exactly one retrieved key and nothing else; otherwise None."""
+        from nsa.memory.extract import normalize_key
+        asked = set(normalize_key(query).split()) - self._LOOKUP_FILLER
+        if not asked:
+            return None
+        full = [k for k in memory_keys if asked == set(normalize_key(k).split())]
+        if len(full) != 1:
+            return None
+        item = self.memory.current(full[0])
+        return None if item is None else str(self.memory._value(item))
 
     def _remember_answer(self, prompt: str, memory_keys: Sequence[str], text: str) -> None:
         if not (self.config.reuse_familiar_answers and self.memory is not None and memory_keys):
@@ -472,8 +497,9 @@ class NSARuntime:
         return "state" in params or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
 
     def _pinned_keys(self) -> list[str]:
-        """Trusted-first is not applied here: the pinned prefix is every current key in first-seen order, capped at ``pin_memory_max`` (oldest kept, so the prefix is append-only)."""
-        return list(self.memory.keys())[: self.config.pin_memory_max]
+        """Every current key in first-seen order (append-only, so the rendered prefix stays cacheable), or [] when the memory has outgrown ``pin_memory_max``."""
+        keys = list(self.memory.keys())
+        return keys if len(keys) <= self.config.pin_memory_max else []     # too large to pin: a truncated prefix could omit the asked key, so fall back to retrieval
 
     def _generate(self, model_prompt: str):
         if self._backend_accepts_state():
@@ -486,9 +512,9 @@ class NSARuntime:
         query = prompt if retrieval_query is None else retrieval_query      # text used for key/line retrieval (e.g. the question without answer-format instructions)
         if auto_memory and not memory_keys:
             memory_keys = self.memory_keys_for(query)
-        if self.config.pin_memory_prefix and self.memory is not None and (auto_memory or memory_keys):
-            pinned = self._pinned_keys()
-            memory_context = self.memory.render(pinned, limit=len(pinned), compact=True, stable_order=True) if pinned else ""
+        pinned = self._pinned_keys() if (self.config.pin_memory_prefix and self.memory is not None and (auto_memory or memory_keys)) else None
+        if pinned:
+            memory_context = self.memory.render(pinned, limit=len(pinned), compact=True, stable_order=True)
         else:
             memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit, compact=self.config.compact_memory) if self.memory is not None and memory_keys else ""
         lines = self.lines_for(query, self.config.retrieve_lines) if (self.config.retrieve_lines and (auto_memory or memory_keys)) else []

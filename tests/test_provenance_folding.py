@@ -56,10 +56,13 @@ def test_runtime_with_a_window_keeps_state_bounded_and_per_call_cost_flat():
         a = NSA(_Null(), config=RuntimeConfig(provenance_window=window))
         for i in range(n_warm):
             a.observe(f"w{i}", source="chat")
-        t = time.perf_counter()
-        for i in range(n_measure):
-            a.observe(f"m{i}", source="chat")
-        return (time.perf_counter() - t) / n_measure, a
+        best = float("inf")
+        for rep in range(3):                                            # best of three bursts: a busy machine must not fail the test
+            t = time.perf_counter()
+            for i in range(n_measure // 3):
+                a.observe(f"m{rep}-{i}", source="chat")
+            best = min(best, (time.perf_counter() - t) / (n_measure // 3))
+        return best, a
 
     young, _ = per_call(64, 200)
     old, agent = per_call(64, 6000)
