@@ -39,4 +39,4 @@ def test_end_to_end_episode_runs_all_conditions_with_a_fake_model():
             return SimpleNamespace(text="VALUE=NOPE" if "Extract every fact" not in prompt and "Example 1" not in prompt else "NONE", raw_response={})
 
     rows = e2e.run_episode(_Fake(), 1, "train", n_questions=2)
-    assert {r["condition"] for r in rows} == set(e2e.CONDITIONS) and len(rows) == 8
+    assert {r["condition"] for r in rows} == set(e2e.CONDITIONS) and len(rows) == 2 * len(e2e.CONDITIONS)
