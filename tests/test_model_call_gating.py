@@ -105,3 +105,20 @@ def test_an_ungrounded_answer_is_never_cached_so_a_mistake_is_not_repeated():
     second = a.step("What is the database port for staging?", auto_memory=True).text       # first was not grounded -> not cached -> model asked again
     third = a.step("What is the database port for staging?", auto_memory=True).text        # second was grounded -> reused
     assert (first, second, third) == ("VALUE=made-up", "VALUE=5433", "VALUE=5433") and b.n == 2 and a.call_stats["reused"] == 1
+
+
+def test_retrieve_lines_adds_the_most_similar_raw_lines_and_leaves_default_prompts_unchanged():
+    backend = _Counting()
+    cfg = RuntimeConfig(memory_enabled=True, include_state_in_prompt=False, history_limit=0, retrieve_lines=2)
+    a = NSA(backend, config=cfg, extractor=RuleFactExtractor())
+    a.observe("The database port for staging is 5433.", source="chat")
+    a.observe("Quick note: the cache size on billing sits at 77ab-xyz these days.", source="chat")      # a phrasing the rules do not parse
+    a.observe("lunch at noon?", source="chat")
+    a.step("What is the cache size for billing?", auto_memory=True, remember_prompt=False)
+    prompt = backend.prompts[-1]
+    assert "RETRIEVED_LINES=" in prompt and "77ab-xyz" in prompt and "lunch at noon" not in prompt and "NO_RELEVANT_MEMORY" in prompt
+    plain_backend = _Counting()
+    p = NSA(plain_backend, config=RuntimeConfig(memory_enabled=True, include_state_in_prompt=False, history_limit=0), extractor=RuleFactExtractor())
+    p.observe("The database port for staging is 5433.", source="chat")
+    p.step("What is the database port for staging?", auto_memory=True, remember_prompt=False)
+    assert "RETRIEVED_LINES" not in plain_backend.prompts[-1] and "5433" in plain_backend.prompts[-1]

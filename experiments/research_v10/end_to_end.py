@@ -25,7 +25,7 @@ from experiments.research_common.stats import mcnemar_exact, wilson
 from experiments.research_v9.natural_memory_benchmark import INSTRUCTION, UNTRUSTED_SOURCE, chunk_events, rag_lines
 from experiments.research_v10.gated_memory_benchmark import make_stream
 
-CONDITIONS = ("transcript", "rag_overlap", "nsa_hybrid", "nsa_hybrid_routed", "nsa_routed_fallback")
+CONDITIONS = ("transcript", "rag_overlap", "nsa_hybrid", "nsa_hybrid_routed", "nsa_routed_fallback", "nsa_routed_plus_lines")
 DECODING = {"temperature": 0.0, "max_tokens": 32, "num_ctx": 8192}
 
 
@@ -66,6 +66,12 @@ def run_episode(backend, seed: int, phrasing: str, n_questions: int = 6) -> list
                 else:
                     prompt = "RETRIEVED_LINES=\n" + "\n".join(rag_lines(events, key)) + "\n\n" + q
                 text = backend.generate(prompt).text
+            elif cond == "nsa_routed_plus_lines":
+                # the routed memory AND the most similar raw lines: a missing or wrong memory entry can be cross-checked against the text
+                a = agents["nsa_hybrid_routed"]
+                keys_found = a.memory_keys_for(key)
+                mem = a.memory.render(keys_found) if keys_found else "NO_RELEVANT_MEMORY"
+                text = backend.generate(f"RETRIEVED_MEMORY=\n{mem}\n\nRETRIEVED_LINES=\n" + "\n".join(rag_lines(events, key)) + "\n\n" + q).text
             else:
                 a = agents[cond]
                 keys_found = a.memory_keys_for(key)
@@ -91,7 +97,8 @@ def run(args) -> dict:
     pairs = {}
     for ph in ("train", "heldout"):
         for a, b in (("nsa_hybrid_routed", "nsa_hybrid"), ("nsa_hybrid_routed", "transcript"), ("nsa_hybrid_routed", "rag_overlap"),
-                     ("nsa_routed_fallback", "nsa_hybrid_routed"), ("nsa_routed_fallback", "transcript"), ("nsa_routed_fallback", "rag_overlap")):
+                     ("nsa_routed_fallback", "nsa_hybrid_routed"), ("nsa_routed_fallback", "transcript"), ("nsa_routed_fallback", "rag_overlap"),
+                     ("nsa_routed_plus_lines", "nsa_hybrid_routed"), ("nsa_routed_plus_lines", "transcript"), ("nsa_routed_plus_lines", "rag_overlap")):
             da = {(r["seed"], r["key"]): r["correct"] for r in rows if r["phrasing"] == ph and r["condition"] == a}
             db = {(r["seed"], r["key"]): r["correct"] for r in rows if r["phrasing"] == ph and r["condition"] == b}
             pairs[f"{ph}|{a} vs {b}"] = mcnemar_exact(da, db)

@@ -133,3 +133,18 @@ produced with the default behaviour that is in the code today.
 * Diagnosis on `test` with the 3b model (63 true facts): 30 % extracted exactly, **32 % with the right value but a wrong key** (entity dropped, an extra word such as "new"), 38 % missed entirely.
   Key repair addresses the middle category; the last remains.
 * Conclusion: extraction alone has a ceiling of roughly 0.3 recall on unseen templated wording at these sizes. The pragmatic fix is architectural (next section): do not depend on extraction coverage.
+
+## Not depending on extraction: memory + raw lines (`results/research-v10.3-end-to-end-fallback-1.5b.json`, `results/research-v10.4-end-to-end-combined-1.5b.json`, qwen2.5:1.5b, 8 seeds, 48 questions per cell)
+Because extraction recall is capped near 0.3 (previous section), two ways of covering what it misses were tried, in this order (no others were tried):
+
+| phrasing | transcript | keyword retrieval | routed memory | **fallback** (memory if a stored key is fully covered by the question, else raw lines) | **memory + raw lines** |
+|---|---|---|---|---|---|
+| known | 0.48 | 0.54 | 0.79-0.81 | 0.67 (worse than memory: 1 vs 8, p = 0.039) | **0.92** |
+| held-out | 0.77 | 0.81 | 0.56 | 0.58 (6 vs 5, no change) | **0.79** |
+
+* Switching to raw lines only when memory is empty does not help. Giving the model **both** at once does: on known phrasings 0.92 beats the transcript (22 vs 1 discordant, p < 0.001) and keyword retrieval (19 vs 1, p < 0.001); on held-out
+  wording it matches the transcript (7 vs 6) and keyword retrieval (4 vs 5) and is far above routed memory alone (11 vs 0, p = 0.001). The prompt stays ~260 tokens whatever the history length.
+* The cross-check works because the model can see the typo'd restatements in the lines but the routed memory tells it which value is current; each covers the other's failure.
+* Runtime feature: `RuntimeConfig(retrieve_lines=k)` adds the k most similar earlier observations as `RETRIEVED_LINES` next to `RETRIEVED_MEMORY` when memory is used in `step()` (off by default). The benchmark builds its prompt directly,
+  so the library path is covered by a unit test but has not been re-measured end to end.
+* Limits: one small model; synthetic noise; a single 8-seed run per variant (the combined variant was chosen after the fallback failed, not tuned); long histories (1,000 lines) not tested with this combination.

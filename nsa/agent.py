@@ -71,6 +71,10 @@ class RuntimeConfig:
     # When True, memory_keys_for accepts only keys whose every token is covered by the question (typos tolerated). Stops "the database port for zebra" from
     # answering with the only entity that happens to have a database port. Recommended with abstain_text.
     require_full_key_match: bool = False
+    # Cross-check memory against the raw text: with ``auto_memory`` (or memory_keys), also put the ``retrieve_lines`` most similar earlier observations into the prompt
+    # as RETRIEVED_LINES. Extraction misses many facts on unfamiliar wording (recall 0.2-0.35); the lines cover what it missed. Measured (qwen2.5:1.5b, noisy streams):
+    # memory + lines 0.92 / 0.79 (known / held-out phrasings) vs routed memory alone 0.79 / 0.56. 0 disables.
+    retrieve_lines: int = 0
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -286,6 +290,20 @@ class NSARuntime:
         while sum(len(v) for v in self._answer_cache.values()) > self.config.reuse_cache_size:
             self._answer_cache.pop(next(iter(self._answer_cache)))
 
+    def lines_for(self, question: str, k: int) -> list[str]:
+        """The ``k`` earlier observations (strings) most similar to the question by token overlap; ties go to the later one. Excludes the question itself."""
+        from nsa.memory.extract import normalize_key
+
+        q = set(normalize_key(question).split())
+        scored = []
+        for i, e in enumerate(self.history[:-1] if self.history else []):
+            text = e.payload if isinstance(e.payload, str) else None
+            if text:
+                score = len(q & set(normalize_key(text).split()))
+                if score:
+                    scored.append((score, i, text))
+        return [t for _, _, t in sorted(scored, key=lambda x: (-x[0], -x[1]))[:k]]
+
     def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True, top_only: bool = False,
                         reject_ambiguous: bool = False) -> list[str]:
         """Memory keys that best match a natural-language question (token overlap).
@@ -433,6 +451,9 @@ class NSARuntime:
         if auto_memory and not memory_keys:
             memory_keys = self.memory_keys_for(prompt)
         memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit) if self.memory is not None and memory_keys else ""
+        lines = self.lines_for(prompt, self.config.retrieve_lines) if (self.config.retrieve_lines and (auto_memory or memory_keys)) else []
+        if lines:
+            memory_context = (memory_context or "NO_RELEVANT_MEMORY") + "\n\nRETRIEVED_LINES=\n" + "\n".join(lines)
         model_prompt = f"RETRIEVED_MEMORY=\n{memory_context}\n\n{prompt}" if memory_context else prompt
         context = EvaluationContext(action=action, capabilities=frozenset(capabilities), protected_data=frozenset(protected_data), risk=self.state.soft.risk, uncertainty=self.state.soft.uncertainty); decision = None
         if self.policy_engine:

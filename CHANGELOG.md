@@ -7,6 +7,9 @@ before 0.6.0 were not documented here; see git history.
 
 ### Added
 
+- `RuntimeConfig(retrieve_lines=k)` / `NSARuntime.lines_for`: add the k most similar raw observations to the memory prompt. Memory + lines scored 0.92 / 0.79 (known / held-out phrasings, 1.5b) vs routed memory alone 0.79 / 0.56
+  and equals the transcript on held-out wording at a constant ~260-token prompt (research/RESEARCH_BENCHMARK_V10.md). Off by default.
+- `HybridFactExtractor(per_line=True, repair_keys=True)`: one model call per leftover line and vocabulary-anchored key repair (small precision/recall gains; frozen-set recall still 0.21-0.35 for every extractor and model size).
 - Model-call gating in `NSARuntime.step`: `RuntimeConfig(abstain_text=..., reuse_familiar_answers=True, require_full_key_match=True)` (all off by default). Abstain without a model call when
   no memory key matches; reuse a grounded earlier answer when the retrieved memory state is unchanged and the question is familiar; both after policy enforcement. 2.2x less time, 51 % fewer calls,
   no fabrication, 0 stale reuse on a re-asked question stream (research/RESEARCH_BENCHMARK_V12.md). `step(remember_prompt=False)` skips fact extraction of the prompt itself.
