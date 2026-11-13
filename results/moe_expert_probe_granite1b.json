@@ -1,0 +1,217 @@
+{
+  "experiment": "moe_expert_probe",
+  "model": "ibm-granite/granite-3.0-1b-a400m-instruct",
+  "layers": 24,
+  "experts": 32,
+  "top_k": 8,
+  "experts_for_90pct": {
+    "code": 20.0,
+    "cooking": 22.0,
+    "finance": 21.208333333333332,
+    "medicine": 22.291666666666668,
+    "all_topics": 23.083333333333332
+  },
+  "results": {
+    "8|topic": {
+      "coverage": 0.48697062841530053,
+      "top1_agreement": 0.01639344262295082,
+      "kl": 6.329540565365651
+    },
+    "8|random": {
+      "coverage": 0.24137636612021857,
+      "top1_agreement": 0.03278688524590164,
+      "kl": 7.0730552798411885
+    },
+    "8|topic+start": {
+      "coverage": 0.30300546448087434,
+      "top1_agreement": 0.01639344262295082,
+      "kl": 6.8168129342501285
+    },
+    "8|global+start": {
+      "coverage": 0.3111851092896175,
+      "top1_agreement": 0.01639344262295082,
+      "kl": 6.833655835761398
+    },
+    "8|wrong_topic+start": {
+      "coverage": 0.30017076502732243,
+      "top1_agreement": 0.05245901639344262,
+      "kl": 6.370925503089779
+    },
+    "8|random+start": {
+      "coverage": 0.2545594262295082,
+      "top1_agreement": 0.029508196721311476,
+      "kl": 6.777884811651512
+    },
+    "8|topic+cached": {
+      "coverage": 0.48697062841530053,
+      "top1_agreement": 0.2098360655737705,
+      "kl": 3.6576419517642162
+    },
+    "8|global+cached": {
+      "coverage": 0.4685963114754098,
+      "top1_agreement": 0.1737704918032787,
+      "kl": 3.9925510594102205
+    },
+    "8|wrong_topic+cached": {
+      "coverage": 0.4277493169398907,
+      "top1_agreement": 0.17704918032786884,
+      "kl": 4.251161844222272
+    },
+    "8|random+cached": {
+      "coverage": 0.2521174863387978,
+      "top1_agreement": 0.07540983606557378,
+      "kl": 5.907903652503842
+    },
+    "12|topic": {
+      "coverage": 0.648292349726776,
+      "top1_agreement": 0.03278688524590164,
+      "kl": 6.316194478019339
+    },
+    "12|random": {
+      "coverage": 0.37868852459016394,
+      "top1_agreement": 0.04918032786885246,
+      "kl": 6.259133010614113
+    },
+    "12|topic+start": {
+      "coverage": 0.5218579234972678,
+      "top1_agreement": 0.029508196721311476,
+      "kl": 6.374884083231942
+    },
+    "12|global+start": {
+      "coverage": 0.5115437158469945,
+      "top1_agreement": 0.03934426229508197,
+      "kl": 6.601058209528689
+    },
+    "12|wrong_topic+start": {
+      "coverage": 0.48097677595628413,
+      "top1_agreement": 0.036065573770491806,
+      "kl": 6.523068537477587
+    },
+    "12|random+start": {
+      "coverage": 0.4073941256830601,
+      "top1_agreement": 0.02622950819672131,
+      "kl": 6.5466545730340675
+    },
+    "12|topic+cached": {
+      "coverage": 0.648292349726776,
+      "top1_agreement": 0.32786885245901637,
+      "kl": 2.624865272396901
+    },
+    "12|global+cached": {
+      "coverage": 0.6270150273224043,
+      "top1_agreement": 0.26557377049180325,
+      "kl": 3.0367708800268955
+    },
+    "12|wrong_topic+cached": {
+      "coverage": 0.5807718579234973,
+      "top1_agreement": 0.25245901639344265,
+      "kl": 3.455987723928983
+    },
+    "12|random+cached": {
+      "coverage": 0.37585382513661203,
+      "top1_agreement": 0.14754098360655737,
+      "kl": 4.6949434874487705
+    },
+    "16|topic": {
+      "coverage": 0.7685450819672132,
+      "top1_agreement": 0.04590163934426229,
+      "kl": 5.82204722420114
+    },
+    "16|random": {
+      "coverage": 0.5070696721311475,
+      "top1_agreement": 0.11147540983606558,
+      "kl": 4.915185646932633
+    },
+    "16|topic+start": {
+      "coverage": 0.6780054644808743,
+      "top1_agreement": 0.03934426229508197,
+      "kl": 6.146995969678535
+    },
+    "16|global+start": {
+      "coverage": 0.6657103825136612,
+      "top1_agreement": 0.04590163934426229,
+      "kl": 5.892112356717469
+    },
+    "16|wrong_topic+start": {
+      "coverage": 0.6275614754098361,
+      "top1_agreement": 0.04590163934426229,
+      "kl": 6.07660427406186
+    },
+    "16|random+start": {
+      "coverage": 0.5284494535519125,
+      "top1_agreement": 0.08524590163934426,
+      "kl": 6.030525532706839
+    },
+    "16|topic+cached": {
+      "coverage": 0.7685450819672132,
+      "top1_agreement": 0.4918032786885246,
+      "kl": 1.669246292114258
+    },
+    "16|global+cached": {
+      "coverage": 0.7484801912568306,
+      "top1_agreement": 0.42950819672131146,
+      "kl": 2.128979567230725
+    },
+    "16|wrong_topic+cached": {
+      "coverage": 0.7024590163934427,
+      "top1_agreement": 0.36065573770491804,
+      "kl": 2.478957004234439
+    },
+    "16|random+cached": {
+      "coverage": 0.5050887978142077,
+      "top1_agreement": 0.23278688524590163,
+      "kl": 3.4704992325579536
+    },
+    "24|topic": {
+      "coverage": 0.9302595628415301,
+      "top1_agreement": 0.09508196721311475,
+      "kl": 5.085587223240586
+    },
+    "24|random": {
+      "coverage": 0.7437670765027322,
+      "top1_agreement": 0.3540983606557377,
+      "kl": 2.675454586842021
+    },
+    "24|topic+start": {
+      "coverage": 0.9069672131147541,
+      "top1_agreement": 0.7213114754098361,
+      "kl": 0.38458031513651864
+    },
+    "24|global+start": {
+      "coverage": 0.8927083333333333,
+      "top1_agreement": 0.659016393442623,
+      "kl": 0.5767122643892882
+    },
+    "24|wrong_topic+start": {
+      "coverage": 0.8595457650273224,
+      "top1_agreement": 0.5967213114754099,
+      "kl": 0.9800430422923604
+    },
+    "24|random+start": {
+      "coverage": 0.7706454918032787,
+      "top1_agreement": 0.6098360655737705,
+      "kl": 0.7835780159371798
+    },
+    "24|topic+cached": {
+      "coverage": 0.9302595628415301,
+      "top1_agreement": 0.7901639344262295,
+      "kl": 0.32593066575097257
+    },
+    "24|global+cached": {
+      "coverage": 0.9146857923497268,
+      "top1_agreement": 0.7245901639344262,
+      "kl": 0.5193748661729156
+    },
+    "24|wrong_topic+cached": {
+      "coverage": 0.8749829234972678,
+      "top1_agreement": 0.5606557377049181,
+      "kl": 1.234257363491371
+    },
+    "24|random+cached": {
+      "coverage": 0.7362534153005464,
+      "top1_agreement": 0.49508196721311476,
+      "kl": 1.2664933501696978
+    }
+  },
+  "boundary": "One small MoE model, 4 topics, 2 held-out texts per topic, no fine-tuning."
+}
