@@ -1,0 +1,505 @@
+{
+  "experiment": "nsa_call_speed",
+  "model": "qwen2.5:7b",
+  "threads": 6,
+  "summary": {
+    "baseline": {
+      "n": 8,
+      "wall_ms": 2274.581689001934,
+      "prompt_tokens_evaluated": 88.0,
+      "prefill_ms": 1648.518,
+      "out_tokens": 6.0,
+      "decode_ms": 604.1034999999999,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 3515.929938002955,
+          "prompt_tokens": 88,
+          "prefill_ms": 2233.616,
+          "out_tokens": 7,
+          "decode_ms": 1229.749,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 2288.9210260036634,
+          "prompt_tokens": 88,
+          "prefill_ms": 1751.53,
+          "out_tokens": 5,
+          "decode_ms": 493.533,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 2127.573699995992,
+          "prompt_tokens": 85,
+          "prefill_ms": 1619.34,
+          "out_tokens": 5,
+          "decode_ms": 494.948,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 2273.3076339936815,
+          "prompt_tokens": 86,
+          "prefill_ms": 1631.394,
+          "out_tokens": 6,
+          "decode_ms": 604.103,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 2255.667731005815,
+          "prompt_tokens": 88,
+          "prefill_ms": 1600.017,
+          "out_tokens": 6,
+          "decode_ms": 604.104,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 2160.6586589914514,
+          "prompt_tokens": 87,
+          "prefill_ms": 1665.642,
+          "out_tokens": 5,
+          "decode_ms": 482.235,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 2441.4919470000314,
+          "prompt_tokens": 89,
+          "prefill_ms": 1802.871,
+          "out_tokens": 6,
+          "decode_ms": 605.85,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 2275.8557440101868,
+          "prompt_tokens": 88,
+          "prefill_ms": 1630.916,
+          "out_tokens": 6,
+          "decode_ms": 619.989,
+          "correct": true,
+          "response": "hanuca10"
+        }
+      ]
+    },
+    "threads": {
+      "n": 8,
+      "wall_ms": 1528.1006495060865,
+      "prompt_tokens_evaluated": 88.0,
+      "prefill_ms": 1083.9434999999999,
+      "out_tokens": 6.0,
+      "decode_ms": 408.456,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 1608.7974939873675,
+          "prompt_tokens": 88,
+          "prefill_ms": 1069.972,
+          "out_tokens": 7,
+          "decode_ms": 526.263,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 1531.9531730056042,
+          "prompt_tokens": 88,
+          "prefill_ms": 1147.125,
+          "out_tokens": 5,
+          "decode_ms": 368.797,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 1940.1984420110239,
+          "prompt_tokens": 85,
+          "prefill_ms": 1464.318,
+          "out_tokens": 5,
+          "decode_ms": 464.981,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 1524.2481260065688,
+          "prompt_tokens": 86,
+          "prefill_ms": 1097.915,
+          "out_tokens": 6,
+          "decode_ms": 413.793,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 1448.164575995179,
+          "prompt_tokens": 88,
+          "prefill_ms": 1004.091,
+          "out_tokens": 6,
+          "decode_ms": 432.607,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 1395.2945330092916,
+          "prompt_tokens": 87,
+          "prefill_ms": 1050.444,
+          "out_tokens": 5,
+          "decode_ms": 332.063,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 1535.1060749962926,
+          "prompt_tokens": 89,
+          "prefill_ms": 1122.679,
+          "out_tokens": 6,
+          "decode_ms": 402.297,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 1458.2112450007116,
+          "prompt_tokens": 88,
+          "prefill_ms": 1041.053,
+          "out_tokens": 6,
+          "decode_ms": 403.119,
+          "correct": true,
+          "response": "hanuca10"
+        }
+      ]
+    },
+    "small_ctx": {
+      "n": 8,
+      "wall_ms": 1600.0392725036363,
+      "prompt_tokens_evaluated": 88.0,
+      "prefill_ms": 1130.7915,
+      "out_tokens": 6.0,
+      "decode_ms": 405.866,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 1859.576619011932,
+          "prompt_tokens": 88,
+          "prefill_ms": 1087.667,
+          "out_tokens": 7,
+          "decode_ms": 761.668,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 1459.9149379937444,
+          "prompt_tokens": 88,
+          "prefill_ms": 1084.805,
+          "out_tokens": 5,
+          "decode_ms": 363.815,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 1558.9279790001456,
+          "prompt_tokens": 85,
+          "prefill_ms": 1161.798,
+          "out_tokens": 5,
+          "decode_ms": 372.704,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 1619.1311510046944,
+          "prompt_tokens": 86,
+          "prefill_ms": 1080.781,
+          "out_tokens": 6,
+          "decode_ms": 510.935,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 1552.2066160046961,
+          "prompt_tokens": 88,
+          "prefill_ms": 1125.251,
+          "out_tokens": 6,
+          "decode_ms": 408.097,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 1593.8806050107814,
+          "prompt_tokens": 87,
+          "prefill_ms": 1211.695,
+          "out_tokens": 5,
+          "decode_ms": 358.632,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 1606.1979399964912,
+          "prompt_tokens": 89,
+          "prefill_ms": 1136.332,
+          "out_tokens": 6,
+          "decode_ms": 408.245,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 1636.0676280019106,
+          "prompt_tokens": 88,
+          "prefill_ms": 1197.656,
+          "out_tokens": 6,
+          "decode_ms": 403.635,
+          "correct": true,
+          "response": "hanuca10"
+        }
+      ]
+    },
+    "stop": {
+      "n": 8,
+      "wall_ms": 1926.7296085017733,
+      "prompt_tokens_evaluated": 88.0,
+      "prefill_ms": 1294.565,
+      "out_tokens": 6.0,
+      "decode_ms": 604.3520000000001,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 1819.4309219979914,
+          "prompt_tokens": 88,
+          "prefill_ms": 1143.082,
+          "out_tokens": 7,
+          "decode_ms": 658.147,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 1520.9894760046154,
+          "prompt_tokens": 88,
+          "prefill_ms": 1136.625,
+          "out_tokens": 5,
+          "decode_ms": 367.963,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 1870.0544370076386,
+          "prompt_tokens": 85,
+          "prefill_ms": 1286.588,
+          "out_tokens": 5,
+          "decode_ms": 573.424,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 1971.7688219971023,
+          "prompt_tokens": 86,
+          "prefill_ms": 1313.773,
+          "out_tokens": 6,
+          "decode_ms": 630.488,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 1903.4800730005372,
+          "prompt_tokens": 88,
+          "prefill_ms": 1291.228,
+          "out_tokens": 6,
+          "decode_ms": 586.238,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 2040.195074994699,
+          "prompt_tokens": 87,
+          "prefill_ms": 1415.701,
+          "out_tokens": 5,
+          "decode_ms": 606.037,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 3033.7478940055007,
+          "prompt_tokens": 89,
+          "prefill_ms": 1618.291,
+          "out_tokens": 6,
+          "decode_ms": 1399.347,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 1949.9791440030094,
+          "prompt_tokens": 88,
+          "prefill_ms": 1297.902,
+          "out_tokens": 6,
+          "decode_ms": 602.667,
+          "correct": true,
+          "response": "hanuca10"
+        }
+      ]
+    },
+    "static_prefix": {
+      "n": 8,
+      "wall_ms": 1516.1223319955752,
+      "prompt_tokens_evaluated": 82.0,
+      "prefill_ms": 1008.0675,
+      "out_tokens": 6.0,
+      "decode_ms": 501.779,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 1461.8780599994352,
+          "prompt_tokens": 82,
+          "prefill_ms": 962.731,
+          "out_tokens": 7,
+          "decode_ms": 480.082,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 1399.7133869997924,
+          "prompt_tokens": 82,
+          "prefill_ms": 1030.578,
+          "out_tokens": 5,
+          "decode_ms": 355.88,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 1317.2385299985763,
+          "prompt_tokens": 79,
+          "prefill_ms": 948.111,
+          "out_tokens": 5,
+          "decode_ms": 358.089,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 1570.3666039917152,
+          "prompt_tokens": 80,
+          "prefill_ms": 963.026,
+          "out_tokens": 6,
+          "decode_ms": 592.31,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 1694.9953899893444,
+          "prompt_tokens": 82,
+          "prefill_ms": 1110.131,
+          "out_tokens": 6,
+          "decode_ms": 564.282,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 1346.2805900053354,
+          "prompt_tokens": 81,
+          "prefill_ms": 985.557,
+          "out_tokens": 5,
+          "decode_ms": 352.129,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 1613.489790004678,
+          "prompt_tokens": 83,
+          "prefill_ms": 1080.222,
+          "out_tokens": 6,
+          "decode_ms": 523.476,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 1600.004176987568,
+          "prompt_tokens": 82,
+          "prefill_ms": 1049.387999,
+          "out_tokens": 6,
+          "decode_ms": 536.634,
+          "correct": true,
+          "response": "hanuca10"
+        }
+      ]
+    },
+    "tight_budget": {
+      "n": 8,
+      "wall_ms": 1390.5531424970832,
+      "prompt_tokens_evaluated": 82.0,
+      "prefill_ms": 974.538,
+      "out_tokens": 6.0,
+      "decode_ms": 421.476,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 1489.2185920034535,
+          "prompt_tokens": 82,
+          "prefill_ms": 1002.747,
+          "out_tokens": 7,
+          "decode_ms": 474.447,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 1281.810090993531,
+          "prompt_tokens": 82,
+          "prefill_ms": 958.732,
+          "out_tokens": 5,
+          "decode_ms": 314.584,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 1224.2429929901846,
+          "prompt_tokens": 79,
+          "prefill_ms": 894.816,
+          "out_tokens": 5,
+          "decode_ms": 319.317,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 1373.9355209982023,
+          "prompt_tokens": 80,
+          "prefill_ms": 913.68,
+          "out_tokens": 6,
+          "decode_ms": 450.283,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 1546.3859050069004,
+          "prompt_tokens": 82,
+          "prefill_ms": 1035.704,
+          "out_tokens": 6,
+          "decode_ms": 500.134,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 1361.979291003081,
+          "prompt_tokens": 81,
+          "prefill_ms": 990.344,
+          "out_tokens": 5,
+          "decode_ms": 363.496,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 1420.2814239979489,
+          "prompt_tokens": 83,
+          "prefill_ms": 1010.23,
+          "out_tokens": 6,
+          "decode_ms": 394.548,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 1407.170763995964,
+          "prompt_tokens": 82,
+          "prefill_ms": 939.711,
+          "out_tokens": 6,
+          "decode_ms": 448.404,
+          "correct": true,
+          "response": "hanuca10"
+        }
+      ]
+    }
+  }
+}

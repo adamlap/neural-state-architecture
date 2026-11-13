@@ -30,8 +30,15 @@ class OllamaInferenceBackend(InferenceBackend):
         base_url: Optional[str] = None,
         timeout_sec: float = 300.0,
         fallback_to_mock: bool = False,
+        num_thread: Optional[Union[int, str]] = None,
+        keep_alive: Optional[Union[int, str]] = None,
         **kwargs: Any,
     ) -> None:
+        # Default CPU threads for every call: an int, or "auto" for all CPUs (measured 1.45-1.5x on a 6-CPU machine vs the server default); env NSA_NUM_THREAD also works.
+        env_threads = os.environ.get("NSA_NUM_THREAD")
+        chosen = num_thread if num_thread is not None else env_threads
+        self.num_thread = (os.cpu_count() or None) if chosen == "auto" else (int(chosen) if chosen else None)
+        self.keep_alive = keep_alive
         if model_name is None:
             model_name = kwargs.pop("model", "qwen2.5:3b")
         self.model_name = model_name
@@ -147,6 +154,8 @@ class OllamaInferenceBackend(InferenceBackend):
         state: Optional[Mapping[str, Any]] = None,
         num_ctx: Optional[int] = None,
         num_thread: Optional[int] = None,
+        stop: Optional[List[str]] = None,
+        system: Optional[str] = None,
         **kwargs: Any,
     ) -> LLMGenerationOutput:
         if self.mode == BackendMode.MOCK:
@@ -197,6 +206,13 @@ class OllamaInferenceBackend(InferenceBackend):
             payload["options"]["num_ctx"] = int(num_ctx)
         elif state is not None or len(prompt) > 4000:
             payload["options"]["num_ctx"] = 16384 if len(prompt) > 16000 else 8192
+        num_thread = num_thread or getattr(self, "num_thread", None)
+        if stop:
+            payload["options"]["stop"] = list(stop)
+        if system:
+            payload["system"] = system          # constant instructions here are served from the KV prefix cache after the first call
+        if getattr(self, "keep_alive", None) is not None:
+            payload["keep_alive"] = self.keep_alive
         if num_thread:
             # Measured on a 6-core CPU-only machine: all cores gave 1.45x median prefill (12/12 paired comparisons) and 1.22x decode vs Ollama's default.
             payload["options"]["num_thread"] = int(num_thread)

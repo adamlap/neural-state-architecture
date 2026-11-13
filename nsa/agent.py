@@ -78,6 +78,13 @@ class RuntimeConfig:
     # as RETRIEVED_LINES. Extraction misses many facts on unfamiliar wording (recall 0.2-0.35); the lines cover what it missed. Measured (qwen2.5:1.5b, noisy streams):
     # memory + lines 0.92 / 0.79 (known / held-out phrasings) vs routed memory alone 0.79 / 0.56. 0 disables.
     retrieve_lines: int = 0
+    # Speed (both off by default). ``compact_memory`` renders ``- key: value`` rows without VERSION/STATUS (fewer prompt tokens). ``pin_memory_prefix`` puts the WHOLE
+    # current memory (up to ``pin_memory_max`` keys, first-seen order, compact) at the start of every memory-backed prompt instead of the retrieved rows: the text is the
+    # same from call to call, so a server with a KV prefix cache (Ollama, llama.cpp) only evaluates the question. Measured 1.6x (7B, accuracy unchanged) and 1.8x (1.5B, but
+    # accuracy 1.00 -> 0.79 with 80 distractor rows): use with a model that can pick a row out of the whole memory; a memory update in the middle re-evaluates the rest once.
+    compact_memory: bool = False
+    pin_memory_prefix: bool = False
+    pin_memory_max: int = 200
     auto_update_semantic_state: bool = True
     auto_checkpoint: bool = False
     continuous_interval_seconds: float = 0.1
@@ -464,6 +471,10 @@ class NSARuntime:
             return True
         return "state" in params or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
 
+    def _pinned_keys(self) -> list[str]:
+        """Trusted-first is not applied here: the pinned prefix is every current key in first-seen order, capped at ``pin_memory_max`` (oldest kept, so the prefix is append-only)."""
+        return list(self.memory.keys())[: self.config.pin_memory_max]
+
     def _generate(self, model_prompt: str):
         if self._backend_accepts_state():
             return self.backend.generate(model_prompt, state=self.state.summary())
@@ -475,7 +486,11 @@ class NSARuntime:
         query = prompt if retrieval_query is None else retrieval_query      # text used for key/line retrieval (e.g. the question without answer-format instructions)
         if auto_memory and not memory_keys:
             memory_keys = self.memory_keys_for(query)
-        memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit) if self.memory is not None and memory_keys else ""
+        if self.config.pin_memory_prefix and self.memory is not None and (auto_memory or memory_keys):
+            pinned = self._pinned_keys()
+            memory_context = self.memory.render(pinned, limit=len(pinned), compact=True, stable_order=True) if pinned else ""
+        else:
+            memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit, compact=self.config.compact_memory) if self.memory is not None and memory_keys else ""
         lines = self.lines_for(query, self.config.retrieve_lines) if (self.config.retrieve_lines and (auto_memory or memory_keys)) else []
         if lines:
             memory_context = (memory_context or "NO_RELEVANT_MEMORY") + "\n\nRETRIEVED_LINES=\n" + "\n".join(lines)

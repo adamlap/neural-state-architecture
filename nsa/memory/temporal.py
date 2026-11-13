@@ -190,6 +190,8 @@ class TemporalMemoryStore:
         limit: int = 3,
         mode: str = "current",
         include_current: bool = False,
+        compact: bool = False,
+        stable_order: bool = False,
     ) -> str:
         """Render memory with explicit temporal semantics for an LLM.
 
@@ -202,9 +204,16 @@ class TemporalMemoryStore:
             raise ValueError("mode must be 'current' or 'history'")
 
         if mode == "current":
-            items = self.retrieve(keys, limit=limit)
+            if stable_order:
+                # the order of ``keys`` (not recency), so the rendered text is a stable prefix across calls and a server-side KV prefix cache can serve it
+                items = tuple(item for key in keys if (item := self.current(key)) is not None)[:limit]
+            else:
+                items = self.retrieve(keys, limit=limit)
             if not items:
                 return "NO_RELEVANT_MEMORY"
+            if compact:
+                # ~8 fewer prompt tokens per row; prefill dominates a small CPU call (results/README.md, speed)
+                return "\n".join(f"- {item.content.get('memory_key')}: {self._value(item)}" for item in items)
             return "\n".join(
                 f"- {item.content.get('memory_key')}: {self._value(item)} "
                 f"VERSION={item.content.get('version')} STATUS=CURRENT"

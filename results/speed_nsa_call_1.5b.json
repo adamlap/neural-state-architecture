@@ -1,0 +1,721 @@
+{
+  "experiment": "nsa_call_speed",
+  "model": "qwen2.5:1.5b",
+  "threads": 6,
+  "summary": {
+    "baseline": {
+      "n": 12,
+      "wall_ms": 484.9123590029194,
+      "prompt_tokens_evaluated": 87.0,
+      "prefill_ms": 343.5155,
+      "out_tokens": 6.0,
+      "decode_ms": 140.9995,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 535.3193360060686,
+          "prompt_tokens": 88,
+          "prefill_ms": 354.581,
+          "out_tokens": 7,
+          "decode_ms": 172.318,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 471.27487500256393,
+          "prompt_tokens": 88,
+          "prefill_ms": 348.157,
+          "out_tokens": 5,
+          "decode_ms": 112.179,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 463.4685440105386,
+          "prompt_tokens": 85,
+          "prefill_ms": 340.933,
+          "out_tokens": 5,
+          "decode_ms": 113.313,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 490.35309099417645,
+          "prompt_tokens": 86,
+          "prefill_ms": 339.84,
+          "out_tokens": 6,
+          "decode_ms": 141.357,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 481.41793299873825,
+          "prompt_tokens": 88,
+          "prefill_ms": 326.823,
+          "out_tokens": 6,
+          "decode_ms": 145.055,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 467.27074299997184,
+          "prompt_tokens": 87,
+          "prefill_ms": 346.098,
+          "out_tokens": 5,
+          "decode_ms": 113.776,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 509.72152400936466,
+          "prompt_tokens": 89,
+          "prefill_ms": 359.359,
+          "out_tokens": 6,
+          "decode_ms": 140.459,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 473.99620299984235,
+          "prompt_tokens": 88,
+          "prefill_ms": 320.809,
+          "out_tokens": 6,
+          "decode_ms": 142.727,
+          "correct": true,
+          "response": "hanuca10"
+        },
+        {
+          "wall_ms": 450.4157510091318,
+          "prompt_tokens": 85,
+          "prefill_ms": 327.031,
+          "out_tokens": 5,
+          "decode_ms": 115.963,
+          "correct": true,
+          "response": "fosoti20"
+        },
+        {
+          "wall_ms": 512.2415969963185,
+          "prompt_tokens": 87,
+          "prefill_ms": 359.267,
+          "out_tokens": 6,
+          "decode_ms": 145.286,
+          "correct": true,
+          "response": "vihiku79"
+        },
+        {
+          "wall_ms": 553.4394410060486,
+          "prompt_tokens": 87,
+          "prefill_ms": 372.684,
+          "out_tokens": 6,
+          "decode_ms": 170.75,
+          "correct": true,
+          "response": "jupopi20"
+        },
+        {
+          "wall_ms": 488.40678500710055,
+          "prompt_tokens": 87,
+          "prefill_ms": 335.502,
+          "out_tokens": 6,
+          "decode_ms": 140.642,
+          "correct": true,
+          "response": "johona60"
+        }
+      ]
+    },
+    "threads": {
+      "n": 12,
+      "wall_ms": 390.272308504791,
+      "prompt_tokens_evaluated": 87.0,
+      "prefill_ms": 267.9335,
+      "out_tokens": 6.0,
+      "decode_ms": 111.56,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 575.6768419960281,
+          "prompt_tokens": 88,
+          "prefill_ms": 261.266,
+          "out_tokens": 7,
+          "decode_ms": 305.565,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 423.4402459987905,
+          "prompt_tokens": 88,
+          "prefill_ms": 319.859,
+          "out_tokens": 5,
+          "decode_ms": 96.296,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 318.10850399779156,
+          "prompt_tokens": 85,
+          "prefill_ms": 224.913,
+          "out_tokens": 5,
+          "decode_ms": 85.423,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 472.37243299605325,
+          "prompt_tokens": 86,
+          "prefill_ms": 357.646,
+          "out_tokens": 6,
+          "decode_ms": 103.22,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 360.24656100198627,
+          "prompt_tokens": 88,
+          "prefill_ms": 236.634,
+          "out_tokens": 6,
+          "decode_ms": 115.689,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 364.1923340037465,
+          "prompt_tokens": 87,
+          "prefill_ms": 269.37,
+          "out_tokens": 5,
+          "decode_ms": 84.849,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 393.52581900311634,
+          "prompt_tokens": 89,
+          "prefill_ms": 270.359,
+          "out_tokens": 6,
+          "decode_ms": 115.139,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 364.986406013486,
+          "prompt_tokens": 88,
+          "prefill_ms": 229.522,
+          "out_tokens": 6,
+          "decode_ms": 127.312,
+          "correct": true,
+          "response": "hanuca10"
+        },
+        {
+          "wall_ms": 387.01879800646566,
+          "prompt_tokens": 85,
+          "prefill_ms": 266.497,
+          "out_tokens": 5,
+          "decode_ms": 114.141,
+          "correct": true,
+          "response": "fosoti20"
+        },
+        {
+          "wall_ms": 508.55889699596446,
+          "prompt_tokens": 87,
+          "prefill_ms": 335.935,
+          "out_tokens": 6,
+          "decode_ms": 164.114,
+          "correct": true,
+          "response": "vihiku79"
+        },
+        {
+          "wall_ms": 405.2045860007638,
+          "prompt_tokens": 87,
+          "prefill_ms": 280.42,
+          "out_tokens": 6,
+          "decode_ms": 108.979,
+          "correct": true,
+          "response": "jupopi20"
+        },
+        {
+          "wall_ms": 340.6285980017856,
+          "prompt_tokens": 87,
+          "prefill_ms": 221.221,
+          "out_tokens": 6,
+          "decode_ms": 106.365,
+          "correct": true,
+          "response": "johona60"
+        }
+      ]
+    },
+    "small_ctx": {
+      "n": 12,
+      "wall_ms": 336.054540501209,
+      "prompt_tokens_evaluated": 87.0,
+      "prefill_ms": 231.9955,
+      "out_tokens": 6.0,
+      "decode_ms": 101.01599999999999,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 367.0196410093922,
+          "prompt_tokens": 88,
+          "prefill_ms": 232.219,
+          "out_tokens": 7,
+          "decode_ms": 126.636,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 316.76818399864715,
+          "prompt_tokens": 88,
+          "prefill_ms": 227.654,
+          "out_tokens": 5,
+          "decode_ms": 81.012,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 356.0335380025208,
+          "prompt_tokens": 85,
+          "prefill_ms": 247.936,
+          "out_tokens": 5,
+          "decode_ms": 82.141,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 352.1019379986683,
+          "prompt_tokens": 86,
+          "prefill_ms": 231.772,
+          "out_tokens": 6,
+          "decode_ms": 114.146,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 322.86961599311326,
+          "prompt_tokens": 88,
+          "prefill_ms": 209.307,
+          "out_tokens": 6,
+          "decode_ms": 102.913,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 314.2157349939225,
+          "prompt_tokens": 87,
+          "prefill_ms": 227.195,
+          "out_tokens": 5,
+          "decode_ms": 81.349,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 344.3165719945682,
+          "prompt_tokens": 89,
+          "prefill_ms": 234.378,
+          "out_tokens": 6,
+          "decode_ms": 101.237,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 320.83556600264274,
+          "prompt_tokens": 88,
+          "prefill_ms": 208.528,
+          "out_tokens": 6,
+          "decode_ms": 102.658,
+          "correct": true,
+          "response": "hanuca10"
+        },
+        {
+          "wall_ms": 329.7074239962967,
+          "prompt_tokens": 85,
+          "prefill_ms": 235.762,
+          "out_tokens": 5,
+          "decode_ms": 88.412,
+          "correct": true,
+          "response": "fosoti20"
+        },
+        {
+          "wall_ms": 552.7709250018233,
+          "prompt_tokens": 87,
+          "prefill_ms": 438.539,
+          "out_tokens": 6,
+          "decode_ms": 100.795,
+          "correct": true,
+          "response": "vihiku79"
+        },
+        {
+          "wall_ms": 342.27810699667316,
+          "prompt_tokens": 87,
+          "prefill_ms": 232.516,
+          "out_tokens": 6,
+          "decode_ms": 102.367,
+          "correct": true,
+          "response": "jupopi20"
+        },
+        {
+          "wall_ms": 329.8309740057448,
+          "prompt_tokens": 87,
+          "prefill_ms": 221.726,
+          "out_tokens": 6,
+          "decode_ms": 100.792,
+          "correct": true,
+          "response": "johona60"
+        }
+      ]
+    },
+    "stop": {
+      "n": 12,
+      "wall_ms": 332.92131650523515,
+      "prompt_tokens_evaluated": 87.0,
+      "prefill_ms": 226.6025,
+      "out_tokens": 6.0,
+      "decode_ms": 102.10249999999999,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 361.2548499950208,
+          "prompt_tokens": 88,
+          "prefill_ms": 229.124,
+          "out_tokens": 7,
+          "decode_ms": 125.732,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 340.4714049975155,
+          "prompt_tokens": 88,
+          "prefill_ms": 240.638,
+          "out_tokens": 5,
+          "decode_ms": 91.453,
+          "correct": true,
+          "response": "cecugi63"
+        },
+        {
+          "wall_ms": 310.9593179979129,
+          "prompt_tokens": 85,
+          "prefill_ms": 219.475,
+          "out_tokens": 5,
+          "decode_ms": 82.894,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 327.42603799852077,
+          "prompt_tokens": 86,
+          "prefill_ms": 219.268,
+          "out_tokens": 6,
+          "decode_ms": 101.985,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 323.4023340046406,
+          "prompt_tokens": 88,
+          "prefill_ms": 213.463,
+          "out_tokens": 6,
+          "decode_ms": 102.811,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 334.0052160056075,
+          "prompt_tokens": 87,
+          "prefill_ms": 248.978,
+          "out_tokens": 5,
+          "decode_ms": 79.722,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 389.6508269972401,
+          "prompt_tokens": 89,
+          "prefill_ms": 275.141,
+          "out_tokens": 6,
+          "decode_ms": 107.805,
+          "correct": true,
+          "response": "rupuxi26"
+        },
+        {
+          "wall_ms": 379.10632499551866,
+          "prompt_tokens": 88,
+          "prefill_ms": 260.171,
+          "out_tokens": 6,
+          "decode_ms": 112.053,
+          "correct": true,
+          "response": "hanuca10"
+        },
+        {
+          "wall_ms": 307.99735900654923,
+          "prompt_tokens": 85,
+          "prefill_ms": 213.938,
+          "out_tokens": 5,
+          "decode_ms": 86.024,
+          "correct": true,
+          "response": "fosoti20"
+        },
+        {
+          "wall_ms": 331.8374170048628,
+          "prompt_tokens": 87,
+          "prefill_ms": 224.081,
+          "out_tokens": 6,
+          "decode_ms": 102.36,
+          "correct": true,
+          "response": "vihiku79"
+        },
+        {
+          "wall_ms": 329.4964459928451,
+          "prompt_tokens": 87,
+          "prefill_ms": 220.891,
+          "out_tokens": 6,
+          "decode_ms": 102.22,
+          "correct": true,
+          "response": "jupopi20"
+        },
+        {
+          "wall_ms": 356.7622180125909,
+          "prompt_tokens": 87,
+          "prefill_ms": 247.728,
+          "out_tokens": 6,
+          "decode_ms": 101.04,
+          "correct": true,
+          "response": "johona60"
+        }
+      ]
+    },
+    "static_prefix": {
+      "n": 12,
+      "wall_ms": 362.81060650071595,
+      "prompt_tokens_evaluated": 81.0,
+      "prefill_ms": 214.2605,
+      "out_tokens": 6.0,
+      "decode_ms": 110.923,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 392.67775499320123,
+          "prompt_tokens": 82,
+          "prefill_ms": 239.154,
+          "out_tokens": 7,
+          "decode_ms": 145.952,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 426.8985119997524,
+          "prompt_tokens": 82,
+          "prefill_ms": 201.775,
+          "out_tokens": 12,
+          "decode_ms": 217.169,
+          "correct": true,
+          "response": "The auth queue name is cecugi63."
+        },
+        {
+          "wall_ms": 306.16819200804457,
+          "prompt_tokens": 79,
+          "prefill_ms": 183.088,
+          "out_tokens": 5,
+          "decode_ms": 114.513,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 295.6801039981656,
+          "prompt_tokens": 80,
+          "prefill_ms": 185.516,
+          "out_tokens": 6,
+          "decode_ms": 99.763,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 314.3189130059909,
+          "prompt_tokens": 82,
+          "prefill_ms": 199.556,
+          "out_tokens": 6,
+          "decode_ms": 100.876,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 317.73492200591136,
+          "prompt_tokens": 81,
+          "prefill_ms": 203.829,
+          "out_tokens": 5,
+          "decode_ms": 106.776,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 1125.4286449984647,
+          "prompt_tokens": 83,
+          "prefill_ms": 222.538,
+          "out_tokens": 15,
+          "decode_ms": 894.955,
+          "correct": true,
+          "response": "The search queue name is rupuxi26 (trusted)."
+        },
+        {
+          "wall_ms": 328.1844579905737,
+          "prompt_tokens": 82,
+          "prefill_ms": 210.241,
+          "out_tokens": 6,
+          "decode_ms": 106.948,
+          "correct": true,
+          "response": "hanuca10"
+        },
+        {
+          "wall_ms": 551.4957339910325,
+          "prompt_tokens": 79,
+          "prefill_ms": 453.736,
+          "out_tokens": 5,
+          "decode_ms": 91.392,
+          "correct": true,
+          "response": "fosoti20"
+        },
+        {
+          "wall_ms": 332.94345800823066,
+          "prompt_tokens": 81,
+          "prefill_ms": 218.28,
+          "out_tokens": 6,
+          "decode_ms": 107.333,
+          "correct": true,
+          "response": "vihiku79"
+        },
+        {
+          "wall_ms": 494.4607149955118,
+          "prompt_tokens": 81,
+          "prefill_ms": 268.575,
+          "out_tokens": 6,
+          "decode_ms": 216.956,
+          "correct": true,
+          "response": "jupopi20"
+        },
+        {
+          "wall_ms": 473.33692900429014,
+          "prompt_tokens": 81,
+          "prefill_ms": 247.108,
+          "out_tokens": 6,
+          "decode_ms": 217.895,
+          "correct": true,
+          "response": "johona60"
+        }
+      ]
+    },
+    "tight_budget": {
+      "n": 12,
+      "wall_ms": 339.3280805030372,
+      "prompt_tokens_evaluated": 81.0,
+      "prefill_ms": 209.691,
+      "out_tokens": 6.0,
+      "decode_ms": 111.82900000000001,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 342.6140299998224,
+          "prompt_tokens": 82,
+          "prefill_ms": 201.201,
+          "out_tokens": 7,
+          "decode_ms": 132.503999,
+          "correct": true,
+          "response": "cawapu17"
+        },
+        {
+          "wall_ms": 441.77181999839377,
+          "prompt_tokens": 82,
+          "prefill_ms": 203.635,
+          "out_tokens": 12,
+          "decode_ms": 227.506,
+          "correct": true,
+          "response": "The auth queue name is cecugi63."
+        },
+        {
+          "wall_ms": 304.52684400370345,
+          "prompt_tokens": 79,
+          "prefill_ms": 215.747,
+          "out_tokens": 5,
+          "decode_ms": 80.076,
+          "correct": true,
+          "response": "turisu68"
+        },
+        {
+          "wall_ms": 506.9919130037306,
+          "prompt_tokens": 80,
+          "prefill_ms": 294.591,
+          "out_tokens": 6,
+          "decode_ms": 198.194,
+          "correct": true,
+          "response": "higora95"
+        },
+        {
+          "wall_ms": 410.69335100473836,
+          "prompt_tokens": 82,
+          "prefill_ms": 274.342,
+          "out_tokens": 6,
+          "decode_ms": 122.309,
+          "correct": true,
+          "response": "xomopa69"
+        },
+        {
+          "wall_ms": 336.042131006252,
+          "prompt_tokens": 81,
+          "prefill_ms": 225.462,
+          "out_tokens": 5,
+          "decode_ms": 99.967,
+          "correct": true,
+          "response": "wigowi63"
+        },
+        {
+          "wall_ms": 489.37810699862894,
+          "prompt_tokens": 83,
+          "prefill_ms": 253.256,
+          "out_tokens": 12,
+          "decode_ms": 222.127,
+          "correct": true,
+          "response": "The search queue name is rupuxi26 ("
+        },
+        {
+          "wall_ms": 362.3702109907754,
+          "prompt_tokens": 82,
+          "prefill_ms": 224.859,
+          "out_tokens": 6,
+          "decode_ms": 122.398,
+          "correct": true,
+          "response": "hanuca10"
+        },
+        {
+          "wall_ms": 289.1125159949297,
+          "prompt_tokens": 79,
+          "prefill_ms": 198.474,
+          "out_tokens": 5,
+          "decode_ms": 80.116,
+          "correct": true,
+          "response": "fosoti20"
+        },
+        {
+          "wall_ms": 303.89795200608205,
+          "prompt_tokens": 81,
+          "prefill_ms": 196.149,
+          "out_tokens": 6,
+          "decode_ms": 101.349,
+          "correct": true,
+          "response": "vihiku79"
+        },
+        {
+          "wall_ms": 303.5430220043054,
+          "prompt_tokens": 81,
+          "prefill_ms": 196.54,
+          "out_tokens": 6,
+          "decode_ms": 100.697,
+          "correct": true,
+          "response": "jupopi20"
+        },
+        {
+          "wall_ms": 303.1014260050142,
+          "prompt_tokens": 81,
+          "prefill_ms": 196.673,
+          "out_tokens": 6,
+          "decode_ms": 99.67,
+          "correct": true,
+          "response": "johona60"
+        }
+      ]
+    }
+  }
+}

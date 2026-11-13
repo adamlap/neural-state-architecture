@@ -1,0 +1,1148 @@
+{
+  "experiment": "prompt_layout_speed",
+  "model": "qwen2.5:1.5b",
+  "threads": 6,
+  "num_ctx": 4096,
+  "summary": {
+    "retrieved3": {
+      "n": 24,
+      "first_call_ms": 3042.5685909867752,
+      "wall_ms": 392.88127950567286,
+      "wall_ms_mean": 442.9944359999354,
+      "prompt_tokens_evaluated": 74.0,
+      "prefill_ms": 202.154,
+      "decode_ms": 185.5115,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 505.3037010075059,
+          "prompt_tokens": 74,
+          "prefill_ms": 205.026,
+          "out_tokens": 10,
+          "decode_ms": 283.937,
+          "correct": true,
+          "response": "staging owner team = cafavi40"
+        },
+        {
+          "wall_ms": 311.5458999964176,
+          "prompt_tokens": 75,
+          "prefill_ms": 189.717,
+          "out_tokens": 6,
+          "decode_ms": 110.991,
+          "correct": true,
+          "response": "bofeka11"
+        },
+        {
+          "wall_ms": 327.72954800748266,
+          "prompt_tokens": 73,
+          "prefill_ms": 180.751,
+          "out_tokens": 6,
+          "decode_ms": 140.251,
+          "correct": true,
+          "response": "qamuni12"
+        },
+        {
+          "wall_ms": 307.58308799704537,
+          "prompt_tokens": 76,
+          "prefill_ms": 198.891,
+          "out_tokens": 6,
+          "decode_ms": 99.901,
+          "correct": true,
+          "response": "hojedi48"
+        },
+        {
+          "wall_ms": 559.3495009961771,
+          "prompt_tokens": 74,
+          "prefill_ms": 212.266,
+          "out_tokens": 11,
+          "decode_ms": 338.271,
+          "correct": true,
+          "response": "The payments log level is gesibu52."
+        },
+        {
+          "wall_ms": 395.94392200524453,
+          "prompt_tokens": 75,
+          "prefill_ms": 188.156,
+          "out_tokens": 10,
+          "decode_ms": 198.857,
+          "correct": true,
+          "response": "gateway timeout seconds = gujuhi94"
+        },
+        {
+          "wall_ms": 305.70325200096704,
+          "prompt_tokens": 74,
+          "prefill_ms": 190.332,
+          "out_tokens": 6,
+          "decode_ms": 102.245,
+          "correct": true,
+          "response": "rovonu67"
+        },
+        {
+          "wall_ms": 288.5607149946736,
+          "prompt_tokens": 75,
+          "prefill_ms": 178.645,
+          "out_tokens": 6,
+          "decode_ms": 98.018,
+          "correct": true,
+          "response": "gafofu93"
+        },
+        {
+          "wall_ms": 485.2069040061906,
+          "prompt_tokens": 75,
+          "prefill_ms": 205.211,
+          "out_tokens": 13,
+          "decode_ms": 271.586,
+          "correct": true,
+          "response": "The payments queue name is jaquxu53."
+        },
+        {
+          "wall_ms": 318.055395007832,
+          "prompt_tokens": 73,
+          "prefill_ms": 186.017,
+          "out_tokens": 6,
+          "decode_ms": 119.336,
+          "correct": true,
+          "response": "mudobe24"
+        },
+        {
+          "wall_ms": 286.0163459990872,
+          "prompt_tokens": 73,
+          "prefill_ms": 172.431,
+          "out_tokens": 6,
+          "decode_ms": 105.121,
+          "correct": true,
+          "response": "vuliqu36"
+        },
+        {
+          "wall_ms": 389.8186370061012,
+          "prompt_tokens": 73,
+          "prefill_ms": 175.439,
+          "out_tokens": 11,
+          "decode_ms": 208.17,
+          "correct": true,
+          "response": "The uploads cache size is cesafi60."
+        },
+        {
+          "wall_ms": 382.8418100019917,
+          "prompt_tokens": 73,
+          "prefill_ms": 185.293,
+          "out_tokens": 10,
+          "decode_ms": 189.233,
+          "correct": true,
+          "response": "staging timeout seconds = boxazo58"
+        },
+        {
+          "wall_ms": 276.25834199716337,
+          "prompt_tokens": 74,
+          "prefill_ms": 174.522,
+          "out_tokens": 6,
+          "decode_ms": 96.877,
+          "correct": true,
+          "response": "xipavi74"
+        },
+        {
+          "wall_ms": 352.8963120043045,
+          "prompt_tokens": 73,
+          "prefill_ms": 243.459,
+          "out_tokens": 6,
+          "decode_ms": 99.684,
+          "correct": true,
+          "response": "gutugo33"
+        },
+        {
+          "wall_ms": 488.4828829963226,
+          "prompt_tokens": 76,
+          "prefill_ms": 204.782,
+          "out_tokens": 12,
+          "decode_ms": 271.579,
+          "correct": true,
+          "response": "staging api region = vusoxa38"
+        },
+        {
+          "wall_ms": 317.355373990722,
+          "prompt_tokens": 75,
+          "prefill_ms": 199.526,
+          "out_tokens": 5,
+          "decode_ms": 108.369,
+          "correct": true,
+          "response": "nejefe40"
+        },
+        {
+          "wall_ms": 1067.296057997737,
+          "prompt_tokens": 75,
+          "prefill_ms": 559.1,
+          "out_tokens": 12,
+          "decode_ms": 500.808,
+          "correct": true,
+          "response": "The gateway api region is jujuju88."
+        },
+        {
+          "wall_ms": 475.5941939947661,
+          "prompt_tokens": 73,
+          "prefill_ms": 283.212,
+          "out_tokens": 6,
+          "decode_ms": 184.927,
+          "correct": true,
+          "response": "mudobe24"
+        },
+        {
+          "wall_ms": 575.5238910060143,
+          "prompt_tokens": 75,
+          "prefill_ms": 233.768,
+          "out_tokens": 6,
+          "decode_ms": 332.759,
+          "correct": true,
+          "response": "zudije12"
+        },
+        {
+          "wall_ms": 772.9059839912225,
+          "prompt_tokens": 75,
+          "prefill_ms": 236.539,
+          "out_tokens": 11,
+          "decode_ms": 524.211,
+          "correct": true,
+          "response": "staging cache size = suwiwe76"
+        },
+        {
+          "wall_ms": 472.24066000489984,
+          "prompt_tokens": 74,
+          "prefill_ms": 273.917,
+          "out_tokens": 6,
+          "decode_ms": 186.096,
+          "correct": true,
+          "response": "sovire86"
+        },
+        {
+          "wall_ms": 410.60605699021835,
+          "prompt_tokens": 73,
+          "prefill_ms": 253.978,
+          "out_tokens": 5,
+          "decode_ms": 148.949,
+          "correct": true,
+          "response": "cotewe67"
+        },
+        {
+          "wall_ms": 559.047989998362,
+          "prompt_tokens": 74,
+          "prefill_ms": 309.044,
+          "out_tokens": 6,
+          "decode_ms": 240.141,
+          "correct": true,
+          "response": "hagetu93"
+        }
+      ]
+    },
+    "top1": {
+      "n": 24,
+      "first_call_ms": 2558.0680450075306,
+      "wall_ms": 356.9272445020033,
+      "wall_ms_mean": 358.079643164577,
+      "prompt_tokens_evaluated": 53.0,
+      "prefill_ms": 152.61450000000002,
+      "decode_ms": 182.119,
+      "accuracy": 1.0,
+      "rows": [
+        {
+          "wall_ms": 458.72817099734675,
+          "prompt_tokens": 52,
+          "prefill_ms": 204.514,
+          "out_tokens": 6,
+          "decode_ms": 245.614,
+          "correct": true,
+          "response": "CAFAVI40"
+        },
+        {
+          "wall_ms": 393.67092700558715,
+          "prompt_tokens": 53,
+          "prefill_ms": 175.708,
+          "out_tokens": 6,
+          "decode_ms": 211.672,
+          "correct": true,
+          "response": "bofeka11"
+        },
+        {
+          "wall_ms": 625.7020269986242,
+          "prompt_tokens": 53,
+          "prefill_ms": 235.056,
+          "out_tokens": 6,
+          "decode_ms": 380.339,
+          "correct": true,
+          "response": "qamuni12"
+        },
+        {
+          "wall_ms": 445.7446610031184,
+          "prompt_tokens": 55,
+          "prefill_ms": 224.033,
+          "out_tokens": 6,
+          "decode_ms": 213.666,
+          "correct": true,
+          "response": "hojedi48"
+        },
+        {
+          "wall_ms": 348.275559998001,
+          "prompt_tokens": 52,
+          "prefill_ms": 169.05,
+          "out_tokens": 5,
+          "decode_ms": 173.43,
+          "correct": true,
+          "response": "gesibu52"
+        },
+        {
+          "wall_ms": 528.0968849983765,
+          "prompt_tokens": 53,
+          "prefill_ms": 184.859,
+          "out_tokens": 10,
+          "decode_ms": 329.78,
+          "correct": true,
+          "response": "gateway timeout seconds = gujuhi94"
+        },
+        {
+          "wall_ms": 418.60348799673375,
+          "prompt_tokens": 53,
+          "prefill_ms": 168.07,
+          "out_tokens": 6,
+          "decode_ms": 238.838,
+          "correct": true,
+          "response": "rovonu67"
+        },
+        {
+          "wall_ms": 448.5641320061404,
+          "prompt_tokens": 53,
+          "prefill_ms": 218.676,
+          "out_tokens": 6,
+          "decode_ms": 212.221,
+          "correct": true,
+          "response": "gafofu93"
+        },
+        {
+          "wall_ms": 391.9530540006235,
+          "prompt_tokens": 54,
+          "prefill_ms": 161.97,
+          "out_tokens": 7,
+          "decode_ms": 220.5,
+          "correct": true,
+          "response": "jaquxu53"
+        },
+        {
+          "wall_ms": 357.863665005425,
+          "prompt_tokens": 52,
+          "prefill_ms": 153.836,
+          "out_tokens": 6,
+          "decode_ms": 190.808,
+          "correct": true,
+          "response": "mudobe24"
+        },
+        {
+          "wall_ms": 284.86397498636506,
+          "prompt_tokens": 52,
+          "prefill_ms": 122.745,
+          "out_tokens": 6,
+          "decode_ms": 153.243,
+          "correct": true,
+          "response": "vuliqu36"
+        },
+        {
+          "wall_ms": 247.69085299340077,
+          "prompt_tokens": 52,
+          "prefill_ms": 119.453,
+          "out_tokens": 5,
+          "decode_ms": 120.257,
+          "correct": true,
+          "response": "cesafi60"
+        },
+        {
+          "wall_ms": 394.56245899782516,
+          "prompt_tokens": 52,
+          "prefill_ms": 121.268,
+          "out_tokens": 10,
+          "decode_ms": 261.862,
+          "correct": true,
+          "response": "staging timeout seconds = boxazo58"
+        },
+        {
+          "wall_ms": 337.5202530005481,
+          "prompt_tokens": 53,
+          "prefill_ms": 175.133,
+          "out_tokens": 6,
+          "decode_ms": 157.149,
+          "correct": true,
+          "response": "xipavi74"
+        },
+        {
+          "wall_ms": 239.02456699579488,
+          "prompt_tokens": 52,
+          "prefill_ms": 100.16,
+          "out_tokens": 6,
+          "decode_ms": 132.978,
+          "correct": true,
+          "response": "gutugo33"
+        },
+        {
+          "wall_ms": 355.9908239985816,
+          "prompt_tokens": 54,
+          "prefill_ms": 177.335,
+          "out_tokens": 7,
+          "decode_ms": 168.655,
+          "correct": true,
+          "response": "vusoxa38"
+        },
+        {
+          "wall_ms": 368.6284559953492,
+          "prompt_tokens": 53,
+          "prefill_ms": 114.21,
+          "out_tokens": 10,
+          "decode_ms": 247.046,
+          "correct": true,
+          "response": "billing cache size = nejefe40"
+        },
+        {
+          "wall_ms": 255.83397698937915,
+          "prompt_tokens": 53,
+          "prefill_ms": 113.168,
+          "out_tokens": 6,
+          "decode_ms": 136.433,
+          "correct": true,
+          "response": "jujuju88"
+        },
+        {
+          "wall_ms": 249.35784199624322,
+          "prompt_tokens": 52,
+          "prefill_ms": 105.065,
+          "out_tokens": 6,
+          "decode_ms": 138.85,
+          "correct": true,
+          "response": "mudobe24"
+        },
+        {
+          "wall_ms": 259.3092949973652,
+          "prompt_tokens": 53,
+          "prefill_ms": 117.364,
+          "out_tokens": 6,
+          "decode_ms": 135.771,
+          "correct": true,
+          "response": "zudije12"
+        },
+        {
+          "wall_ms": 422.21693400642835,
+          "prompt_tokens": 53,
+          "prefill_ms": 151.393,
+          "out_tokens": 11,
+          "decode_ms": 264.047,
+          "correct": true,
+          "response": "staging cache size = suwiwe76"
+        },
+        {
+          "wall_ms": 269.84169699426275,
+          "prompt_tokens": 53,
+          "prefill_ms": 116.291,
+          "out_tokens": 6,
+          "decode_ms": 145.487,
+          "correct": true,
+          "response": "sovire86"
+        },
+        {
+          "wall_ms": 233.38886599231046,
+          "prompt_tokens": 52,
+          "prefill_ms": 110.877,
+          "out_tokens": 5,
+          "decode_ms": 114.913,
+          "correct": true,
+          "response": "cotewe67"
+        },
+        {
+          "wall_ms": 258.4788679960184,
+          "prompt_tokens": 53,
+          "prefill_ms": 116.743,
+          "out_tokens": 6,
+          "decode_ms": 133.525,
+          "correct": true,
+          "response": "hagetu93"
+        }
+      ]
+    },
+    "pinned": {
+      "n": 24,
+      "first_call_ms": 5285.572843989939,
+      "wall_ms": 218.46491649921518,
+      "wall_ms_mean": 228.0811165007132,
+      "prompt_tokens_evaluated": 911.0,
+      "prefill_ms": 72.9495,
+      "decode_ms": 134.1495,
+      "accuracy": 0.7916666666666666,
+      "rows": [
+        {
+          "wall_ms": 186.09529199602548,
+          "prompt_tokens": 911,
+          "prefill_ms": 68.12,
+          "out_tokens": 5,
+          "decode_ms": 102.839,
+          "correct": true,
+          "response": "cafavi40"
+        },
+        {
+          "wall_ms": 211.8955320038367,
+          "prompt_tokens": 911,
+          "prefill_ms": 72.42,
+          "out_tokens": 6,
+          "decode_ms": 130.747999,
+          "correct": true,
+          "response": "bofeka11"
+        },
+        {
+          "wall_ms": 239.4850279961247,
+          "prompt_tokens": 911,
+          "prefill_ms": 95.978,
+          "out_tokens": 6,
+          "decode_ms": 134.975,
+          "correct": true,
+          "response": "qamuni12"
+        },
+        {
+          "wall_ms": 247.85294799949042,
+          "prompt_tokens": 912,
+          "prefill_ms": 82.213,
+          "out_tokens": 6,
+          "decode_ms": 156.283,
+          "correct": true,
+          "response": "hojedi48"
+        },
+        {
+          "wall_ms": 211.7131629929645,
+          "prompt_tokens": 911,
+          "prefill_ms": 66.194999,
+          "out_tokens": 5,
+          "decode_ms": 137.6,
+          "correct": true,
+          "response": "gesibu52"
+        },
+        {
+          "wall_ms": 398.719753997284,
+          "prompt_tokens": 911,
+          "prefill_ms": 126.084,
+          "out_tokens": 10,
+          "decode_ms": 260.94,
+          "correct": false,
+          "response": "The gateway timeout seconds is 94."
+        },
+        {
+          "wall_ms": 216.2886810110649,
+          "prompt_tokens": 911,
+          "prefill_ms": 70.375,
+          "out_tokens": 6,
+          "decode_ms": 136.341,
+          "correct": true,
+          "response": "rovonu67"
+        },
+        {
+          "wall_ms": 224.31570700427983,
+          "prompt_tokens": 911,
+          "prefill_ms": 79.705,
+          "out_tokens": 6,
+          "decode_ms": 129.627999,
+          "correct": true,
+          "response": "gafofu93"
+        },
+        {
+          "wall_ms": 248.0501859972719,
+          "prompt_tokens": 911,
+          "prefill_ms": 85.455,
+          "out_tokens": 6,
+          "decode_ms": 146.632,
+          "correct": false,
+          "response": "pesivu27"
+        },
+        {
+          "wall_ms": 239.06423700100277,
+          "prompt_tokens": 911,
+          "prefill_ms": 82.225,
+          "out_tokens": 6,
+          "decode_ms": 145.447,
+          "correct": true,
+          "response": "mudobe24"
+        },
+        {
+          "wall_ms": 228.6811069934629,
+          "prompt_tokens": 911,
+          "prefill_ms": 74.903,
+          "out_tokens": 6,
+          "decode_ms": 143.222,
+          "correct": true,
+          "response": "vuliqu36"
+        },
+        {
+          "wall_ms": 222.52119600307196,
+          "prompt_tokens": 911,
+          "prefill_ms": 76.167,
+          "out_tokens": 5,
+          "decode_ms": 133.12,
+          "correct": true,
+          "response": "cesafi60"
+        },
+        {
+          "wall_ms": 153.69574799842667,
+          "prompt_tokens": 911,
+          "prefill_ms": 80.627,
+          "out_tokens": 3,
+          "decode_ms": 56.817,
+          "correct": false,
+          "response": "12"
+        },
+        {
+          "wall_ms": 220.34788799646776,
+          "prompt_tokens": 911,
+          "prefill_ms": 75.555,
+          "out_tokens": 6,
+          "decode_ms": 133.324,
+          "correct": true,
+          "response": "xipavi74"
+        },
+        {
+          "wall_ms": 216.5819450019626,
+          "prompt_tokens": 911,
+          "prefill_ms": 68.936,
+          "out_tokens": 6,
+          "decode_ms": 138.829,
+          "correct": true,
+          "response": "gutugo33"
+        },
+        {
+          "wall_ms": 238.3669090049807,
+          "prompt_tokens": 911,
+          "prefill_ms": 73.479,
+          "out_tokens": 7,
+          "decode_ms": 155.917,
+          "correct": true,
+          "response": "vusoxa38"
+        },
+        {
+          "wall_ms": 192.515867005568,
+          "prompt_tokens": 911,
+          "prefill_ms": 74.641,
+          "out_tokens": 5,
+          "decode_ms": 107.172,
+          "correct": true,
+          "response": "nejefe40"
+        },
+        {
+          "wall_ms": 202.243506006198,
+          "prompt_tokens": 911,
+          "prefill_ms": 68.477,
+          "out_tokens": 6,
+          "decode_ms": 123.92,
+          "correct": true,
+          "response": "jujuju88"
+        },
+        {
+          "wall_ms": 189.01325600745622,
+          "prompt_tokens": 911,
+          "prefill_ms": 68.485,
+          "out_tokens": 6,
+          "decode_ms": 109.395,
+          "correct": true,
+          "response": "mudobe24"
+        },
+        {
+          "wall_ms": 194.63530200300738,
+          "prompt_tokens": 911,
+          "prefill_ms": 66.147,
+          "out_tokens": 6,
+          "decode_ms": 117.453,
+          "correct": false,
+          "response": "vejoba35"
+        },
+        {
+          "wall_ms": 305.9038500068709,
+          "prompt_tokens": 911,
+          "prefill_ms": 69.925,
+          "out_tokens": 11,
+          "decode_ms": 226.798,
+          "correct": true,
+          "response": "staging cache size = suwiwe76"
+        },
+        {
+          "wall_ms": 193.6954609991517,
+          "prompt_tokens": 911,
+          "prefill_ms": 66.433,
+          "out_tokens": 5,
+          "decode_ms": 118.805,
+          "correct": false,
+          "response": "hipuxe21"
+        },
+        {
+          "wall_ms": 205.33741899998859,
+          "prompt_tokens": 911,
+          "prefill_ms": 69.448,
+          "out_tokens": 6,
+          "decode_ms": 120.318,
+          "correct": true,
+          "response": "cotewe67"
+        },
+        {
+          "wall_ms": 286.92681399115827,
+          "prompt_tokens": 911,
+          "prefill_ms": 68.048,
+          "out_tokens": 10,
+          "decode_ms": 206.899,
+          "correct": true,
+          "response": "billing log level = hagetu93"
+        }
+      ]
+    },
+    "pinned_append": {
+      "n": 24,
+      "first_call_ms": 5682.169156003511,
+      "wall_ms": 226.00812499877065,
+      "wall_ms_mean": 231.24295658332508,
+      "prompt_tokens_evaluated": 946.0,
+      "prefill_ms": 81.8695,
+      "decode_ms": 116.228,
+      "accuracy": 0.7083333333333334,
+      "rows": [
+        {
+          "wall_ms": 177.8701360017294,
+          "prompt_tokens": 911,
+          "prefill_ms": 68.151,
+          "out_tokens": 5,
+          "decode_ms": 97.099,
+          "correct": true,
+          "response": "cafavi40"
+        },
+        {
+          "wall_ms": 194.18939799652435,
+          "prompt_tokens": 911,
+          "prefill_ms": 65.342,
+          "out_tokens": 6,
+          "decode_ms": 118.567,
+          "correct": true,
+          "response": "bofeka11"
+        },
+        {
+          "wall_ms": 227.69622500345577,
+          "prompt_tokens": 911,
+          "prefill_ms": 94.219,
+          "out_tokens": 6,
+          "decode_ms": 124.449,
+          "correct": true,
+          "response": "qamuni12"
+        },
+        {
+          "wall_ms": 273.6899599985918,
+          "prompt_tokens": 922,
+          "prefill_ms": 138.968,
+          "out_tokens": 6,
+          "decode_ms": 125.862,
+          "correct": true,
+          "response": "vuliqu36"
+        },
+        {
+          "wall_ms": 307.69615300232545,
+          "prompt_tokens": 922,
+          "prefill_ms": 97.101,
+          "out_tokens": 9,
+          "decode_ms": 201.416,
+          "correct": true,
+          "response": "uploads cache size = cesafi60"
+        },
+        {
+          "wall_ms": 170.91847299889196,
+          "prompt_tokens": 922,
+          "prefill_ms": 94.398,
+          "out_tokens": 3,
+          "decode_ms": 63.986,
+          "correct": false,
+          "response": "12"
+        },
+        {
+          "wall_ms": 224.32002499408554,
+          "prompt_tokens": 922,
+          "prefill_ms": 85.62,
+          "out_tokens": 6,
+          "decode_ms": 129.131,
+          "correct": true,
+          "response": "xipavi74"
+        },
+        {
+          "wall_ms": 251.94944599934388,
+          "prompt_tokens": 934,
+          "prefill_ms": 147.632,
+          "out_tokens": 5,
+          "decode_ms": 92.924,
+          "correct": false,
+          "response": "hipuxe21"
+        },
+        {
+          "wall_ms": 168.52209500211757,
+          "prompt_tokens": 934,
+          "prefill_ms": 68.981,
+          "out_tokens": 5,
+          "decode_ms": 92.434,
+          "correct": true,
+          "response": "cotewe67"
+        },
+        {
+          "wall_ms": 285.65945400623605,
+          "prompt_tokens": 934,
+          "prefill_ms": 65.416,
+          "out_tokens": 10,
+          "decode_ms": 210.615,
+          "correct": true,
+          "response": "billing log level = hagetu93"
+        },
+        {
+          "wall_ms": 127.70638799702283,
+          "prompt_tokens": 934,
+          "prefill_ms": 68.121,
+          "out_tokens": 3,
+          "decode_ms": 47.734,
+          "correct": false,
+          "response": "21"
+        },
+        {
+          "wall_ms": 267.3809879925102,
+          "prompt_tokens": 946,
+          "prefill_ms": 146.656,
+          "out_tokens": 6,
+          "decode_ms": 113.093,
+          "correct": true,
+          "response": "firiqu68"
+        },
+        {
+          "wall_ms": 193.64240899449214,
+          "prompt_tokens": 946,
+          "prefill_ms": 64.284,
+          "out_tokens": 6,
+          "decode_ms": 112.755,
+          "correct": true,
+          "response": "cewigo29"
+        },
+        {
+          "wall_ms": 329.4494560104795,
+          "prompt_tokens": 946,
+          "prefill_ms": 82.513,
+          "out_tokens": 10,
+          "decode_ms": 237.72,
+          "correct": true,
+          "response": "reports api region = bofeka11"
+        },
+        {
+          "wall_ms": 197.40722299320623,
+          "prompt_tokens": 946,
+          "prefill_ms": 90.102,
+          "out_tokens": 5,
+          "decode_ms": 94.878,
+          "correct": true,
+          "response": "cafavi40"
+        },
+        {
+          "wall_ms": 307.83159100974444,
+          "prompt_tokens": 958,
+          "prefill_ms": 150.871,
+          "out_tokens": 7,
+          "decode_ms": 140.125,
+          "correct": false,
+          "response": "kazipu68"
+        },
+        {
+          "wall_ms": 249.10045000433456,
+          "prompt_tokens": 958,
+          "prefill_ms": 81.226,
+          "out_tokens": 6,
+          "decode_ms": 155.988,
+          "correct": false,
+          "response": "dovoja60"
+        },
+        {
+          "wall_ms": 263.5073779965751,
+          "prompt_tokens": 958,
+          "prefill_ms": 65.465,
+          "out_tokens": 9,
+          "decode_ms": 187.843,
+          "correct": true,
+          "response": "uploads cache size = cesafi60"
+        },
+        {
+          "wall_ms": 163.59232399554458,
+          "prompt_tokens": 958,
+          "prefill_ms": 64.941999,
+          "out_tokens": 5,
+          "decode_ms": 91.001,
+          "correct": true,
+          "response": "cafavi40"
+        },
+        {
+          "wall_ms": 293.1004690035479,
+          "prompt_tokens": 969,
+          "prefill_ms": 136.678,
+          "out_tokens": 7,
+          "decode_ms": 144.827,
+          "correct": true,
+          "response": "vusoxa38"
+        },
+        {
+          "wall_ms": 169.03583600651473,
+          "prompt_tokens": 969,
+          "prefill_ms": 67.594,
+          "out_tokens": 5,
+          "decode_ms": 91.622,
+          "correct": false,
+          "response": "modade84"
+        },
+        {
+          "wall_ms": 312.4147839989746,
+          "prompt_tokens": 969,
+          "prefill_ms": 76.38,
+          "out_tokens": 10,
+          "decode_ms": 226.318,
+          "correct": true,
+          "response": "billing admin email = gadowi15"
+        },
+        {
+          "wall_ms": 192.19457899453118,
+          "prompt_tokens": 969,
+          "prefill_ms": 64.982,
+          "out_tokens": 6,
+          "decode_ms": 113.889,
+          "correct": true,
+          "response": "jujuju88"
+        },
+        {
+          "wall_ms": 200.95571799902245,
+          "prompt_tokens": 981,
+          "prefill_ms": 147.201,
+          "out_tokens": 3,
+          "decode_ms": 43.266,
+          "correct": false,
+          "response": "12"
+        }
+      ]
+    },
+    "pinned_update": {
+      "n": 24,
+      "first_call_ms": 5261.518304003403,
+      "wall_ms": 244.338410506316,
+      "wall_ms_mean": 707.2675077500511,
+      "prompt_tokens_evaluated": 911.0,
+      "prefill_ms": 83.19399999999999,
+      "decode_ms": 123.319,
+      "accuracy": 0.75,
+      "rows": [
+        {
+          "wall_ms": 191.6925590048777,
+          "prompt_tokens": 911,
+          "prefill_ms": 73.921,
+          "out_tokens": 5,
+          "decode_ms": 97.169,
+          "correct": true,
+          "response": "cafavi40"
+        },
+        {
+          "wall_ms": 215.89513101207558,
+          "prompt_tokens": 911,
+          "prefill_ms": 72.391,
+          "out_tokens": 6,
+          "decode_ms": 130.901,
+          "correct": true,
+          "response": "bofeka11"
+        },
+        {
+          "wall_ms": 199.3133069918258,
+          "prompt_tokens": 911,
+          "prefill_ms": 66.397999,
+          "out_tokens": 6,
+          "decode_ms": 125.281,
+          "correct": true,
+          "response": "qamuni12"
+        },
+        {
+          "wall_ms": 2038.282936991891,
+          "prompt_tokens": 910,
+          "prefill_ms": 1867.178,
+          "out_tokens": 6,
+          "decode_ms": 164.429,
+          "correct": true,
+          "response": "vuliqu36"
+        },
+        {
+          "wall_ms": 272.7816900005564,
+          "prompt_tokens": 910,
+          "prefill_ms": 68.132,
+          "out_tokens": 9,
+          "decode_ms": 197.916,
+          "correct": true,
+          "response": "uploads cache size = cesafi60"
+        },
+        {
+          "wall_ms": 200.1913439889904,
+          "prompt_tokens": 910,
+          "prefill_ms": 142.743,
+          "out_tokens": 3,
+          "decode_ms": 49.634,
+          "correct": false,
+          "response": "12"
+        },
+        {
+          "wall_ms": 212.10601899656467,
+          "prompt_tokens": 910,
+          "prefill_ms": 86.032,
+          "out_tokens": 6,
+          "decode_ms": 118.642,
+          "correct": true,
+          "response": "xipavi74"
+        },
+        {
+          "wall_ms": 2109.7728989989264,
+          "prompt_tokens": 911,
+          "prefill_ms": 1986.645,
+          "out_tokens": 5,
+          "decode_ms": 115.211,
+          "correct": false,
+          "response": "hipuxe21"
+        },
+        {
+          "wall_ms": 315.181134006707,
+          "prompt_tokens": 911,
+          "prefill_ms": 129.044,
+          "out_tokens": 6,
+          "decode_ms": 173.204,
+          "correct": true,
+          "response": "cotewe67"
+        },
+        {
+          "wall_ms": 380.09346299804747,
+          "prompt_tokens": 911,
+          "prefill_ms": 90.701,
+          "out_tokens": 10,
+          "decode_ms": 275.355,
+          "correct": true,
+          "response": "billing log level = hagetu93"
+        },
+        {
+          "wall_ms": 148.73674800037406,
+          "prompt_tokens": 911,
+          "prefill_ms": 80.356,
+          "out_tokens": 3,
+          "decode_ms": 55.102,
+          "correct": false,
+          "response": "21"
+        },
+        {
+          "wall_ms": 2161.9101069954922,
+          "prompt_tokens": 911,
+          "prefill_ms": 2008.047,
+          "out_tokens": 5,
+          "decode_ms": 139.87,
+          "correct": true,
+          "response": "firiqu68"
+        },
+        {
+          "wall_ms": 205.83084499230608,
+          "prompt_tokens": 911,
+          "prefill_ms": 74.587,
+          "out_tokens": 6,
+          "decode_ms": 121.357,
+          "correct": true,
+          "response": "cewigo29"
+        },
+        {
+          "wall_ms": 201.10606000525877,
+          "prompt_tokens": 911,
+          "prefill_ms": 71.089,
+          "out_tokens": 6,
+          "decode_ms": 119.076,
+          "correct": true,
+          "response": "bofeka11"
+        },
+        {
+          "wall_ms": 194.86529599817004,
+          "prompt_tokens": 911,
+          "prefill_ms": 69.631,
+          "out_tokens": 5,
+          "decode_ms": 108.494,
+          "correct": true,
+          "response": "cafavi40"
+        },
+        {
+          "wall_ms": 2605.8411300036823,
+          "prompt_tokens": 911,
+          "prefill_ms": 2319.373,
+          "out_tokens": 6,
+          "decode_ms": 273.84,
+          "correct": true,
+          "response": "jowava87"
+        },
+        {
+          "wall_ms": 332.93905200844165,
+          "prompt_tokens": 911,
+          "prefill_ms": 120.509,
+          "out_tokens": 6,
+          "decode_ms": 203.82,
+          "correct": false,
+          "response": "bofeka11"
+        },
+        {
+          "wall_ms": 288.51371799828485,
+          "prompt_tokens": 911,
+          "prefill_ms": 104.449,
+          "out_tokens": 9,
+          "decode_ms": 176.199,
+          "correct": true,
+          "response": "uploads cache size = cesafi60"
+        },
+        {
+          "wall_ms": 168.82172800251283,
+          "prompt_tokens": 911,
+          "prefill_ms": 67.648,
+          "out_tokens": 5,
+          "decode_ms": 90.411,
+          "correct": true,
+          "response": "cafavi40"
+        },
+        {
+          "wall_ms": 1985.5887619924033,
+          "prompt_tokens": 910,
+          "prefill_ms": 1835.065,
+          "out_tokens": 7,
+          "decode_ms": 142.821,
+          "correct": true,
+          "response": "vusoxa38"
+        },
+        {
+          "wall_ms": 167.490560997976,
+          "prompt_tokens": 910,
+          "prefill_ms": 64.631,
+          "out_tokens": 5,
+          "decode_ms": 92.264,
+          "correct": false,
+          "response": "modade84"
+        },
+        {
+          "wall_ms": 293.0114409973612,
+          "prompt_tokens": 910,
+          "prefill_ms": 69.673,
+          "out_tokens": 10,
+          "decode_ms": 215.505,
+          "correct": true,
+          "response": "billing admin email = gadowi15"
+        },
+        {
+          "wall_ms": 188.57805100560654,
+          "prompt_tokens": 910,
+          "prefill_ms": 69.837,
+          "out_tokens": 6,
+          "decode_ms": 110.993,
+          "correct": true,
+          "response": "jujuju88"
+        },
+        {
+          "wall_ms": 1895.8762040128931,
+          "prompt_tokens": 911,
+          "prefill_ms": 1794.991,
+          "out_tokens": 3,
+          "decode_ms": 91.463,
+          "correct": false,
+          "response": "21"
+        }
+      ]
+    }
+  }
+}
