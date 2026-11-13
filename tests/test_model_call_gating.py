@@ -122,3 +122,16 @@ def test_retrieve_lines_adds_the_most_similar_raw_lines_and_leaves_default_promp
     p.observe("The database port for staging is 5433.", source="chat")
     p.step("What is the database port for staging?", auto_memory=True, remember_prompt=False)
     assert "RETRIEVED_LINES" not in plain_backend.prompts[-1] and "5433" in plain_backend.prompts[-1]
+
+
+def test_line_index_matches_a_scan_ignores_step_prompts_and_uses_the_retrieval_query():
+    backend = _Counting()
+    a = NSA(backend, config=RuntimeConfig(memory_enabled=True, include_state_in_prompt=False, history_limit=0, retrieve_lines=2), extractor=RuleFactExtractor())
+    for line in ("Quick note: the cache size on billing sits at 77ab-xyz these days.", "billing cache size is fine, I think", "lunch at noon?"):
+        a.observe(line, source="chat")
+    got = a.lines_for("cache size billing", 3)
+    assert set(got) == {"Quick note: the cache size on billing sits at 77ab-xyz these days.", "billing cache size is fine, I think"} and "lunch at noon?" not in got
+    # a question asked through step() is not indexed, so it can never be retrieved as an 'earlier line' later
+    a.step("What is the cache size for billing? Reply with exactly one line: VALUE=...", auto_memory=True, remember_prompt=False, retrieval_query="cache size billing")
+    assert all("Reply with exactly" not in line for line in a.lines_for("cache size billing", 10))
+    assert "77ab-xyz" in backend.prompts[-1] and "VALUE=..." in backend.prompts[-1]

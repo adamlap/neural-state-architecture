@@ -34,7 +34,7 @@ def _canonical_payload(state: CanonicalState) -> dict[str, Any]:
     and goal metadata are part of the canonical state and therefore part of
     its digest.
     """
-    return {
+    payload = {
         "semantic": state.semantic.value,
         "hard": {
             "confidentiality": state.hard.confidentiality.name,
@@ -62,6 +62,9 @@ def _canonical_payload(state: CanonicalState) -> dict[str, Any]:
         },
         "step": state.step,
     }
+    if state.provenance.folded_count:                       # absent for never-folded states, keeping their digest byte-identical to the original format
+        payload["provenance"]["folded"] = {"count": state.provenance.folded_count, "chain": state.provenance.folded_chain}
+    return payload
 
 
 def state_digest(state: CanonicalState) -> str:
@@ -119,6 +122,8 @@ class TransitionReceipt:
 class TransitionValidator:
     """Validate and apply proposals without allowing hard-state bypasses."""
     ALLOWED_SOFT = frozenset({"uncertainty", "risk", "confidence", "resource_pressure"})
+    # Optional retention window for provenance (ProvenanceState.fold); None keeps the full history. Set by NSARuntime(provenance_window=...).
+    provenance_window: Optional[int] = None
 
     def validate(self, state: CanonicalState, proposal: TransitionProposal) -> tuple[bool, str]:
         unknown = set(proposal.soft_updates) - self.ALLOWED_SOFT
@@ -149,7 +154,7 @@ class TransitionValidator:
                 provenance=target.provenance.extend(
                     source=proposal.provenance_source,
                     evidence_id=proposal.evidence_id,
-                ),
+                ).fold(self.provenance_window),
             )
         if proposal.hard_transition is not None:
             target = replace(target, hard=proposal.hard_transition.target)

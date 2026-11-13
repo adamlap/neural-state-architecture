@@ -49,6 +49,7 @@ def encode_state(state: CanonicalState) -> dict[str, Any]:
                 "sources": list(state.provenance.sources), "transformations": list(state.provenance.transformations),
                 "evidence_ids": list(state.provenance.evidence_ids), "trust_domain": state.provenance.trust_domain,
                 "timestamp": state.provenance.timestamp,
+                **({"folded": {"count": state.provenance.folded_count, "chain": state.provenance.folded_chain}} if state.provenance.folded_count else {}),
             },
             "goals": {
                 "goals": list(state.goals.goals), "active_goal": state.goals.active_goal, "priority": state.goals.priority,
@@ -83,6 +84,8 @@ def decode_state(payload: Mapping[str, Any]) -> CanonicalState:
             evidence_ids=tuple(raw["provenance"].get("evidence_ids", [])),
             trust_domain=raw["provenance"].get("trust_domain"),
             timestamp=raw["provenance"].get("timestamp"),
+            folded_count=int(raw["provenance"].get("folded", {}).get("count", 0)),
+            folded_chain=str(raw["provenance"].get("folded", {}).get("chain", "")),
         ),
         goals=GoalState(
             goals=tuple(raw["goals"].get("goals", [])),

@@ -45,6 +45,9 @@ class RuntimeConfig:
     # 5/18 correct with them, 18/18 without), so tasks that answer from memory can turn
     # it off; conversational use usually wants them.
     include_history_with_memory: bool = True
+    # Fold provenance older than the last N entries into a constant-size hash chain (see ProvenanceState.fold). None keeps the full history in state; set it (e.g. 256)
+    # for long-lived agents: without it every observe() re-hashes the whole provenance, so per-call cost grows linearly with agent age.
+    provenance_window: Optional[int] = None
     # Observation sources whose content is labelled UNTRUSTED at ingress (e.g. "web", "email",
     # "tool_output"). Empty keeps every observation trusted (historical behaviour).
     untrusted_sources: tuple[str, ...] = ()
@@ -103,6 +106,8 @@ class NSARuntime:
         self.stream_learner = stream_learner
         self.signal_stats = {"signals": 0, "outcomes": 0, "learning_blocked": 0}
         self.call_stats = {"model_calls": 0, "reused": 0, "abstained": 0}
+        self._lines: list[str] = []                      # indexed raw lines (only when retrieve_lines > 0)
+        self._line_index: dict[str, list[int]] = {}      # token -> ids of lines containing it
         self._answer_cache: dict[tuple, list] = {}
         self.novelty_gate = novelty_gate
         self.last_novelty: Optional[float] = None
@@ -122,6 +127,9 @@ class NSARuntime:
         self._continuous_transition = continuous_transition or self._continuous_state_maintenance
         self._cce = ContinuousCognitiveEngine(self.state, self._continuous_transition, interval_seconds=self.config.continuous_interval_seconds, enabled=self.config.continuous_enabled, fail_closed=self.config.continuous_fail_closed)
         self._canonical_cce = CanonicalCCERuntime(self.state, interval_seconds=self.config.continuous_interval_seconds, enabled=False, fail_closed=self.config.continuous_fail_closed)
+        if self.config.provenance_window:
+            for engine in (self._canonical_cce.transaction_engine, self._canonical_cce._async_transaction_engine):
+                engine.validator.provenance_window = self.config.provenance_window
 
     @staticmethod
     def _state_from_mapping(values: Mapping[str, Any]) -> CanonicalState:
@@ -168,7 +176,8 @@ class NSARuntime:
         return replace(state, provenance=state.provenance.extend(transformation="cce.heartbeat"), step=state.step + 1)
 
     def observe(self, payload: Any, *, source: str = "text", confidence: float = 1.0, provenance: str = "local",
-                integrity: Optional[IntegrityLabel] = None, envelope: Optional[IngressEnvelope] = None, extract: bool = True) -> None:
+                integrity: Optional[IntegrityLabel] = None, envelope: Optional[IngressEnvelope] = None, extract: bool = True,
+                index_lines: bool = True) -> None:
         if envelope is not None:
             if self.ingress is None:
                 raise RuntimeError("an envelope was supplied but no IngressAuthority is configured")
@@ -180,7 +189,9 @@ class NSARuntime:
             integrity = IntegrityLabel.UNTRUSTED if source in self.config.untrusted_sources else IntegrityLabel.TRUSTED
         if envelope is None and self.config.require_signed_ingress:
             integrity = IntegrityLabel.UNTRUSTED       # a TRUSTED label needs a verified envelope
-        self.history.append(CognitiveInputEvent(payload, source=source, confidence=confidence, provenance=provenance, integrity=integrity)); self.state = replace(self.state, soft=replace(self.state.soft, confidence=confidence, uncertainty=1.0-confidence), provenance=self.state.provenance.extend(source=source), step=self.state.step+1); self._run_cognitive_transition(payload, confidence=confidence); self._cce.set_state(self.state); self._sync_canonical()
+        self.history.append(CognitiveInputEvent(payload, source=source, confidence=confidence, provenance=provenance, integrity=integrity)); self.state = replace(self.state, soft=replace(self.state.soft, confidence=confidence, uncertainty=1.0-confidence), provenance=self.state.provenance.extend(source=source).fold(self.config.provenance_window), step=self.state.step+1); self._run_cognitive_transition(payload, confidence=confidence); self._cce.set_state(self.state); self._sync_canonical()
+        if index_lines and self.config.retrieve_lines and isinstance(payload, str):
+            self._index_lines(payload)
         if isinstance(payload, str) and self.novelty_gate is not None:
             self.last_novelty = self._score_novelty(payload)
         if extract and self.extractor is not None and self.memory is not None and isinstance(payload, str):
@@ -290,19 +301,31 @@ class NSARuntime:
         while sum(len(v) for v in self._answer_cache.values()) > self.config.reuse_cache_size:
             self._answer_cache.pop(next(iter(self._answer_cache)))
 
-    def lines_for(self, question: str, k: int) -> list[str]:
-        """The ``k`` earlier observations (strings) most similar to the question by token overlap; ties go to the later one. Excludes the question itself."""
+    def _index_lines(self, text: str) -> None:
         from nsa.memory.extract import normalize_key
 
-        q = set(normalize_key(question).split())
-        scored = []
-        for i, e in enumerate(self.history[:-1] if self.history else []):
-            text = e.payload if isinstance(e.payload, str) else None
-            if text:
-                score = len(q & set(normalize_key(text).split()))
-                if score:
-                    scored.append((score, i, text))
-        return [t for _, _, t in sorted(scored, key=lambda x: (-x[0], -x[1]))[:k]]
+        for line in text.splitlines():
+            if not line.strip():
+                continue
+            lid = len(self._lines)
+            self._lines.append(line)
+            for tok in set(normalize_key(line).split()):
+                self._line_index.setdefault(tok, []).append(lid)
+
+    def lines_for(self, question: str, k: int) -> list[str]:
+        """The ``k`` indexed earlier lines most similar to the question by token overlap (ties go to the later line).
+
+        Uses an inverted index (token -> line ids), so the cost depends on the number of lines that share a token with the question, not on the history length.
+        Only lines observed with ``index_lines=True`` (all ``observe`` calls except the prompts ``step`` records) are indexed, and only when ``retrieve_lines > 0``.
+        """
+        from nsa.memory.extract import normalize_key
+
+        counts: dict[int, int] = {}
+        for tok in set(normalize_key(question).split()):
+            for lid in self._line_index.get(tok, ()):
+                counts[lid] = counts.get(lid, 0) + 1
+        best = sorted(counts.items(), key=lambda kv: (-kv[1], -kv[0]))[:k]
+        return [self._lines[lid] for lid, _ in best]
 
     def memory_keys_for(self, text: str, *, limit: Optional[int] = None, prefer_trusted: bool = True, top_only: bool = False,
                         reject_ambiguous: bool = False) -> list[str]:
@@ -367,7 +390,7 @@ class NSARuntime:
         summary = dict(self.state.summary())
         sources = tuple(summary.get("sources", ()))
         summary["sources"] = sources[-self._PROMPT_SOURCES_SHOWN:]
-        summary["source_count"] = len(sources)
+        summary["source_count"] = len(sources) + self.state.provenance.folded_count
         return summary
 
     def _prompt(self, prompt: str, *, in_flight: bool = False, memory_present: bool = False) -> str:
@@ -446,12 +469,14 @@ class NSARuntime:
             return self.backend.generate(model_prompt, state=self.state.summary())
         return self.backend.generate(model_prompt)
 
-    def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = (), memory_keys: Sequence[str] = (), auto_memory: bool = False, remember_prompt: bool = True) -> AgentResult:
-        self.observe(prompt, extract=remember_prompt)
+    def step(self, prompt: str, *, action: str = "generate", capabilities: Sequence[str] = (), protected_data: Sequence[str] = (), memory_keys: Sequence[str] = (), auto_memory: bool = False, remember_prompt: bool = True,
+             retrieval_query: Optional[str] = None) -> AgentResult:
+        self.observe(prompt, extract=remember_prompt, index_lines=False)
+        query = prompt if retrieval_query is None else retrieval_query      # text used for key/line retrieval (e.g. the question without answer-format instructions)
         if auto_memory and not memory_keys:
-            memory_keys = self.memory_keys_for(prompt)
+            memory_keys = self.memory_keys_for(query)
         memory_context = self.memory.render(memory_keys, limit=self.config.memory_limit) if self.memory is not None and memory_keys else ""
-        lines = self.lines_for(prompt, self.config.retrieve_lines) if (self.config.retrieve_lines and (auto_memory or memory_keys)) else []
+        lines = self.lines_for(query, self.config.retrieve_lines) if (self.config.retrieve_lines and (auto_memory or memory_keys)) else []
         if lines:
             memory_context = (memory_context or "NO_RELEVANT_MEMORY") + "\n\nRETRIEVED_LINES=\n" + "\n".join(lines)
         model_prompt = f"RETRIEVED_MEMORY=\n{memory_context}\n\n{prompt}" if memory_context else prompt
@@ -459,7 +484,7 @@ class NSARuntime:
         if self.policy_engine:
             decision = self.policy_engine.enforce(prompt, context=context, state=self.state)
             if decision.decision.value in {"deny", "require_approval"}: self.trace.append({"step": self.state.step, "prompt": prompt, "blocked": True}); return AgentResult("", self.state, decision=decision, trace_id=len(self.trace), blocked=True)
-        gated = self._gate_model_call(prompt, memory_keys, auto_memory)
+        gated = self._gate_model_call(query, memory_keys, auto_memory)
         if gated is not None:
             kind, text = gated
             self.trace.append({"step": self.state.step, "prompt": prompt, "response": text, "blocked": False, "gated": kind})
@@ -467,9 +492,9 @@ class NSARuntime:
         raw_text = self._generate(self._prompt(model_prompt, in_flight=True, memory_present=bool(memory_context)))
         self.call_stats["model_calls"] += 1
         text = raw_text.text if hasattr(raw_text, "text") else (str(raw_text) if not isinstance(raw_text, str) else raw_text)
-        self._remember_answer(prompt, memory_keys, text)   # only grounded answers are cached
+        self._remember_answer(query, memory_keys, text)   # only grounded answers are cached
         if self.config.auto_update_semantic_state:
-            self.state = replace(self.state, semantic=SemanticState(text), provenance=self.state.provenance.extend(transformation="llm.generate"), step=self.state.step+1); self._run_cognitive_transition(text, confidence=self.state.soft.confidence)
+            self.state = replace(self.state, semantic=SemanticState(text), provenance=self.state.provenance.extend(transformation="llm.generate").fold(self.config.provenance_window), step=self.state.step+1); self._run_cognitive_transition(text, confidence=self.state.soft.confidence)
         self._cce.set_state(self.state); self._sync_canonical(); self.trace.append({"step": self.state.step, "prompt": prompt, "response": text, "blocked": False})
         if self.checkpoint and self.config.auto_checkpoint: self.save()
         return AgentResult(text, self.state, decision=decision, trace_id=len(self.trace))
