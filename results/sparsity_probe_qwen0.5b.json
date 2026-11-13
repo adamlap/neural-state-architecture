@@ -1,0 +1,139 @@
+{
+  "experiment": "neuron_sparsity_probe",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "layers": 24,
+  "neurons_per_layer": 4864,
+  "share_of_neurons_for_90pct_contribution": 0.5532585872958103,
+  "share_of_neurons_for_99pct_contribution": 0.8373596966266632,
+  "results": {
+    "0.1|oracle": {
+      "top1_agreement": 0.3782771535580524,
+      "kl": 2.2414248462919883,
+      "tokens": 267
+    },
+    "0.1|prev_token": {
+      "top1_agreement": 0.0599250936329588,
+      "kl": 6.715216761671202,
+      "tokens": 267
+    },
+    "0.1|topic": {
+      "top1_agreement": 0.056179775280898875,
+      "kl": 6.571144875515713,
+      "tokens": 267
+    },
+    "0.1|global": {
+      "top1_agreement": 0.06741573033707865,
+      "kl": 6.572167785873128,
+      "tokens": 267
+    },
+    "0.1|wrong_topic": {
+      "top1_agreement": 0.026217228464419477,
+      "kl": 7.169805462440748,
+      "tokens": 267
+    },
+    "0.1|random": {
+      "top1_agreement": 0.003745318352059925,
+      "kl": 12.443306340706929,
+      "tokens": 267
+    },
+    "0.1|topic_mean": {
+      "top1_agreement": 0.0749063670411985,
+      "kl": 5.173236289720856,
+      "tokens": 267
+    },
+    "0.1|global_mean": {
+      "top1_agreement": 0.10861423220973783,
+      "kl": 5.129451108782479,
+      "tokens": 267
+    },
+    "0.25|oracle": {
+      "top1_agreement": 0.6816479400749064,
+      "kl": 0.3487764012054558,
+      "tokens": 267
+    },
+    "0.25|prev_token": {
+      "top1_agreement": 0.06741573033707865,
+      "kl": 5.745398760734872,
+      "tokens": 267
+    },
+    "0.25|topic": {
+      "top1_agreement": 0.09363295880149813,
+      "kl": 4.645904941058784,
+      "tokens": 267
+    },
+    "0.25|global": {
+      "top1_agreement": 0.15355805243445692,
+      "kl": 4.548234403803107,
+      "tokens": 267
+    },
+    "0.25|wrong_topic": {
+      "top1_agreement": 0.1198501872659176,
+      "kl": 5.14240810665745,
+      "tokens": 267
+    },
+    "0.25|random": {
+      "top1_agreement": 0.0,
+      "kl": 12.107129843493972,
+      "tokens": 267
+    },
+    "0.25|topic_mean": {
+      "top1_agreement": 0.1797752808988764,
+      "kl": 3.718523089805346,
+      "tokens": 267
+    },
+    "0.25|global_mean": {
+      "top1_agreement": 0.19101123595505617,
+      "kl": 3.8516028472100303,
+      "tokens": 267
+    },
+    "0.5|oracle": {
+      "top1_agreement": 0.8913857677902621,
+      "kl": 0.048537257905310015,
+      "tokens": 267
+    },
+    "0.5|prev_token": {
+      "top1_agreement": 0.1198501872659176,
+      "kl": 3.756918603561344,
+      "tokens": 267
+    },
+    "0.5|topic": {
+      "top1_agreement": 0.40074906367041196,
+      "kl": 1.9062107529086567,
+      "tokens": 267
+    },
+    "0.5|global": {
+      "top1_agreement": 0.3408239700374532,
+      "kl": 2.1110222062814548,
+      "tokens": 267
+    },
+    "0.5|wrong_topic": {
+      "top1_agreement": 0.24719101123595505,
+      "kl": 3.1168767379017805,
+      "tokens": 267
+    },
+    "0.5|random": {
+      "top1_agreement": 0.0,
+      "kl": 10.286864891480864,
+      "tokens": 267
+    },
+    "0.5|topic_mean": {
+      "top1_agreement": 0.4307116104868914,
+      "kl": 1.680843324696973,
+      "tokens": 267
+    },
+    "0.5|global_mean": {
+      "top1_agreement": 0.39325842696629215,
+      "kl": 1.910550063915467,
+      "tokens": 267
+    }
+  },
+  "topic_set_jaccard_at_25pct": {
+    "code~cooking": 0.3419473469257355,
+    "code~finance": 0.39166924357414246,
+    "code~medicine": 0.361003577709198,
+    "cooking~finance": 0.33510226011276245,
+    "cooking~medicine": 0.3583430349826813,
+    "finance~medicine": 0.39783504605293274
+  },
+  "boundary": "0.5B SiLU model, 4 topics, 2 held-out texts per topic; oracle needs the full computation, only static and prev-token sets are known in advance."
+}
